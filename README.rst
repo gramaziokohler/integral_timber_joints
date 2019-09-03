@@ -8,7 +8,7 @@ Robotic Assembled Timber Structures with Integral Timber Joints
     :target: https://github.com/gramaziokohler/integral_timber_joints/blob/master/LICENSE
     :alt: License MIT
 
-.. image:: https://travis-ci.com/gramaziokohler/integral_timber_joints.svg?branch=master
+.. image:: https://travis-ci.com/gramaziokohler/integral_timber_joints.svg?token=DC9xyXTmKZNpvuHxcvcN&branch=master
     :target: https://travis-ci.com/gramaziokohler/integral_timber_joints
     :alt: Travis CI
 
