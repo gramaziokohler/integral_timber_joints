@@ -1,0 +1,10 @@
+name: itj
+channels:
+    - conda-forge
+
+dependencies:
+   - python=3.6
+   - compas
+   - compas_fab
+   - pip:
+      - trimesh
