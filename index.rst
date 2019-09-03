@@ -52,6 +52,7 @@ Project Documentation
 
    README
    docs/setup
+   docs/process_design/robotic_clamp
    docs/reference/index
    CONTRIBUTING
    AUTHORS
