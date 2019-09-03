@@ -26,11 +26,11 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   readme
-   reference/index
-   contributing
-   authors
-   changelog
+   README
+   docs/reference/index
+   CONTRIBUTING
+   AUTHORS
+   CHANGELOG
 
 Indices and tables
 ==================
