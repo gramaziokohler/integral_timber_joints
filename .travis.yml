@@ -9,3 +9,9 @@ install:
 
 script:
 - invoke test
+- invoke docs
+
+after_success:
+- if [[ "$TRAVIS_BRANCH" == "master" ]]; then
+    invoke deploy-docs;
+  fi
