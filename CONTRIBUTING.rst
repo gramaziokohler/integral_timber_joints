@@ -1,4 +1,4 @@
-Contributor's Guide
+Contributing
 ===================
 
 Contributions are always welcome and greatly appreciated!

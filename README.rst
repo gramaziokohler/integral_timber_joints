@@ -16,38 +16,13 @@ Robotic Assembled Timber Structures with Integral Timber Joints
 
 .. Write project description
 
-**PhD project to investigate robotic assembly methods for timber structure with integral timber joints.** ...
+**Research project to investigate robotic assembly methods for timber structure with integral timber joints.**
 
+This repository contains multiple python packages and C++ projects (among many other things).
+The packages and projects are located in the `src` and `src_cpp` folders respectively.
 
-Main features
--------------
-
-* feature
-* feature
-* more features
-
-**integral_timber_joints** runs on Python x.x and x.x.
-
-
-Documentation
--------------
-
-.. Explain how to access documentation: API, examples, etc.
-
-..
-.. optional sections:
-
-Requirements
-------------
-
-.. Write requirements instructions here
-
-
-Installation
-------------
-
-.. Write installation instructions here
-
+**The list of packages and projects can be found in the main documentation here:**
+`Documentation Index <https://docs.gramaziokohler.arch.ethz.ch/integral_timber_joints/>`_
 
 Contributing
 ------------
@@ -77,16 +52,7 @@ command line to ease recurring operations:
 For more details, check the `Contributor's Guide <CONTRIBUTING.rst>`_.
 
 
-Releasing this project
-----------------------
-
-.. Write releasing instructions here
-
-
-.. end of optional sections
-..
-
 Credits
 -------------
 
-This package was created by Pok Yin Victor Leung <leung@arch.ethz.ch> `@yck011522 <https://github.com/yck011522>`_ at `@gramaziokohler <https://github.com/gramaziokohler>`_
+This repository was created by Pok Yin Victor Leung <leung@arch.ethz.ch> `@yck011522 <https://github.com/yck011522>`_ at `@gramaziokohler <https://github.com/gramaziokohler>`_
