@@ -10,12 +10,16 @@ from shutil import rmtree
 from xml.dom.minidom import parse
 
 from invoke import Collection, Exit, task
+from paramiko import SSHClient
+from paramiko.client import AutoAddPolicy
+from scp import SCPClient
 
 try:
     input = raw_input
 except NameError:
     pass
 BASE_FOLDER = os.path.dirname(__file__)
+PACKAGE_NAME = 'integral_timber_joints'
 
 
 class Log(object):
@@ -122,11 +126,11 @@ def clean(ctx, docs=True, bytecode=True, builds=True):
         folders.append('dist/')
 
     if bytecode:
-        folders.append('src/integral_timber_joints/__pycache__')
+        folders.append('src/{}/__pycache__'.format(PACKAGE_NAME))
 
     if builds:
         folders.append('build/')
-        folders.append('src/integral_timber_joints.egg-info/')
+        folders.append('src/{}.egg-info/'.format(PACKAGE_NAME))
 
     for folder in folders:
         rmtree(os.path.join(BASE_FOLDER, folder), ignore_errors=True)
@@ -136,13 +140,39 @@ def clean(ctx, docs=True, bytecode=True, builds=True):
       'check_links': 'True to check all web links in docs for validity, otherwise False.'})
 def docs(ctx, rebuild=True, check_links=False):
     """Builds package's HTML documentation."""
-    if rebuild:
-        clean(ctx)
-    ctx.run('sphinx-build -b doctest docs dist/docs')
-    ctx.run('sphinx-build -b html docs dist/docs')
-    if check_links:
-        ctx.run('sphinx-build -b linkcheck docs dist/docs')
 
+    with chdir(BASE_FOLDER):
+        if rebuild:
+            clean(ctx)
+
+        if doctest:
+            ctx.run('sphinx-build -b doctest -c docs . dist/docs/{}'.format(PACKAGE_NAME))
+
+        ctx.run('sphinx-build -b html -c docs . dist/docs/{}'.format(PACKAGE_NAME))
+
+        if check_links:
+            ctx.run('sphinx-build -b linkcheck -c docs . dist/docs/{}'.format(PACKAGE_NAME))
+
+@task()
+def deploy_docs(ctx, scp_server='darch.ethz.ch'):
+    """Deploy docs to the documentation server.
+    Published to: https://docs.gramaziokohler.arch.ethz.ch/"""
+
+    DOCS_PATH = os.path.join(BASE_FOLDER, 'dist', 'docs', PACKAGE_NAME)
+    with chdir(DOCS_PATH):
+        scp_username = os.environ.get('SCP_USERNAME')
+        scp_password = os.environ.get('SCP_PASSWORD')
+
+        print('Connecting to {} as {}...'.format(scp_server, scp_username))
+
+        with SSHClient() as ssh:
+            ssh.set_missing_host_key_policy(AutoAddPolicy)
+            ssh.connect(scp_server, username=scp_username, password=scp_password)
+
+            scp = SCPClient(ssh.get_transport())
+            scp.put(DOCS_PATH, recursive=True, remote_path='htdocs')
+
+        print('Done')
 
 @task()
 def check(ctx):
