@@ -4,8 +4,10 @@ bumpversion>=0.5
 check-manifest>=0.36
 flake8
 autopep8
+paramiko
 pylint
 pytest
+scp
 isort
 twine
 -e .
