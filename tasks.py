@@ -137,8 +137,9 @@ def clean(ctx, docs=True, bytecode=True, builds=True):
 
 @task(help={
       'rebuild': 'True to clean all previously built docs before starting, otherwise False.',
+      'doctest': 'True to run doctest snippets, otherwise False.',
       'check_links': 'True to check all web links in docs for validity, otherwise False.'})
-def docs(ctx, rebuild=True, check_links=False):
+def docs(ctx, rebuild=True, doctest=False, check_links=False):
     """Builds package's HTML documentation."""
 
     with chdir(BASE_FOLDER):
