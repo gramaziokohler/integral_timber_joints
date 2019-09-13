@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,800&display=swap');
+
+body, div.body h1, div.body h2, div.body h3, div.body h4, div.body h5, div.body h6{
+    font-family: 'Open Sans', sans-serif;
+}
+
+div.body h1 {
+    border-bottom: 4px solid #000000;
+    margin-bottom:10px;
+    font-size: 180%;
+    text-transform: uppercase;
+    font-weight: 800;
+}
+
+div.body h2 {
+    font-size: 180%;
+    font-weight: 700;
+}
+
+
+h2 {
+    border-bottom: 1px solid #404040;
+}

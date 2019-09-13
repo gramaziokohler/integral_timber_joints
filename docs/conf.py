@@ -42,6 +42,7 @@ html_theme_options = {
     'github_user': 'gramaziokohler',
     'github_repo': project,
     'fixed_sidebar': True,
+    'font_family':'Roboto'
 }
 
 html_use_smartypants = True
