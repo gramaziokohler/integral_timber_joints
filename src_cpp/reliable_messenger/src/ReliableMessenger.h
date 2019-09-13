@@ -16,74 +16,77 @@
 
 #define BUFFER_LENGTH 64
 
-class ReliableMessenger {
-    public:
-        ReliableMessenger(Stream &stream, void(*receiveCallback)(char*));
-        void listen();
-        boolean sendMessage();
-        boolean sendMessageAsyc(void(*callback)(boolean));
-        unsigned int discardUnreadMessages();
-        void setRetry(int retrymax);
-        void setSendTimeout(unsigned long millisec);
-        void setEscapeSymbol(byte symbol);
-        void setmessageEndSymbol(byte symbol);
 
-        void setPin(int pin);
-        void dot();
-        void dash();
 
-    private:
-        Stream *_stream;
-        char _receiveBuffer[BUFFER_LENGTH];
-        unsigned int _receivedLength;
-        byte _lastReceivedByte;
-        int _retrymax;
-        int _messageEndSymbol;
-        int _escapeSymbol;
-        int _sendTimeoutMillis;
-        //variables for sending messages
-        int _retrycount;
-        void(*_receiveCallback)(char*);
-        void(*_sendCallback)(boolean);
-
-        int _pin;
-};
-
+// Message struct to hold a incoming or outgoing message.
+// Body must not contain '\0' symbol because it is reserved for the Transport layer .
 struct Message {
     public:
         byte receiverAddress;
         byte senderAddress;
-        char* body; // Pointer to a char[] that contains an message body only. 
+        char* body; // Pointer to a char[] that contains an message body only.
+        int length();
 };
 
 // The transport class take care of transmitting a message from specific sender to specific receiver.
 // It needs to reassemble the message from potentially intermitent transmission
+
 class Transport {
     public:
-        virtual void sendMessage(Message message) = 0;  // Send a message
-        virtual Message receiveMessage() = 0;
+        // Send a message to a specific sender
+        virtual void sendMessage(Message * message) = 0;  // Send a message
+        virtual Message * receiveMessage() = 0;
         virtual boolean available() = 0;
-        void setMessageEndSymbol(char symbol);
         void setAddress(byte selfAddress);
+        byte getAddress();
     protected:
-        int _messageEndSymbol;
         byte _address;
 };
 
-//SerialTransport ignores the sender and receiver
+//SerialTransport is implementation to use a Serial Stream
+//Since Serial is point to point by nature. It will ignores the sender and receiver address
 class SerialTransport : public Transport {
     public:
         SerialTransport(Stream &stream, unsigned int bufferLength);
-        void sendMessage(Message message);  // Send a message
+        SerialTransport(Stream & stream, unsigned int bufferLength, byte address);
+        void sendMessage(Message * message);  // Send a message
         boolean available();
-        Message receiveMessage();
+        Message * receiveMessage();
+        const char serialEndOfMessage = '\004';
 
     private:
         Stream *_stream;
         char* _receiveBuffer;
-        //char _receiveBuffer[BUFFER_LENGTH];
         unsigned int _receiveIndex;
         Message _receivedMessage;
+};
+
+class ReliableMessenger {
+    public:
+        ReliableMessenger(Transport &transport);
+        boolean available();
+        Message * receiveMessage();
+
+        int sendMessage(Message * message);
+        boolean sendMessageAsyc(void(*callback)(boolean));
+        unsigned int discardUnreadMessages();
+        void setRetry(int retrymax);
+        void setSendTimeout(unsigned long millisec);
+
+    private:
+        void sendACK(Message * message);
+        char * computeACKString(Message * message);
+        byte stringChecksum(char * s);
+        Transport *_transport;
+        //settings
+        int _retryMax = 3;
+        int _sendSendTimeoutMillis = 300;
+        //variables for sending messages
+        void(*_receiveCallback)(char*);
+        void(*_sendCallback)(boolean);
+        //variables for receiving messages
+        Message * incomingMessage;
+        boolean _newMessageFlag = false;
 };
 #endif
 
