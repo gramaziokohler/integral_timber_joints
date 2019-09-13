@@ -14,12 +14,14 @@
 	#include "WProgram.h"
 #endif
 
+#define BUFFER_LENGTH 64
+
 class ReliableMessenger {
     public:
-        ReliableMessenger(Stream &stream, void(*receiveCallback)(String));
+        ReliableMessenger(Stream &stream, void(*receiveCallback)(char*));
         void listen();
         boolean sendMessage();
-        boolean sendMessageAsyc(void(*callback)(String));
+        boolean sendMessageAsyc(void(*callback)(boolean));
         unsigned int discardUnreadMessages();
         void setRetry(int retrymax);
         void setSendTimeout(unsigned long millisec);
@@ -32,7 +34,8 @@ class ReliableMessenger {
 
     private:
         Stream *_stream;
-        String _receiveBuffer;
+        char _receiveBuffer[BUFFER_LENGTH];
+        unsigned int _receivedLength;
         byte _lastReceivedByte;
         int _retrymax;
         int _messageEndSymbol;
@@ -40,21 +43,47 @@ class ReliableMessenger {
         int _sendTimeoutMillis;
         //variables for sending messages
         int _retrycount;
-        void(*_receiveCallback)(String);
+        void(*_receiveCallback)(char*);
         void(*_sendCallback)(boolean);
 
         int _pin;
 };
 
+struct Message {
+    public:
+        byte receiverAddress;
+        byte senderAddress;
+        char* body; // Pointer to a char[] that contains an message body only. 
+};
 
-//class ReliableMessenger {
-//    public:
-//    Morse(int pin);
-//    void dot();
-//    void dash();
-//    private:
-//    int _pin;
-//};
+// The transport class take care of transmitting a message from specific sender to specific receiver.
+// It needs to reassemble the message from potentially intermitent transmission
+class Transport {
+    public:
+        virtual void sendMessage(Message message) = 0;  // Send a message
+        virtual Message receiveMessage() = 0;
+        virtual boolean available() = 0;
+        void setMessageEndSymbol(char symbol);
+        void setAddress(byte selfAddress);
+    protected:
+        int _messageEndSymbol;
+        byte _address;
+};
 
+//SerialTransport ignores the sender and receiver
+class SerialTransport : public Transport {
+    public:
+        SerialTransport(Stream &stream, unsigned int bufferLength);
+        void sendMessage(Message message);  // Send a message
+        boolean available();
+        Message receiveMessage();
+
+    private:
+        Stream *_stream;
+        char* _receiveBuffer;
+        //char _receiveBuffer[BUFFER_LENGTH];
+        unsigned int _receiveIndex;
+        Message _receivedMessage;
+};
 #endif
 

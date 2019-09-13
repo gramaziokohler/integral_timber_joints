@@ -5,32 +5,24 @@
 */
 #include <ReliableMessenger.h>
 
-// the setup function runs once when you press reset or power the board
-ReliableMessenger myMessenger(Serial, onReceive);
-
-void onReceive(String message) {
-    // Special case where I expect only one message to be received.
-    // Clear any unread messages before 
-    myMessenger.discardUnreadMessages();
-    
-    Serial.println (message);
-}
-
-
-
+SerialTransport transport (Serial, 64);
 
 void setup() {
     Serial.begin(115200);
-    myMessenger.setPin(13);
-    myMessenger.dot();
-    Serial.setTimeout(0);
+    char messageBody[] = "Transport Ready\n";
+    Message msp;
+    msp.body = messageBody;
+    transport.sendMessage(msp);
 }
 
 // the loop function runs over and over again until power down or reset
-
-char buffer[64];
-
 void loop() {
-    myMessenger.listen();
+    if (transport.available()) {
+        Message newMessage = transport.receiveMessage();
+        Serial.print("MessageReceved:");
+        Serial.println(newMessage.body);
+        Serial.print("Length:");
+        Serial.println(strlen(newMessage.body));
+    }
 
 }
