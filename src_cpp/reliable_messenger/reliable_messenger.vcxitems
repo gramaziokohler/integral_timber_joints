@@ -16,12 +16,12 @@
   <ItemGroup>
     <Text Include="$(MSBuildThisFileDirectory)visual_micro_readme.txt" />
     <Text Include="$(MSBuildThisFileDirectory)library.properties" />
-    <Text Include="$(MSBuildThisFileDirectory)src\reliable_messenger.h" />
+    <Text Include="$(MSBuildThisFileDirectory)src\ReliableMessenger.h" />
   </ItemGroup>
   <ItemGroup>
     <!-- <ClInclude Include="$(MSBuildThisFileDirectory)reliable_messenger.h" /> -->
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\reliable_messenger.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\ReliableMessenger.cpp" />
   </ItemGroup>
 </Project>

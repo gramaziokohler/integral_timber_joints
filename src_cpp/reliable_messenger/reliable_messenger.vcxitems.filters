@@ -11,15 +11,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\reliable_messenger.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
     <Text Include="$(MSBuildThisFileDirectory)library.properties" />
-    <Text Include="$(MSBuildThisFileDirectory)src\reliable_messenger.h">
+    <Text Include="$(MSBuildThisFileDirectory)visual_micro_readme.txt" />
+    <Text Include="C:\Users\leungp\Documents\GitHub\integral_timber_joints\src_cpp\reliable_messenger\src\ReliableMessenger.h">
       <Filter>Header Files</Filter>
     </Text>
-    <Text Include="$(MSBuildThisFileDirectory)visual_micro_readme.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="C:\Users\leungp\Documents\GitHub\integral_timber_joints\src_cpp\reliable_messenger\src\ReliableMessenger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

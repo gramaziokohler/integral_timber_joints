@@ -36,6 +36,13 @@ void ReliableMessenger::listen() {
     }
 }
 
+unsigned int ReliableMessenger::discardUnreadMessages() {
+    while (_stream->available()) {
+        _stream->read();
+    }
+    return 0;
+}
+
 void ReliableMessenger::setPin(int pin) {
     pinMode(pin, OUTPUT);
     _pin = pin;
