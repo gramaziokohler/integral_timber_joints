@@ -2,6 +2,9 @@
 Robotic Assembled Timber Structures with Integral Timber Joints
 ===============================================================
 
+.. This README.rst serves only as the entry point for people visiting the GitHub Repro.
+.. The actual readme file index page is index.rst
+
 .. start-badges
 
 .. image:: https://img.shields.io/badge/License-MIT-blue.svg

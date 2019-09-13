@@ -24,6 +24,7 @@ The goal of this project is to answer two research questions:
 - What new architectural possibility will this process enable?
 
 These goals are achieved by developing new processes for automatic/robotic assembly of timber structures with timber joints.
+This repository is an incremental work (in progress) that contains code and documentation for these parts.
 
 - Process Design / Timber Joints Assembly by Robotic Clamps
 - Process Design / Prefabricated Spatial Timber Structures
@@ -38,10 +39,12 @@ These goals are achieved by developing new processes for automatic/robotic assem
 - Software / Assembly Robot Control Server
 - Software / Assembly Process Sequencer (Python)
 - Software / Robotic Arm Path Planner (Python)
-- Software / Timber Assembly Model (Python)
-- Software / Structure Analysis Integraion
+- Design Software / Timber Assembly Modeling (Python)
+- Design Software / Structure Analysis Integraion
 
-This repository is an incremental work (in progress) that contains code and documentation for these parts.
+A number of validation experiments and demonstrations during development:
+
+- Hardware / Clamp Closing Wood Joint Validation
 
 
 Project Documentation
@@ -53,6 +56,7 @@ Project Documentation
    README
    docs/setup
    docs/process_design/robotic_clamp
+   docs/robot_programming/sequence_skeleton
    docs/reference/index
    CONTRIBUTING
    AUTHORS
