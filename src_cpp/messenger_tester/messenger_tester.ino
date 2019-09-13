@@ -21,9 +21,14 @@ void setup() {
     Serial.begin(115200);
     myMessenger.setPin(13);
     myMessenger.dot();
+    Serial.setTimeout(0);
 }
 
 // the loop function runs over and over again until power down or reset
+
+char buffer[64];
+
 void loop() {
     myMessenger.listen();
+
 }

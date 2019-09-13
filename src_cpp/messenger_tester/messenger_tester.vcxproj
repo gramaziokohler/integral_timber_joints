@@ -124,7 +124,7 @@
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties config.Debug.customdebug_nano_atmega328_debugger_type="universal" />
+      <UserProperties config.Debug.customdebug_nano_atmega328_debugger_type="none" arduino.upload.port="COM3" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>
