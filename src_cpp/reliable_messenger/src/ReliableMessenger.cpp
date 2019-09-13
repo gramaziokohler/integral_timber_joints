@@ -37,10 +37,11 @@ void ReliableMessenger::listen() {
 }
 
 unsigned int ReliableMessenger::discardUnreadMessages() {
-    while (_stream->available()) {
+    unsigned int numberOfBytesAvailable = _stream->available();
+    for (int i = numberOfBytesAvailable; i > 0 ; i--) {
         _stream->read();
     }
-    return 0;
+    return numberOfBytesAvailable;
 }
 
 void ReliableMessenger::setPin(int pin) {

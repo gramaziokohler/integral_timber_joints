@@ -5,16 +5,18 @@
 */
 #include <ReliableMessenger.h>
 
+// the setup function runs once when you press reset or power the board
+ReliableMessenger myMessenger(Serial, onReceive);
+
 void onReceive(String message) {
     // Special case where I expect only one message to be received.
     // Clear any unread messages before 
-    //myMessenger.discardUnreadMessages();
+    myMessenger.discardUnreadMessages();
     
     Serial.println (message);
 }
 
-// the setup function runs once when you press reset or power the board
-ReliableMessenger myMessenger(Serial,onReceive);
+
 
 
 void setup() {
