@@ -4,18 +4,24 @@
  Author:	leungp
 */
 
+#include "reliable_messenger.h"
 
-#include <reliable_messenger.h>
 
 //Comment out this define to test simple Serial Messaging
-// #define _transport_via_radio
+#define _transport_via_radio
+
+constexpr unsigned int  computerAddress = 97U;        //Address of the computer: char 'a' 
+constexpr unsigned int  thisArduinoAddress = 98U;     //Address of this Arduino: char 'b'
+
+constexpr unsigned int reverseStringBufferSize = 64;  //Size of the string to be reversed;
 
 #if defined(_transport_via_radio)
-SerialRadioTransport transport(Serial, 64);
+SerialRadioTransport transport(Serial, reverseStringBufferSize);
 #else
 SerialTransport transport(Serial, 64);
 #endif
 ReliableMessenger messenger(transport);
+
 
 // the setup function runs once when you press reset or power the board
 void setup() {
@@ -25,18 +31,25 @@ void setup() {
     Serial.print("Serial Ready\n");
 
     // Sending a welcome message by transport layer. (No automatically ACK)
-    transport.setAddress(98);
+    transport.setAddress(thisArduinoAddress);
+    transport.setEndOfMessageChar('\x0004');
     Message msp;
     msp.senderAddress = transport.getAddress();
-    msp.receiverAddress = 97u;
+    msp.receiverAddress = computerAddress; 
     msp.body = "Transport Ready\n";
     transport.sendMessage(&msp);
 
+    //Set Radio's Address to transport address
+    msp.receiverAddress = '0';
+    msp.senderAddress = transport.getAddress();
+    msp.body = "SettingAddress";
+    transport.sendMessage(&msp);
+    
     messenger.setSendTimeout(300);
 }
 
 // the loop function runs over and over again until power down or reset
-char replyBuffer[64];
+char replyBuffer[reverseStringBufferSize]; // Buffer for reversing strings
 void loop() {
 
     if (messenger.available()) {

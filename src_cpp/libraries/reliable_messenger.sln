@@ -15,7 +15,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReverseString", "reliable_m
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		reliable_messenger\reliable_messenger-1.0.0.vcxitems*{3a3c73af-d789-41bf-aa31-1d95607d4e63}*SharedItemsImports = 9
 		reliable_messenger\reliable_messenger.vcxitems*{40322ef9-e8e2-450a-a961-723ddeed5d4f}*SharedItemsImports = 9
 		reliable_messenger\reliable_messenger.vcxitems*{7904fdae-15c8-4b69-9d12-d3af3bb2abb1}*SharedItemsImports = 4
 	EndGlobalSection
