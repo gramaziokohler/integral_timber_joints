@@ -4,6 +4,9 @@
  Author:	leungp
 */
 
+// By default SerialTransport recognise end of message by '\n'
+// You can chagne this using transport.setEndOfMessageChar();
+
 
 // the setup function runs once when you press reset or power the board
 
