@@ -18,7 +18,7 @@
 // -----------------------
 
 
-int Message::length() {
+int Message::length() const {
     return strlen(body);
 }
 
@@ -138,6 +138,9 @@ byte ReliableMessenger::stringChecksum(char *s) {
     return (c % 25) + 97; //Limits the returned byte to be ASCII a-z
 }
 
+
+
+
 // cpp:class::Transport 
 // ----------------
 
@@ -169,20 +172,20 @@ SerialTransport::SerialTransport(Stream &stream, unsigned int bufferLength) {
 void SerialTransport::sendMessage(Message const * message) {
 
     _stream->write(message->body);
-    _stream->write(serialEndOfMessage);
+    _stream->write(_endOfMessageChar);
 }
 
 boolean SerialTransport::available() {
     //If Last Received Byte is a \0, then we should immediately return true without reading more data.
     if (_receiveIndex > 0) {
-        if (_receiveBuffer[_receiveIndex - 1] == serialEndOfMessage) return true;
+        if (_receiveBuffer[_receiveIndex - 1] == _endOfMessageChar) return true;
     }
 
     //Receive as much character as possible and return true if \0 is detected.
     if (_stream->available()) {
         char newChar = _stream->read();
         // End of message character - end char array with 0 and return true
-        if (newChar == serialEndOfMessage) {
+        if (newChar == _endOfMessageChar) {
             _receiveBuffer[_receiveIndex] = 0;
             return true;
         }
@@ -197,7 +200,7 @@ boolean SerialTransport::available() {
     return false;
 }
 
-Message * SerialTransport::receiveMessage() {
+Message const * const SerialTransport::receiveMessage() {
     _receivedMessage.body = _receiveBuffer;
     _receivedMessage.receiverAddress = _address;
     _receivedMessage.senderAddress = 0U;
@@ -205,16 +208,24 @@ Message * SerialTransport::receiveMessage() {
     return &_receivedMessage;
 }
 
+char SerialTransport::getEndOfMessageChar() {
+    return _endOfMessageChar;
+}
+
+void SerialTransport::setEndOfMessageChar(char endOfMessageChar) {
+    _endOfMessageChar = endOfMessageChar;
+}
+
 
 // cpp:class::SerialRadioTransport
 // ----------------
 
 
-SerialRadioTransport::SerialRadioTransport(Stream & stream, unsigned int bufferLength):SerialTransport(stream, bufferLength){
+SerialRadioTransport::SerialRadioTransport(Stream & stream, unsigned int bufferLength) :SerialTransport(stream, bufferLength) {
     //Calling only base class constructor
 }
 
-SerialRadioTransport::SerialRadioTransport(Stream & stream, unsigned int bufferLength, byte address) : SerialTransport(stream, bufferLength,address) {
+SerialRadioTransport::SerialRadioTransport(Stream & stream, unsigned int bufferLength, byte address) : SerialTransport(stream, bufferLength, address) {
     //Calling only base class constructor
 }
 
@@ -222,13 +233,103 @@ void SerialRadioTransport::sendMessage(Message const * message) {
     _stream->write(message->receiverAddress);   //Byte 0
     _stream->write(message->senderAddress);     //Byte 1
     _stream->write(message->body);              //Byte 2 & onwards
-    _stream->write(serialEndOfMessage);         //Byte final byte
+    _stream->write(_endOfMessageChar);         //Byte final byte
 }
 
-Message * SerialRadioTransport::receiveMessage() {
+boolean SerialRadioTransport::available() {
+    //If Last Received Byte is a \0, then we should immediately return true without reading more data.
+    if (_receiveIndex > 0) {
+        if (_receiveBuffer[_receiveIndex - 1] == _endOfMessageChar) return true;
+    }
+
+    //Receive as much character as possible and return true if \0 is detected.
+    while (_stream->available()) {
+        char newChar = _stream->read();
+
+        // If this is the first character, check if message is for me.
+        if (_receiveIndex == 0) {
+            if (newChar != _address) {
+                messageForMe = false;   //Set messageForMe Flag . This stops subsquent storage.
+            }
+        }
+
+        // End of message character - end char array with 0 and return true
+        if (newChar == _endOfMessageChar) {
+            if (messageForMe) {
+                _receiveBuffer[_receiveIndex] = 0;  //Terminate char[]
+                return true;
+            } else { // Message is not for me but now it ends.
+                _receiveIndex = 0;      //Reset Receive Index (This will consume the message)
+                messageForMe = true;    //Reset messageForMe Flag
+                continue;               //Skip the following storage in buffer
+            }
+        }
+        // Normal character - proceed to store in buffer
+        else {
+            if (messageForMe) {
+                _receiveBuffer[_receiveIndex] = newChar;
+            }
+        }
+        _receiveIndex++;
+    } // while (_stream->available()) 
+
+    //Reachable when no \0 is detected and no characters are available from _stream.
+    return false;
+}
+
+Message const * const SerialRadioTransport::receiveMessage() {
     _receivedMessage.receiverAddress = _receiveBuffer[0];
     _receivedMessage.senderAddress = _receiveBuffer[1];
-    _receivedMessage.body = _receiveBuffer+ 2 ;             // Message starts from byte 2
+    _receivedMessage.body = _receiveBuffer + 2;             // Message starts from byte 2
     _receiveIndex = 0;                                      // reset Index
     return &_receivedMessage;
 }
+
+
+// cpp:class::CC1101RadioTransport
+// ----------------
+
+
+//
+//CC1101RadioTransport::CC1101RadioTransport(byte address) {
+//    _address = address;
+//
+//}
+//
+//boolean CC1101RadioTransport::begin() {
+//    return false;
+//}
+//
+//void _CC1101RadioTransportMessageReceived() { CC1101RadioTransport::_messageReceived(); }
+//
+//void CC1101RadioTransport::sendMessage(Message const * message) {
+//    //Detach Receive interrupt
+//    detachInterrupt(_interruptPin);
+//
+//    //Construct new CCPACKET
+//    CCPACKET packet;
+//    packet.length = message->length();
+//
+//    //Copy message from serialRxBuffer to CCPACKET
+//    strncpy((char *)packet.data, message->body, packet.length);
+//
+//    //Send message
+//    _radio->sendData(packet);
+//
+//    //Print debug information to Serial
+//
+//    //Serial.print(F("(Sent packet,len="));
+//    //Serial.print(serialRxLength);
+//    //Serial.print(F(")"));
+//    //Serial.write(SerialTernimation);
+//
+//    //Reattach Receive interrupt
+//    attachInterrupt(_interruptPin, _CC1101RadioTransportMessageReceived, FALLING);
+//
+//}
+//
+//boolean CC1101RadioTransport::available() {
+//    return boolean();
+//}
+//
+//
