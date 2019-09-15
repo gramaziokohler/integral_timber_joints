@@ -10,7 +10,7 @@ import random
 #
 # This scripts implemented a simple serial handle to read one single line from Serial Port
 #
-# readline_from_port function reads available characters from the serialport and trys to link together a line of string. 
+# readline_from_port function reads available characters from the serialport and trys to link together a line of string.
 # (This function needs to be improved for the final release)
 #
 # test_one_addition performs the test to validate the radio funcion.
@@ -23,7 +23,8 @@ import random
 connected = False
 port = 'COM5'
 baud = 115200
-SerialTernimation =  '\n' # // 10 = LineFeed '\n' , 13 = CarrageReturn '\r'
+SerialHeader = "ba"
+SerialTernimation =  '\x04' # // 10 = LineFeed '\n' , 13 = CarrageReturn '\r'
 
 def try_parse_int(s, base=10, val=None):
   try:
@@ -41,7 +42,7 @@ def readline_from_port(serial_port,timeout = 1):
     # Fucute implementation should separate this into a different function.
     # Current implementation discards the remaining bytes after a SerialTermination is found.
     # Future should save this information for fetching next line.
-    while (True):  
+    while (True):
 
         #Read all available chars
         chars_to_read = serial_port.inWaiting()
@@ -52,20 +53,20 @@ def readline_from_port(serial_port,timeout = 1):
 
         #Examine each char before adding it into the string builder
         for i in range(chars_to_read):
-            if (data_str[i] == '('): 
+            if (data_str[i] == '('):
                 escaping = True
                 continue
-            if (data_str[i] == ')'): 
+            if (data_str[i] == ')'):
                 escaping = False
                 continue
-            if (data_str[i] == SerialTernimation): 
+            if (data_str[i] == SerialTernimation):
                 if (len(serial_string_builder) > 0):
                     return serial_string_builder
                 else:
                     continue
             if (escaping == False):
                 serial_string_builder += data_str[i]
-        
+
         #If timeout, the current string build is returned.
         if (datetime.datetime.utcnow() > loopTimeOut):
             return serial_string_builder
@@ -93,7 +94,7 @@ def test_one_addition(serial_port,val):
             serial_port.write((text + SerialTernimation).encode("ascii", "replace"))
             lineString = readline_from_port(serial_port)
             receivedIntValue = try_parse_int(lineString)
-            
+
             # If the value is still not integer, print error and continue
             if (receivedIntValue == None):
                 print (" - (Try 2) Int not received.  Message: " + lineString)
@@ -104,7 +105,7 @@ def test_one_addition(serial_port,val):
         print (" - OK")
         return True
     else:
-        print (" - Not Correct: " + str(receivedIntValue) + "(Expected=" + str(val) +")") 
+        print (" - Not Correct: " + str(receivedIntValue) + "(Expected=" + str(val) +")")
         return False
 
 
@@ -126,7 +127,7 @@ def test_many_addition(serial_port,range_start,range_end,count):
 
 def reverse_string(s):
     return s[::-1]
-    
+
 def test_one_string_reverse(serial_port,val):
 
     text = str(val)
@@ -147,7 +148,7 @@ def test_one_string_reverse(serial_port,val):
             serial_port.write((text + SerialTernimation).encode("ascii", "replace"))
             lineString = readline_from_port(serial_port)
             receivedIntValue = try_parse_int(lineString)
-            
+
             # If the value is still not integer, print error and continue
             if (lineString != text_reversed):
                 print (" - (Try 2) String not correct.  Message: " + lineString)
@@ -158,16 +159,16 @@ def test_one_string_reverse(serial_port,val):
         print (" - OK")
         return True
     else:
-        print (" - Not Correct: " + str(receivedIntValue) + "(Expected=" + str(val) +")") 
+        print (" - Not Correct: " + str(receivedIntValue) + "(Expected=" + str(val) +")")
         return False
 
 
 def test_many_string_reverse(serial_port,string_length,count):
-    
+
     # Prepare a set of letters in ascii valid range
     import string
     letters = string.ascii_letters + string.digits
-    
+
     successCount = 0
     testStartTime = datetime.datetime.utcnow()
 
@@ -188,6 +189,10 @@ def main():
     serial_port = serial.Serial(port, baud, timeout=1)
     time.sleep(2) #Waits for Arduino to reset and connection to establish.
 
+    #Configure Radio
+    serial_port.write("0a\x04")
+    time.sleep(1) #Waits for Arduino to reset and connection to establish.
+
     #test_many_addition(serial_port,1000,9999,500)
     test_many_string_reverse(serial_port,60,500)
 
@@ -195,5 +200,5 @@ def main():
 # test_many_addition can go up to 10 digit long
 # test_many_string_reverse can go up to 61 char long
 
-if (__name__ == '__main__'): 
+if (__name__ == '__main__'):
     main()
