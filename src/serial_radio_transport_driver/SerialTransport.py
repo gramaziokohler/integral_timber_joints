@@ -1,9 +1,7 @@
 from serial import Serial
-from datetime import datetime, timedelta
-
 from Message import Message
 
-class SerialTransport(object):
+class SerialRadioTransport(object):
 
     def __init__(self, _serial:Serial):
         # Handel the creation of sub class objects
@@ -27,15 +25,15 @@ class SerialTransport(object):
 
         #Reconstruct the message
         received_message = Message()
-        received_message.receiver_address = ord(self._receive_buffer[0])
-        received_message.sender_address = ord(self._receive_buffer[1])
+        received_message.receiver_address = self._receive_buffer[0]
+        received_message.sender_address = self._receive_buffer[1]
         received_message.body = self._receive_buffer[2:]
         self._receive_buffer = ""       #Destroy the buffer contents
         self._messageWiatingFlag = False     #Lower the message waiting flag
         return received_message
 
 
-    def available(self):
+    def available(self) -> bool:
         #If the _messageWiatingFlag is up, then we should immediately return true without reading more data.
         if (self._messageWiatingFlag == True): return True
 
@@ -64,6 +62,8 @@ class SerialTransport(object):
             else:
                 if (self._messageForMe):
                     self._receive_buffer += newChar
+        # Reachable if no more characters to read
+        return False
 
 
 
@@ -72,7 +72,7 @@ class SerialTransport(object):
         assert (len(address) == 0)
         self._address = address
 
-    def get_address(self):
+    def get_address(self) ->str:
         return self._address
 
     def set_end_of_msg_char(self, char):
@@ -86,6 +86,7 @@ class SerialTransport(object):
 
 if __name__ == "__main__":
     import time
+    from datetime import datetime, timedelta
 
     #Prepare Serial Port
     serial_port = Serial('COM7', 115200, timeout=1)
@@ -93,7 +94,7 @@ if __name__ == "__main__":
     time.sleep(3)
 
     #Prepare SerialTransport
-    transport = SerialTransport(serial_port)
+    transport = SerialRadioTransport(serial_port)
     transport.set_end_of_msg_char('\x04')
 
     #Prepare Message 1 - Configure Radio Address
@@ -104,26 +105,26 @@ if __name__ == "__main__":
     #Send message
     transport.send_message(msg)
 
-    time.sleep(2)
+    time.sleep(1)
 
     #Prepare Message 2 - Sending message
     msg = Message()
     msg.receiver_address = 'b'
     msg.sender_address = 'a'
-    msg.body = "HelloWorld"
+    msg.body = "|1234567890abcdefghijk|"
 
     #Send message
     transport.send_message(msg)
 
-    #Try to receive one message
-    while (True):
-        time.sleep(0.4)
+    #Try to receive some message
+    loopTimeOut = datetime.utcnow() + timedelta(seconds=2)
+    while (datetime.utcnow() < loopTimeOut):
         if (transport.available()):
             msg = transport.receive_message()
             print ("Message Received:" + str(msg.body) + " from: " + str(msg.sender_address))
-        else:
-            print ("No Message Received")
-            break
+
+    print ("Terminating")
+
 
 
 
