@@ -43,7 +43,7 @@ boolean ReliableMessenger::available() {
         sendACK(& incomingMessage);
         return true;
     }
-    //Reachable if no message is aailable
+    //Reachable if no message is available
     return false;
 }
 
@@ -54,8 +54,9 @@ const Message * ReliableMessenger::receiveMessage() {
 }
 
 int ReliableMessenger::sendMessage(Message const * message) {
+    //Send the message
     _transport->sendMessage(message);
-    //Compute the expected ACK Checksum
+    //Compute the expected ACK Checksum String
     char expectedString[5];
    computeACKString(message->body,expectedString);
 
@@ -90,11 +91,14 @@ int ReliableMessenger::sendMessage(Message const * message) {
 // Discard unread messages from the Transport Layer
 // returns: number of discard messages
 unsigned int ReliableMessenger::discardUnreadMessages() {
+    //Consume any unreceived messages from the transport layer.
     int count = 0;
     while (_transport->available()) {
         _transport->receiveMessage();
         count++;
     }
+    //Consume any received but not read messages.
+    _newMessageFlag = false; 
     return count;
 }
 

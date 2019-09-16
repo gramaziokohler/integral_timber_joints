@@ -13,7 +13,7 @@
 constexpr unsigned int  computerAddress = 97U;        //Address of the computer: char 'a' 
 constexpr unsigned int  thisArduinoAddress = 98U;     //Address of this Arduino: char 'b'
 
-constexpr unsigned int reverseStringBufferSize = 64;  //Size of the string to be reversed;
+constexpr unsigned int reverseStringBufferSize = 128;  //Size of the string to be reversed;
 
 #if defined(_transport_via_radio)
 SerialRadioTransport transport(Serial, reverseStringBufferSize);
@@ -61,6 +61,9 @@ void loop() {
             replyBuffer[i] = incomingMessage.body[length - 1 - i];
         }
         replyBuffer[length] = 0;     //Terminate char[]
+
+        //Some pause before reply
+        delayMicroseconds(10);
 
         //Construct a reply message
         Message replyMessage;
