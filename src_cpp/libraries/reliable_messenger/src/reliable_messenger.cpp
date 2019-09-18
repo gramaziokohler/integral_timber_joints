@@ -118,9 +118,10 @@ void ReliableMessenger::sendACK(Message * message) {
     Message ackMessage;
     ackMessage.senderAddress = _transport->getAddress();
     ackMessage.receiverAddress = message->senderAddress;
+    //Construct the ACK message body
     char ackMessageBody[5];
-    ackMessage.body = ackMessageBody;
     computeACKString(message->body, ackMessageBody);
+    ackMessage.body = ackMessageBody;
 
     _transport->sendMessage(&ackMessage);
 }
