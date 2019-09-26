@@ -82,8 +82,16 @@ class SerialRadioTransport : public SerialTransport {
     void sendMessage(Message const * message);  // Send a message
     boolean available();
     Message const * const receiveMessage();
+    void setRadioAddress(byte address);
+    void setRadioFrequency(byte address);
+    void setRadioChannel(byte address);
+    void setAddress(byte address);
+
     private:
+    void setRadioSettings(byte settingAddress, byte value);
     boolean messageForMe = true; //Flag used by available() to keep track of unrelated emssages.
+        //End of message character. Default is \n
+    char _radioSettingChar = 7U;
 };
 
 //RadioTransport class is inhereted from Transport to use a Serial Stream
