@@ -15,7 +15,6 @@
 #define _VSARDUINO_H_
 #define __AVR_atmega328p__
 #define __AVR_ATmega328P__
-#define _VMDEBUG 1
 #define F_CPU 16000000L
 #define ARDUINO 10805
 #define ARDUINO_AVR_UNO
@@ -77,6 +76,6 @@ typedef void *__builtin_va_list;
 #define pgm_read_float(address_short) float()
 #define pgm_read_ptr(address_short)   short()
 
-#include "ReverseString.ino"
+#include "Test00_ACK.ino"
 #endif
 #endif

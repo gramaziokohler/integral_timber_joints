@@ -227,11 +227,16 @@ void SerialTransport::setEndOfMessageChar(char endOfMessageChar) {
 
 
 SerialRadioTransport::SerialRadioTransport(Stream & stream, unsigned int bufferLength) :SerialTransport(stream, bufferLength) {
-    //Calling only base class constructor
+    //Calling base class constructor
+    // Modify the default _endOfMessageChar
+    _endOfMessageChar = 4U;
 }
 
 SerialRadioTransport::SerialRadioTransport(Stream & stream, unsigned int bufferLength, byte address) : SerialTransport(stream, bufferLength, address) {
-    //Calling only base class constructor
+    //Calling base class constructor
+    // Modify the default _endOfMessageChar
+    _endOfMessageChar = 4U;
+    setRadioAddress(address);
 }
 
 void SerialRadioTransport::sendMessage(Message const * message) {
@@ -290,6 +295,30 @@ Message const * const SerialRadioTransport::receiveMessage() {
     return &_receivedMessage;
 }
 
+void SerialRadioTransport::setRadioAddress(byte address) {
+    Transport::setAddress(address);
+    setRadioSettings('0', address);
+}
+
+void SerialRadioTransport::setRadioFrequency(byte address) {
+    setRadioSettings('1', address);
+}
+
+void SerialRadioTransport::setRadioChannel(byte address) {
+    setRadioSettings('2', address);
+}
+
+void SerialRadioTransport::setAddress(byte address) {
+    setRadioAddress(address);
+}
+
+void SerialRadioTransport::setRadioSettings(byte settingAddress, byte value) {
+    _stream->write(_radioSettingChar);          //Byte 0
+    _stream->write(_radioSettingChar);          //Byte 1
+    _stream->write(settingAddress);             //Byte 2 (setting address)
+    _stream->write(value);                      //Byte 3 (setting value)
+    _stream->write(_endOfMessageChar);          //Byte final byte
+}
 
 // cpp:class::CC1101RadioTransport
 // ----------------
