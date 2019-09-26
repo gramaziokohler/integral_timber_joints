@@ -1,5 +1,5 @@
 from serial import Serial
-from Message import Message
+from serial_radio_transport_driver.Message import Message
 
 class SerialRadioTransport(object):
 
@@ -66,7 +66,6 @@ class SerialRadioTransport(object):
         return False
 
 
-
     def set_address(self, address):
         assert type(address) is str
         assert (len(address) == 0)
@@ -89,25 +88,45 @@ if __name__ == "__main__":
     from datetime import datetime, timedelta
 
     #Prepare Serial Port
-    serial_port = Serial('COM7', 115200, timeout=1)
+    serial_port = Serial('COM3', 115200, timeout=1)
     serial_port.reset_input_buffer()
     time.sleep(3)
 
     #Prepare SerialTransport
     transport = SerialRadioTransport(serial_port)
-    transport.set_end_of_msg_char('\x04')
+    transport.set_end_of_msg_char(chr(4))
 
     #Prepare Message 1 - Configure Radio Address
     msg = Message()
-    msg.receiver_address = '0'
-    msg.sender_address = 'a'
-    msg.body = "SetAddr"
+    msg.receiver_address = chr(7)
+    msg.sender_address = chr(7)
+    msg.body = "0a"
     #Send message
     transport.send_message(msg)
 
-    time.sleep(1)
+    time.sleep(0.2)
 
-    #Prepare Message 2 - Sending message
+    #Prepare Message 2 - Configure Radio Freq
+    msg = Message()
+    msg.receiver_address = chr(7)
+    msg.sender_address = chr(7)
+    msg.body = "12"
+    #Send message
+    transport.send_message(msg)
+
+    time.sleep(0.2)
+
+    #Prepare Message 3 - Sending message
+    msg = Message()
+    msg.receiver_address = 'a'
+    msg.sender_address = 'a'
+    msg.body = "x"
+    #Send message
+    transport.send_message(msg)
+
+    time.sleep(0.2)
+
+    #Prepare Message 3 - Sending message
     msg = Message()
     msg.receiver_address = 'b'
     msg.sender_address = 'a'
