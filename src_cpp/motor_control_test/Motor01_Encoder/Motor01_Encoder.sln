@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.421
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Motor01_Encoder", "Motor01_Encoder.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Motor02_EncoderSpeedTest", "..\Motor02_EncoderSpeedTest\Motor02_EncoderSpeedTest.vcxproj", "{18E8019B-1FE0-4A9A-B00F-EFCFD5F28167}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Motor03_VoltageSpeedRelationship", "..\Motor03_VoltageSpeedRelationship\Motor03_VoltageSpeedRelationship.vcxproj", "{370B09D5-0E9B-4C90-8708-2078899C9468}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.ActiveCfg = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.Build.0 = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.ActiveCfg = Release|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.Build.0 = Release|Win32
+		{18E8019B-1FE0-4A9A-B00F-EFCFD5F28167}.Debug|x86.ActiveCfg = Debug|Win32
+		{18E8019B-1FE0-4A9A-B00F-EFCFD5F28167}.Debug|x86.Build.0 = Debug|Win32
+		{18E8019B-1FE0-4A9A-B00F-EFCFD5F28167}.Release|x86.ActiveCfg = Release|Win32
+		{18E8019B-1FE0-4A9A-B00F-EFCFD5F28167}.Release|x86.Build.0 = Release|Win32
+		{370B09D5-0E9B-4C90-8708-2078899C9468}.Debug|x86.ActiveCfg = Debug|Win32
+		{370B09D5-0E9B-4C90-8708-2078899C9468}.Debug|x86.Build.0 = Debug|Win32
+		{370B09D5-0E9B-4C90-8708-2078899C9468}.Release|x86.ActiveCfg = Release|Win32
+		{370B09D5-0E9B-4C90-8708-2078899C9468}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EEC9BC4A-2A0D-4FAD-8079-6391335B8657}
+	EndGlobalSection
+EndGlobal
