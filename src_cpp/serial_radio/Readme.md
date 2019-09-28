@@ -183,7 +183,7 @@ serial_port.write([7,7,48,89,4])
 
 Setting Number ID = (int) 48 / (char) '0'
 
-Setting Value = Radio Address between (int) 16 and (int) 127 (Default is (default) 89)
+Setting Value = Radio Address between (int) 16 and (int) 127 (Default is (default) 97)
 
 *Note: Do not use address (int) 4 because the system will consider your message to have ended.*
 
@@ -206,7 +206,7 @@ Setting Value = the integer that represent the frequency to set. (Default Freque
 
 Setting Number ID = (int) 50 / (char) '2'
 
-Setting Value = Radio Channel between (int) 0 and (int) 128 (See note) (Default is 19)
+Setting Value = Radio Channel between (int) 0 and (int) 127 (See note) (Default is 19)
 
 *Note: I'm not sure what are the valid channels but I think range between 0 to 120 works*
 
