@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta
-from SerialTransport import SerialRadioTransport
-from Message import Message
+from serial_radio_transport_driver.SerialTransport import SerialRadioTransport
+from serial_radio_transport_driver.Message import Message
 
 class ReliableMessenger(object):
 
-        def __init__(self, transport:SerialRadioTransport):
+        def __init__(self, transport:SerialRadioTransport, retry_max:str = 4, ack_timeout_millis:int = 100):
             self._transport = transport
-            self._retry_max = 3
-            self._send_timeout_millis = 300
+            self.set_retry(retry_max)
+            self.set_ack_timeout(ack_timeout_millis)
             self._incomingMessage : Message = False
             self._newMessageFlag = False
 
@@ -40,10 +40,10 @@ class ReliableMessenger(object):
             # Try for max_retry number of times
             for retry_count in range(self._retry_max):
                 # Within timeout peirod, try to read an incoming message
-                time_out = datetime.utcnow() + timedelta(milliseconds=self._send_timeout_millis)
+                time_out = datetime.utcnow() + timedelta(milliseconds=self._ack_timeout_millis)
                 while (datetime.utcnow() < time_out):
                     if (self._transport.available()):
-                        msg = transport.receive_message()
+                        msg = self._transport.receive_message()
                         # If successful, return the number of retrys
                         if (msg.body == expected_string):
                             return retry_count
@@ -54,7 +54,7 @@ class ReliableMessenger(object):
                 if (retry_count < self._retry_max - 1 ):
                     self._transport.send_message(message)
             # When exhausted number of retrys, return -1
-            return -1
+            return - self._retry_max
 
         def discard_unread_message(self, message:Message) -> None:
             _newMessageFlag = False
@@ -64,8 +64,8 @@ class ReliableMessenger(object):
         def set_retry(self, retry_max:int) -> None:
             self._retry_max = retry_max
 
-        def set_send_timeout(self, millisec:int) -> None:
-            self._send_timeout_millis = millisec
+        def set_ack_timeout(self, millisec:int) -> None:
+            self._ack_timeout_millis = millisec
 
         def _send_ack(self, original_message:Message) -> None:
             # Prepare the ack message
@@ -91,52 +91,30 @@ class ReliableMessenger(object):
 if __name__ == "__main__":
     from serial import Serial
     import time
+
     #Prepare Serial Port
-    serial_port = Serial('COM7', 115200, timeout=1)
+    serial_port = Serial('COM3', 115200, timeout=1)
     serial_port.reset_input_buffer()
-    time.sleep(3)
+    time.sleep(2)
 
     #Prepare SerialTransport
     transport = SerialRadioTransport(serial_port)
-    transport.set_end_of_msg_char('\x04')
-
-    # Test ACK function is correct
-    messenger = ReliableMessenger(transport)
-
-    assert (messenger.stringChecksum("HelloWorld") == ord('v'))
-    assert (messenger.stringChecksum("1234") == ord('a'))
-    assert (messenger.stringChecksum("2345") == ord('i'))
-    assert (messenger.stringChecksum("6789") == ord('i'))
-    assert (messenger.stringChecksum("0001") == ord('h'))
-
-    print ("stringChecksum() calculatuion pass")
-
-    assert (messenger._computeACKString(Message('b','a',"1234")) == "ACKa")
-    assert (messenger._computeACKString(Message('b','a',"2345")) == "ACKi")
-    assert (messenger._computeACKString(Message('b','a',"6789")) == "ACKi")
-
-    print ("computeACKString() calculatuion pass")
-
-    #Test communicate with String Reverse repeater
+    transport.set_end_of_msg_char(chr(4))
 
     #Prepare Message 1 - Configure Radio Address
-    msg = Message()
-    msg.receiver_address = '0'
-    msg.sender_address = 'a'
-    msg.body = "SetAddr"
-    #Send message
+    msg = Message(chr(7),chr(7),'0a')
     transport.send_message(msg)
 
-    time.sleep(1)
+    #Prepare Message 2 - Configure Radio Freq
+    msg = Message(chr(7),chr(7),'12')
+    transport.send_message(msg)
 
-    #Prepare Message 2 - Sending message
-    msg = Message()
-    msg.receiver_address = 'b'
-    msg.sender_address = 'a'
-    msg.body = "|1234567890abcdefghijk|"
+    #Prepare ReliableMessenger
+    messenger = ReliableMessenger(transport)
 
     #Send message
     messenger.set_retry(5)
+    msg = Message('b','a','')
     resend_count = 0
     success_count = 0
     tries = 100
@@ -145,21 +123,23 @@ if __name__ == "__main__":
         msg.body = "|abcd" + str(i) + "|"
         result = messenger.send_message(msg)
         #Counting if send is a success
-        if (result >= 0): resend_count += result
+        if (result >= 0):
+            resend_count += result
+            success_count +=1
+        #print (i,end='\r')
+        print ("Send message : "+ str (msg.body) +" retrys: " + str(result),end='\r')
+        # #Receive Reply
+        # correct_reply = False
+        # time_out = datetime.utcnow() + timedelta(seconds=1)
 
-        print ("Send message : "+ str (msg.body) +" retrys: " + str(result))
-        #Receive Reply
-        correct_reply = False
-        time_out = datetime.utcnow() + timedelta(seconds=1)
-
-        while (datetime.utcnow() < time_out):
-            if (correct_reply): break
-            if (messenger.available()):
-                reply = messenger.receive_message()
-                print ("Reply: " + str(reply.body))
-                if (reply.body == msg.body[::-1]):
-                    success_count +=1
-                    correct_reply = True
+        # while (datetime.utcnow() < time_out):
+        #     if (correct_reply): break
+        #     if (messenger.available()):
+        #         reply = messenger.receive_message()
+        #         print ("Reply: " + str(reply.body))
+        #         if (reply.body == msg.body[::-1]):
+        #             success_count +=1
+        #             correct_reply = True
     print("Success: " + str(success_count) + " / "+ str(tries))
     print("Resend: " + str(resend_count))
 

@@ -3,22 +3,32 @@ from serial_radio_transport_driver.Message import Message
 
 class SerialRadioTransport(object):
 
-    def __init__(self, _serial:Serial):
+    def __init__(self, _serial:Serial, eom_char:str = '\n', address:str = 'a', frequency:int = 2, channel:int = 19):
         # Handel the creation of sub class objects
         self.serial = _serial
-        self._address = 'a'
-        self._eom_char = '\n'
+        
         self._receive_buffer = ""
         self._messageWiatingFlag = False
         self._messageForMe = True
+        
+        self._eom_char = eom_char
+        self.set_end_of_msg_char(eom_char)
+
+        self._address = None
+        self._freq = None
+        self._channel = None
+        # Clear Serial port just in case
+        self.serial.reset_input_buffer()
+        # Configure Radio
+        self.set_address(address)
+        self.set_frequency(frequency)
+        self.set_channel(channel)
 
     def send_message(self, message:Message):
         self.serial.reset_input_buffer()    #Flush buffer before sending new text
         #print ("Sending Message:" + msg.receiver_address+msg.sender_address+msg.body)
         self.serial.write((message.receiver_address + message.sender_address + message.body + self._eom_char).encode("ascii", "replace"))
-
-        return
-
+        
     def receive_message(self):
         # Attempt to read the message if it exist
         if ( self.available() == False): return None
@@ -65,11 +75,30 @@ class SerialRadioTransport(object):
         # Reachable if no more characters to read
         return False
 
-
-    def set_address(self, address):
+    def set_address(self, address:str):
         assert type(address) is str
-        assert (len(address) == 0)
+        assert (len(address) == 1)
         self._address = address
+        # Configure Radio Address
+        msg = Message(chr(7),chr(7),'0'+ address)
+        self.send_message(msg)
+
+    def set_frequency(self, frequency:int):
+        assert type(frequency) is int
+        assert (frequency >= 0 & frequency <=3)
+        self._freq = frequency
+        # Configure Radio Address
+        msg = Message(chr(7),chr(7),'1'+ str(frequency))
+        self.send_message(msg)
+
+    def set_channel(self, channel:int):
+        assert type(channel) is int
+        assert (channel >= 0 & channel <=127)
+        assert (channel != 4)
+        self._channel = channel
+        # Configure Radio Address
+        msg = Message(chr(7),chr(7),'2'+ chr(channel))
+        self.send_message(msg)
 
     def get_address(self) ->str:
         return self._address
@@ -90,60 +119,52 @@ if __name__ == "__main__":
     #Prepare Serial Port
     serial_port = Serial('COM3', 115200, timeout=1)
     serial_port.reset_input_buffer()
-    time.sleep(3)
+    time.sleep(2) # 2 Second is needed
 
     #Prepare SerialTransport
     transport = SerialRadioTransport(serial_port)
     transport.set_end_of_msg_char(chr(4))
 
     #Prepare Message 1 - Configure Radio Address
-    msg = Message()
-    msg.receiver_address = chr(7)
-    msg.sender_address = chr(7)
-    msg.body = "0a"
-    #Send message
+    msg = Message(chr(7),chr(7),'0a')
     transport.send_message(msg)
-
-    time.sleep(0.2)
 
     #Prepare Message 2 - Configure Radio Freq
-    msg = Message()
-    msg.receiver_address = chr(7)
-    msg.sender_address = chr(7)
-    msg.body = "12"
-    #Send message
+    msg = Message(chr(7),chr(7),'12')
     transport.send_message(msg)
 
     time.sleep(0.2)
 
-    #Prepare Message 3 - Sending message
-    msg = Message()
-    msg.receiver_address = 'a'
-    msg.sender_address = 'a'
-    msg.body = "x"
-    #Send message
-    transport.send_message(msg)
+    # #Prepare Message 3 - Sending message
+    # msg = Message()
+    # msg.receiver_address = 'd'
+    # msg.sender_address = 'c'
+    # msg.body = ""
+    # #Send message
+    # transport.send_message(msg)
 
-    time.sleep(0.2)
+    serial_port.write([66,65,4])
+    
+    time.sleep(1)
+    def send_one_test():
+        #Prepare Message 3 - Sending message
+        msg = Message('b','a','123')
+        #Send message
+        transport.send_message(msg)
 
-    #Prepare Message 3 - Sending message
-    msg = Message()
-    msg.receiver_address = 'b'
-    msg.sender_address = 'a'
-    msg.body = "|1234567890abcdefghijk|"
+        #Try to receive some message
+        loopTimeOut = datetime.utcnow() + timedelta(seconds=0.5)
+        while (datetime.utcnow() < loopTimeOut):
+            if (transport.available()):
+                msg = transport.receive_message()
+                print ("Message Received:" + str(msg.body) + " from: " + str(msg.sender_address))
 
-    #Send message
-    transport.send_message(msg)
-
-    #Try to receive some message
-    loopTimeOut = datetime.utcnow() + timedelta(seconds=2)
-    while (datetime.utcnow() < loopTimeOut):
-        if (transport.available()):
-            msg = transport.receive_message()
-            print ("Message Received:" + str(msg.body) + " from: " + str(msg.sender_address))
-
-    print ("Terminating")
+        print ("Terminating")
+    
+    for i in range(10):
+        send_one_test()
 
 
+# Configure Radio Manually: \a\a0a\x0004\a\a12\x0004
 
 
