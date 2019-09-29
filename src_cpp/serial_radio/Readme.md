@@ -186,6 +186,7 @@ Setting Number ID = (int) 48 / (char) '0'
 Setting Value = Radio Address between (int) 16 and (int) 127 (Default is (default) 97)
 
 *Note: Do not use address (int) 4 because the system will consider your message to have ended.*
+*Note: Do not use address (int) 0 because it does work as broadcst as you would expect
 
 ### To Change the frequency of the radio
 
