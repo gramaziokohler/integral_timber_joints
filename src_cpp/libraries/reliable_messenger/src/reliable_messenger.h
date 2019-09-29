@@ -42,9 +42,12 @@ class Transport {
     virtual boolean available() = 0;
     // Default self address is 1
     void setAddress(byte selfAddress);
+    void enableReceivedMessageAddressCheck();
+    void disableReceivedMessageAddressCheck();
     byte getAddress();
     protected:
     byte _address = 1; // Default self address is 1
+    bool _addressCheck = false;
 };
 
 
