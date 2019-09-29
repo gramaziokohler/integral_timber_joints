@@ -12,11 +12,13 @@
 # Not sure why only frequency 1 works. Others doesn't work 
 # This doesnt happen in previous test where one radio is remote.
 
-# Upon further test
+# Upon further test:
 # Channel 2 also works when the transmitting radio has a wire antenna
 #       and the receiving radio is held in fist. It is not realiable.
 
-
+# Test parameter: 
+#       Frequency 1, Channel 19, Stock antenna.
+#       2 radios 1 meters apart connected to same USB hub.
 # Result: 
 # String Length =  1 Average time =  6.57ms
 # String Length =  3 Average time =  7.43ms
