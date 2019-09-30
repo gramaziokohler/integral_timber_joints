@@ -154,6 +154,14 @@ void Transport::setAddress(byte address) {
     _address = address;
 }
 
+void Transport::enableReceivedMessageAddressCheck() {
+    _addressCheck = true;
+}
+
+void Transport::disableReceivedMessageAddressCheck() {
+    _addressCheck = false;
+}
+
 byte Transport::getAddress() {
     return _address;
 }
@@ -257,7 +265,7 @@ boolean SerialRadioTransport::available() {
         char newChar = _stream->read();
 
         // If this is the first character, check if message is for me.
-        if (_receiveIndex == 0) {
+        if (_addressCheck == true && _receiveIndex == 0) {
             if (newChar != _address) {
                 messageForMe = false;   //Set messageForMe Flag . This stops subsquent storage.
             }

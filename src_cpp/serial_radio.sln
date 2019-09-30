@@ -10,6 +10,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SerialTest02_ReverseString", "serial_radio\SerialTest02_ReverseString\SerialTest02_ReverseString.vcxproj", "{02FF3E9F-DAD7-44DE-835B-9976355B1BA1}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Radio", "Radio", "{FD22A1BF-136D-4114-819B-403542FED5A4}"
+	ProjectSection(SolutionItems) = preProject
+		serial_radio\Readme.md = serial_radio\Readme.md
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Controller", "Controller", "{A93943A1-B435-4708-BF54-93276172E698}"
 EndProject

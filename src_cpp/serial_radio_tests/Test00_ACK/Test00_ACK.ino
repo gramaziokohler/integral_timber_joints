@@ -16,7 +16,6 @@
 //Comment out this define to test simple Serial Messaging
 #define _transport_via_radio
 
-constexpr unsigned int  computerAddress = 97U;        //Address of the computer: char 'a' 
 constexpr unsigned int  thisArduinoAddress = 98U;     //Address of this Arduino: char 'b'
 constexpr unsigned int  thisArduinoFreq = 50U;     //50 = CFREQ_433
 
@@ -32,12 +31,24 @@ void setup() {
 
     // Configure Serial
     Serial.begin(115200);
+    delay(1000);
     //Serial.print("Serial Ready\n");
 
     // Configure transport layer
     transport.setEndOfMessageChar('\x0004');
+    transport.setRadioAddress(thisArduinoAddress); //This was done two times because one time doesnt work.
     transport.setRadioAddress(thisArduinoAddress);
+    delay(500);
     transport.setRadioFrequency(thisArduinoFreq);
+    transport.setRadioFrequency(thisArduinoFreq);
+    delay(500);
+
+    //Send remote a meessage
+    Message msg = Message();
+    msg.receiverAddress = 'a';
+    msg.senderAddress = 'b';
+    msg.body = "Remote Controller On";
+    transport.sendMessage(& msg);
 
     // Configure messsenger
     messenger.setSendTimeout(300);

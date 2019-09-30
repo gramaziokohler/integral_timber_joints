@@ -36,7 +36,6 @@
 //Compile Option
 
 //#define IncludeRadioQualityInSerialComment //If defined, received radio signal rssi and lqi will be included in the serial message as a bracket message after the real message.
-
 //#define SerialComment // If defined, Radio will print debug message to Serial for debug purpose.
 
 //Defines default Radio (network) settings - This is changable by user using Radio or Serial Commands

@@ -222,7 +222,7 @@ enum RFSTATE
 #define CC1101_DEFVAL_SYNC1      0xB5        // Synchronization word, high byte
 #define CC1101_DEFVAL_SYNC0      0x47        // Synchronization word, low byte
 #define CC1101_DEFVAL_PKTLEN     0x3D        // Packet Length
-#define CC1101_DEFVAL_PKTCTRL1   0x06        // Packet Automation Control
+#define CC1101_DEFVAL_PKTCTRL1   0x07        // Packet Automation Control
 #define CC1101_DEFVAL_PKTCTRL0   0x05        // Packet Automation Control
 #define CC1101_DEFVAL_ADDR       0xFF        // Device Address
 #define CC1101_DEFVAL_CHANNR     0x00        // Channel Number
@@ -308,7 +308,7 @@ enum RFSTATE
 // Disable address check
 #define disableAddressCheck()     writeReg(CC1101_PKTCTRL1, 0x04)
 // Enable address check
-#define enableAddressCheck()      writeReg(CC1101_PKTCTRL1, 0x06)
+#define enableAddressCheck()      writeReg(CC1101_PKTCTRL1, 0x07)
 // Disable CCA
 #define disableCCA()              writeReg(CC1101_MCSM1, 0)
 // Enable CCA
