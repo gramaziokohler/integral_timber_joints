@@ -119,3 +119,6 @@ bld/
 [Oo]bj/
 [Ll]og/
 .vs/
+src_cpp/motor_control_test/Motor04_SpeedControl_OpenLoop/__vm/
+src_cpp/motor_control_test/Motor04_PwmFreqEffect/__vm/
+src_cpp/motor_control_test/Motor05_PID_Velocity/__vm/
