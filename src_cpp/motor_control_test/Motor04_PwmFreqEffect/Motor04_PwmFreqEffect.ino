@@ -9,6 +9,7 @@ Monitoring the speed via the encoder
 */
 
 // Test Result for 775 (1:49) No Load. Input voltage 13V
+// 0.1u Capcacitor attached across motor
 // stepPerRev = (60*49);
 // | PWM Freq | PWM Value                 |
 // | -------- | ---- | ---- | ---- | ---- |
@@ -20,6 +21,26 @@ Monitoring the speed via the encoder
 // | 31372 Hz | 0    | 0.39 | 0.91 | 1.53 | (Burnt the motor line capacitor)
 
 
+// No more capcacitor attached across motor
+// | PWM Freq | PWM Value                 |
+// | -------- | ---- | ---- | ---- | ---- |
+// |          | 64   | 128  | 192  | 255  |
+// | -------- | ---- | ---- | ---- | ---- |
+// | 30.6 Hz  | 1.35 | 1.44 | 1.48 | 1.5  |
+// | 122  Hz  | 1.30 | 1.43 | 1.47 | 1.5  |
+// | 490  Hz  | 1.06 | 1.35 | 1.44 | 1.5  |
+// | 3921 Hz  | 0.39 | 0.93 | 0.21 | 1.5  |
+// | 31372 Hz | Not dare to test anymore  |
+
+// Conclusion: In both test 3912 Hz has the the most linear response.
+// We should use this frequency in the future for the PID control
+
+// Note on the 31372 Hz burnt the first cap
+// reactance Xc = 1/(2*Pi*f*C)
+// The 0.1uF cap has Reactance Xc = 160000/f
+// In the case of 31372Hz, the Reactance is 5 Ohms.
+// When 6V to 9V is applied, the current is more than 1A, thus the cap exploded. :(
+// In the case of 3921 Hz, the Reactance is about 40 Ohms. should be fine.
 
 #include "DCMotor.h"
 
