@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Motor04_PwmFreqEffect", "..
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Motor05_PID_Velocity", "..\Motor05_PID_Velocity\Motor05_PID_Velocity.vcxproj", "{C574C1AA-D3F9-4E2A-91EB-07B412F41AC6}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Motor06_PID_Velocity_AutoTune", "..\Motor06_PID_Velocity_AutoTune\Motor06_PID_Velocity_AutoTune.vcxproj", "{44B0F4CE-D297-4332-A9D6-FBF6D3BD8902}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -39,6 +41,10 @@ Global
 		{C574C1AA-D3F9-4E2A-91EB-07B412F41AC6}.Debug|x86.Build.0 = Debug|Win32
 		{C574C1AA-D3F9-4E2A-91EB-07B412F41AC6}.Release|x86.ActiveCfg = Release|Win32
 		{C574C1AA-D3F9-4E2A-91EB-07B412F41AC6}.Release|x86.Build.0 = Release|Win32
+		{44B0F4CE-D297-4332-A9D6-FBF6D3BD8902}.Debug|x86.ActiveCfg = Debug|Win32
+		{44B0F4CE-D297-4332-A9D6-FBF6D3BD8902}.Debug|x86.Build.0 = Debug|Win32
+		{44B0F4CE-D297-4332-A9D6-FBF6D3BD8902}.Release|x86.ActiveCfg = Release|Win32
+		{44B0F4CE-D297-4332-A9D6-FBF6D3BD8902}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
