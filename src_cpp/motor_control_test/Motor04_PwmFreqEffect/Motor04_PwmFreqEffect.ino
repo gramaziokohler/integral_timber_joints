@@ -29,7 +29,7 @@ Monitoring the speed via the encoder
 // | 30.6 Hz  | 1.35 | 1.44 | 1.48 | 1.5  |
 // | 122  Hz  | 1.30 | 1.43 | 1.47 | 1.5  |
 // | 490  Hz  | 1.06 | 1.35 | 1.44 | 1.5  |
-// | 3921 Hz  | 0.39 | 0.93 | 0.21 | 1.5  |
+// | 3921 Hz  | 0.39 | 0.93 | 1.21 | 1.5  |
 // | 31372 Hz | Not dare to test anymore  |
 
 // Conclusion: In both test 3912 Hz has the the most linear response.
@@ -51,7 +51,7 @@ DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 
 #include "Encoder.h"
 constexpr int stepPerRev = (60 * 49);
-constexpr long reportInterval = 200; //millis
+constexpr long reportInterval = 50; //millis
 Encoder myEnc(2, 3);
 
 void setup() {
@@ -71,11 +71,18 @@ unsigned long nextReportTime = 0;
 
 void loop() {
     long newPosition = myEnc.read();
-    if (millis() > nextReportTime) {
-        long deltaPosition = newPosition - oldPosition;
-        Serial.println((float)deltaPosition / stepPerRev / reportInterval * 1000);
-        oldPosition = newPosition;
+    static unsigned long lastReportTime = 0;
+    long deltaTime = millis() - lastReportTime;
+    if (deltaTime > reportInterval) {
         nextReportTime = millis() + reportInterval;
+        lastReportTime = millis();
+        long deltaPosition = newPosition - oldPosition;
+        Serial.print(deltaPosition);
+        Serial.print(',');
+        Serial.print(deltaTime);
+        Serial.print(',');
+        Serial.println((float)deltaPosition / stepPerRev / deltaTime * 1000);
+        oldPosition = newPosition;
     }
     if (Serial.available()) {
         int value = Serial.parseInt();
