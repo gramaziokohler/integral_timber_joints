@@ -6,7 +6,7 @@
 #   Joint_90tenon object are used to model 90 degree lap joint.
 #
 
-from .joint import Joint
+from integral_timber_joints.datastructures.joint import Joint
 
 __all__ = ['Joint_90tenon']
 

@@ -2,8 +2,6 @@ import rhinoscriptsyntax as rs
 
 import Rhino
 import compas
-
-
 import integral_timber_joints
 
 

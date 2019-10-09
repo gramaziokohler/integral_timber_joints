@@ -11,7 +11,7 @@ from compas.datastructures import Mesh
 from compas.geometry import Box
 from compas.geometry import Frame
 
-from .joint import Joint
+from integral_timber_joints.datastructures.joint import Joint
 
 __all__ = ['Joint_90lap']
 

@@ -19,10 +19,9 @@ from compas.geometry import Translation
 from compas.geometry import distance_point_plane
 import json
 
-from .joint import Joint
-from .utils import create_id
+from integral_timber_joints.datastructures.joint import Joint
+from integral_timber_joints.datastructures.utils import create_id
 
-from compas.rpc import Proxy
 import sys
 
 __all__ = ['Beam']
@@ -210,7 +209,11 @@ class Beam(object):
                 meshes.append(joint.mesh)
 
             #Calls trimesh to perform boolean
-            self.mesh = self.trimesh_proxy_subtract_multiple(meshes) #why am i giving joint.mesh and not joint, isn't trimesh_proxy_subtract a classmethod?
+
+            from compas.rpc import Proxy
+            trimesh_proxy = Proxy(package='compas_trimesh')
+            result = trimesh_proxy.trimesh_subtract_multiple(meshes)
+            self.mesh = Mesh.from_data(result['value'])
 
         self.mesh.name = self.name
 
@@ -334,52 +337,14 @@ class Beam(object):
         box_mesh = Mesh.from_vertices_and_faces(box.vertices, box.faces)
         return box_mesh
 
-    # def draw_cut_match_mesh(self,match_beam_mesh):
 
-    #     for joint in self.joints:
-    #         self.mesh = self.trimesh_proxy_subtract(match_beam_mesh,joint.mesh)
-    #     return self.mesh
-
-    @classmethod #hence does not rely on the instance of the Beam class, inout of the type is enough
-    def trimesh_proxy_subtract(cls,mesh_a,mesh_b):
-        """Computes boolean through trimesh by calling compas proxy.
-
-        Returns
-        -------
-        compas.datastructures.Mesh
-
-        """
-        # with Proxy(package='Trimesh_proxy',python=python_exe_path) as f:
-        with Proxy(package='timber_grammar.Trimesh_proxy') as f:
-            result = f.trimesh_subtract(mesh_a, mesh_b)
-            result_mesh = Mesh.from_data(result['value'])
-        return result_mesh
-
-    @classmethod #hence does not rely on the instance of the Beam class, inout of the type is enough
-    def trimesh_proxy_subtract_multiple(cls,meshes):
-        """Computes boolean through trimesh by calling compas proxy.
-
-        Returns
-        -------
-        compas.datastructures.Mesh
-
-        """
-        with Proxy(package='timber_grammar.Trimesh_proxy') as f:
-            result = f.trimesh_subtract_multiple(meshes)
-            result_mesh = Mesh.from_data(result['value'])
-        return result_mesh
-
-        # with Proxy(package='Trimesh_proxy',python=python_exe_path) as f:
-        #     result = f.trimesh_subtract_multiple(meshes)
-        #     result_mesh = Mesh.from_data(result['value'])
-        # return result_mesh
 
     @classmethod
     def debug_get_dummy_beam(cls, include_joint=False):
         from compas.geometry.primitives import Frame
         from compas.geometry.primitives import Point
         from compas.geometry.primitives import Vector
-        from .joint_90lap import Joint_90lap
+        from integral_timber_joints.datastructures.joint_90lap import Joint_90lap
         #Create Beam object
         beam = cls(Frame(Point(0, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)),1000,100,150,"dummy_beam_1")
         #Create Joint object

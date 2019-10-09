@@ -48,8 +48,8 @@ class Joint(object):
         """
 
         #Remember to update this list of import for each new classes that are inhereted from this super class
-        from .Joint_90lap import Joint_90lap
-        from .Joint_90tenon import Joint_90tenon
+        from integral_timber_joints.datastructures.joint_90lap import Joint_90lap
+        from integral_timber_joints.datastructures.joint_90tenon import Joint_90tenon
 
         #Remember to update this dictionary if new classes are inhereted from this super class
         class_types = {
@@ -126,7 +126,7 @@ class Joint(object):
 
 if __name__ == "__main__":
     #Test to create a inherited joint object, serialize and deserialize it.
-    from Joint_90lap import Joint_90lap
+    from integral_timber_joints.datastructures.joint_90lap import Joint_90lap
     from compas.geometry.primitives import Frame
 
     j =  Joint_90lap(Frame.worldXY(),1,50,100,100)

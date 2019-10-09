@@ -11,9 +11,9 @@
 
 import compas
 import json
-from .beam import Beam
 
-from .utils import create_id
+from integral_timber_joints.datastructures.beam import Beam
+from integral_timber_joints.datastructures.utils import create_id
 
 __all__ = ['Assembly']
 

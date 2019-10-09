@@ -11,6 +11,6 @@
     │   └── algorithms      (functions to operate on the classes)
     |       ├── 
     |       └──
-    └── trimesh_boolean (Boolean Helper)
+    └── compas_trimesh (Boolean Helper)
         ├── __init__.py
         └── boolean.py

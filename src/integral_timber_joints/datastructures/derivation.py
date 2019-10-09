@@ -17,7 +17,7 @@ import json
 import sys
 
 # from Beam import Beam
-from .assembly import Assembly
+from integral_timber_joints.datastructures.assembly import Assembly
 
 __all__ = ['Derivation']
 
@@ -172,8 +172,8 @@ if __name__ == '__main__':
     import tempfile
     import os
 
-    from integral_timber_joints.assembly import Assembly
-    from .beam import Beam
+    from integral_timber_joints.datastructures.assembly import Assembly
+    from integral_timber_joints.datastructures.beam import Beam
 
     #Test 1 : Save a model and load it back and compare their data
     print("Test 1: Derivation Data Save and Load to JSON")
