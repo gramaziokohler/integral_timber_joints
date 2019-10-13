@@ -5,6 +5,7 @@
 
  This code allow setting the target velocity in rev/s.
  A PID Controller will adjust the PWM output to maintain the set speed.
+ Open Serial at 115200. Send a value between -2.0 to 2.0 to set target velocity.
 
 */
 
