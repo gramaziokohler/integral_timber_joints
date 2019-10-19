@@ -88,7 +88,8 @@ void reporting() {
     long deltaTime = millis() - lastReportTime;
     if (deltaTime > serialReportInterval) {
         lastReportTime = millis();
-        Serial.print(millis());
+        Serial.print(micros());
+
         Serial.print(',');
         Serial.print(target_rev_per_s);
         Serial.print(',');

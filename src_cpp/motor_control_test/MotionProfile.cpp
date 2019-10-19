@@ -18,35 +18,53 @@ LinearMotionProfile::LinearMotionProfile( long startPos, long endPos, double vel
     double absoluteVelocity = velocity_StepPerSec;
     if (absoluteVelocity < 0.0) velocity_StepPerSec = -velocity_StepPerSec;
 
-    //Convert velocity to millis and fix sign of velocity
-    if (_endPos > _startPos) _velocity_StepPerMillis = absoluteVelocity / 1000;
-    else  _velocity_StepPerMillis = absoluteVelocity / -1000;
+    //Fix sign of velocity
+    if (_endPos > _startPos) _velocity_StepPerSec = absoluteVelocity;
+    else  _velocity_StepPerSec = absoluteVelocity;
 }
 
 void LinearMotionProfile::start() {
     _started = true;
-    _startTime = millis();
+    _completed = false;
+    _startTimeMicros = micros();
     //Pre compute end time
-    _endTime = (_endPos - _startPos) / _velocity_StepPerMillis + _startTime;
+    //_endTime = (_endPos - _startPos) / _velocity_StepPerMillis + _startTime;
+    //Compute Interval for checking if the move is over.
+    _durationIntervalMicros = (_endPos - _startPos) / _velocity_StepPerSec * 1.0e6 ;
 }
 
-long LinearMotionProfile::millisSinceStart() {
-    return (millis() - _startTime);
+long LinearMotionProfile::microsSinceStart() {
+    return (micros() - _startTimeMicros);
 }
 
 long LinearMotionProfile::getCurrentStep() {
-    if (!_started) return _startPos;
-    if (isCompleted()) return _endPos;
-    return (_velocity_StepPerMillis * millisSinceStart()) + _startPos;
+    if (!_started) return _startPos;    //Short cut for start position
+    if (isCompleted()) return _endPos;  //Short cut for end position
+    return (_velocity_StepPerSec * 1.0e-6 * microsSinceStart()) + _startPos;
 }
 
-bool LinearMotionProfile::isCompleted() {
-    if (!_started) return false;
-    else return (millis() >= _endTime);
+long LinearMotionProfile::getStartTimeMicros() {
+    return _startTimeMicros;
 }
 
+/**
+  Checks if the motion is still running.
+  It is only meaningful after start() had been called.
+
+  @return true if the motion is still running
+*/
 bool LinearMotionProfile::isRunning() {
     if (!_started) return false;
-    else return (millis() < _endTime);
+    else return (! isCompleted());
 }
 
+/**
+  Checks if the motion is completed.
+
+  @return true if the motion is completed
+*/
+bool LinearMotionProfile::isCompleted() {
+    if (_completed) return true;
+    if (microsSinceStart() > _durationIntervalMicros) _completed = true;
+    return _completed;
+}

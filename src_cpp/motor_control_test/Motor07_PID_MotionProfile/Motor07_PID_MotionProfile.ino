@@ -6,9 +6,11 @@
  This code allow setting the target velocity in rev/s.
  A PID Controller will adjust the PWM output to maintain the set speed.
  Open Serial at baud 115200. Send 5 CSV values.
-    Format: kp,ki,kd,steps,velocity
-    e.g.: 10,20,0.02,5880,2000
+    Format: kp,ki,kd,velocity,steps
+    e.g.: 10,20,0.02,2000,5880
     Note: No line ending
+
+The Motor used for testing has 2940 steps.
 
 */
 
@@ -42,7 +44,7 @@ PID myPID(&current_position_step, &motorPwmValue, &target_position_step, 10, 20,
 
 //Serial Reporting / Debug
 //constexpr long serialReportInterval = 100; //millis
-long reportTimeOffset = 0;
+long reportTimeOffsetMicros = 0;
 
 void setup() {
     TCCR1B = TCCR1B & B11111000 | B00000010;    // set timer 1 divisor to 8 for PWM frequency of 3921.16 Hz
@@ -83,12 +85,12 @@ void reporting(long ReportInterval) {
     long deltaTime = millis() - lastReportTime;
     if (deltaTime > ReportInterval) {
         lastReportTime = millis();
-        Serial.print(millis()- reportTimeOffset);
-        Serial.print(';');
-        Serial.print(target_position_step);
-        Serial.print(';');
-        Serial.print(current_position_step);
-        Serial.print(';');
+        Serial.print(micros()- reportTimeOffsetMicros);
+        Serial.print(' ');
+        Serial.print(target_position_step,0);
+        Serial.print(' ');
+        Serial.print(current_position_step,0);
+        Serial.print(' ');
         Serial.print(motorPwmValue);
         Serial.print('\n');
     }
@@ -102,13 +104,13 @@ void loop() {
         double kp = Serial.parseFloat();
         double ki = Serial.parseFloat();
         double kd = Serial.parseFloat();
-        double steps = Serial.parseInt();
         double velocity = Serial.parseFloat();
-        Serial.print(">>> Test Steps: ");
-        Serial.print(steps);
-        Serial.print(" Velocity (Step/Sec): ");
-        Serial.println(velocity);
-
+        double steps = Serial.parseInt();
+        //Serial.print(">>> Test Steps: ");
+        //Serial.print(steps);
+        //Serial.print(" Velocity (Step/Sec): ");
+        //Serial.println(velocity);
+        double continueReportAfterProfileMillis = 1000;
         //Reset Encoder
         myEnc.write(0);
 
@@ -119,10 +121,21 @@ void loop() {
         //setup new motion profile
         LinearMotionProfile profile = LinearMotionProfile(0, steps, velocity);
 
-        //Serial.println(">>> Test Begins");
+        //Print Octave matrix format header to start:
+        Serial.print("result_");
+        Serial.print(kp, 0);
+        Serial.print("_");
+        Serial.print(ki, 0);
+        Serial.print("_");
+        Serial.print(kd, 0);
+        Serial.print("_");
+        Serial.print(velocity, 0);
+        Serial.print("_");
+        Serial.print(steps, 0);
+        Serial.println(" = [");
 
-        reportTimeOffset = millis();
         profile.start();
+        reportTimeOffsetMicros = profile.getStartTimeMicros();
         while (profile.isRunning()) {
             //Read encoder and compute RPM
             compute_rev_per_s();
@@ -141,10 +154,11 @@ void loop() {
         }
 
         //Serial.println(">>> Profile Ends");
-        long end_time = millis();
+        long end_time_micros = micros();
 
         // Continue to run PID until target position is reached
-        while (current_position_step != target_position_step) {
+        //while (current_position_step != target_position_step) {
+        while (micros() - end_time_micros < continueReportAfterProfileMillis * 1000){
             //Read encoder and compute RPM
             compute_rev_per_s();
 
@@ -158,13 +172,20 @@ void loop() {
             reporting(0);
 
             //Break out after 1 sec
-            if (millis() > end_time + 1000) break;
+            //if (micros() - end_time_micros > continueReportAfterProfileMillis * 1000) break;
         }
+
+        //Finalize the test (stop motor etc)
+
         Motor1.stop();
-        //Motor1.setSpeed(0);
         myPID.SetMode(0);
-        Serial.println(">>> Target Reached");
+
+        //Print Octave matrix format footer to start:
+        Serial.print("]; % Motion Profile Ends at  ");
+        Serial.print(end_time_micros - profile.getStartTimeMicros());
+        Serial.println("microseconds.");
     }
+
 
 
 

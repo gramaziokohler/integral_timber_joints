@@ -15,20 +15,24 @@ class LinearMotionProfile {
     LinearMotionProfile(long startPos, long endPos, double velocity_StepPerSec);
 
     void start();
-    long millisSinceStart();
+    long microsSinceStart();
     long getCurrentStep();
-    bool isCompleted();
+    long getStartTimeMicros();
+
     bool isRunning();
+    bool isCompleted();
 
     private:
     long _startPos = 0;
     long _endPos = 0;
 
-    double _velocity_StepPerMillis = 1.0;
-    long _startTime = 0; //millis() when the motion starts
-    long _endTime = 0; //millis() when the motion stops
-    bool _started = false;
+    double _velocity_StepPerSec = 1.0;
+    unsigned long _startTimeMicros = 0; //micros() when the motion starts
+    unsigned long _durationIntervalMicros = 0; //number of microseconds for the entire motion to finish
 
+    bool _started = false;
+    bool _completed = false;
+    
 };
 
 //extern DCMotor DCMotor;
