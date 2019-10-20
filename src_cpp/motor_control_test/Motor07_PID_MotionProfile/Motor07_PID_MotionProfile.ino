@@ -1,20 +1,17 @@
 /*
- Name:		Motor07_PID_Velocity.ino
+ Name:		Motor07_PID_Motion Profile.ino
  Created:	14/10/2019
  Author:	leungp
 
- This code allow setting the target velocity in rev/s.
- A PID Controller will adjust the PWM output to maintain the set speed.
- Open Serial at baud 115200. Send 5 CSV values.
-    Format: kp,ki,kd,velocity,steps
-    e.g.: 10,20,0.02,2000,5880
-    Note: No line ending
+ This code performs a motion profile / positional error feedback control.
+ A number of PID settings are tested and best effort is used to tune this PID control.
 
-The Motor used for testing has 2940 steps.
+ A simple rectangular speed profile will be used.
+ The error and settling time of the system during acceleration and deceleration is analysed.
+
+The 775 Motor used for testing has 2940 steps.
 
 */
-
-
 
 
 #include "DCMotor.h"
@@ -25,170 +22,167 @@ const uint8_t m1_driver_in2_pin = 7;             // the pin the motor driver IN2
 DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 
 #include "Encoder.h"
-constexpr int stepPerRev = (60 * 49);
+//constexpr int stepPerRev = (60 * 49);
 constexpr long speedEvalInterval = 20; //millis
 Encoder myEnc(2, 3);
 
-
-double current_position_step = 0;
-double current_rev_per_s = 0.0;
-double target_position_step = 0;
-double target_rev_per_s = 1.0;
-double motorPwmValue = 0;
-
 #include <PID_v1.h>
-//PID myPID(&current_rev_per_s, &motorPwmValue, &target_rev_per_s, 50, 1000, 5, DIRECT);
-PID myPID(&current_position_step, &motorPwmValue, &target_position_step, 10, 20, 0.02, DIRECT);
+//PID myPID(&current_rev_per_s, &motorPwmValue, &target_rev_per_s, 10, 20, 0.02, DIRECT);
 
 #include "MotionProfile.h"
+//
+//double compute_step_per_s(Encoder encoder) {
+//    //Static Variables Declaration
+//    static long lastPosition = 0;
+//    static unsigned long lastReportTimeMicros = 0;
+//
+//    //Compute Delta Step
+//    long deltaPosition = myEnc.read() - lastPosition;
+//    lastPosition = myEnc.read();
+//
+//    //Compute Delta Time
+//    long deltaTimeMicros = micros() - lastReportTimeMicros;
+//    lastReportTimeMicros = micros();
+//
+//    //Compute Speed
+//    return ((double) deltaPosition) / (deltaTimeMicros * 1e-6);
+//}
 
-//Serial Reporting / Debug
-//constexpr long serialReportInterval = 100; //millis
-long reportTimeOffsetMicros = 0;
+void perform_one_test(double kp, double ki, double kd, double velocityStepsPerSec, double preDurationSec, double runDurationSec, double postDuration_Sec) {
+    //Print Octave matrix format header to start:
+    String testResultName = "result_" + String(kp, 4);
+    testResultName += "_" + String(ki, 4);
+    testResultName += "_" + String(kd, 4);
+    testResultName += "_" + String(velocityStepsPerSec, 0);
+    testResultName += "_" + String(runDurationSec, 0);
+    testResultName.replace('.', 'p');
+    testResultName.replace(" ", "");
+    Serial.print(testResultName);
+    Serial.println(" = [");
+
+    // Compute steps
+    double total_steps = runDurationSec * velocityStepsPerSec;
+    long total_duration_micros = (preDurationSec + runDurationSec + postDuration_Sec) * 1e6;
+
+    // Reset Encoder
+    myEnc.write(0);
+
+    // Setup new motion profile
+    LinearMotionProfile profile = LinearMotionProfile(0, total_steps, velocityStepsPerSec);
+
+    // Setup PID Positional Control Variables
+    double current_position_step = 0;
+    double target_position_step = 0;
+    double motorSpeedPercentage = 0.0;
+
+    // Create PID, Configure PID controller
+    PID myPID(&current_position_step, &motorSpeedPercentage, &target_position_step, kp, ki, kd, DIRECT);
+    myPID.SetOutputLimits(-1.0, 1.0);
+    myPID.SetSampleTime(2);
+    myPID.SetMode(1); //Turn on PID
+
+
+    unsigned long testStartTimeMicros = micros();
+    while (micros()- testStartTimeMicros < total_duration_micros) {
+        if ((!profile.isStarted()) && ((micros() - testStartTimeMicros) > (preDurationSec * 1e6))) {
+            // Start Motion Profile
+            profile.start();
+        }
+        //Read encoder
+        current_position_step = myEnc.read();
+
+        //Read motion profile
+        target_position_step = profile.getCurrentStep();
+
+        //Compute PID
+        myPID.Compute();
+
+        //Set Motor PWM based on PID Output
+        Motor1.setSpeedPercent(motorSpeedPercentage);
+
+        //Report
+        reporting(5,(long) micros() - testStartTimeMicros - (preDurationSec * 1e6), target_position_step, current_position_step, motorSpeedPercentage);
+
+    }
+
+    //Finalize the test (stop motor if PID didn't stop it perfectly)
+    Motor1.stop();
+    myPID.SetMode(0);
+
+    //Print Octave matrix format footer to start:
+    Serial.println("]; % " + testResultName);
+}
+
+void reporting(long ReportIntervalMillis, long time, double target_position_step, double current_position_step, double motorSpeedPercentage) {
+    static unsigned long lastReportTime = 0;
+    long deltaTime = millis() - lastReportTime;
+    if (deltaTime > ReportIntervalMillis) {
+        lastReportTime = millis();
+        Serial.print(time);
+        Serial.print(' ');
+        Serial.print(target_position_step,1);
+        Serial.print(' ');
+        Serial.print(current_position_step,0);
+        Serial.print(' ');
+        Serial.print(motorSpeedPercentage);
+        Serial.print('\n');
+    }
+}
 
 void setup() {
     TCCR1B = TCCR1B & B11111000 | B00000010;    // set timer 1 divisor to 8 for PWM frequency of 3921.16 Hz
     Serial.begin(115200);
     Serial.setTimeout(10);
-    Serial.println("Motor RevPerSec Test:");
-    Motor1.setSpeed(0);
+    Motor1.setSpeedPercent(0.0);
 
-    //Configure PID controller
-    myPID.SetMode(0);
-    myPID.SetOutputLimits(-255, 255);
-    //myPID.SetSampleTime(20); //20 ms = 50Hz
-    myPID.SetSampleTime(2); //20 ms = 50Hz
+    //perform_one_test(0.002, 0.006, 0, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.004, 0.006, 0, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.006, 0.006, 0, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.008, 0.006, 0, 2000, 0.2, 2.0, 1.0);
 
-}
+    //perform_one_test(0.010, 0.006, 0, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.010, 0.010, 0, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.010, 0.020, 0, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.010, 0.030, 0, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.010, 0.040, 0, 2000, 0.2, 2.0, 1.0);
 
-void compute_rev_per_s() {
-    current_position_step = myEnc.read();
-    static long oldPosition = 0;
-    static unsigned long lastReportTime = 0;
-    long deltaTime = millis() - lastReportTime;
-    if (deltaTime > speedEvalInterval) {
-        lastReportTime = millis();
-        long deltaPosition = current_position_step - oldPosition;
-        current_rev_per_s = (float)deltaPosition / stepPerRev / deltaTime * 1000;
-        oldPosition = current_position_step;
-        //Serial
-        //Serial.print(deltaPosition);
-        //Serial.print(',');
-        //Serial.print(deltaTime);
-        //Serial.print(',');
-        //Serial.println(current_rev_per_s);
-    }
-}
+    //perform_one_test(0.010, 0.040, 0, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.010, 0.040, 0.0001, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.010, 0.040, 0.0002, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.010, 0.040, 0.0004, 2000, 0.2, 2.0, 1.0);
 
-void reporting(long ReportInterval) {
-    static unsigned long lastReportTime = 0;
-    long deltaTime = millis() - lastReportTime;
-    if (deltaTime > ReportInterval) {
-        lastReportTime = millis();
-        Serial.print(micros()- reportTimeOffsetMicros);
-        Serial.print(' ');
-        Serial.print(target_position_step,0);
-        Serial.print(' ');
-        Serial.print(current_position_step,0);
-        Serial.print(' ');
-        Serial.print(motorPwmValue);
-        Serial.print('\n');
-    }
+    //perform_one_test(0.010, 0.040, 0.0001, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.020, 0.040, 0.0001, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.040, 0.040, 0.0001, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.080, 0.040, 0.0001, 2000, 0.2, 2.0, 1.0);
 
+    //perform_one_test(0.040, 0.040, 0.0001, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.040, 0.100, 0.0001, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.040, 0.200, 0.0001, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.040, 0.400, 0.0001, 2000, 0.2, 2.0, 1.0);
+
+    //perform_one_test(0.040, 0.200, 0.0008, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.040, 0.200, 0.0004, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.040, 0.200, 0.0002, 2000, 0.2, 2.0, 1.0);
+    //perform_one_test(0.040, 0.200, 0.0001, 2000, 0.2, 2.0, 1.0);
+
+    perform_one_test(0.040, 0.200, 0.0002, 1000, 0.2, 2.0, 1.0);
+    perform_one_test(0.040, 0.200, 0.0002, 2000, 0.2, 2.0, 1.0);
+    perform_one_test(0.040, 0.200, 0.0002, 3000, 0.2, 2.0, 1.0);
+    perform_one_test(0.040, 0.200, 0.0002, 3500, 0.2, 2.0, 1.0);
+    perform_one_test(0.040, 0.200, 0.0002, 4000, 0.2, 2.0, 1.0);
 }
 
 void loop() {
     //Listen for Serial command
-    if (Serial.available()) {
-        delay(1);
-        double kp = Serial.parseFloat();
-        double ki = Serial.parseFloat();
-        double kd = Serial.parseFloat();
-        double velocity = Serial.parseFloat();
-        double steps = Serial.parseInt();
-        //Serial.print(">>> Test Steps: ");
-        //Serial.print(steps);
-        //Serial.print(" Velocity (Step/Sec): ");
-        //Serial.println(velocity);
-        double continueReportAfterProfileMillis = 1000;
-        //Reset Encoder
-        myEnc.write(0);
-
-        //Configure PID , reset
-        myPID.SetTunings(kp, ki, kd);
-        myPID.SetMode(1);
-
-        //setup new motion profile
-        LinearMotionProfile profile = LinearMotionProfile(0, steps, velocity);
-
-        //Print Octave matrix format header to start:
-        Serial.print("result_");
-        Serial.print(kp, 0);
-        Serial.print("_");
-        Serial.print(ki, 0);
-        Serial.print("_");
-        Serial.print(kd, 0);
-        Serial.print("_");
-        Serial.print(velocity, 0);
-        Serial.print("_");
-        Serial.print(steps, 0);
-        Serial.println(" = [");
-
-        profile.start();
-        reportTimeOffsetMicros = profile.getStartTimeMicros();
-        while (profile.isRunning()) {
-            //Read encoder and compute RPM
-            compute_rev_per_s();
-
-            //Read motion profile
-            target_position_step = profile.getCurrentStep();
-
-            //Compute PID
-            myPID.Compute();
-
-            //Set Motor PWM based on PID Output
-            Motor1.setSpeed(motorPwmValue);
-
-            //Report
-            reporting(0);
-        }
-
-        //Serial.println(">>> Profile Ends");
-        long end_time_micros = micros();
-
-        // Continue to run PID until target position is reached
-        //while (current_position_step != target_position_step) {
-        while (micros() - end_time_micros < continueReportAfterProfileMillis * 1000){
-            //Read encoder and compute RPM
-            compute_rev_per_s();
-
-            //Compute PID
-            myPID.Compute();
-
-            //Set Motor PWM based on PID Output
-            Motor1.setSpeed(motorPwmValue);
-
-            //Report
-            reporting(0);
-
-            //Break out after 1 sec
-            //if (micros() - end_time_micros > continueReportAfterProfileMillis * 1000) break;
-        }
-
-        //Finalize the test (stop motor etc)
-
-        Motor1.stop();
-        myPID.SetMode(0);
-
-        //Print Octave matrix format footer to start:
-        Serial.print("]; % Motion Profile Ends at  ");
-        Serial.print(end_time_micros - profile.getStartTimeMicros());
-        Serial.println("microseconds.");
-    }
-
-
-
-
-
+    //if (Serial.available()) {
+    //    delay(1);
+    //    double kp = Serial.parseFloat();
+    //    double ki = Serial.parseFloat();
+    //    double kd = Serial.parseFloat();
+    //    double velocity = Serial.parseFloat();
+    //    double steps = Serial.parseInt();
+    //   
+    //}
 
 }

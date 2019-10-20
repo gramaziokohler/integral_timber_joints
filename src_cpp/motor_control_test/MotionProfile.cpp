@@ -53,7 +53,10 @@ long LinearMotionProfile::getStartTimeMicros() {
 
   @return true if the motion is still running
 */
-bool LinearMotionProfile::isRunning() {
+bool LinearMotionProfile::isStarted() {
+	  return _started;
+  }
+  bool LinearMotionProfile::isRunning() {
     if (!_started) return false;
     else return (! isCompleted());
 }

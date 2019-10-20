@@ -19,6 +19,7 @@ class LinearMotionProfile {
     long getCurrentStep();
     long getStartTimeMicros();
 
+    bool isStarted();
     bool isRunning();
     bool isCompleted();
 

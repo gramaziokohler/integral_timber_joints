@@ -260,3 +260,98 @@ However, our goal is position control and motion profile control, this set of re
 
 The use of deadband 30 does not seem to affect the steady error.  This means the PID can take care of the non-linear behavior of the PWM vs Speed problem. However, deadband 30 might be more responsive to velocity changes, which, this result cannot reflect.
 
+## Motor07_PID_MotionProfile
+
+A rectangular motion profile is used for the PID to follow as a positional feedback control.
+
+A speed of 2000step/s (approximately half of the maximum speed) is used as cruising speed. Acceleration and deceleration is instantaneous. Positional error of the system is plotted.
+
+Settling time and error and ocillation are observed at t=0ms and t = 2000ms where acceleration and deceleration occur.
+
+
+
+A manual tuning is used to find a good error response.
+
+### Tuning process
+
+**Result 01**
+
+The following graph, **kp is changed**, larger Kp seems more responsive. Steady offset is observed.
+
+![result_01](results/Motor_07_PID_MotionProfile/result_01.png)
+
+**Result 02**
+
+The following step, **ki is tuned**, increasing the ki seems to result in less steady time error.
+
+![result_02](results/Motor_07_PID_MotionProfile/result_02.png)
+
+**Result 03**
+
+Next step **Kd is added**. increase in kd seems to have dampen the position error nicely 
+
+kd = 0.0004 is almost critically dampened, however, a vibration/chattering is heard when run.
+
+
+
+![result_03](results/Motor_07_PID_MotionProfile/result_03.png)
+
+The following setSpeedPercent() output plot shows that ki=0.0002 and 0.0004 have quite a bit of jitter.
+
+![result_03_output](results/Motor_07_PID_MotionProfile/result_03_output.png)
+
+**Result 04**
+
+Back to **tuning Kp**. Further increase in Kp results in much less settling time and much less initial error.
+
+However, it slightly worsens the steady state error and also causes output jitter
+
+![result_04](results/Motor_07_PID_MotionProfile/result_04.png)
+
+![result_04_output](results/Motor_07_PID_MotionProfile/result_04_output.png)
+
+**Result 05**
+
+0.04kp is selected and see if further increase in ki will reduce stead state error
+
+Here, K=0.2 and 0.4 can quickly go back to a mean zero error. But again quite large oscillation and jitter.
+
+![result_05](results/Motor_07_PID_MotionProfile/result_05.png)
+
+![result_05_output](results/Motor_07_PID_MotionProfile/result_05_output.png)
+
+**Result 06**
+
+Here, the effect of both ki (0.1 and 0.2) and kd (0.0001 and 0.0002) is investigated.
+
+The purple line (ki = 0.2 and kd = 0.0002) seems to be most promising. It has the least amount of micro oscillation and settle within 5step of error in about 300ms.
+
+![result_06](results/Motor_07_PID_MotionProfile/result_06.png)
+
+![result_06_output](results/Motor_07_PID_MotionProfile/result_06_output.png)
+
+**Result 07**
+
+Finally we look at how these particularly tuned PID values for 2000 steps/s operate in other speeds (1000 - 4000step/s )
+
+We can see that higher target speed have a higher stable state error. There is a constant 20 steps error at 4000step/s. The output of the PID also saturates in the first 300ms, showing a full acceleration.
+
+
+
+![result_07](results/Motor_07_PID_MotionProfile/result_07.png)
+
+![result_07_output](results/Motor_07_PID_MotionProfile/result_07_output.png)
+
+### Conclusion
+
+In general this is a usable controller for following a motion profile. 
+
+Despite the acceleration and deceleration period is slightly out of control, it generally deviate less than a 100 steps (12 degrees where one rev has 2940 steps ). At cruising speed, it deviate less than 20 steps (2.5 degrees)
+
+### Next Steps
+
+It is possible that "proportional on measurement" instead of "proportional on error" can have better response. 
+
+It is possible that a trapezoidal velocity profile will allow a more controlled acceleration and deceleration. 
+
+It is possible that a feed forward control with a "velocity feedforward" will help compensate different steady-state error when different speed is used.
