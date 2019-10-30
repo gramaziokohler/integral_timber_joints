@@ -54,43 +54,72 @@ constexpr int stepPerRev = (60 * 49);
 constexpr long reportInterval = 50; //millis
 Encoder myEnc(2, 3);
 
-void setup() {
-    //TCCR1B = TCCR1B & B11111000 | B00000101;    // set timer 1 divisor to     1024 for PWM frequency of   30.64 Hz
-    //TCCR1B = TCCR1B & B11111000 | B00000100;    // set timer 1 divisor to     256 for PWM frequency of    122.55 Hz
-    //TCCR1B = TCCR1B & B11111000 | B00000011;    // set timer 1 divisor to     64 for PWM frequency of     490.20 Hz (The DEFAULT)
+void perform_one_test(int pwm, double durationSec = 1.0) {
+    // Set Motor pwm to test value
+    Motor1.setSpeed(pwm);
+    // Print the first variable
+    Serial.print(pwm);
+    Serial.print(' ');
+    // Wait until motor speed settle
+    delay(1000);
+    // Perform step counting for a duration
+    unsigned long startTimeMicros = micros();
+    long startPos = myEnc.read();
+    while (micros() - startTimeMicros < durationSec * 1000000) {
+
+    }
+    long endPos = myEnc.read();
+    // Print the result back + newline
+    Serial.println((endPos - startPos) / durationSec);
+}
+
+void perform_multiple_test(int pwmStart, int pwmEnd, int step, double durationSec = 1.0) {
+    for (int pwm = pwmStart; pwm < pwmEnd; pwm = pwm + step) {
+        perform_one_test(pwm, durationSec);
+    }
+}
+
+void perform_all_frequency_test(int pwmStart, int pwmEnd, int step, double durationSec = 1.0) {
+    // Test 1 0030
+    TCCR1B = TCCR1B & B11111000 | B00000101;    // set timer 1 divisor to     1024 for PWM frequency of   30.64 Hz
+    Serial.println("result_0030 = [");
+    perform_multiple_test(pwmStart, pwmEnd, step, durationSec);
+    Serial.println("] % result_0030");
+    delay(1000);
+    // Test 2 0122
+    TCCR1B = TCCR1B & B11111000 | B00000100;    // set timer 1 divisor to     256 for PWM frequency of    122.55 Hz
+    Serial.println("result_0122 = [");
+    perform_multiple_test(pwmStart, pwmEnd, step, durationSec);
+    Serial.println("] % result_0122");
+    delay(1000);
+    // Test 2 0490
+    TCCR1B = TCCR1B & B11111000 | B00000011;    // set timer 1 divisor to     64 for PWM frequency of     490.20 Hz (The DEFAULT)
+    Serial.println("result_0490 = [");
+    perform_multiple_test(pwmStart, pwmEnd, step, durationSec);
+    Serial.println("] % result_0490");
+    delay(1000);
+    // Test 2 3912
     TCCR1B = TCCR1B & B11111000 | B00000010;    // set timer 1 divisor to     8 for PWM frequency of      3921.16 Hz
+    Serial.println("result_3912 = [");
+    perform_multiple_test(pwmStart, pwmEnd, step, durationSec);
+    Serial.println("] % result_3912");
+}
+void setup() {
+
     //TCCR1B = TCCR1B & B11111000 | B00000001;    // set timer 1 divisor to     1 for PWM frequency of      31372.55 Hz
     Serial.begin(115200);
     Serial.setTimeout(10);
     Serial.println("Motor RevPerSec Test:");
-    Motor1.setSpeed(128);
+
+    Motor1.setSpeed(0);
+    // perform_all_frequency_test(0, 255, 5);
+    perform_all_frequency_test(-100, 100, 5);
+    Motor1.setSpeed(0);
+
 }
 
-long oldPosition = -999;
-unsigned long nextReportTime = 0;
 
 void loop() {
-    long newPosition = myEnc.read();
-    static unsigned long lastReportTime = 0;
-    long deltaTime = millis() - lastReportTime;
-    if (deltaTime > reportInterval) {
-        nextReportTime = millis() + reportInterval;
-        lastReportTime = millis();
-        long deltaPosition = newPosition - oldPosition;
-        Serial.print(deltaPosition);
-        Serial.print(',');
-        Serial.print(deltaTime);
-        Serial.print(',');
-        Serial.println((float)deltaPosition / stepPerRev / deltaTime * 1000);
-        oldPosition = newPosition;
-    }
-    if (Serial.available()) {
-        int value = Serial.parseInt();
-        if (value >= -255 && value <= 255) {
-            Serial.print("New PWM:");
-            Serial.println(value);
-            Motor1.setSpeed(value);
-        }
 
-    }
 }
+

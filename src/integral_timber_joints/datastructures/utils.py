@@ -9,7 +9,7 @@ def create_id():
     """Generates a UUID
     Return:
     ------
-    UUID
+    str: UUID
     """
     g = str(uuid.uuid1())
     return g

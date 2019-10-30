@@ -28,7 +28,7 @@ __all__ = ['Beam']
 
 class Beam(object):
 
-    def __init__(self, frame, length, width, height, name ):
+    def __init__(self, frame, length, width, height, name = None):
         """ initialization
 
             :frame:           base plane for the beam
@@ -42,6 +42,7 @@ class Beam(object):
         self.length = length
         self.width = width
         self.height = height
+        if (name == None): name = create_id()
         self.name = name
         # self.face_frame = None
         self.mesh = None

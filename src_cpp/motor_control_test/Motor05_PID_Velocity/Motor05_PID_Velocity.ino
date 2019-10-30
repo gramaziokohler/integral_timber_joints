@@ -5,6 +5,7 @@
 
  This code allow setting the target velocity in rev/s.
  A PID Controller will adjust the PWM output to maintain the set speed.
+ Open Serial at 115200. Send a value between -2.0 to 2.0 to set target velocity.
 
 */
 
@@ -34,20 +35,64 @@ const uint8_t m1_driver_in2_pin = 7;             // the pin the motor driver IN2
 DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 
 #include "Encoder.h"
-constexpr int stepPerRev = (60 * 49);
-constexpr long speedEvalInterval = 20; //millis
+//constexpr int stepPerRev = (60 * 49);
+constexpr long speedEvalInterval = 10; //millis
 Encoder myEnc(2, 3);
 
 
-double current_rev_per_s = 0.0;
-double target_rev_per_s = 1.0;
-double motorPwmValue = 0;
+double current_step_per_s = 0.0;
+double target_step_per_s = 1.0;
+double motorSpeedPercent = 0.0;
 
 #include <PID_v1.h>
-PID myPID(&current_rev_per_s, &motorPwmValue, &target_rev_per_s, 50, 1000, 5, DIRECT); 
+PID myPID(&current_step_per_s, &motorSpeedPercent, &target_step_per_s, 0.0001, 0.01, 0, DIRECT);
 
 //Serial Reporting / Debug
 constexpr long serialReportInterval = 100; //millis
+
+void perform_one_test(double target_value) {
+    target_step_per_s = target_value;
+    compute_rev_per_s();
+    unsigned long start_time = micros();
+    int sample_count = 40;
+    int currentSampleIndex = 0;
+    unsigned long settleTime = 4 * 1000000;
+    unsigned long sampleIntervalMicros = 0.1 * 1000000;
+    double sampleRunnningSum_rev = 0.0;
+    double sampleRunnningSum_speed = 0.0;
+
+    //Print the control variable
+    Serial.print(target_step_per_s);
+    Serial.print(' ');
+
+    while (true) {
+        //Compute RPM (for PID Input)
+        compute_rev_per_s();
+        //Compute PID
+        myPID.Compute();
+        //Set Motor PWM based on PID Output
+        Motor1.setSpeedPercent(motorSpeedPercent);
+        //Collect samples after initial delay
+        if (micros() - start_time > settleTime + currentSampleIndex * sampleIntervalMicros) {
+            sampleRunnningSum_rev += current_step_per_s;
+            sampleRunnningSum_speed += motorSpeedPercent;
+            currentSampleIndex++;
+            if (currentSampleIndex == sample_count) break;
+        }
+    }
+
+    //Print the result
+    Serial.print(sampleRunnningSum_rev / sample_count, 4); // Measured step/s
+    Serial.print(' ');
+    Serial.print(sampleRunnningSum_speed / sample_count, 4); // Output of PID at steady
+    Serial.print('\n');
+}
+
+void perform_multiple_test(double start_value, double end_value, double step) {
+    for (double speed = start_value; speed < end_value; speed += step) {
+        perform_one_test(speed);
+    }
+}
 
 void setup() {
     TCCR1B = TCCR1B & B11111000 | B00000010;    // set timer 1 divisor to 8 for PWM frequency of 3921.16 Hz
@@ -58,9 +103,20 @@ void setup() {
 
     //Configure PID controller
     myPID.SetMode(AUTOMATIC);
-    myPID.SetOutputLimits(-255, 255);
+    myPID.SetOutputLimits(-1.0, 1.0);
     myPID.SetSampleTime(20); //20 ms = 50Hz
 
+
+
+    Motor1.setPWM_Deadband(30);
+    Serial.println("result_30 = [");
+    perform_multiple_test(-4000, 4000, 250);
+    Serial.println("] % result_30");
+
+
+    target_step_per_s = 0;
+    Motor1.stop();
+    while (! Serial.available());
 }
 
 void compute_rev_per_s() {
@@ -71,7 +127,7 @@ void compute_rev_per_s() {
     if (deltaTime > speedEvalInterval) {
         lastReportTime = millis();
         long deltaPosition = newPosition - oldPosition;
-        current_rev_per_s = (float)deltaPosition / stepPerRev / deltaTime * 1000;
+        current_step_per_s = (float)deltaPosition / deltaTime * 1000;
         oldPosition = newPosition;
         //Serial
         //Serial.print(deltaPosition);
@@ -87,25 +143,28 @@ void reporting() {
     long deltaTime = millis() - lastReportTime;
     if (deltaTime > serialReportInterval) {
         lastReportTime = millis();
-        Serial.print(millis());
+        Serial.print(micros());
+
         Serial.print(',');
-        Serial.print(target_rev_per_s);
+        Serial.print(target_step_per_s);
         Serial.print(',');
-        Serial.print(current_rev_per_s);
+        Serial.print(current_step_per_s);
         Serial.print(',');
-        Serial.print(motorPwmValue);
+        Serial.print(motorSpeedPercent);
         Serial.print('\n');
     }
 
 }
+
 void loop() {
+
     //Listen for Serial command
     if (Serial.available()) {
         double value = Serial.parseFloat();
         if (value >= -2.0 && value <= 2.0) {
             Serial.print("New Target setpoint:");
             Serial.println(value);
-            target_rev_per_s = value;
+            target_step_per_s = value;
         }
     }
 
@@ -116,11 +175,9 @@ void loop() {
     myPID.Compute();
 
     //Set Motor PWM based on PID Output
-    Motor1.setSpeed(motorPwmValue);
+    Motor1.setSpeedPercent(motorSpeedPercent);
 
     //Report
     reporting();
-
-
 
 }
