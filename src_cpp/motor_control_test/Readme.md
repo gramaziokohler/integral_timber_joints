@@ -198,6 +198,81 @@ The implementation of this function could take a dead band parameter and offset 
 
 In our clamp application, the load is definitely not fixed. So mapping this response perfectly is not going to be meaningful. Therefore a lookup mapping table, or a regression fit is not attempted here.
 
+## Motor04c_PWM_Different_Motor_Speed
+
+The intention is to find out the different speed profile of different motors. 
+
+To observe the difference in the deadband width.
+
+To observe the maximum rpm for each motor under different voltages.
+
+### Variables
+
+Three motors:
+
+- 36GP-555 with 1:51 gearbox (Gearbox might have been overloaded in other tests)
+- 36GP-555 with 1:100 gearbox
+- 36GP-775 with 1:49 gearbox
+
+Different Supply Voltages will be tested:
+
+- 16.8V (Simulated 4 Cell - Fully Charged)
+- 14.8V (Simulated 4 Cell - Average)
+- 12.6V (Simulated 3 Cell - Fully Charged)
+- 11.1V (Simulated 3 Cell - Average)
+- LiPo Battery (4 Cell)
+
+Different PWM Values and direction
+
+- +255 to -255 (PWM Frequency = 3921.16Hz) (Interval = 10)
+
+### Test Setup
+
+The code used is similar to **Motor04_PwmFreqEffect**. No deadband removal will be used.
+
+Large benchtop power supply is used. Current Limit is 8A (Non current limiting )
+
+### Result
+
+**Comparing different voltage input characteristic:**
+
+The difference in dead-band width is rather small in different voltage. (Less then 10 PWM ticks)
+
+
+
+![01_Motor_Voltage_051](Motor04c_PWM_Different_Motor_Speed/data/01_Motor_Voltage_051.jpg)
+
+![01_Motor_Voltage_100](Motor04c_PWM_Different_Motor_Speed/data/01_Motor_Voltage_100.jpg)
+
+![01_Motor_Voltage_139](Motor04c_PWM_Different_Motor_Speed/data/01_Motor_Voltage_139.jpg)
+
+**Comparing motor with different gearbox:**
+
+The no load speed difference between 1:100 (slower) and 1:51 (faster) is not even close to 2.0
+
+This is probably due to load by the loss in gearbox. Thus the 1:51 does not move close to two time the speed.
+
+![02_Motor_Gearbox_12V6](Motor04c_PWM_Different_Motor_Speed/data/02_Motor_Gearbox_12V6.jpg)
+
+![02_Motor_Gearbox_16V8](Motor04c_PWM_Different_Motor_Speed/data/02_Motor_Gearbox_16V8.jpg)
+
+### Implication / Next step
+
+The following chart gives the no load linear speed when using the 1204 screw. Bracket is the advertised value on data sheet.
+
+
+
+| Supply voltage [V] | Gear Ratio | Encoder Speed [step/s] | No load Speed [rev/s] | Linear Speed 1204 Screw [mm/s] |
+| ------------------ | ---------- | ---------------------- | --------------------- | ------------------------------ |
+| 12.6               | 1:51       | 4465                   | 1.9897 (1.916)        | 7.959                          |
+| **16.8**           | **1:51**   | **5941**               | **2.6475**            | **10.590**                     |
+| 12.6               | 1:100      | 6686                   | 1.5195 (1.0)          | 6.0782                         |
+| 16.8               | 1:100      | 9168                   | 2.0836                | 8.3345                         |
+
+If we use 50% of the capacity of the output from the 1:51 motor,  under 16.8V power supply. The linear speed will be approximately 5mm/s and thus a 120mm stroke will take 24s. 
+
+This hints towards the synchronization test to try speed in the range of 3 to 5 mm/s
+
 ## Motor04b_PwmWithoutDeadband
 
 This test confirms if the PWM deadband removal can remove the large deadband when the PWM values crosses from positive to negative.
@@ -243,6 +318,10 @@ Use Deadband 30.
 ### Next Steps
 
 It is not sure if this deadband implementation will actually helps the following PID control or not. 
+
+
+
+
 
 ## Motor05_PID_Velocity
 
@@ -401,13 +480,23 @@ The **PID controller** from previous experiment was use with values:
 
 ### Testing setup
 
-**Motor:** 42GP-775 with 1:49 gearbox (no load)
+**Motor:** 42GP-555 with 1:51 gearbox (2244 step/rev)
 
-**Electronics:** Arduino micro + XY160D Driver + 12V AC wall adapter capable of 2A current
+**Load:** No load
+
+**Electronics:** Arduino micro + XY160D Driver + 12.6V (8A Max)
 
 **Measurement:** Taken from Arduino's reading of the encoder
 
+**Previous Test have established the maximum speed**:
+
+- 5941 step/s @ 16.8V
+
+- 4465step/s @ 12.6V
+
 ### Variables
+
+**Running Speed** 2805 step/s (1.25 rpm / 5mm/s @ 1204 screw)
 
 **Different acceleration** (equal to deceleration) is tested with the same PID values
 
@@ -415,7 +504,9 @@ The **PID controller** from previous experiment was use with values:
 
 ### Results
 
-(To be completed)
+![acceleration_m555_g51_s2805_error](Motor08_PID_TrapezoidalMotionProfile/data/acceleration_m555_g51_s2805_error.jpg)
+
+![acceleration_m555_g51_s2805_pos](Motor08_PID_TrapezoidalMotionProfile/data/acceleration_m555_g51_s2805_pos.jpg)
 
 ## Motorxx_Stopping_Condition_PosError
 

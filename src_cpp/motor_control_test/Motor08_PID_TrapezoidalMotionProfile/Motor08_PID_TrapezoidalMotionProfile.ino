@@ -14,7 +14,7 @@ const uint8_t m1_driver_in2_pin = 7;             // the pin the motor driver IN2
 DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 
 #include "Encoder.h"
-Encoder myEnc(2, 3);
+Encoder myEnc(3, 2);
 
 #include <PID_v1.h>
 
@@ -26,6 +26,7 @@ void perform_one_test(double kp, double ki, double kd, double velocityStepsPerSe
     testResultName += "_" + String(ki, 4);
     testResultName += "_" + String(kd, 4);
     testResultName += "_" + String(velocityStepsPerSec, 0);
+    testResultName += "_" + String(accelStepsPerSecSq, 0);
     testResultName += "_" + String(runDurationSec, 0);
     testResultName.replace('.', 'p');
     testResultName.replace(" ", "");
@@ -43,9 +44,9 @@ void perform_one_test(double kp, double ki, double kd, double velocityStepsPerSe
     //LinearMotionProfile profile = LinearMotionProfile(0, total_steps, velocityStepsPerSec);
     TrapezoidalMotionProfile profile = TrapezoidalMotionProfile(0, total_steps, velocityStepsPerSec, accelStepsPerSecSq);
 
-    Serial.println("_phase1End_Micros=" + String(profile._phase1End_Micros));
-    Serial.println("_phase2End_Micros=" + String(profile._phase2End_Micros));
-    Serial.println("_phase3End_Micros=" + String(profile._phase3End_Micros));
+    //Serial.println("_phase1End_Micros=" + String(profile._phase1End_Micros));
+    //Serial.println("_phase2End_Micros=" + String(profile._phase2End_Micros));
+    //Serial.println("_phase3End_Micros=" + String(profile._phase3End_Micros));
 
     // Setup PID Positional Control Variables
     double current_position_step = 0;
@@ -115,7 +116,7 @@ void setup() {
     Serial.setTimeout(10);
     Motor1.setSpeedPercent(0.0);
 
-    perform_one_test(0.040, 0.200, 0.0002, 3000, 1000, 0.2, 4.0, 1.0);
+    perform_one_test(0.040, 0.200, 0.0002, 2805, 3000, 0.2, 4.0, 1.0);
 
 }
 
