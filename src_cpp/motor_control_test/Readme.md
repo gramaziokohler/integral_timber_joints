@@ -87,7 +87,13 @@ DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 Encoder myEnc(2, 3);
 ```
 
+### Encoder Details
 
+The encoder on motor 775 has 15 pulse per rev per channel. The two channels combined have **60 pulse per rev**. The gear box is 1:49. Therefore the combined effect is 15 x 4 x 49 pulse = **2940 pulse per rev**.
+
+The encoder on motor 555 has 11 pulse per rev per channel. The two channels combined have **44 pulse per rev**. The gear box is 1:51. Therefore the combined effect is 11 x 4 x 51 pulse = **2244 pulse per rev**.
+
+-----
 
 ## Motor01_Encoder
 
@@ -150,7 +156,13 @@ This test checks if the voltage speed relationship is linear.
 
 Various voltage is applied from PSU to motor. These are DC voltage, not PWM controlled voltage.
 
-Motor 555 is used in the test.
+### Testing setup
+
+**Motor:** 42GP-775 with 1:49 gearbox (no load)
+
+**Electronics:** Arduino micro + XY160D Driver + 12V AC wall adapter capable of 2A current
+
+**Measurement:** Taken from Arduino's reading of the encoder
 
 ![result](results/Motor_03_VoltageSpeedRelationship/result.jpg)
 
@@ -185,6 +197,81 @@ At the moment, the PWM is set with a call to `DCMotor.setSpeed(pwm)`. Which dire
 The implementation of this function could take a dead band parameter and offset the output pwm by that amount.  The new implementation should distinguish `DCMotor.setPwm(int pwm)` and `DCMotor.setSpeedPercentage(float speedPercent)`
 
 In our clamp application, the load is definitely not fixed. So mapping this response perfectly is not going to be meaningful. Therefore a lookup mapping table, or a regression fit is not attempted here.
+
+## Motor04c_PWM_Different_Motor_Speed
+
+The intention is to find out the different speed profile of different motors. 
+
+To observe the difference in the deadband width.
+
+To observe the maximum rpm for each motor under different voltages.
+
+### Variables
+
+Three motors:
+
+- 36GP-555 with 1:51 gearbox (Gearbox might have been overloaded in other tests)
+- 36GP-555 with 1:100 gearbox
+- 36GP-775 with 1:49 gearbox
+
+Different Supply Voltages will be tested:
+
+- 16.8V (Simulated 4 Cell - Fully Charged)
+- 14.8V (Simulated 4 Cell - Average)
+- 12.6V (Simulated 3 Cell - Fully Charged)
+- 11.1V (Simulated 3 Cell - Average)
+- LiPo Battery (4 Cell)
+
+Different PWM Values and direction
+
+- +255 to -255 (PWM Frequency = 3921.16Hz) (Interval = 10)
+
+### Test Setup
+
+The code used is similar to **Motor04_PwmFreqEffect**. No deadband removal will be used.
+
+Large benchtop power supply is used. Current Limit is 8A (Non current limiting )
+
+### Result
+
+**Comparing different voltage input characteristic:**
+
+The difference in dead-band width is rather small in different voltage. (Less then 10 PWM ticks)
+
+
+
+![01_Motor_Voltage_051](Motor04c_PWM_Different_Motor_Speed/data/01_Motor_Voltage_051.jpg)
+
+![01_Motor_Voltage_100](Motor04c_PWM_Different_Motor_Speed/data/01_Motor_Voltage_100.jpg)
+
+![01_Motor_Voltage_139](Motor04c_PWM_Different_Motor_Speed/data/01_Motor_Voltage_139.jpg)
+
+**Comparing motor with different gearbox:**
+
+The no load speed difference between 1:100 (slower) and 1:51 (faster) is not even close to 2.0
+
+This is probably due to load by the loss in gearbox. Thus the 1:51 does not move close to two time the speed.
+
+![02_Motor_Gearbox_12V6](Motor04c_PWM_Different_Motor_Speed/data/02_Motor_Gearbox_12V6.jpg)
+
+![02_Motor_Gearbox_16V8](Motor04c_PWM_Different_Motor_Speed/data/02_Motor_Gearbox_16V8.jpg)
+
+### Implication / Next step
+
+The following chart gives the no load linear speed when using the 1204 screw. Bracket is the advertised value on data sheet.
+
+
+
+| Supply voltage [V] | Gear Ratio | Encoder Speed [step/s] | No load Speed [rev/s] | Linear Speed 1204 Screw [mm/s] |
+| ------------------ | ---------- | ---------------------- | --------------------- | ------------------------------ |
+| 12.6               | 1:51       | 4465                   | 1.9897 (1.916)        | 7.959                          |
+| **16.8**           | **1:51**   | **5941**               | **2.6475**            | **10.590**                     |
+| 12.6               | 1:100      | 6686                   | 1.5195 (1.0)          | 6.0782                         |
+| 16.8               | 1:100      | 9168                   | 2.0836                | 8.3345                         |
+
+If we use 50% of the capacity of the output from the 1:51 motor,  under 16.8V power supply. The linear speed will be approximately 5mm/s and thus a 120mm stroke will take 24s. 
+
+This hints towards the synchronization test to try speed in the range of 3 to 5 mm/s
 
 ## Motor04b_PwmWithoutDeadband
 
@@ -232,6 +319,10 @@ Use Deadband 30.
 
 It is not sure if this deadband implementation will actually helps the following PID control or not. 
 
+
+
+
+
 ## Motor05_PID_Velocity
 
 This is not a test but a base script to verify <PID_v1.h> library.  
@@ -245,6 +336,8 @@ Settling Time before measurement: 2s
 Number of samples: 40
 
 Sampling Interval 0.1s
+
+ Which Motor Used ? 
 
 ### Result
 
@@ -269,8 +362,15 @@ A speed of 2000step/s (approximately half of the maximum speed) is used as cruis
 Settling time and error and ocillation are observed at t=0ms and t = 2000ms where acceleration and deceleration occur.
 
 
-
 A manual tuning is used to find a good error response.
+
+### Testing setup
+
+**Motor:** 42GP-775 with 1:49 gearbox (no load)
+
+**Electronics:** Arduino micro + XY160D Driver + 12V AC wall adapter capable of 2A current
+
+**Measurement:** Taken from Arduino's reading of the encoder
 
 ### Tuning process
 
@@ -346,6 +446,10 @@ We can see that higher target speed have a higher stable state error. There is a
 
 In general this is a usable controller for following a motion profile. 
 
+The tune is kP = 0.04, kI = 0.20, kD = 0.0002
+
+(Note that this tuning is only applicable for the 775 motor in no load case.)
+
 Despite the acceleration and deceleration period is slightly out of control, it generally deviate less than a 100 steps (12 degrees where one rev has 2940 steps ). At cruising speed, it deviate less than 20 steps (2.5 degrees)
 
 ### Next Steps
@@ -355,3 +459,89 @@ It is possible that "proportional on measurement" instead of "proportional on er
 It is possible that a trapezoidal velocity profile will allow a more controlled acceleration and deceleration. 
 
 It is possible that a feed forward control with a "velocity feedforward" will help compensate different steady-state error when different speed is used.
+
+
+
+## Motor08_PID_TrapezoidalMotionProfile
+
+Date: 2019-10-21
+
+
+
+This is the development and validation of a **trapezoidal motion profile generator**. This results in three classes within `MotionProfile.cpp` file.
+
+- `MotionProfile`  - Base class that implemented time keeping methods
+- `LinearMotionProfile`  - Linear speed profile with constant velocity
+- `TrapezoidalMotionProfile` - Trapezoidal speed profile with acceleration and deceleration phase
+
+The **PID controller** from previous experiment was use with values:
+
+- kP = 0.04, kI = 0.20, kD = 0.0002
+
+### Testing setup
+
+**Motor:** 42GP-555 with 1:51 gearbox (2244 step/rev)
+
+**Load:** No load
+
+**Electronics:** Arduino micro + XY160D Driver + 12.6V (8A Max)
+
+**Measurement:** Taken from Arduino's reading of the encoder
+
+**Previous Test have established the maximum speed**:
+
+- 5941 step/s @ 16.8V
+
+- 4465step/s @ 12.6V
+
+### Variables
+
+**Running Speed** 2805 step/s (1.25 rpm / 5mm/s @ 1204 screw)
+
+**Different acceleration** (equal to deceleration) is tested with the same PID values
+
+**Step Error** during the entire time is logged and returned.
+
+### Results
+
+![acceleration_m555_g51_s2805_error](Motor08_PID_TrapezoidalMotionProfile/data/acceleration_m555_g51_s2805_error.jpg)
+
+![acceleration_m555_g51_s2805_pos](Motor08_PID_TrapezoidalMotionProfile/data/acceleration_m555_g51_s2805_pos.jpg)
+
+## Motorxx_Stopping_Condition_PosError
+
+This experiment investigate the pulling force generated by the clamping jaw when the PID controller is active. And **how the force build up until the stopping condition**. This is in preparation for the clamp controller to follow a motion profile while providing good pulling force against resistance.
+
+This is the first position controlled test that involved a force measurement.
+
+When the motors are overloaded, jammed or stalled by resistance, the motion controller needs to cut power to **avoid burning out the motor** and also to **report back to the higher control layer** that it is jammed.
+
+Two stopping conditions are possible and this and the next experiment verify what is a good stopping (jammed) condition for the motion controller. Basic assumption can be:
+
+- Position error is larger than a threshold (Probably easier to sync)
+- Speed is approaching zero (Pull as hard as possible)
+
+This experiment investigate the **speed approach** using **different speed threshold.**
+
+### Independent Variable
+
+Stopping condition - speed threshold
+
+### Dependent Variable
+
+Terminal / Maximum Pull Force
+
+### Testing conditions
+
+Motor used is 555 gearbox 1:55 (instead of the 1:100 to avoid accidental overloading and breaking other parts).
+
+Testing jig is similar to the linear guide jaw test.
+
+
+
+
+
+Voltage supply (**12V**) with capped current (**7A**) by the large Power Supply
+
+Observation: Position Error / Speed / Force
+

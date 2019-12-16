@@ -14,27 +14,27 @@ const uint8_t m1_driver_in2_pin = 7;             // the pin the motor driver IN2
 DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 
 #include "Encoder.h"
-Encoder myEnc(2, 3);
+Encoder myEnc(3, 2);
 
 #include <PID_v1.h>
 
 #include "MotionProfile.h"
 
-void perform_one_test(double kp, double ki, double kd, double velocityStepsPerSec, double accelStepsPerSecSq, double preDurationSec, long total_steps , double postDuration_Sec) {
-
+void perform_one_test(double kp, double ki, double kd, double velocityStepsPerSec, double accelStepsPerSecSq, double preDurationSec, double runDurationSec, double postDuration_Sec) {
     //Print Octave matrix format header to start:
     String testResultName = "result_" + String(kp, 4);
     testResultName += "_" + String(ki, 4);
     testResultName += "_" + String(kd, 4);
     testResultName += "_" + String(velocityStepsPerSec, 0);
     testResultName += "_" + String(accelStepsPerSecSq, 0);
-    testResultName += "_" + String(total_steps);
+    testResultName += "_" + String(runDurationSec, 0);
     testResultName.replace('.', 'p');
     testResultName.replace(" ", "");
     Serial.print(testResultName);
     Serial.println(" = [");
 
-
+    // Compute steps
+    double total_steps = runDurationSec * velocityStepsPerSec;
 
 
     // Reset Encoder
@@ -101,7 +101,7 @@ void reporting(long ReportIntervalMillis, long time, double target_position_step
         lastReportTime = millis();
         Serial.print(time);
         Serial.print(' ');
-        Serial.print(target_position_step, 0);
+        Serial.print(target_position_step, 1);
         Serial.print(' ');
         Serial.print(current_position_step, 0);
         Serial.print(' ');
@@ -116,14 +116,7 @@ void setup() {
     Serial.setTimeout(10);
     Motor1.setSpeedPercent(0.0);
 
-    //perform_one_test(0.040, 0.200, 0.0002, 3000, 2000, 0.2, 12000, 1.0);
-    //perform_one_test(0.040, 0.200, 0.0002, 3000, 4000, 0.2, 12000, 1.0);
-    //perform_one_test(0.040, 0.200, 0.0002, 3000, 6000, 0.2, 12000, 1.0);
-    //perform_one_test(0.040, 0.200, 0.0002, 3000, 8000, 0.2, 12000, 1.0);
-
-    perform_one_test(0.040, 0.200, 0.0002, 3000, 8000, 0.2, 12000, 1.0);
-    perform_one_test(0.040, 0.400, 0.0002, 3000, 8000, 0.2, 12000, 1.0);
-    perform_one_test(0.040, 0.800, 0.0002, 3000, 8000, 0.2, 12000, 1.0);
+    perform_one_test(0.040, 0.200, 0.0002, 2805, 3000, 0.2, 4.0, 1.0);
 
 }
 
