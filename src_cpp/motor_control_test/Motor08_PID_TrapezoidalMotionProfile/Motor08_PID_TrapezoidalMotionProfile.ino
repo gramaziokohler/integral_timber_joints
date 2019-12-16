@@ -20,20 +20,21 @@ Encoder myEnc(2, 3);
 
 #include "MotionProfile.h"
 
-void perform_one_test(double kp, double ki, double kd, double velocityStepsPerSec, double accelStepsPerSecSq, double preDurationSec, double runDurationSec, double postDuration_Sec) {
+void perform_one_test(double kp, double ki, double kd, double velocityStepsPerSec, double accelStepsPerSecSq, double preDurationSec, long total_steps , double postDuration_Sec) {
+
     //Print Octave matrix format header to start:
     String testResultName = "result_" + String(kp, 4);
     testResultName += "_" + String(ki, 4);
     testResultName += "_" + String(kd, 4);
     testResultName += "_" + String(velocityStepsPerSec, 0);
-    testResultName += "_" + String(runDurationSec, 0);
+    testResultName += "_" + String(accelStepsPerSecSq, 0);
+    testResultName += "_" + String(total_steps);
     testResultName.replace('.', 'p');
     testResultName.replace(" ", "");
     Serial.print(testResultName);
     Serial.println(" = [");
 
-    // Compute steps
-    double total_steps = runDurationSec * velocityStepsPerSec;
+
 
 
     // Reset Encoder
@@ -43,9 +44,9 @@ void perform_one_test(double kp, double ki, double kd, double velocityStepsPerSe
     //LinearMotionProfile profile = LinearMotionProfile(0, total_steps, velocityStepsPerSec);
     TrapezoidalMotionProfile profile = TrapezoidalMotionProfile(0, total_steps, velocityStepsPerSec, accelStepsPerSecSq);
 
-    Serial.println("_phase1End_Micros=" + String(profile._phase1End_Micros));
-    Serial.println("_phase2End_Micros=" + String(profile._phase2End_Micros));
-    Serial.println("_phase3End_Micros=" + String(profile._phase3End_Micros));
+    //Serial.println("_phase1End_Micros=" + String(profile._phase1End_Micros));
+    //Serial.println("_phase2End_Micros=" + String(profile._phase2End_Micros));
+    //Serial.println("_phase3End_Micros=" + String(profile._phase3End_Micros));
 
     // Setup PID Positional Control Variables
     double current_position_step = 0;
@@ -100,7 +101,7 @@ void reporting(long ReportIntervalMillis, long time, double target_position_step
         lastReportTime = millis();
         Serial.print(time);
         Serial.print(' ');
-        Serial.print(target_position_step, 1);
+        Serial.print(target_position_step, 0);
         Serial.print(' ');
         Serial.print(current_position_step, 0);
         Serial.print(' ');
@@ -115,7 +116,14 @@ void setup() {
     Serial.setTimeout(10);
     Motor1.setSpeedPercent(0.0);
 
-    perform_one_test(0.040, 0.200, 0.0002, 3000, 1000, 0.2, 4.0, 1.0);
+    //perform_one_test(0.040, 0.200, 0.0002, 3000, 2000, 0.2, 12000, 1.0);
+    //perform_one_test(0.040, 0.200, 0.0002, 3000, 4000, 0.2, 12000, 1.0);
+    //perform_one_test(0.040, 0.200, 0.0002, 3000, 6000, 0.2, 12000, 1.0);
+    //perform_one_test(0.040, 0.200, 0.0002, 3000, 8000, 0.2, 12000, 1.0);
+
+    perform_one_test(0.040, 0.200, 0.0002, 3000, 8000, 0.2, 12000, 1.0);
+    perform_one_test(0.040, 0.400, 0.0002, 3000, 8000, 0.2, 12000, 1.0);
+    perform_one_test(0.040, 0.800, 0.0002, 3000, 8000, 0.2, 12000, 1.0);
 
 }
 
