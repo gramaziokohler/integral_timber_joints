@@ -47,13 +47,29 @@ According to specification:
 | 1:51          | 115 rpm           | 95 rpm           | 3.43                 |
 | 1:100         | 60 rpm            | 45 rpm           | 4.90                 |
 
-### Ball Screw 1204 and Support BK10
+### Ball Screw 1204 
+
+Ball screw ordered from TaoBao, model number is SFU1204
+
+Similar product can be found in HiWin:   [RBS-R12-4B1-FSB-200-261-0.05](https://motioncontrolsystems.hiwin.com/item/ballscrews-main-configurator/ballscrews-main-configurator/rbs-r12-4b1-fsb-200-261-0-05) 
+
+3D Model found on GrabCAD:  https://grabcad.com/library/sfu1204-500mm-with-bk10-bf10-set-1 
 
 ![screw_components](test_setup/screw_components.jpg)
 
 ![ball_nut](test_setup/ball_nut.jpg)
 
 
+
+
+
+### Support BK10
+
+BK10 was used with another end being free end. 
+
+3D model was found in HiWin: [BK10](https://motioncontrolsystems.hiwin.com/item/all-categories/support-units-bk-series/bk10?plpver=1001) 
+
+Another similar model FK10 can be used too but not tested: [FK10](https://motioncontrolsystems.hiwin.com/item/all-categories/support-units-fk-series/fk10-a)
 
 ![support_types](test_setup/support_types.jpg)
 
