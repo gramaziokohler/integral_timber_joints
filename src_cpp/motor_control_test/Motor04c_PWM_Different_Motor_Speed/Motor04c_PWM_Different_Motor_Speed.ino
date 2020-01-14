@@ -2,6 +2,9 @@
  Name:		Motor04c_PWM_Different_Motor_Speed.ino
  Created:	12/6/2019 11:23:42 AM
  Author:	leungp
+
+ This script can work with any motors gearbox combination.
+ Default is to measure no load speed. Report in Steps / Second
 */
 
 #include "DCMotor.h"
