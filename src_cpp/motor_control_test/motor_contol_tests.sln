@@ -25,6 +25,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Motor04c_PWM_Different_Moto
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Motor10_TwoMotorSyncControl", "Motor10_TwoMotorSyncControl\Motor10_TwoMotorSyncControl.vcxproj", "{78BD2191-66FD-4028-A623-9AEFA90F1F92}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Motor09_StoppingCondition", "Motor09_StoppingCondition\Motor09_StoppingCondition.vcxproj", "{B1ACC9DA-D5C7-48C7-AC23-327454D94581}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -75,6 +77,10 @@ Global
 		{78BD2191-66FD-4028-A623-9AEFA90F1F92}.Debug|x86.Build.0 = Debug|Win32
 		{78BD2191-66FD-4028-A623-9AEFA90F1F92}.Release|x86.ActiveCfg = Release|Win32
 		{78BD2191-66FD-4028-A623-9AEFA90F1F92}.Release|x86.Build.0 = Release|Win32
+		{B1ACC9DA-D5C7-48C7-AC23-327454D94581}.Debug|x86.ActiveCfg = Debug|Win32
+		{B1ACC9DA-D5C7-48C7-AC23-327454D94581}.Debug|x86.Build.0 = Debug|Win32
+		{B1ACC9DA-D5C7-48C7-AC23-327454D94581}.Release|x86.ActiveCfg = Release|Win32
+		{B1ACC9DA-D5C7-48C7-AC23-327454D94581}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
