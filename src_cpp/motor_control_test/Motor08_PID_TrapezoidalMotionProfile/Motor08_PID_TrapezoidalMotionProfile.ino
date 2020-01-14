@@ -116,7 +116,7 @@ void setup() {
     Serial.setTimeout(10);
     Motor1.setSpeedPercent(0.0);
 
-    perform_one_test(0.040, 0.200, 0.0002, 2805, 3000, 0.2, 4.0, 1.0);
+    perform_one_test(0.040, 0.200, 0.0002, 2970, 1000, 0.2, 4.0, 1.0);
 
 }
 
