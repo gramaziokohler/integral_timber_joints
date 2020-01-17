@@ -1,6 +1,13 @@
 # DC Motor Control Tests
 
-This series of test is part of the software development to perform **position and velocity** control for a DC motor with a **Hall effect** **Quadrature Decoder**. 
+This series of test is part of the software development to perform feedback control for **position and velocity** control for a DC motor with a **Hall effect** **Quadrature Decoder**. 
+
+This also includes development of:
+
+1. **Trapezoidal motion profile controller**  that can better handle acceleration and deceleration. 
+2. **Monitoring of jamming condition** by monitoring deviation from motion profile and stop motor power supply to avoid overheating.
+
+Various characterization experiments was performed on different motors of interest.
 
 ## Electronics setup
 
@@ -44,7 +51,17 @@ In3 In4 controls Out3 Out4
 
 ### Motor
 
-Two motors are used in the tests:
+Various motors are used in the tests. This is to better understand the capabilities of each motor and to ensure the controller software can be used for all of them.
+
+| Motor      | Gearbox        | Encoder step/rev | 12V Rated <br />Torque (Nm) | 12V Stall <br />Torque (Nm) |
+| ---------- | -------------- | ---------------- | --------------------------- | --------------------------- |
+| 42GP-775   | 1:49 Planetary | 60               | 3.0                         |                             |
+| 36GP-555   | 1:51 Planetary | 44               | 1.7                         | 3.5                         |
+| GW4058-555 | 1:54 Worm      | 44               | 3.0                         | 6.0                         |
+| GW4058-555 | 1:72 Worm      | 44               | 4.0                         | 7.0                         |
+
+
+
 
 #### **42GP-775  with 1:49 Gearbox**
 
@@ -109,15 +126,25 @@ The encoder on motor 555 has 11 pulse per rev per channel. The two channels comb
 
 Test to verify the Encoder library and the encoder on the motors are functional.
 
-1. 13V is applied directly from PSU to motor. (Just quick test)
+### Testing Setup
 
-2. 10 turns are observed (eyeballed) , and then power is cut. 
-3. Number of steps reported by the Arduino is recorded.
+**Motor Tested:** 555 1:51P , 775 1:49P
 
-| Motor | Steps per 10 revolutions | Measured steps |
-| ----- | ------------------------ | -------------- |
-| 555   | 22440                    | 22428          |
-| 775   | 29400                    | 29597          |
+**Load:** No load
+
+**Power Supply:** Bench Power Supply 13V
+
+**Measurement:** Taken from Arduino's reading of the encoder
+
+### Procedure
+
+1. 10 turns are observed (eyeballed) , and then power is cut. 
+2. Number of steps reported by the Arduino is recorded.
+
+| Motor     | Steps per 10 revolutions | Measured steps |
+| --------- | ------------------------ | -------------- |
+| 555 1:51P | 22440                    | 22428          |
+| 775 1:49P | 29400                    | 29597          |
 
 ### Conclusion
 
@@ -136,7 +163,17 @@ It is unsure in two motor scenario, if the encoder library is still operating fi
 
 This test is copied from Encoder library default example to check if Arduino is catching up with the encoder interrupt speed.
 
-This test is only performed using the 555 motor, 13V is applied directly from power supply to simulate the motor at fastest speed.
+### Testing Setup
+
+**Motor:** 555 1:51P
+**Load:** No load
+**Electronics:** Arduino micro
+**Power Supply:** Bench Power Supply 13V
+**Measurement:** Voltage measured with multimeter on Pin 12
+
+### Procedure
+
+13V is applied directly from power supply to simulate the motor at fastest speed.
 
 A voltage is measured from pin output 12 from Arduino.  If voltage drop to zero when encoder is fast, then the Arduino is not catching up.
 
@@ -168,10 +205,10 @@ Various voltage is applied from PSU to motor. These are DC voltage, not PWM cont
 
 ### Testing setup
 
-**Motor:** 42GP-775 with 1:49 gearbox (no load)
-
-**Electronics:** Arduino micro + XY160D Driver + 12V AC wall adapter capable of 2A current
-
+**Motor:** 775 1:49P
+**Load:** No load
+**Electronics:** Arduino micro + XY160D Driver
+**Power Supply:** Bench Power Supply - Various DC Voltages
 **Measurement:** Taken from Arduino's reading of the encoder
 
 ![result](results/Motor_03_VoltageSpeedRelationship/result.jpg)
@@ -185,6 +222,14 @@ DC motor voltage speed relationship is as linear as it gets.
 This test finds the best PWM frequency such that the **PWM to Speed** relationship is as linear as possible, and has a large dynamic range for fine control.
 
 Five PWM values are possible from Arduino settings standpoint, but only the 4 tested values are compatible with the motor driver's 10kHz limit.
+
+### Testing setup
+
+**Motor:** 775 1:49P
+**Load:** No load
+**Electronics:** Arduino micro + XY160D Driver
+**Power Supply:** 12V 2A Wall Adapter
+**Measurement:** Taken from Arduino's reading of the encoder
 
 ### Result
 
@@ -216,21 +261,30 @@ To observe the difference in the deadband width.
 
 To observe the maximum rpm for each motor under different voltages.
 
-### Variables
+### Testing setup
 
-Three motors:
+**Motor:** 
 
-- 36GP-555 with 1:51 gearbox (Gearbox might have been overloaded in other tests)
-- 36GP-555 with 1:100 gearbox
+- 555 + 1:51P (Gearbox might have been overloaded in other tests)
+- 555 + 1:100P
+- 555 + 1:139 P
+- 555 + 1:54 W
+- 555 +1:72 W
 - 36GP-775 with 1:49 gearbox
 
-Different Supply Voltages will be tested:
+**Load:** No load
+**Electronics:** Arduino micro + XY160D Driver
+**Power Supply:** Bench Power Supply - Various DC Voltages
 
 - 16.8V (Simulated 4 Cell - Fully Charged)
 - 14.8V (Simulated 4 Cell - Average)
 - 12.6V (Simulated 3 Cell - Fully Charged)
 - 11.1V (Simulated 3 Cell - Average)
 - LiPo Battery (4 Cell)
+
+**Measurement:** Taken from Arduino's reading of the encoder
+
+### Variables
 
 Different PWM Values and direction
 
@@ -291,6 +345,16 @@ This hints towards the synchronization test to try speed in the range of 3 to 5 
 
 This test confirms if the PWM deadband removal can remove the large deadband when the PWM values crosses from positive to negative.
 
+### Testing Setup
+
+**Motor:** 775 1:49P
+**Load:** No load
+**Electronics:** Arduino micro + XY160D Driver
+**Power Supply:** 12V 2A Wall adapter
+**Measurement:** Taken from Arduino's reading of the encoder
+
+## Procedure
+
 PWM 3921.16 Hz is used for the test.
 
 The implementation of the deadband removal avoids very low PWM being applied to motor which are certainly not doing anything.
@@ -343,15 +407,18 @@ This is not a test but a base script to verify <PID_v1.h> library.
 
 The PID is set to a low kp gain to simplify things, the system therefore takes a while to settle. The goal here is not to tune the PID but to verify that the PID can maintain different speed at a reasonable precision.
 
-The PID controller was programmed to maintain different speed. From -1.4
+### Testing Setup
 
-Settling Time before measurement: 2s
+**Motor:** 775 1:49P
+**Load:** No load
+**Electronics:** Arduino micro + XY160D Driver
+**Power Supply:** 12V 2A Wall adapter
+**Measurement:** Taken from Arduino's reading of the encoder
 
+The PID controller was programmed to maintain different speed. 
+Settling Time before speed measurement: 2s
 Number of samples: 40
-
 Sampling Interval 0.1s
-
- Which Motor Used ? 
 
 ### Result
 
@@ -380,10 +447,10 @@ A manual tuning is used to find a good error response.
 
 ### Testing setup
 
-**Motor:** 42GP-775 with 1:49 gearbox (no load)
-
-**Electronics:** Arduino micro + XY160D Driver + 12V AC wall adapter capable of 2A current
-
+**Motor:** 42GP-775 with 1:49 gearbox
+**Load:** No load
+**Electronics:** Arduino micro + XY160D Driver
+**Power Supply:** 12V 2A Wall adapter
 **Measurement:** Taken from Arduino's reading of the encoder
 
 ### Tuning process
@@ -495,11 +562,9 @@ The **PID controller** from previous experiment was use with values:
 ### Testing setup
 
 **Motor:** 42GP-555 with 1:51 gearbox (2244 step/rev)
-
 **Load:** No load
-
-**Electronics:** Arduino micro + XY160D Driver + 12.6V (8A Max)
-
+**Electronics:** Arduino micro + XY160D Driver 
+**Power Supply:** Bench Power Supply 12.6V (8A Max)
 **Measurement:** Taken from Arduino's reading of the encoder
 
 **Previous Test have established the maximum speed**:
@@ -594,7 +659,9 @@ An extra test is performed to test an artificial power clamp. The output of the 
 
 ### Caution
 
-The current method of motor power control is not a true current limiting control to avoid motor burnout.  
+The current method of motor power control is not a true current limiting control to avoid motor overheat.  
+
+In the scenario where the motor is continuously operating in a high current state to overcome friction, the motor might still overheat. 
 
 
 
@@ -649,3 +716,6 @@ The driver can handle two motors but there are only two interrupts available for
 
 One trapezoidal motion profile generator is used and two PID Controllers are used for each motor.
 
+### Result
+
+To be written, but the error for the two motors are really low in initial test.

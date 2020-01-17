@@ -15,7 +15,7 @@ results_139
 results_W54
 results_W72
 encoder_steps = 44;
-legend_labels = {"1:51P", "1:100P", "1:148P", "1:54W", "1:72W"};
+legend_labels = {"1:51P", "1:100P", "1:139P", "1:54W", "1:72W"};
 
 data1 = data_pre_process (eval("result_555_051_168"), 51 * encoder_steps, true);
 data2 = data_pre_process (eval("result_555_100_168"), 100 * encoder_steps, false);
