@@ -53,12 +53,14 @@ In3 In4 controls Out3 Out4
 
 Various motors are used in the tests. This is to better understand the capabilities of each motor and to ensure the controller software can be used for all of them.
 
-| Motor      | Gearbox        | Encoder step/rev | 12V Rated <br />Torque (Nm) | 12V Stall <br />Torque (Nm) |
-| ---------- | -------------- | ---------------- | --------------------------- | --------------------------- |
-| 42GP-775   | 1:49 Planetary | 60               | 3.0                         |                             |
-| 36GP-555   | 1:51 Planetary | 44               | 1.7                         | 3.5                         |
-| GW4058-555 | 1:54 Worm      | 44               | 3.0                         | 6.0                         |
-| GW4058-555 | 1:72 Worm      | 44               | 4.0                         | 7.0                         |
+| Motor      | Gearbox         | Encoder step/rev | 12V Rated <br />Torque (Nm) | 12V Stall <br />Torque (Nm) |
+| ---------- | --------------- | ---------------- | --------------------------- | --------------------------- |
+| 42GP-775   | 1:49 Planetary  | 60               | 3.0                         |                             |
+| 36GP-555   | 1:51 Planetary  | 44               | 1.7                         | 3.5                         |
+| 36GP-555   | 1:100 Planetary | 44               | 3.0                         | > 5.0                       |
+| 36GP-555   | 1:139 Planetary | 44               | 4.0                         | > 5.0                       |
+| GW4058-555 | 1:54 Worm       | 44               | 3.0                         | 6.0                         |
+| GW4058-555 | 1:72 Worm       | 44               | 4.0                         | 7.0                         |
 
 
 
@@ -67,37 +69,37 @@ Various motors are used in the tests. This is to better understand the capabilit
 
 https://item.taobao.com/item.htm?spm=a1z09.2.0.0.32392e8dqyPg5S&id=538085471288&_u=jl5jjmh1acb 
 
-![775Spec](diagrams/775Spec.jpg)
+![775Spec](../190910_Screw_And_Motor_Test/diagrams/775Spec.jpg)
 
-![775Wiring](diagrams/775Wiring.jpg)
+![775Wiring](../190910_Screw_And_Motor_Test/diagrams/775Wiring.jpg)
 
-![775Gearing](diagrams/775Gearing.jpg)
+![775Gearing](../190910_Screw_And_Motor_Test/diagrams/775Gearing.jpg)
 
-![775Encoder](diagrams/775Encoder.jpg)
+![775Encoder](../190910_Screw_And_Motor_Test/diagrams/775Encoder.jpg)
 
-#### **36GP-555  with 1:51 Gearbox**
+#### **36GP-555  with 1:51 / 1:100 / 1:139 Gearbox**
 
  https://item.taobao.com/item.htm?spm=a1z09.2.0.0.32392e8dqyPg5S&id=544216961663&_u=jl5jjmhf0dd 
 
-![555](diagrams/555.jpg)
+![555](../190910_Screw_And_Motor_Test/diagrams/555.jpg)
 
-![555Spec](diagrams/555Spec.jpg)
+![555Spec](../190910_Screw_And_Motor_Test/diagrams/555Spec.jpg)
 
-![555Wiring](diagrams/555Wiring.jpg)
+![555Wiring](../190910_Screw_And_Motor_Test/diagrams/555Wiring.jpg)
 
-![555Gearing](diagrams/555Gearing.jpg)
+![555Gearing](../190910_Screw_And_Motor_Test/diagrams/555Gearing.jpg)
 
-![555Encoder](diagrams/555Encoder.jpg)
+![555Encoder](../190910_Screw_And_Motor_Test/diagrams/555Encoder.jpg)
 
 #### GW4058-555 Worm Gearbox 1:54 / 1:72
 
 The worm gearbox with the 555 motor was investigated for its space-saving 90-degree power transmission.
 
-![Work_Gearbox_GW4085](diagrams/Work_Gearbox_GW4085.jpg)
+![Work_Gearbox_GW4085](../190910_Screw_And_Motor_Test/diagrams/Work_Gearbox_GW4085.jpg)
 
-![Work_Gearbox_GW4085_Dimensions](diagrams/Work_Gearbox_GW4085_Dimensions.png)
+![Work_Gearbox_GW4085_Dimensions](../190910_Screw_And_Motor_Test/diagrams/Work_Gearbox_GW4085_Dimensions.png)
 
-![Work_Gearbox_GW4085_Spec](diagrams/Work_Gearbox_GW4085_Spec.png)
+![Work_Gearbox_GW4085_Spec](../190910_Screw_And_Motor_Test/diagrams/Work_Gearbox_GW4085_Spec.png)
 
 ### Connections
 
