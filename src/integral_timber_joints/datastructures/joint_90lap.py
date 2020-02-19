@@ -20,13 +20,14 @@ class Joint_90lap(Joint):
     """
     joint class containing varied joints
     """
-    def __init__(self, distance,face_id, length, width, height):
+    def __init__(self, distance,face_id, length, width, height, name = None):
 
         """
         :param distance:  double
         :param face_id:   int
         """
         self.distance = distance
+        self.name = name
         self.face_id = face_id
         self.length = length
         self.width = width
@@ -43,6 +44,7 @@ class Joint_90lap(Joint):
         """dict : A data dict representing all internal persistant data for serialisation.
         The dict has the following structure:
         * 'type'            => string (name of the class)
+        * 'name'            => string (name)
         * 'distance'        => double
         * 'face_id'         => int
         * 'length'           => double
@@ -52,6 +54,7 @@ class Joint_90lap(Joint):
         """
         data = {
             'type'      : self.__class__.__name__, #Keep this line for deserialization
+            'name'      : self.name,
             'distance'  : self.distance,
             'face_id'   : self.face_id,
             'length'    : self.length,
@@ -65,11 +68,12 @@ class Joint_90lap(Joint):
 
     @data.setter
     def data(self, data):
-        self.distance    = data.get('distance') or None
-        self.face_id    = data.get('face_id') or None
-        self.length      = data.get('length') or None
-        self.width      = data.get('width') or None
-        self.height     = data.get('height') or None
+        self.name       = data.get('name')
+        self.distance   = data.get('distance')
+        self.face_id    = data.get('face_id')
+        self.length     = data.get('length')
+        self.width      = data.get('width')
+        self.height     = data.get('height')
         self.mesh       = None
         if (data.get('mesh') is not None): self.mesh = compas.datastructures.Mesh.from_data(data.get('mesh'))
 
@@ -97,13 +101,15 @@ class Joint_90lap(Joint):
         # Get face_frame from Beam (the parent Beam)
         face_frame = BeamRef.face_frame(self.face_id)
 
-        box_frame_origin = face_frame.represent_point_in_global_coordinates([(self.distance - 50), TOLEARNCE * -1.0, TOLEARNCE * -1.0])
+        # Compute beam frame
+        box_frame_origin = face_frame.to_world_coords([(self.distance), self.height / 2 - TOLEARNCE / 2 , self.length / 2])
         box_frame = Frame(box_frame_origin, face_frame.xaxis, face_frame.yaxis)
 
         # Compute 3 Box dimensions
-        box_x = self.length
-        box_y = self.width + TOLEARNCE
-        box_z = self.height + 2 * TOLEARNCE
+
+        box_x = self.width
+        box_y = self.height + TOLEARNCE
+        box_z = self.length + 2 * TOLEARNCE
 
         # Draw Boolean Box
         boolean_box = Box(box_frame, box_x, box_y, box_z)
@@ -113,6 +119,15 @@ class Joint_90lap(Joint):
         self.mesh = boolean_box_mesh
         return self.mesh
 
+    def get_clamp_frame(self, beam):
+        print self.face_id
+        print "Dist%s" % self.distance
+        face_frame = beam.face_frame(self.face_id)
+        origin = face_frame.to_world_coords([self.distance, beam.face_height(self.face_id), beam.face_width(self.face_id)/2])
+        print origin
+        forward_clamp =  Frame(origin, face_frame.xaxis, face_frame.zaxis)
+        backward_clamp =  Frame(origin,face_frame.xaxis.scaled(-1), face_frame.zaxis.scaled(-1))
+        return [forward_clamp, backward_clamp]
 
 if __name__ == "__main__":
     import compas

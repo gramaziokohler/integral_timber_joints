@@ -123,6 +123,21 @@ class Joint(object):
             else:
                 json.dump(self.data, fp)
 
+    def update_joint_mesh(self, BeamRef):
+        """Compute the negative mesh volume of the joint.
+
+        Returns
+        -------
+        object
+            A compas.Mesh
+
+        Note
+        ----
+        This function needs to be implemented by inhereted class
+        The self.mesh should be updated with the new mesh
+
+        """
+        raise NotImplementedError
 
 if __name__ == "__main__":
     #Test to create a inherited joint object, serialize and deserialize it.

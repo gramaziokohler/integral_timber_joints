@@ -8,9 +8,16 @@
 # It hold reference
 #
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
-import compas
 import json
+
+from compas.datastructures import Network
+from compas.datastructures._mixins import FromToData
+from compas.datastructures._mixins import FromToJson
+
 
 from integral_timber_joints.datastructures.beam import Beam
 from integral_timber_joints.datastructures.utils import create_id
@@ -19,10 +26,65 @@ __all__ = ['Assembly']
 
 class Assembly(object):
 
-    def __init__(self):
+    def __init__(self,
+                 beams=None,
+                 attributes=None,
+                 default_element_attribute=None,
+                 default_connection_attributes=None):
 
-        self.beams=[]
+        # following lines are adopted.
+        self.network = Network()
+        self.network.attributes.update({'name': 'Assembly'})
 
+        if attributes is not None:
+            self.network.attributes.update(attributes)
+
+        self.network.default_vertex_attributes.update({
+            'is_planned': False,
+            'is_placed': False
+        })
+
+        if default_element_attribute is not None:
+            self.network.default_vertex_attributes.update(default_element_attribute)
+
+        if default_connection_attributes is not None:
+            self.network.default_edge_attributes.update(default_connection_attributes)
+
+        if beams:
+            for beam in beams:
+                self.add_beam(element)
+
+    @property
+    def name(self):
+        """str : The name of the assembly."""
+        return self.network.attributes.get('name', None)
+
+    @name.setter
+    def name(self, value):
+        self.network.attributes['name'] = value
+
+    def number_of_elements(self):
+        """Compute the number of elements of the assembly.
+
+        Returns
+        -------
+        int
+            The number of elements.
+
+        """
+        return self.network.number_of_vertices()
+
+    def number_of_connections(self):
+        """Compute the number of connections of the assembly.
+
+        Returns
+        -------
+        int
+            the number of connections.
+
+        """
+        return self.network.number_of_edges()
+        
     @property
     def data(self):
         """dict : A data dict representing all internal persistant data for serialisation.

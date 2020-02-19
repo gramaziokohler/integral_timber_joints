@@ -15,12 +15,18 @@ from compas.datastructures import Mesh
 from compas.datastructures import mesh_bounding_box
 from compas.geometry import Frame
 from compas.geometry import Plane
+from compas.geometry import Point
+from compas.geometry import Line
+from compas.geometry import Transformation
 from compas.geometry import Translation
 from compas.geometry import distance_point_plane
+from compas.geometry import is_point_on_plane
 import json
 
 from integral_timber_joints.datastructures.joint import Joint
 from integral_timber_joints.datastructures.utils import create_id
+
+
 
 import sys
 
@@ -52,6 +58,8 @@ class Beam(object):
         if frame is not None:
             self.update_mesh()
 
+    def __str__(self):
+        return "Beam (%s)" % self.name   
 
     @property
     def data(self):
@@ -88,10 +96,10 @@ class Beam(object):
         """
         self.frame      = None
         if (data.get('frame') is not None): self.frame = compas.geometry.Frame.from_data(data.get('frame'))
-        self.length      = data.get('length') or None
-        self.width      = data.get('width') or None
-        self.height     = data.get('height') or None
-        self.name       = data.get('name') or None
+        self.length      = data.get('length')
+        self.width      = data.get('width')
+        self.height     = data.get('height')
+        self.name       = data.get('name')
         self.mesh       = None
         if (data.get('mesh') is not None): self.mesh = compas.datastructures.Mesh.from_data(data.get('mesh'))
         for joint_data in data.get('joints') :
@@ -186,6 +194,53 @@ class Beam(object):
                 json.dump(self.data, fp)
 
     #Here is where the functions of the class begins
+
+    @classmethod
+    def from_mesh(cls, raw_mesh, orientation_frame):
+        """Construct a beam from a mesh.
+
+        Performs bounding box calculation on the mesh and create a rectangular beam.
+        
+        Parameters
+        ----------
+        raw_mesh : :class:`Mesh`
+            Compas Mesh datastructure describing the beam. Notches will be ignored.
+        orientation_frame : :class:`Frame`
+            Orientation frame for computing bounding box of the beam.
+            X Axis +ve = Length
+            Y Axis +ve = Height
+            Z Axis +ve = Width
+
+        Returns
+        -------
+        :class:`Beam`
+            New instance of Beam.
+        """
+
+        # transform mesh to oriented frame and perform bounding box
+        
+        T = Transformation.from_frame_to_frame(orientation_frame, Frame.worldXY())
+        transformed_mesh = raw_mesh.transformed(T)
+        bbox = mesh_bounding_box(transformed_mesh)
+
+        # transform back
+        origin_point = Point(*bbox[0])
+        origin_point.transform(T.inverse())
+        bbox_size = Point(*bbox[6]) - Point(*bbox[0])
+        
+        length = bbox_size[0]
+        height = bbox_size[1]
+        width = bbox_size[2]
+        
+        xaxis = orientation_frame.xaxis
+        yaxis = orientation_frame.yaxis
+        beam_frame = Frame(origin_point,xaxis,yaxis)
+
+        beam = cls(beam_frame, length, width, height, None )
+        beam.mesh = raw_mesh
+
+        return beam
+        
     def update_mesh(self):
         """Computes the beam geometry with boolean difference of all joints.
 
@@ -207,12 +262,15 @@ class Beam(object):
 
             #Extract mesh objects from each joint in the beam
             for joint in self.joints:
+                if joint.mesh == None:
+                    joint.update_joint_mesh(self)
                 meshes.append(joint.mesh)
 
             #Calls trimesh to perform boolean
 
             from compas.rpc import Proxy
             trimesh_proxy = Proxy(package='compas_trimesh')
+            #print(meshes)
             result = trimesh_proxy.trimesh_subtract_multiple(meshes)
             self.mesh = Mesh.from_data(result['value'])
 
@@ -234,14 +292,14 @@ class Beam(object):
         dist = distance_point_plane(placed_point,YZ_Plane)
         return dist
 
-    def center_point_at_beam_start(self):
+    def center_point_at_beam_start(self, length = 0):
         """Computes the centroid of a beam
         ----------
         Return:
         ------
         point[list]
         """
-        return self.frame.represent_point_in_global_coordinates([0,self.width/2,self.height/2])
+        return self.frame.to_world_coords([length,self.width/2,self.height/2])
 
     # Here we compute the face_frame of the beam
     def face_frame(self,face_id):
@@ -256,13 +314,13 @@ class Beam(object):
         if face_id == 1:
             return self.frame.copy()
         if face_id == 2:
-            new_origin = self.frame.represent_point_in_global_coordinates([0,self.height,0])
+            new_origin = self.frame.to_world_coords([0,self.height,0])
             return Frame(new_origin,self.frame.xaxis, self.frame.normal)
         if face_id == 3:
-            new_origin = self.frame.represent_point_in_global_coordinates([0,self.height,self.width])
+            new_origin = self.frame.to_world_coords([0,self.height,self.width])
             return Frame(new_origin,self.frame.xaxis, self.frame.yaxis * -1.0)
         if face_id == 4:
-            new_origin = self.frame.represent_point_in_global_coordinates([0,0,self.width])
+            new_origin = self.frame.to_world_coords([0,0,self.width])
             return Frame(new_origin,self.frame.xaxis, self.frame.normal * -1.0)
         else:
             raise IndexError('face_id index out of range')
@@ -307,6 +365,63 @@ class Beam(object):
 
         return plane
 
+    def face_width(self,face_id):
+        """Gets the width of the selected face
+        Corrisponds to the dimension of the beam which is the width of the selected face.
+        ----------
+        plane_id: (int) ID of plane
+
+        Return:
+        ------
+        Face 1 and 3 = beam.height
+        Face 2 and 4 = beam.width
+        
+        """
+        if face_id == 1:
+            return self.height
+        if face_id == 2:
+            return self.width
+        if face_id == 3:
+            return self.height
+        if face_id == 4:
+            return self.width
+        else:
+            raise IndexError()
+
+    def face_height(self,face_id):
+        """Gets the height (depth) of the selected face.
+        Corrisponds to the dimension of the beam which is normal to the selected face.
+        ----------
+        plane_id: (int) ID of plane
+
+        Return:
+        ------
+        Face 1 and 3 = beam.width
+        Face 2 and 4 = beam.height
+        
+        """
+        if face_id == 1:
+            return self.width
+        if face_id == 2:
+            return self.height
+        if face_id == 3:
+            return self.width
+        if face_id == 4:
+            return self.height
+        else:
+            raise IndexError()
+
+            
+    def center_line(self):
+        start = self.frame.to_world_coords([0, self.width/2, self.height/2])
+        end = self.frame.to_world_coords([self.length, self.width/2, self.height/2])
+        return Line(start, end)
+
+    def face_center_line(self, face_id):
+        start = self.face_frame(face_id).to_world_coords([0, 0, self.face_width(face_id)/2])
+        end = self.face_frame(face_id).to_world_coords([self.length, 0, self.face_width(face_id)/2])
+        return Line(start, end)
+
     def neighbour_face_plane(self,plane_id):
         """Computes the adjacent planes of a plane
         ----------
@@ -334,11 +449,49 @@ class Beam(object):
         The beam mesh without joint geoemtry
 
         """
-        box = Box(self.frame, self.length,self.width,self.height)
+        # Compas Box origin is at the center of the box
+        box_center_point = self.frame.to_world_coords(Point(self.length/2, self.width/2, self.height/2))
+        box_center_frame = Frame(box_center_point, self.frame.xaxis, self.frame.yaxis)
+        box = Box(box_center_frame, self.length,self.width,self.height)
+
+        # Convert Box to Mesh
         box_mesh = Mesh.from_vertices_and_faces(box.vertices, box.faces)
         return box_mesh
 
+    def add_joint(self, joint, update_mesh = True):
+        """Add a Joint to the current Beam and triggers mesh update
+        ----------
+        joint: Joint object
 
+        Return:
+            None
+        """
+
+        self.joints.append(joint)
+        if update_mesh:
+            joint.update_joint_mesh(self)
+            self.update_mesh()
+
+    def copy(self):
+        cls = type(self)
+        return cls.from_data(self.to_data())
+
+    @classmethod
+    def beam_beam_coplanar(cls,beam1, beam2):
+        """
+        Computes the faces that are coplanar between two beams
+        Returns:
+            List of [Tuples (face_id on Beam 1, face_id on Beam 2)]
+        """
+        ffx = []
+        for i in range(1,5):
+            p1 = beam1.face_plane(i)
+            for j in range(1,5):
+                p2 = beam2.face_plane(j)
+                if (is_point_on_plane(p1.point,p2) and is_point_on_plane(p2.point,p1)):
+                    #print ("Intersection Beam1.Face%s Beam2.Face%s " %(i , j))
+                    ffx.append((i,j))
+        return ffx   
 
     @classmethod
     def debug_get_dummy_beam(cls, include_joint=False):
@@ -412,4 +565,24 @@ if __name__ == '__main__':
     print("Test 3: Print out dummy beam (with Joint) data")
     print (beam.data)
 
+    print("-- -- -- -- -- -- -- --")
+
+    print("Test4: Test Copy class")
+    beam_copied = beam.copy()
+
+    if (id(beam) != id(beam_copied)):
+        print("Copy has different ID - Correct")
+    else:
+        print("Copy same ID - Incorrect")
+
+    if (id(beam.joints[0]) != id(beam_copied.joints[0])):
+        print("Copy Beam.Joints has different ID - Correct")
+    else:
+        print("Copy Beam.Joints same ID - Incorrect")
+
+
+    if (beam.data == beam_copied.data):
+        print("Copy data is same - Correct")
+    else:
+        print("Copy data is not same - Incorrect")
     print("-- -- -- -- -- -- -- --")
