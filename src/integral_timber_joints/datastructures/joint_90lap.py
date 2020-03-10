@@ -120,14 +120,23 @@ class Joint_90lap(Joint):
         return self.mesh
 
     def get_clamp_frame(self, beam):
-        print self.face_id
-        print "Dist%s" % self.distance
+        #print "Dist%s" % self.distance
         face_frame = beam.face_frame(self.face_id)
         origin = face_frame.to_world_coords([self.distance, beam.face_height(self.face_id), beam.face_width(self.face_id)/2])
-        print origin
+        #print origin
         forward_clamp =  Frame(origin, face_frame.xaxis, face_frame.zaxis)
         backward_clamp =  Frame(origin,face_frame.xaxis.scaled(-1), face_frame.zaxis.scaled(-1))
         return [forward_clamp, backward_clamp]
+
+    #This method is not generalizable and should be removed in future
+    def get_assembly_direction(self, beam):
+        '''
+        Returns the only possible assembly direction.
+        '''
+        #print "Dist%s" % self.distance
+        face_frame = beam.face_plane(self.face_id)
+        return face_frame.normal.scaled(-1 * beam.face_height(self.face_id))
+
 
 if __name__ == "__main__":
     import compas

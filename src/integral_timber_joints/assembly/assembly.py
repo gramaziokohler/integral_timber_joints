@@ -83,6 +83,9 @@ class Assembly(FromToData, FromToJson):
     def name(self, value):
         self.network.attributes['name'] = value
 
+    def sequence(self):
+        return self.network.attributes['sequence']
+
     def number_of_elements(self):
         """Compute the number of elements of the assembly.
 
@@ -211,6 +214,7 @@ class Assembly(FromToData, FromToJson):
         Elements and their _source are copied
         Connecions and their dictionary type of data are copied
         """
+
         return Assembly.from_data(self.to_data())
 
     def element(self, key):
@@ -240,6 +244,10 @@ class Assembly(FromToData, FromToJson):
             for vkey in self.network.vertices(data):
                 yield vkey, self.network.vertex[vkey]['element']
 
+    def beams(self):
+        for key, element in self.elements():
+            yield element._source
+
     def beam(self, key):
         """Get an element by its key."""
         return self.network.vertex[key]['element']._source
@@ -262,3 +270,14 @@ class Assembly(FromToData, FromToJson):
         """
         return self.network.edges(data)
 
+    def set_beam_attribute(self, beam_id, key, value):
+        return self.network.set_vertex_attribute(beam_id, key, value)
+
+    def get_beam_attribute(self, beam_id, key, value=None):
+        return self.network.get_vertex_attribute(beam_id, key, value)
+
+    def set_joint_attribute(self, joint_id, key, value):
+        return self.network.set_edge_attribute(joint_id, key, value)
+
+    def get_joint_attribute(self, joint_id, key, value=None):
+        return self.network.get_edge_attribute(joint_id, key, value)

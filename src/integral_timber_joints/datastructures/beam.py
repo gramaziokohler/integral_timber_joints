@@ -26,7 +26,7 @@ import json
 from integral_timber_joints.datastructures.joint import Joint
 from integral_timber_joints.datastructures.utils import create_id
 
-
+from compas_ghpython.artists import MeshArtist
 
 import sys
 
@@ -44,7 +44,8 @@ class Beam(object):
             :name(optional):  UUID generated frim id_generator as name for each mesh
 
         """
-        self.frame = frame
+        if (frame is None): frame = Frame.worldXY()
+        self.frame = frame.copy()
         self.length = length
         self.width = width
         self.height = height
@@ -52,10 +53,17 @@ class Beam(object):
         self.name = name
         # self.face_frame = None
         self.mesh = None
-        self.joints = []
+        self.joints = {}
+
+        # Attribute for animation visualization
+        self.is_visible = True # Decides if the self.draw_visuals() draw or not.
+        self.is_attached = True # Decides if the self.draw_visuals() draws it differently.
+        self.current_location = frame.copy() # Not Serialized
+        self.storage_location = frame.copy() # Not Serialized
+        self.grasp_frame = Frame.worldXY() # Not Serialized # Local Coords
 
         #Perform initial calculation of the mesh if this object is not empty
-        if frame is not None:
+        if ((frame is not None) and (self.length is not None)):
             self.update_mesh()
 
     def __str__(self):
@@ -82,8 +90,13 @@ class Beam(object):
             'height'    : self.height,
             'name'      : self.name,
             'mesh'      : None,
-            'joints'    : [joint.to_data() for joint in self.joints],
+            'joints'    : {},
             }
+        # Triggers the joint dictionary
+        for key, joint in self.joints.items():
+            data['joints'][key] = joint.to_data()
+            
+        # 
         if (self.frame is not None) :
             data['frame'] = self.frame.to_data()
         if (self.mesh is not None) :
@@ -102,8 +115,8 @@ class Beam(object):
         self.name       = data.get('name')
         self.mesh       = None
         if (data.get('mesh') is not None): self.mesh = compas.datastructures.Mesh.from_data(data.get('mesh'))
-        for joint_data in data.get('joints') :
-            self.joints.append(Joint.from_data(joint_data))
+        for key, joint_data in data.get('joints').items() :
+            self.joints[key] = Joint.from_data(joint_data)
 
     @classmethod
     def from_data(cls,data):
@@ -130,7 +143,6 @@ class Beam(object):
         if new_object.mesh is None:
             new_object.update_mesh()
         return new_object
-
 
     def to_data(self):
         """Returns a dictionary of structured data representing the data structure.
@@ -261,7 +273,7 @@ class Beam(object):
             meshes.append(self.mesh)
 
             #Extract mesh objects from each joint in the beam
-            for joint in self.joints:
+            for key, joint in self.joints.items():
                 if joint.mesh == None:
                     joint.update_joint_mesh(self)
                 meshes.append(joint.mesh)
@@ -411,7 +423,6 @@ class Beam(object):
         else:
             raise IndexError()
 
-            
     def center_line(self):
         start = self.frame.to_world_coords([0, self.width/2, self.height/2])
         end = self.frame.to_world_coords([self.length, self.width/2, self.height/2])
@@ -466,11 +477,54 @@ class Beam(object):
         Return:
             None
         """
+        if joint.name in self.joints:
+            raise KeyError
 
-        self.joints.append(joint)
+        self.joints[joint.name] = joint
         if update_mesh:
             joint.update_joint_mesh(self)
             self.update_mesh()
+
+    def get_joint(self, name):
+        return self.joints[name]
+    
+    def set_state(self, state_dict):
+        '''
+        This function serves animation / viauslization purpose only
+        '''
+        # state is simply a frame
+        self.current_location = state_dict['current_location'].copy()   # Frame
+        self.is_visible = state_dict['is_visible']                      # Boolean
+        self.is_attached = state_dict['is_attached']                      # Boolean
+
+    def get_state(self):
+        '''
+        This function serves animation / viauslization purpose only
+        '''
+        state_dict = {}
+        state_dict['current_location'] = self.current_location.copy()
+        state_dict['is_visible'] = self.is_visible
+        state_dict['is_attached'] = self.is_attached
+        
+
+        return state_dict
+
+    def draw_visuals(self):
+        '''
+        This function serves animation / viauslization purpose only
+        '''
+        if not self.is_visible: return []
+        # Create the transformation
+        T = Transformation.from_frame_to_frame(self.frame, self.current_location)
+        # Create a copy of the mesh, transformed.
+        transformed_mesh = self.mesh.transformed(T)
+        # Use a mesh artist to draw everything
+        artist = MeshArtist(transformed_mesh)
+        visual = artist.draw_mesh()
+        
+        # We should have only one mesh per beam object
+        visuals = [visual]
+        return visuals
 
     def copy(self):
         cls = type(self)
@@ -503,11 +557,9 @@ class Beam(object):
         beam = cls(Frame(Point(0, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)),1000,100,150,"dummy_beam_1")
         #Create Joint object
         if (include_joint):
-            beam.joints.append(Joint_90lap(100,3,100,100,50))
-            #Update mesh - Boolean the joints from Mesh
-            beam.joints[0].update_joint_mesh(beam)
-
-        beam.update_mesh()
+            beam.add_joint(Joint_90lap(100,3,100,100,50,"dummy_joint"))
+        else:
+            beam.update_mesh()
         return beam
 
 
@@ -575,7 +627,7 @@ if __name__ == '__main__':
     else:
         print("Copy same ID - Incorrect")
 
-    if (id(beam.joints[0]) != id(beam_copied.joints[0])):
+    if (id(list(beam.joints.values())[0]) != id(list(beam_copied.joints.values())[0])):
         print("Copy Beam.Joints has different ID - Correct")
     else:
         print("Copy Beam.Joints same ID - Incorrect")
