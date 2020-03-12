@@ -19,8 +19,20 @@
 
 */
 
-#include "Direction.h"
-#include <EEPROM.h>
+// The include statements are all in <angle brackets> because compiler need to look in the include folder for these files.
+// For example "Double Quote" won't work for Encoder.h because it has folder structure in its nested imports.
+// All libraries should ideally be located in libraries include folder.
+// * ITJ libraries are developed in the integral_timber_joints project. Located in \integral_timber_joints\src_cpp\libraries
+
+#include <EEPROM.h>         // Arduino default library for accessing EEPROM
+
+#include "MotorController.h"    //New Class in Development
+#include <DCMotor.h>        // ITJ library
+#include <Encoder.h>        // Encoder library from PJRC.COM, LLC - Paul Stoffregen http://www.pjrc.com/teensy/td_libs_Encoder.html
+
+#include <PID_v1.h>         // Arduino PID Library - Version 1.2.1 by Brett Beauregard https://github.com/br3ttb/Arduino-PID-Library/
+#include <MotionProfile.h>  // ITJ library
+
 
 //MOTOR_CONTROL_PRINTOUT (if defined) will print motor control error during motor movements.
 // #define MOTOR_CONTROL_PRINTOUT
@@ -44,6 +56,11 @@ const uint8_t m1_driver_ena_pin = 9;             // the pin the motor driver ENA
 const uint8_t m1_driver_in1_pin = 8;             // the pin the motor driver IN1 is attached to
 const uint8_t m1_driver_in2_pin = 7;             // the pin the motor driver IN2 is attached to
 
+const double m1_kp = 0.040;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile 
+const double m1_ki = 0.200;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile 
+const double m1_kd = 0.0002;                // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile 
+const double m1_accel = 3000;               // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile 
+
 //Pins for Motor Driver M2
 //const uint8_t m2_driver_ena_pin = 10;          // the pin the motor driver ENA2 is attached to (PWM Pin)
 //const uint8_t m2_driver_in1_pin = 12;          // the pin the motor driver IN3 is attached to
@@ -59,9 +76,16 @@ const uint8_t m1_home_pin = A6;
 //Pins for Battery Monitor
 const uint8_t battery_monitor_pin = A7;
 
-//Variables for Motion Control
-direction m1_direction = EXTEND; // true = Forward
-direction m2_direction = EXTEND; // true = Forward
+// ---- END OF MODIFIABLE SETTINGS - Do not modify below ----
+
+// Initialize motion control objects
+DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
+Encoder Encoder1(m1_encoder1_pin, m1_encoder2_pin);
+MotorController MotorController1(&Motor1, &Encoder1, m1_kp, m1_ki, m1_kd, m1_accel);
+
+// Variables for Motion Control
+Direction m1_direction = EXTEND; // true = Forward
+Direction m2_direction = EXTEND; // true = Forward
 volatile long m1_encoder = 0;
 volatile long m2_encoder = 0;
 double axis_speed = 2.0;
@@ -93,15 +117,6 @@ void setup() {
     Serial.begin(115200);
     Serial.println(F("(Motor controller startup)"));
 
-    //Initialize motor driver pins
-    pinMode(m1_driver_ena_pin, OUTPUT);
-    pinMode(m1_driver_in1_pin, OUTPUT);
-    pinMode(m1_driver_in2_pin, OUTPUT);
-
-    //Initialize the motor encoder pins 
-    pinMode(m1_encoder1_pin, INPUT);
-    pinMode(m1_encoder2_pin, INPUT);
-
     //Initialize battery monitor pin
     pinMode(battery_monitor_pin, INPUT);
 
@@ -114,7 +129,7 @@ void loop() {
 
 
     // Handle serial input and set flags (TODO, Actually ste flags)
-    run_serial_handle();
+    // run_serial_handle();
 
     // Run motor control
     //run_motor_1();
@@ -123,7 +138,6 @@ void loop() {
     run_batt_monitor();
 
 }
-
 
 void run_batt_monitor() {
     {
@@ -149,234 +163,6 @@ void run_batt_monitor() {
         }
     }
     #endif // !SERIAL_MASTER_INIT_TALK_ONLY
-}
-
-void run_motor_1() {
-    // Return if the motor state is not running
-    if (!m1_running) return;
-
-    // Detect if the motor has finished the move
-    if (m1_direction == EXTEND && m1_encoder > m1_ending_encoder) {
-        m1_stop();
-        #ifndef SERIAL_MASTER_INIT_TALK_ONLY
-        Serial.println("M1 Extend Complete, Current Position:");
-        Serial.println(m1_encoder / step_per_mm);
-        #endif // !SERIAL_MASTER_INIT_TALK_ONLY
-        return;
-    }
-    if (m1_direction == RETRACT && m1_encoder < m1_ending_encoder) {
-        m1_stop();
-        #ifndef SERIAL_MASTER_INIT_TALK_ONLY
-        Serial.print("M1 Retract Complete, Current Position:");
-        Serial.println(m1_encoder / step_per_mm);
-        #endif // !SERIAL_MASTER_INIT_TALK_ONLY
-        return;
-    }
-
-    // Compute current waypoint
-    long delta_t = millis() - m1_starting_time;
-    double current_waypoint_1_encoder_delta = (delta_t * m1_speed_step_per_millis);
-    double current_waypoint_1_encoder = m1_starting_encoder + (delta_t * m1_speed_step_per_millis);
-
-
-
-    //Compute Difference and set Motor Speed
-    long m1_actual_encoder_delta = m1_encoder - m1_starting_encoder;
-    double m1_abs_encoder_error = abs(current_waypoint_1_encoder_delta) - abs(m1_actual_encoder_delta);
-    // Error is positive If the motor is too slow
-    if (m1_abs_encoder_error > 2) {
-        m1_set_power(255);
-    } else if (m1_abs_encoder_error > 0) {
-        //m1_set_power(150);
-        m1_set_power(255);
-    } else if (m1_abs_encoder_error > -2) {
-        //m1_set_power(20);
-        m1_set_power(0);
-    } else {
-        m1_set_power(0);
-    }
-
-    //Detect jam based on deviation
-    if (m1_abs_encoder_error > encoder_error_before_stop || m1_abs_encoder_error < -encoder_error_before_stop) {
-        m1_stop();
-        //m2_stop();
-        Serial.println("Motor 1 Deviation out of range. All motors will stop.");
-        Serial.println(get_current_status_string());
-        #ifndef SERIAL_MASTER_INIT_TALK_ONLY
-        #endif // !SERIAL_MASTER_INIT_TALK_ONLY
-    }
-
-    //DEBUG Monitiring
-    #ifndef SERIAL_MASTER_INIT_TALK_ONLY
-    #ifdef MOTOR_CONTROL_PRINTOUT
-    Serial.print("Motor1Running;");
-    Serial.print(delta_t);
-    Serial.print(";");
-    Serial.print(m1_actual_encoder_delta);
-    Serial.print(";");
-    Serial.print(m1_abs_encoder_error);
-    if (m1_abs_encoder_error > 10 || m1_abs_encoder_error < -10) {
-        Serial.print(" DeviationWarning");
-    }
-    Serial.print('\n');
-    #endif // MOTOR_CONTROL_PRINTOUT
-    #endif // !SERIAL_MASTER_INIT_TALK_ONLY
-
-}
-
-
-void set_m1_target(long position_mm, double speed_mm_per_sec) {
-    //  m1_starting_encoder
-    //	m1_ending_encoder 
-    //  m1_starting_time
-    //  m1_speed_step_per_millis
-    m1_starting_encoder = m1_encoder;
-    m1_ending_encoder = position_mm * step_per_mm;
-
-    if (m1_ending_encoder == m1_starting_encoder) return; // Exit the function if the target is the current position_mm.
-    if (m1_ending_encoder > m1_starting_encoder) {
-        m1_set_direction(EXTEND);
-        m1_speed_step_per_millis = abs(speed_mm_per_sec) * step_per_mm / 1000.0;
-    } else {
-        m1_set_direction(RETRACT);
-        m1_speed_step_per_millis = -abs(speed_mm_per_sec) * step_per_mm / 1000.0;
-    }
-    m1_starting_time = millis();
-    //m1_set_power(255); //Set Initial Power (this also raises the Running flag)
-    m1_start_full_power();
-}
-
-void run_serial_handle() {
-    static boolean escaping_state = false;
-
-    if (Serial.available() > 0) {
-        profile_start();
-        // read the incoming byte:
-        incomingByte = Serial.read();
-
-        // Parse Escaping Character
-        if (incomingByte == '(') {
-            escaping_state = true;
-        }
-
-        // Parse Unescaping Character
-        if (incomingByte == ')' || incomingByte == '\n' || incomingByte == '\r') {
-            escaping_state = false;
-        }
-
-        // Continue to read all character during escaping state //This reduce the time to precess unrelated comment message.
-        if (escaping_state) {
-            while (Serial.available() > 0) {
-                // read the incoming byte:
-                incomingByte = Serial.read();
-                if (incomingByte == ')' || incomingByte == '\n' || incomingByte == '\r') {
-                    escaping_state = false;
-                }
-            }
-            return;
-        }
-
-        // Parse Input
-        if (incomingByte == 'h') {
-            Serial.println("Command Home : Home by extending");
-            motors_home();
-        }
-        // Parse Input
-        if (incomingByte == '?') {
-            Serial.println(get_current_status_string());
-        }
-        // Parse Input
-        if (incomingByte == '+') {
-            Serial.println("Command + : Increment 1");
-            //set_m1_target(105, axis_speed);
-            m1_set_direction(EXTEND);
-            m1_start_full_power();
-            delay(200);
-            m1_stop();
-        }
-        // Parse Input
-        if (incomingByte == '-') {
-            Serial.println("Command - : Decrement 1");
-            /*set_m1_target(2, axis_speed);*/
-            m1_set_direction(RETRACT);
-            m1_start_full_power();
-            delay(200);
-            m1_stop();
-        }
-        // Parse Input
-        if (incomingByte == 's') {
-            Serial.println("Command s : Immediate Stop");
-            m1_stop();
-            //m2_stop();
-        }
-
-        //if (incomingByte == 'e') {
-        //    //Extend the longer arm one mm and the shorter arm to match 
-        //    double longer_arm_position = max(m1_encoder, m2_encoder) / step_per_mm;
-        //    double new_position = longer_arm_position + 0.5;
-        //    Serial.print(F("Command e - Syncro Extend 0.5mm NewPos:"));
-        //    Serial.println(new_position);
-        //    set_m1_target(new_position, axis_speed);
-        //    set_m2_target(new_position, axis_speed);
-        //}
-        //if (incomingByte == 'r') {
-        //    //Extend the longer arm one mm and the shorter arm to match 
-        //    double longer_arm_position = min(m1_encoder, m2_encoder) / step_per_mm;
-        //    double new_position = longer_arm_position - 0.5;
-        //    Serial.print(F("Command r - Syncro Retract 0.5mm NewPos:"));
-        //    Serial.println(new_position);
-        //    set_m1_target(new_position, axis_speed);
-        //    set_m2_target(new_position, axis_speed);
-        //}
-
-        // Settings Commands
-        if (incomingByte == '$') {
-            while (!Serial.available());
-            byte commandByte = Serial.read();
-            // $0 Set Axis Speed
-            if (commandByte == '0') {
-                delayMicroseconds(10);
-                double speed = (double)Serial.parseFloat();
-                set_axis_speed(speed);
-                Serial.print(F("Setting 0 - Axis Speed = "));
-                Serial.println(speed);
-            }
-            // $1 Set m1 default home position
-            if (commandByte == '1') {
-                delayMicroseconds(10);
-                double position = (double)Serial.parseFloat();
-                set_m1_default_home_position(position);
-                Serial.print(F("Setting 1 - m1_default_home_position = "));
-                Serial.println(m1_default_home_position);
-            }
-            // $2 Set m2 default home position
-            if (commandByte == '2') {
-                delayMicroseconds(10);
-                double position = (double)Serial.parseFloat();
-                set_m2_default_home_position(position);
-                Serial.print(F("Setting 2 - m2_default_home_position = "));
-                Serial.println(m2_default_home_position);
-            }
-        }
-
-        //// Test Commands
-        //if (incomingByte == 't') {
-        //    while (!Serial.available());
-        //    byte commandByte = Serial.read();
-        //    if (commandByte == '0') {
-        //        motor_full_retract_test(M1);
-        //        motor_full_retract_test(M2);
-        //    }
-        //    if (commandByte == '1') {
-        //        motor_full_retract_test(M1);
-        //    }
-        //    if (commandByte == '2') {
-        //        motor_full_retract_test(M2);
-        //    }
-        //}
-        // TODO: Still need to implement a char by char reader which can return me a whole line.
-        profile_end("Serial Handle micros() : ");
-    }
 }
 
 char* get_current_status_string() {
@@ -408,4 +194,41 @@ byte get_status_code() {
     //bitWrite(code, 3, (m2_running));
     bitWrite(code, 4, (axis_homed));
     return code;
+}
+
+void run_command_handle(char *command) {
+    // Parse Input
+    if (*command == 'h') {
+        Serial.println("Command Home : Home by extending");
+        //motors_home();
+    }
+    // Parse Input
+    if (*command == '?') {
+        Serial.println(get_current_status_string());
+    }
+    // Parse Input
+    if (*command == '+') {
+        Serial.println("Command + : Increment 1");
+        //set_m1_target(105, axis_speed);
+        //m1_set_direction(EXTEND);
+        //m1_start_full_power();
+        //delay(200);
+        //m1_stop();
+    }
+    // Parse Input
+    if (*command == '-') {
+        Serial.println("Command - : Decrement 1");
+        /*set_m1_target(2, axis_speed);*/
+        //m1_set_direction(RETRACT);
+        //m1_start_full_power();
+        //delay(200);
+        //m1_stop();
+    }
+    // Parse Input
+    if (*command == 's') {
+        //Serial.println("Command s : Immediate Stop");
+        //MotorController1.stop();
+        //m2_stop();
+    }
+
 }

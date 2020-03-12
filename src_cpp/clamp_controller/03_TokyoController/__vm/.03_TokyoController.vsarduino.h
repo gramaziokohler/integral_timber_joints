@@ -79,6 +79,5 @@ typedef void *__builtin_va_list;
 #define pgm_read_ptr(address_short)   short()
 
 #include "03_TokyoController.ino"
-#include "..\BasicFunctions.ino"
 #endif
 #endif
