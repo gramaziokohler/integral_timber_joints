@@ -24,15 +24,14 @@ enum Direction {
 
 class MotorController {
     public:
-    MotorController(DCMotor* motor, Encoder* encoder, double kp, double ki, double kd, double accelStepsPerSecSq, double run_interval_millis, boolean encoder_direction = true, boolean controller_direction = true) {
-        // Set for once variables
-        _motor = motor;
-        _encoder = encoder;
-        _controller_run_interval_millis = run_interval_millis;
-        _encoder_direction = encoder_direction;
-        _controller_direction = controller_direction;
-        _accelStepsPerSecSq = accelStepsPerSecSq;
-
+    MotorController(DCMotor* motor, Encoder* encoder, double kp, double ki, double kd, double accelStepsPerSecSq, double run_interval_millis, boolean encoder_direction = true, boolean controller_direction = true) :
+        _accelStepsPerSecSq(accelStepsPerSecSq),
+        _controller_run_interval_millis(run_interval_millis),
+        _encoder_direction(encoder_direction),
+        _controller_direction(controller_direction),
+        _motor(motor),
+        _encoder(encoder)
+    {
         // Create PID controller
         _pid = new PID(&_current_position_step, &_motorSpeedPercentage, &_current_target_position_step, kp, ki, kd, DIRECT);
         _pid->SetSampleTime(_controller_run_interval_millis);
@@ -52,6 +51,7 @@ class MotorController {
         _home_position_step = home_position_step;
     }
 
+    // Create a new motion profile according to target position.
     boolean moveToPosition(const double target_position_step, const double velocity) {
         //Sainity check to actually do move
         _movement_target_position_step = target_position_step;
@@ -70,12 +70,13 @@ class MotorController {
 
         //Start Motion Profile and Run motor
         startProfile();
-        return run();
+        return true;
     }
 
+    // Create a new motion profile for homing.
     boolean home(const boolean homeDirectionToNegative, const double homingVelocity) {
         // Sainity check to make sure homing pin is set.
-        if (_homingSwitchPin == 0) return;
+        if (_homingSwitchPin == 0) return false;
 
         // If the homing switch is pressed (HIGH). Move it until it is not pressed.
         // TODO
@@ -93,9 +94,8 @@ class MotorController {
         } else {
             _movement_target_position_step = _current_position_step + 10000;
         }
-        
 
-        // Create a new Trapezodial profile and store it
+        // Create a new Motion profile and store it
         delete _profile;
         _profile = new LinearMotionProfile(_current_position_step, _movement_target_position_step, homingVelocity);
 
@@ -103,7 +103,8 @@ class MotorController {
         _homing = true;
         _homed = false;
         startProfile();
-        return run();
+        return true;
+        //return run();
     }
 
     // Run returns True if computation is performed
@@ -122,9 +123,9 @@ class MotorController {
         // -- -- Check run interval & time -- --
 
         // Read encoder
-        _current_position_step = _encoder->read();
+        _current_position_step = getEncoderPos();
         // XOR logic below (_encoder_direction != _controller_direction)
-        if (_encoder_direction != _controller_direction) _current_position_step = -_current_position_step;      //Reversed
+        //if (_encoder_direction != _controller_direction) _current_position_step = -_current_position_step;      //Reversed
         
         // Read motion profile
         _current_target_position_step = _profile->getCurrentStep();
@@ -143,40 +144,6 @@ class MotorController {
             }
         }
         return true;
-    }
-
-    // Routine to check if a stopping conditions is met. Called by run()
-    boolean stoppingConditionsMet() {
-
-        // Stopping condition when target is reached
-        if (_currentDirection == EXTEND && _current_position_step >= _movement_target_position_step) {
-            _target_reached = true;
-            return true; //Break out of condition check.
-        }
-        if (_currentDirection == RETRACT && _current_position_step <= _movement_target_position_step) {
-            _target_reached = true;
-            return true; //Break out of condition check.
-        }
-
-        // Stopping condition when error is larger than threshold
-        _current_error = _current_position_step - _current_target_position_step;
-        if (_current_error < -errorToStop || _current_error > errorToStop) {
-            _target_reached = false;
-            return true; //Break out of condition check.
-        }
-
-        // Extra stopping condition if the current motion is a homing cycle
-        if (_homing) {
-            // Stop homing if switch is pressed
-            if (digitalRead(_homingSwitchPin) == _homingSwitchTriggeredState) {
-                _encoder->write(_home_position_step);
-                _current_position_step = _home_position_step;
-                _target_reached = true;
-                _homed = true;
-                return true; //Break out of condition check.
-            }
-        }
-        return false; // Return false if no conditions are met.
     }
 
     // Can be called by emergency stop command.
@@ -226,17 +193,63 @@ class MotorController {
         _pid->SetMode(1);
     }
 
+    int32_t getEncoderPos() {
+        // XOR logic below (_encoder_direction != _controller_direction)
+        if (_encoder_direction != _controller_direction) return -_encoder->read();
+        else return _encoder->read();
+    }
+
+    void setEncoderPos(int32_t position) {
+        // XOR logic below (_encoder_direction != _controller_direction)
+        if (_encoder_direction != _controller_direction) _encoder->write(-position);
+        else  _encoder->write(position);
+    }
+
+    // Routine to check if a stopping conditions is met. Called by run()
+    boolean stoppingConditionsMet() {
+
+        // Stopping condition when target is reached
+        if (_currentDirection == EXTEND && _current_position_step >= _movement_target_position_step) {
+            _target_reached = true;
+            return true; //Break out of condition check.
+        }
+        if (_currentDirection == RETRACT && _current_position_step <= _movement_target_position_step) {
+            _target_reached = true;
+            return true; //Break out of condition check.
+        }
+
+        // Stopping condition when error is larger than threshold
+        _current_error = _current_position_step - _current_target_position_step;
+        if (_current_error < -errorToStop || _current_error > errorToStop) {
+            _target_reached = false;
+            return true; //Break out of condition check.
+        }
+
+        // Extra stopping condition if the current motion is a homing cycle
+        if (_homing) {
+            // Stop homing if switch is pressed
+            if (digitalRead(_homingSwitchPin) == _homingSwitchTriggeredState) {
+                setEncoderPos(_home_position_step);
+                _current_position_step = _home_position_step;
+                _target_reached = true;
+                _homed = true;
+                return true; //Break out of condition check.
+            }
+        }
+        return false; // Return false if no conditions are met.
+    }
+
+    DCMotor * const _motor;
+    Encoder * const _encoder;
     MotionProfile* _profile;
-    DCMotor* _motor;
-    Encoder* _encoder;
     PID* _pid;
 
     // Settiing Variables
-    double _accelStepsPerSecSq = 1000;
-    const double errorToStop = 50;   //TODO: Needs fine tune
-    int _controller_run_interval_millis = 5;  //TODO: Needs fine tune
-    boolean _encoder_direction = true;        // In the case where Encoder direction do not agree with motor direction.
-    boolean _controller_direction = true;     // In the case where the axis direction needs to be reversed.
+    const double errorToStop = 50;                  //TODO: Needs fine tune
+    const double _accelStepsPerSecSq = 1000;
+    const int _controller_run_interval_millis = 5;  //TODO: Needs fine tune
+    const boolean _encoder_direction = true;        // In the case where Encoder direction do not agree with motor direction.
+    const boolean _controller_direction = true;     // In the case where the axis direction needs to be reversed.
     uint8_t _homingSwitchPin = 0;
     uint8_t _homingSwitchTriggeredState = HIGH;
     double _home_position_step = 0;
@@ -254,9 +267,7 @@ class MotorController {
     double _movement_target_position_step = 0;   // The goal position set by previous moveTo command.
     double _motorSpeedPercentage = 0.0; // Instantous power ouput for motor // Updated by run() from _pid
     double _current_error = 0;          // Instantous positional error      // Updated by run()
-
     
 };
-
 
 #endif
