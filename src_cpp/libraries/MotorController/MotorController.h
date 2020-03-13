@@ -24,9 +24,10 @@ enum Direction {
 
 class MotorController {
     public:
-    MotorController(DCMotor* motor, Encoder* encoder, double kp, double ki, double kd, double accelStepsPerSecSq, double run_interval_millis, boolean encoder_direction = true, boolean controller_direction = true) :
+    MotorController(DCMotor* motor, Encoder* encoder, double kp, double ki, double kd, double accelStepsPerSecSq, double run_interval_millis, double errorToStop = 50, boolean encoder_direction = true, boolean controller_direction = true) :
         _accelStepsPerSecSq(accelStepsPerSecSq),
         _controller_run_interval_millis(run_interval_millis),
+        _errorToStop(errorToStop),
         _encoder_direction(encoder_direction),
         _controller_direction(controller_direction),
         _motor(motor),
@@ -220,7 +221,7 @@ class MotorController {
 
         // Stopping condition when error is larger than threshold
         _current_error = _current_position_step - _current_target_position_step;
-        if (_current_error < -errorToStop || _current_error > errorToStop) {
+        if (_current_error < -_errorToStop || _current_error > _errorToStop) {
             _target_reached = false;
             return true; //Break out of condition check.
         }
@@ -245,7 +246,7 @@ class MotorController {
     PID* _pid;
 
     // Settiing Variables
-    const double errorToStop = 50;                  //TODO: Needs fine tune
+    const double _errorToStop = 50;                  //TODO: Needs fine tune
     const double _accelStepsPerSecSq = 1000;
     const int _controller_run_interval_millis = 5;  //TODO: Needs fine tune
     const boolean _encoder_direction = true;        // In the case where Encoder direction do not agree with motor direction.
