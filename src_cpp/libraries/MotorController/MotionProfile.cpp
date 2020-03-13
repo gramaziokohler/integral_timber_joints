@@ -62,7 +62,7 @@ LinearMotionProfile::LinearMotionProfile( long startPos, long endPos, double vel
 
     //Fix sign of velocity
     if (_endPos > _startPos) _velocity_StepPerSec = absoluteVelocity;
-    else  _velocity_StepPerSec = absoluteVelocity;
+    else  _velocity_StepPerSec = -absoluteVelocity;
 
     //Compute Interval for checking if the move is over.
     _totalDurationMicros = (_endPos - _startPos) / _velocity_StepPerSec * 1.0e6;
