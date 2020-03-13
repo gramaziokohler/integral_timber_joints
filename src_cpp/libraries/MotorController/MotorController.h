@@ -44,6 +44,10 @@ class MotorController {
         _pid->SetOutputLimits(-1.0 * abs(maxValue), abs(maxValue));
     }
 
+    // Sets the velocity for movements that uses the moveToPosition(const double target_position_step) witout velocity
+    void setDefaultVelocity(const double defaultVelocityStepsPerSec) {
+        _defaultVelocityStepsPerSec = defaultVelocityStepsPerSec;
+    }
     // Sets the paramter for homing. Optional if axis is not home-able.
     void setHomingParam(const uint8_t homingSwitchPin, const uint8_t homingSwitchTriggeredState, const double home_position_step) {
         _homingSwitchPin = homingSwitchPin;
@@ -52,9 +56,16 @@ class MotorController {
         _home_position_step = home_position_step;
     }
 
+    // Create a new motion profile according to target position. (Using default velocity)
+    boolean moveToPosition(const double target_position_step) {
+        return moveToPosition(target_position_step, _defaultVelocityStepsPerSec);
+    }
+
     // Create a new motion profile according to target position.
     boolean moveToPosition(const double target_position_step, const double velocity) {
         //Sainity check to actually do move
+        _current_position_step = getEncoderPos();
+
         _movement_target_position_step = target_position_step;
         if (_current_position_step == _movement_target_position_step) return false;
 
@@ -91,9 +102,9 @@ class MotorController {
 
         // Target Position
         if (homeDirectionToNegative) {
-            _movement_target_position_step = _current_position_step - 10000;
+            _movement_target_position_step = _current_position_step - 100000.0;
         } else {
-            _movement_target_position_step = _current_position_step + 10000;
+            _movement_target_position_step = _current_position_step + 100000.0;
         }
 
         // Create a new Motion profile and store it
@@ -151,9 +162,9 @@ class MotorController {
     void stop() {
         _running_motor = false;
         _homing = false;
-        _motor->stop(); // Cut Motor Power In case PID did not reach zero
-        _pid->SetMode(0); //Inform PID it had been stopped.
-
+        _motorSpeedPercentage = 0;  // Not sure if I have to do this to reset the value of the PID
+        _motor->stop();             // Cut Motor Power In case PID did not reach zero
+        _pid->SetMode(0);           // Inform PID it had been stopped.
     }
 
     boolean isTargetReached() {
@@ -166,6 +177,10 @@ class MotorController {
 
     boolean isHomed() {
         return _homed;
+    }
+
+    boolean isDirectionExtend() {
+        return _currentDirection == EXTEND;
     }
 
     double currentPosition() {
@@ -248,6 +263,7 @@ class MotorController {
     // Settiing Variables
     const double _errorToStop = 50;                  //TODO: Needs fine tune
     const double _accelStepsPerSecSq = 1000;
+    double _defaultVelocityStepsPerSec = 500;
     const int _controller_run_interval_millis = 5;  //TODO: Needs fine tune
     const boolean _encoder_direction = true;        // In the case where Encoder direction do not agree with motor direction.
     const boolean _controller_direction = true;     // In the case where the axis direction needs to be reversed.

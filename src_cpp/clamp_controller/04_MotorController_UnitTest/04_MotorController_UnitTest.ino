@@ -31,7 +31,7 @@ const uint8_t battery_monitor_pin = A7;
 // Initialize motion control objects
 DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 Encoder Encoder1(m1_encoder1_pin, m1_encoder2_pin);
-MotorController MotorController1(&Motor1, &Encoder1, m1_kp, m1_ki, m1_kd, m1_accel, 10, false, false);
+MotorController MotorController1(&Motor1, &Encoder1, m1_kp, m1_ki, m1_kd, m1_accel, 10, 50, false, true);
 
 
 // the setup function runs once when you press reset or power the board
@@ -47,12 +47,12 @@ void setup() {
 
 void loop() {
 
-    MotorController1.moveToPosition(5000, 1000);
+    MotorController1.moveToPosition(4000, 1000);
     block_run_motor_with_report();
     Serial.println(F("(Target 1 Reached)"));
     delay(500);
 
-    MotorController1.moveToPosition(0, 3000);
+    MotorController1.moveToPosition(-1000, 3000);
     block_run_motor_with_report();
     Serial.println(F("(Target 2 Reached)"));
 

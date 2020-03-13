@@ -24,7 +24,7 @@ const uint8_t m1_encoder2_pin = 3;             // Motor encoder channel C2
 
 //Pins for Homing Switch
 const uint8_t m1_home_pin = A5;
-const double m1_home_position_step = -100;
+const double m1_home_position_step = -1000;
 
 //Pins for Battery Monitor
 const uint8_t battery_monitor_pin = A7;
@@ -32,7 +32,7 @@ const uint8_t battery_monitor_pin = A7;
 // Initialize motion control objects
 DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 Encoder Encoder1(m1_encoder1_pin, m1_encoder2_pin);
-MotorController MotorController1(&Motor1, &Encoder1, m1_kp, m1_ki, m1_kd, m1_accel, 10, false, true);
+MotorController MotorController1(&Motor1, &Encoder1, m1_kp, m1_ki, m1_kd, m1_accel, 10, 50, false, false);
 
 
 // the setup function runs once when you press reset or power the board
@@ -47,7 +47,7 @@ void setup() {
     // Setup MotorController1 home paramters.
     MotorController1.setHomingParam(m1_home_pin, HIGH, m1_home_position_step);
 
-    // Homing Test
+    // Homing 
     MotorController1.home(true, 500);
 
     // Homing is also performed with run() so it is responsive
@@ -55,16 +55,27 @@ void setup() {
 
     // Report if successful
     if (MotorController1.isHomed()) {
+
         Serial.println(F("(Homing is successful)"));
+
+        // Move back to zero to clear switch
+        MotorController1.moveToPosition(0, 500);
+
+        // run until motion is finished
+        block_run_motor_with_report();
+
+        Serial.println(F("(Moved back to zero)"));
+
     } else {
         Serial.println(F("(Homing is not successful)"));
-
     }
+
+
 }
 
 void loop() {
 
-
+    MotorController1.run();
 }
 
 void block_run_motor_with_report() {

@@ -26,13 +26,11 @@
 
 #include <EEPROM.h>         // Arduino default library for accessing EEPROM
 
-#include "MotorController.h"    //New Class in Development
 #include <DCMotor.h>        // ITJ library
 #include <Encoder.h>        // Encoder library from PJRC.COM, LLC - Paul Stoffregen http://www.pjrc.com/teensy/td_libs_Encoder.html
+#include <MotorController.h>    //New Class in Development
 
-#include <PID_v1.h>         // Arduino PID Library - Version 1.2.1 by Brett Beauregard https://github.com/br3ttb/Arduino-PID-Library/
-#include <MotionProfile.h>  // ITJ library
-
+#include "BufferedSerial.h"
 
 //MOTOR_CONTROL_PRINTOUT (if defined) will print motor control error during motor movements.
 // #define MOTOR_CONTROL_PRINTOUT
@@ -44,34 +42,33 @@
 //#define SERIAL_MASTER_INIT_TALK_ONLY
 
 
-//Settings for motion system
-double m1_default_home_position = 110.0; //TODO: Real code should use value read fom EEPROM
-double m2_default_home_position = 108.0;
-
-const double step_per_mm = 82.28571428571428571428; //40mm -> 40.9
-const double encoder_error_before_stop = 15;
 
 //Pins for Motor Driver M1
 const uint8_t m1_driver_ena_pin = 9;             // the pin the motor driver ENA1 is attached to (PWM Pin)
 const uint8_t m1_driver_in1_pin = 8;             // the pin the motor driver IN1 is attached to
 const uint8_t m1_driver_in2_pin = 7;             // the pin the motor driver IN2 is attached to
 
-const double m1_kp = 0.040;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile 
-const double m1_ki = 0.200;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile 
-const double m1_kd = 0.0002;                // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile 
-const double m1_accel = 3000;               // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile 
+const double m1_kp = 0.005;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kp = 0.040
+const double m1_ki = 0.200;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_ki = 0.200
+const double m1_kd = 0.0002;                // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kd = 0.0002
+const double m1_accel = 3000;               // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_accel = 3000
 
 //Pins for Motor Driver M2
-//const uint8_t m2_driver_ena_pin = 10;          // the pin the motor driver ENA2 is attached to (PWM Pin)
-//const uint8_t m2_driver_in1_pin = 12;          // the pin the motor driver IN3 is attached to
-//const uint8_t m2_driver_in2_pin = 11;          // the pin the motor driver IN4 is attached to
+const uint8_t m2_driver_ena_pin = 10;          // Reserved Pin
+const uint8_t m2_driver_in1_pin = 12;          // Reserved Pin
+const uint8_t m2_driver_in2_pin = 11;          // Reserved Pin
 
 //Pins for Motor feedback M1 / M2
 const uint8_t m1_encoder1_pin = 2;             // Motor encoder channel C1 (typically the Interrupt pin)
 const uint8_t m1_encoder2_pin = 3;             // Motor encoder channel C2
+const uint8_t m2_encoder1_pin = 4;             // Reserved Pin
+const uint8_t m2_encoder2_pin = 5;             // Reserved Pin
 
 //Pins for Homing Switch
-const uint8_t m1_home_pin = A6;
+const uint8_t m1_home_pin = A5;                 // (Never use A6 A7)
+const uint8_t m2_home_pin = A4;                 // Reserved Pin
+
+const double m1_home_position_step = -1000;
 
 //Pins for Battery Monitor
 const uint8_t battery_monitor_pin = A7;
@@ -81,22 +78,7 @@ const uint8_t battery_monitor_pin = A7;
 // Initialize motion control objects
 DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 Encoder Encoder1(m1_encoder1_pin, m1_encoder2_pin);
-MotorController MotorController1(&Motor1, &Encoder1, m1_kp, m1_ki, m1_kd, m1_accel);
-
-// Variables for Motion Control
-Direction m1_direction = EXTEND; // true = Forward
-Direction m2_direction = EXTEND; // true = Forward
-volatile long m1_encoder = 0;
-volatile long m2_encoder = 0;
-double axis_speed = 2.0;
-boolean axis_homed = false;
-
-//State variable for Motion Control
-boolean m1_running = false;
-long m1_starting_time = 0;
-long m1_starting_encoder = 0;
-long m1_ending_encoder = 0;
-double m1_speed_step_per_millis = 0.0; //mm per millis
+MotorController MotorController1(&Motor1, &Encoder1, m1_kp, m1_ki, m1_kd, m1_accel, 10, 50, false, false);
 
 //Variables for serial communication
 byte incomingByte;
@@ -109,13 +91,18 @@ int batt_value;
 unsigned long profile_start_micros = 0;
 unsigned long profile_end_micros = 0;
 
+//
+
+BufferedSerial bufferedSerial(1);
 
 // the setup function runs once when you press reset or power the board
 void setup() {
 
-    //Setup Serial Port
-    Serial.begin(115200);
-    Serial.println(F("(Motor controller startup)"));
+    // Initialize Serial
+    bufferedSerial.serialInit();
+
+    // Initial Homing Parameters
+    MotorController1.setHomingParam(m1_home_pin, HIGH, m1_home_position_step);
 
     //Initialize battery monitor pin
     pinMode(battery_monitor_pin, INPUT);
@@ -127,108 +114,106 @@ void loop() {
     //This require all the subroutines to execute in relatively short time.
     //Long subroutine such as Serial prints should be used with cuation.
 
-
-    // Handle serial input and set flags (TODO, Actually ste flags)
-    // run_serial_handle();
-
+    
     // Run motor control
-    //run_motor_1();
+    if (MotorController1.run()) {
+        Serial.print(F("CurPos: "));
+        Serial.print((long) MotorController1.currentPosition());
+        Serial.print(F(" Error: "));
+        Serial.print((long)MotorController1.currentTarget() - (long)MotorController1.currentPosition());
+        Serial.print(F(" PWM: "));
+        Serial.println(MotorController1.currentMotorPowerPercentage());
+    }
 
     // Run battery report
     run_batt_monitor();
 
+    // Handle serial command input
+    if (bufferedSerial.available()) {
+        const char * command = bufferedSerial.read();
+        Serial.println(command);
+        run_command_handle(command);
+    }
+
+ 
 }
 
+// Serial and command parsing
+
+void run_command_handle(const char * command) {
+    
+    if (*command == 'h') {
+        Serial.println("Command Home : Homing");
+        MotorController1.home(true, 500);
+    }
+    
+    if (*command == '?') {
+        Serial.println(get_current_status_string());
+    }
+
+    if (*command == 'v') {
+        double velocity = atof(command + 1);
+        Serial.print("Set Velocity: ");
+        Serial.println(velocity);
+        MotorController1.setDefaultVelocity(velocity);
+    }
+
+    if (*command == 'g') {
+        long target_position_step = atol(command + 1);
+        Serial.print("Goto Position:" );
+        Serial.println(target_position_step);
+        MotorController1.moveToPosition(target_position_step);
+    }
+
+    //if (*command == '+') {
+    //    long target_position_step = MotorController1.currentPosition() + atol(command + 1);
+    //    Serial.print("Increment Position:");
+    //    Serial.println(target_position_step);
+    //    MotorController1.moveToPosition(target_position_step);
+    //}
+
+    //if (*command == '-') {
+    //    long target_position_step = MotorController1.currentPosition() - atol(command + 1);
+    //    Serial.print("Decrement Position:");
+    //    Serial.println(target_position_step);
+    //    MotorController1.moveToPosition(target_position_step);
+    //}
+
+    if (*command == 's') {
+        Serial.println(F("Command S : Stop Now"));
+        MotorController1.stop();
+    }
+
+}
+
+
+// Battery Monitor - To be separated into its own class and file.
 void run_batt_monitor() {
     {
-        
         const unsigned long MONITOR_PEIROD_MILLIS = 500;
-        static unsigned long next_report_time = 0;
-        if (millis() > next_report_time) {
+        static unsigned long next_run_time = 0;
+        if (millis() > next_run_time) {
             //profile_start();
-            next_report_time = millis() + MONITOR_PEIROD_MILLIS;
+            next_run_time = millis() + MONITOR_PEIROD_MILLIS;
             batt_value = analogRead(battery_monitor_pin);
             //profile_end("Batt Monitor Time Taken : ");
         }
 
     }
-    #ifndef SERIAL_MASTER_INIT_TALK_ONLY
-    {
-        const unsigned long REOPRTING_PEIROD_MILLIS = 500;
-        static unsigned long next_report_time = 0;
-        if (millis() > next_report_time) {
-            next_report_time = millis() + REOPRTING_PEIROD_MILLIS;
-            Serial.print("Batt Level:");
-            Serial.println(batt_value);
-        }
-    }
-    #endif // !SERIAL_MASTER_INIT_TALK_ONLY
 }
 
+// Status Reporting
 char* get_current_status_string() {
     unsigned int i = 0; // This variable keep count of the output string.
-    double step_per_mm_div100 = step_per_mm / 100;
-    //m1 and m2 position
-    i += snprintf(status_string + i, 60 - i, "%i,%i,%i,%i", (long)(m1_encoder / step_per_mm_div100), (long)(m2_encoder / step_per_mm_div100), get_status_code(), batt_value);
-    return status_string;
-}
-
-char* get_current_status_string_old() {
-    unsigned int i = 0; // This variable keep count of the output string.
-    double step_per_mm_div100 = step_per_mm / 100;
-    //m1 and m2 position
-    i += snprintf(status_string + i, 60 - i, "%i,", (long)(m1_encoder / step_per_mm_div100));
-    i += snprintf(status_string + i, 60 - i, "%i,", (long)(m2_encoder / step_per_mm_div100));
-    //status code
-    i += snprintf(status_string + i, 60 - i, "%i,", get_status_code());
-    //battery monitor value
-    i += snprintf(status_string + i, 60 - i, "%i", batt_value);
+    i += snprintf(status_string + i, 60 - i, "%ld , %u , %i", ((long)MotorController1.currentPosition()), get_status_code(), batt_value);
     return status_string;
 }
 
 byte get_status_code() {
     byte code = 0;
-    bitWrite(code, 0, (m1_direction == EXTEND));
-    //bitWrite(code, 1, (m2_direction == EXTEND));
-    bitWrite(code, 2, (m1_running));
-    //bitWrite(code, 3, (m2_running));
-    bitWrite(code, 4, (axis_homed));
+    bitWrite(code, 0, (MotorController1.isDirectionExtend()));
+    bitWrite(code, 2, (MotorController1.isMotorRunning()));
+    bitWrite(code, 4, MotorController1.isHomed());
     return code;
 }
 
-void run_command_handle(char *command) {
-    // Parse Input
-    if (*command == 'h') {
-        Serial.println("Command Home : Home by extending");
-        //motors_home();
-    }
-    // Parse Input
-    if (*command == '?') {
-        Serial.println(get_current_status_string());
-    }
-    // Parse Input
-    if (*command == '+') {
-        Serial.println("Command + : Increment 1");
-        //set_m1_target(105, axis_speed);
-        //m1_set_direction(EXTEND);
-        //m1_start_full_power();
-        //delay(200);
-        //m1_stop();
-    }
-    // Parse Input
-    if (*command == '-') {
-        Serial.println("Command - : Decrement 1");
-        /*set_m1_target(2, axis_speed);*/
-        //m1_set_direction(RETRACT);
-        //m1_start_full_power();
-        //delay(200);
-        //m1_stop();
-    }
-    // Parse Input
-    if (*command == 's') {
-        //Serial.println("Command s : Immediate Stop");
-        //MotorController1.stop();
-        //m2_stop();
-    }
-
-}
