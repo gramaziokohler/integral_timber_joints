@@ -7,6 +7,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "01_SerialCommandController"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "02_LoadCellInterface", "02_LoadCellInterface\02_LoadCellInterface.vcxproj", "{85A43408-70BF-4C0D-91B0-97D70654599D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "03_TokyoController", "03_TokyoController\03_TokyoController.vcxproj", "{D1BBF7A3-CC5F-48A8-B6FE-7369E921C4F4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "04_MotorController_UnitTest", "04_MotorController_UnitTest\04_MotorController_UnitTest.vcxproj", "{5AD7DDE6-3BC7-47FB-80D6-2DB17863A063}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -21,6 +25,14 @@ Global
 		{85A43408-70BF-4C0D-91B0-97D70654599D}.Debug|x86.Build.0 = Debug|Win32
 		{85A43408-70BF-4C0D-91B0-97D70654599D}.Release|x86.ActiveCfg = Release|Win32
 		{85A43408-70BF-4C0D-91B0-97D70654599D}.Release|x86.Build.0 = Release|Win32
+		{D1BBF7A3-CC5F-48A8-B6FE-7369E921C4F4}.Debug|x86.ActiveCfg = Debug|Win32
+		{D1BBF7A3-CC5F-48A8-B6FE-7369E921C4F4}.Debug|x86.Build.0 = Debug|Win32
+		{D1BBF7A3-CC5F-48A8-B6FE-7369E921C4F4}.Release|x86.ActiveCfg = Release|Win32
+		{D1BBF7A3-CC5F-48A8-B6FE-7369E921C4F4}.Release|x86.Build.0 = Release|Win32
+		{5AD7DDE6-3BC7-47FB-80D6-2DB17863A063}.Debug|x86.ActiveCfg = Debug|Win32
+		{5AD7DDE6-3BC7-47FB-80D6-2DB17863A063}.Debug|x86.Build.0 = Debug|Win32
+		{5AD7DDE6-3BC7-47FB-80D6-2DB17863A063}.Release|x86.ActiveCfg = Release|Win32
+		{5AD7DDE6-3BC7-47FB-80D6-2DB17863A063}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

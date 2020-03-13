@@ -1,3 +1,4 @@
+#pragma once
 // DCMotor.h
 
 #ifndef _DCMOTOR_h
