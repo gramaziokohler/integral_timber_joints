@@ -36,12 +36,12 @@
 //Compile Option
 
 //#define IncludeRadioQualityInSerialComment //If defined, received radio signal rssi and lqi will be included in the serial message as a bracket message after the real message.
-//#define SerialComment // If defined, Radio will print debug message to Serial for debug purpose.
+#define SerialComment // If defined, Radio will print debug message to Serial for debug purpose.
 
 //Defines default Radio (network) settings - This is changable by user using Radio or Serial Commands
-uint8_t this_radio_address = 89;
-byte channelNumber = 19;
-byte frequency = CFREQ_915; // CFREQ_868 CFREQ_915 CFREQ_433 CFREQ_918
+uint8_t this_radio_address = '0';
+byte channelNumber = 0;
+byte frequency = CFREQ_433; // CFREQ_868 CFREQ_915 CFREQ_433 CFREQ_918
 
  //Defines Radio Setting - This is not changable after compilation
 constexpr byte syncWord[2] = { 01, 27 };
