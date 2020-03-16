@@ -18,6 +18,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test00_ACK", "serial_radio_
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "reliable_messenger", "libraries\reliable_messenger\reliable_messenger.vcxitems", "{40322EF9-E8E2-450A-A961-723DDEED5D4F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Serial2Radio_Tokyo", "serial_radio\Serial2Radio_Tokyo\Serial2Radio_Tokyo.vcxproj", "{E6A748A4-BCA4-446A-AAA0-E576D5554E00}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -36,6 +38,10 @@ Global
 		{C7D7D87E-4A54-4A85-93E4-84026053EB38}.Debug|x86.Build.0 = Debug|Win32
 		{C7D7D87E-4A54-4A85-93E4-84026053EB38}.Release|x86.ActiveCfg = Release|Win32
 		{C7D7D87E-4A54-4A85-93E4-84026053EB38}.Release|x86.Build.0 = Release|Win32
+		{E6A748A4-BCA4-446A-AAA0-E576D5554E00}.Debug|x86.ActiveCfg = Debug|Win32
+		{E6A748A4-BCA4-446A-AAA0-E576D5554E00}.Debug|x86.Build.0 = Debug|Win32
+		{E6A748A4-BCA4-446A-AAA0-E576D5554E00}.Release|x86.ActiveCfg = Release|Win32
+		{E6A748A4-BCA4-446A-AAA0-E576D5554E00}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
