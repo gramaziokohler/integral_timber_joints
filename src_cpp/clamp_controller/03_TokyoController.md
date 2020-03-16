@@ -15,16 +15,20 @@
 | Drive Power Input -ve           | PGND           | Battery Negative   |             |             |                   |
 | Power Output - Channel 1 +ve    | OUT1           | M1 +ve             | Red         |             |                   |
 | Power Output - Channel 1 -ve    | OUT2           | M1 -ve             | Wht         |             |                   |
-| Power Output - Channel 2 +ve    | OUT3           |                    |             |             |                   |
-| Power Output - Channel 2 -ve    | OUT4           |                    |             |             |                   |
+| Power Output - Channel 2 +ve    | OUT3           | (M2 +ve)           | (Red)       |             |                   |
+| Power Output - Channel 2 -ve    | OUT4           | (M2 -ve)           | (Wht)       |             |                   |
 | Digital Power Input +ve         | +5V            | Arduino 5V         | Blu / Grn   | 5V          |                   |
 | Digital Power Input -ve         | GND            | Arduino Ground     | Blk / Brn   | GND         |                   |
-| Digital Input - Channel 1 - 1   | IN1            | Arduino GPIO       | Gry         | 8           | m1_driver_in1_pin |
+| Digital Input - Channel 1 - 1   | IN1            | Arduino GPIO       | Gry         | 4           | m1_driver_in1_pin |
 | Digital Input - Channel 1 - 2   | IN2            | Arduino GPIO       | Wht         | 7           | m1_driver_in2_pin |
-| Digital Input - Channel 2 - 1   | IN3            | Arduino GPIO       | Org         |             |                   |
-| Digital Input - Channel 2 - 2   | IN4            | Arduino GPIO       | Red         |             |                   |
-| Digital Input - Channel 1 Speed | ENA (near IN1) | Arduino GPIO (PWM) | Pur         | 9           | m1_driver_ena_pin |
-| Digital Input - Channel 2 Speed | ENA (near IN3) | Arduino GPIO (PWM) | Yel         |             |                   |
+| Digital Input - Channel 2 - 1   | IN3            | Arduino GPIO       | Org         | (8)         | m2_driver_in1_pin |
+| Digital Input - Channel 2 - 2   | IN4            | Arduino GPIO       | Red         | (9)         | m2_driver_in2_pin |
+| Digital Input - Channel 1 Speed | ENA (near IN1) | Arduino GPIO (PWM) | Pur         | D5          | m1_driver_ena_pin |
+| Digital Input - Channel 2 Speed | ENA (near IN3) | Arduino GPIO (PWM) | Yel         | (D6)        | m2_driver_ena_pin |
+
+Note: Nano PWM Pins only available on ~~D3~~, D5, D6, D9, ~~D10, D11~~.  (D3 reserved for motor interrupt. D10, D11 is reserved for SPI Communication with radio)
+
+Note: Pin names in quote is reserved pin for 2 motor situation.
 
 ### GW4058-555 Worm Gearbox 1:54
 
@@ -34,10 +38,20 @@ The integrated hall sensor on the 555 DC motors have 11 steps per rev per channe
 | --------------- | ----- | ----------- | ----------- | ----------- | --------------- |
 | Encoder         | C1    | Arduino     | Yel         | 2           | m1_encoder1_pin |
 | Encoder         | C2    | Arduino     | Grn         | 3           | m1_encoder2_pin |
-| Encoder Power + | VCC   | Arduino     | Blu         | 5V          |                 |
-| Encoder Power - | GND   | Arduino     | Blk         | Gnd         |                 |
-| Motor Power     | M1    | Driver OUT1 | Red         |             |                 |
-| Motor Power     | M2    | Driver OUT2 | Wht         |             |                 |
+| Encoder Power + | VCC   | Arduino     | Blu         | 5V          | -               |
+| Encoder Power - | GND   | Arduino     | Blk         | Gnd         | -               |
+| Motor Power     | M1    | Driver OUT1 | Red         |             | -               |
+| Motor Power     | M2    | Driver OUT2 | Wht         |             | -               |
+
+In reserved "Two Motor Scenario" , the signal pins will be different. Each motor will get one real interrupt.
+
+| Pin Function      | Label | Connection | Cable Color | Arduino Pin | Name in Code    |
+| ----------------- | ----- | ---------- | ----------- | ----------- | --------------- |
+| Motor 1 - Encoder | C1    | Arduino    | Yel         | 2           | m1_encoder1_pin |
+| Motor 1 - Encoder | C2    | Arduino    | Grn         | (A4)        | m1_encoder2_pin |
+| Motor 2 - Encoder | C1    | Arduino    | Yel         | (3)         | m2_encoder1_pin |
+| Motor 2 - Encoder | C2    | Arduino    | Grn         | (A5)        | m2_encoder2_pin |
+
 
 ### Homing switch
 
@@ -47,18 +61,25 @@ Normal closed behavior used. (Broken wire can be detected)
 
 100nF capacitor is added as noise filter between NC and GND, close to the Arduino.
 
-| Pin Function | Label | Connection | Cable Color | Arduino Pin | Name in Code    |
-| ------------ | ----- | ---------- | ----------- | ----------- | --------------- |
-| COM          | 1     | Arduino    | Blk         | GND         | m1_encoder1_pin |
-| NC           | 2     | Arduino    | Red Stripe  | A6          | m1_encoder2_pin |
-| NO           | 3     |            |             |             |                 |
+| Pin Function  | Label | Connection | Cable Color | Arduino Pin | Name in Code |
+| ------------- | ----- | ---------- | ----------- | ----------- | ------------ |
+| Switch1 - COM | 1     | Arduino    | Blk         | GND         | -            |
+| Switch1 - NC  | 2     | Arduino    | Red Stripe  | A1          | m1_home_pin  |
+| Switch1 - NO  | 3     | ~~n/c~~    | ~~n/c~~     | ~~n/c~~     | -            |
+| Switch2 - COM | 1     | Arduino    | Blk         | GND         | -            |
+| Switch2 - NC  | 2     | Arduino    | Red Stripe  | (A2)        | m2_home_pin  |
+| Switch2 - NO  | 3     | ~~n/c~~    | ~~n/c~~     | ~~n/c~~     | -            |
+
+Note: Do not use A6 or A7 because it does not support INPUT_PULLUP mode.
+
+Note: Pin names in quote is reserved pin for 2 motor situation.
 
 ### Battery Sense and Regulation
 
 | Pin Function | Label | Connection | Cable Color | Arduino Pin | Name in Code        |
 | ------------ | ----- | ---------- | ----------- | ----------- | ------------------- |
-| COM          |       | Arduino    | Blk         | GND         |                     |
-| Input        |       | Battery +  | Red Stripe  |             |                     |
+| COM          |       | Arduino    | Blk         | GND         | -                   |
+| Input        |       | Battery +  | Red Stripe  |             | -                   |
 | Output       |       | Arduino    | Red Stripe  | A7          | battery_monitor_pin |
 
 Battery sense is a simple Voltage Divider
@@ -82,3 +103,70 @@ According to some questionable source:
 3.79v = 30%
 3.70v = 11%
 3.6?v = 0%
+
+### CC1101 Radio
+
+| Pin Function              | Label | Connection | Cable Color | Arduino Pin | Name in Code   |
+| ------------------------- | ----- | ---------- | ----------- | ----------- | -------------- |
+| 5V Power +                | VCC   | Arduino    |             | 5V*         |                |
+| Power Ground              | GND   | Arduino    |             | GND         |                |
+| Slave Select (SS)         | CSN   | Arduino    |             | 10          | radio_ss_pin   |
+| Master Output Slave Input | SI    | Arduino    |             | 11          | radio_mosi_pin |
+| Master Input Slave Output | SO    | Arduino    |             | 12          | radio_miso_pin |
+| Serial Clock              | SCK   | Arduino    |             | 13          | radio_sck_pin  |
+| General Output 0          | GO0   | Arduino    |             | A0          | radio_gdo0_pin |
+| General Output 2          | GO2   | ~~n/c~~    | ~~n/c~~     | ~~n/c~~     | ~~n/c~~        |
+
+Note: Nano Hardware SPI Pins: SPI: 10 (SS), 11 (MOSI), 12 (MISO), 13 (SCK). These should be followed.
+
+Note: Despite CC1101 requires VCC = 3.3V, the TELESKY modules I got cannot operate in 3.3V, it needs 5.0V. I do not have a spec sheet or the schematic, I suspect it has an onboard Voltage converter.
+
+
+
+### Status Light
+
+A blinking LED while it operates
+
+status_led_pin
+
+### **DIP Switch**
+
+For easily changeable settings. 
+
+Radio Address
+
+dip_switch_pin
+
+
+
+### Arduino Nano Wiring Overview
+
+![https://i.stack.imgur.com/W9Ril.png](https://i.stack.imgur.com/W9Ril.png)
+
+
+
+| Connection    | Arduino Pin | Name in Code (One Motor) | Name in Code (Two Motor) |
+| ------------- | ----------- | ------------------------ | ------------------------ |
+| USB           | D0          |                          |                          |
+| USB           | D1          |                          |                          |
+| Motor Encoder | D2          | m1_encoder1_pin          | m1_encoder1_pin          |
+| Motor Encoder | D3          | m1_encoder2_pin          | **m2_encoder1_pin**      |
+| Motor Driver  | D4          | m1_driver_in1_pin        | m1_driver_in1_pin        |
+| Motor Driver  | D5          | m1_driver_ena_pin        | m1_driver_ena_pin        |
+| Motor Driver  | D6          |                          | m2_driver_ena_pin        |
+| Motor Driver  | D7          | m1_driver_in2_pin        | m1_driver_in2_pin        |
+| Motor Driver  | D8          |                          | m2_driver_in1_pin        |
+| Motor Driver  | D9          |                          | m2_driver_in2_pin        |
+| Radio         | D10         | radio_ss_pin             | radio_ss_pin             |
+| Radio         | D11         | radio_mosi_pin           | radio_mosi_pin           |
+| Radio         | D12         | radio_miso_pin           | radio_miso_pin           |
+| Radio         | D13         | radio_sck_pin            | radio_sck_pin            |
+| Radio         | A0          | radio_gdo0_pin           | radio_gdo0_pin           |
+| Homing Switch | A1          | m1_home_pin              | m1_home_pin              |
+| Homing Switch | A2          |                          | **m2_home_pin**          |
+| LED           | A3          | status_led_pin           | status_led_pin           |
+| Motor Encoder | A4          |                          | **m1_encoder2_pin**      |
+| Motor Encoder | A5          |                          | **m2_encoder2_pin**      |
+| DIP Switch    | A6          | dip_switch_pin           | dip_switch_pin           |
+| Battery Sense | A7          | battery_monitor_pin      | battery_monitor_pin      |
+

@@ -44,36 +44,50 @@
 
 
 //Pins for Motor Driver M1
-const uint8_t m1_driver_ena_pin = 9;             // the pin the motor driver ENA1 is attached to (PWM Pin)
-const uint8_t m1_driver_in1_pin = 8;             // the pin the motor driver IN1 is attached to
+const uint8_t m1_driver_ena_pin = 5;             // the pin the motor driver ENA1 is attached to (PWM Pin)
+const uint8_t m1_driver_in1_pin = 4;             // the pin the motor driver IN1 is attached to
 const uint8_t m1_driver_in2_pin = 7;             // the pin the motor driver IN2 is attached to
-
-const double m1_kp = 0.005;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kp = 0.040
-const double m1_ki = 0.200;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_ki = 0.200
-const double m1_kd = 0.0002;                // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kd = 0.0002
-const double m1_accel = 3000;               // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_accel = 3000
 
 //Pins for Motor Driver M2
 const uint8_t m2_driver_ena_pin = 10;          // Reserved Pin
 const uint8_t m2_driver_in1_pin = 12;          // Reserved Pin
 const uint8_t m2_driver_in2_pin = 11;          // Reserved Pin
 
-//Pins for Motor feedback M1 / M2
+
+//Pins for Motor encoder (One Motor)
 const uint8_t m1_encoder1_pin = 2;             // Motor encoder channel C1 (typically the Interrupt pin)
 const uint8_t m1_encoder2_pin = 3;             // Motor encoder channel C2
-const uint8_t m2_encoder1_pin = 4;             // Reserved Pin
-const uint8_t m2_encoder2_pin = 5;             // Reserved Pin
+
+//Pins for Motor encoder (Two Motors)
+//const uint8_t m1_encoder1_pin = 2;             // Motor encoder channel C1 (typically the Interrupt pin)
+//const uint8_t m1_encoder2_pin = A4;            // Motor encoder channel C2
+//const uint8_t m2_encoder1_pin = 3;             // Motor encoder channel C1 (typically the Interrupt pin)
+//const uint8_t m2_encoder2_pin = A5;            // Motor encoder channel C2
 
 //Pins for Homing Switch
-const uint8_t m1_home_pin = A5;                 // (Never use A6 A7)
-const uint8_t m2_home_pin = A4;                 // Reserved Pin
+const uint8_t m1_home_pin = A1;                 // INPUT_PULLUP Mode
+const uint8_t m2_home_pin = A2;                 // INPUT_PULLUP Mode
 
-const double m1_home_position_step = -1000;
+//Pins for radio
+const uint8_t radio_ss_pin      = 10;           // Hardware SPI Interface
+const uint8_t radio_mosi_pin    = 11;           // Hardware SPI Interface
+const uint8_t radio_miso_pin    = 12;           // Hardware SPI Interface
+const uint8_t radio_sck_pin     = 13;           // Hardware SPI Interface
+const uint8_t radio_gdo0_pin    = A0;           // Input to sense incoming package
 
 //Pins for Battery Monitor
-const uint8_t battery_monitor_pin = A7;
+const uint8_t battery_monitor_pin = A7;         // Analog Pin
+
+
+//Tunings for motors
+const double m1_kp = 0.005;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kp = 0.040
+const double m1_ki = 0.200;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_ki = 0.200
+const double m1_kd = 0.0002;                // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kd = 0.0002
+const double m1_accel = 3000;               // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_accel = 3000
+const double m1_home_position_step = -1000;
 
 // ---- END OF MODIFIABLE SETTINGS - Do not modify below ----
+
 
 // Initialize motion control objects
 DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);

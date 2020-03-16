@@ -5,13 +5,13 @@
 
  This controller ocntinues the development from 01_SerialCommandController
 
- The controller is reading Serial Port Commands. Supported commands:
+ The controller can accept commands from USB Serial (\n termainated)
+ Radio commands (addressed to this controller's address) can also be accepted
  h - Home
  ? - Status
  g10 - goto10
  s - stop
- + - increment
- - - decrement
+
 
  The controller now uses a PID controller for the motors for position control
  to follow a motion profile.
@@ -37,7 +37,7 @@
 //#include <Wire.h>
 
 
-#define SerialComment
+// #define SerialComment
 //MOTOR_CONTROL_PRINTOUT (if defined) will print motor control error during motor movements.
 // #define MOTOR_CONTROL_PRINTOUT
 
@@ -80,6 +80,7 @@ const uint8_t radio_mosi_pin = 11;           // Hardware SPI Interface
 const uint8_t radio_miso_pin = 12;           // Hardware SPI Interface
 const uint8_t radio_sck_pin = 13;           // Hardware SPI Interface
 const uint8_t radio_gdo0_pin = A0;           // Input to sense incoming package
+const char radio_master_address = '0';
 
 //Pins for Battery Monitor
 const uint8_t battery_monitor_pin = A7;         // Analog Pin
@@ -90,7 +91,10 @@ const double m1_kp = 0.005;                 // Tuning based on result from Motor
 const double m1_ki = 0.200;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_ki = 0.200
 const double m1_kd = 0.0002;                // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kd = 0.0002
 const double m1_accel = 3000;               // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_accel = 3000
+const int m1_error_to_stop = 50.0;          // Maximum absolute step error for the controller to stop itself without reaching the goal.
 const double m1_home_position_step = -1000;
+const int motor_run_interval = 10;          // Motor PID sample Interval in millis()
+
 
 // Settings for radio communications
 const uint8_t radio_selfAddress = 49;       // Address default to char '1'
@@ -98,15 +102,13 @@ const CFREQ frequency = CFREQ_433;          // CFREQ_868 CFREQ_915 CFREQ_433 CFR
 const byte channelNumber = 0;       
 const uint8_t radio_power = PA_LongDistance;    // PA_MinimalPower PA_ReducedPower PA_LowPower PA_LongDistance
 constexpr byte radio_syncWord[2] = { 01, 27 };
-const long USBSerialBaud = 115200;
-const char endOfMessageChar = 10; // 10 = LineFeed '\n' , 13 = CarrageReturn '\r' , 4 = EndOfTransmission '\x004'
 
 // ---- END OF MODIFIABLE SETTINGS - Do not modify below ----
 
 // Initialize motion control objects
 DCMotor Motor1(m1_driver_ena_pin, m1_driver_in1_pin, m1_driver_in2_pin);
 Encoder Encoder1(m1_encoder1_pin, m1_encoder2_pin);
-MotorController MotorController1(&Motor1, &Encoder1, m1_kp, m1_ki, m1_kd, m1_accel, 10, 50, false, false);
+MotorController MotorController1(&Motor1, &Encoder1, m1_kp, m1_ki, m1_kd, m1_accel, motor_run_interval, m1_error_to_stop, false, false);
 
 //Variables for serial communication
 byte incomingByte;
@@ -126,7 +128,6 @@ BufferedSerial bufferedSerial(1);
 CC1101 radio;
 uint8_t radio_partnum, radio_version, radio_marcstate;	// Stores the register values of the radio fetched at startup.
 
-
 // the setup function runs once when you press reset or power the board
 void setup() {
 
@@ -141,7 +142,6 @@ void setup() {
 
     RadioStartup();
 }
-
 
 // Routine to start Radio
 void RadioStartup() {
@@ -197,12 +197,14 @@ void loop() {
 
     // Run motor control
     if (MotorController1.run()) {
+        #if defined(SerialComment)
         Serial.print(F("CurPos: "));
         Serial.print((long)MotorController1.currentPosition());
         Serial.print(F(" Error: "));
         Serial.print((long)MotorController1.currentTarget() - (long)MotorController1.currentPosition());
         Serial.print(F(" PWM: "));
         Serial.println(MotorController1.currentMotorPowerPercentage());
+        #endif
     }
 
     // Run battery report
@@ -215,13 +217,13 @@ void loop() {
         run_command_handle(command);
     }
 
-
-
+    // Handle radio command input
     if (radioAvailable()) {
-        Serial.print(F("PACKET Recieved: "));
         CCPACKET packet;
         radio.receiveData(&packet);
         
+        #if defined(SerialComment)
+        Serial.print(F("Radio PKT RX: "));
         for (unsigned int i = 0; i < packet.length; i++) {
             Serial.write(packet.data[i]);
         }
@@ -230,8 +232,20 @@ void loop() {
         Serial.print(F(" , RSSI = "));
         Serial.print(rssi(packet.rssi));
         Serial.println(F(")"));
+        #endif
 
+        // Pass this to command 
+        run_command_handle((char *)packet.data + 1);
 
+        // Write Status Back
+        CCPACKET packet_reply;
+        get_current_status_string();
+        //Serial.println(get_current_status_string());
+        packet_reply.length = strlen(status_string) + 1; // status string is a null terminated string.
+
+        packet_reply.data[0] = radio_master_address;
+        strcpy((char *)packet_reply.data + 1, status_string);
+        radio.sendDataSpecial(packet_reply);
 
     }
 
@@ -322,6 +336,22 @@ void run_command_handle(const char * command) {
         MotorController1.stop();
     }
 
+    // For testing
+    if (*command == 'r') {
+        Serial.println(F("Command r : Send Test Radio Message to Master"));
+        // Write Status Back
+        CCPACKET packet_reply;
+
+        // Copy the rest of the command to send it
+        strcpy((char *)packet_reply.data + 1, command + 1);
+        packet_reply.length = strlen((char *)packet_reply.data);
+        packet_reply.data[0] = radio_master_address;
+
+        auto result = radio.sendDataSpecial(packet_reply);
+        Serial.println((char*) &packet_reply.data);
+        if (result) Serial.println(F("Sent Succeed"));
+
+    }
 }
 
 
@@ -343,7 +373,13 @@ void run_batt_monitor() {
 // Status Reporting
 char* get_current_status_string() {
     unsigned int i = 0; // This variable keep count of the output string.
-    i += snprintf(status_string + i, 60 - i, "%ld , %u , %i", ((long)MotorController1.currentPosition()), get_status_code(), batt_value);
+    i += snprintf(status_string + i, 60 - i, "%u,%ld,%ld,%d,%i",
+        get_status_code(),
+        (long) MotorController1.currentPosition(),
+        (long) MotorController1.currentTarget(),
+        (int) (MotorController1.currentMotorPowerPercentage() * 100.0),
+        batt_value
+    );
     return status_string;
 }
 
