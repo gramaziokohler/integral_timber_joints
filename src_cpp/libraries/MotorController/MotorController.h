@@ -24,7 +24,7 @@ enum Direction {
 
 class MotorController {
     public:
-    MotorController(DCMotor* motor, Encoder* encoder, double kp, double ki, double kd, double accelStepsPerSecSq, double run_interval_millis, double errorToStop = 50, boolean encoder_direction = true, boolean controller_direction = true) :
+    MotorController(DCMotor* motor, Encoder* encoder, double kp, double ki, double kd, double accelStepsPerSecSq, int run_interval_millis, double errorToStop = 50, boolean encoder_direction = true, boolean controller_direction = true) :
         _accelStepsPerSecSq(accelStepsPerSecSq),
         _controller_run_interval_millis(run_interval_millis),
         _errorToStop(errorToStop),
