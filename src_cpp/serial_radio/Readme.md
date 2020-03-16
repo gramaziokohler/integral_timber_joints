@@ -115,6 +115,14 @@ It is not tested whether char '\0' will work or not. As this radio is intended f
 
 ~~**Sender address** is optional in the message but can typically be the second byte in the message (e.g. `AB0123␊` can be the message from `radio B` to `radio A` that contain the message 0123)~~
 
+For example receiver address is char '1'
+
+From Visual Studio Interface:
+
+| Receiver Address Byte                  | Sender Address Byte | Message Body 2 Bytes | End of Message Byte          |
+| -------------------------------------- | ------------------- | -------------------- | ---------------------------- |
+| **(int) 49<br />(char) '\x07' or '1'** | your own address    | Message Body         | (int) 4 /<br />(char) '\x04' |
+
 
 
 Example from another Arduino
@@ -201,7 +209,7 @@ Setting Value = the integer that represent the frequency to set. (Default Freque
 | 50      | 2    | CFREQ_433 |
 | 51      | 3    | CFREQ_918 |
 
-
+For example in visual studio: '\x0007\x000700\x04' will change the address to char '0'
 
 ### To Change the channel of the radio
 
