@@ -6,12 +6,12 @@
  This controller ocntinues the development from 01_SerialCommandController
 
  The controller can accept commands from USB Serial (\n termainated)
- Radio commands (addressed to this controller's address) can also be accepted
- h - Home
- ? - Status
- g10 - goto10
- s - stop
-
+ Radio commands can also be accepted. (This controller's default address is '1') 
+ h              - Home the axis
+ ?              - Print out status
+ g[position]    - move to a given position, can be positive or negative value.
+ s              - immediately stop
+ r[message]     - Send radio message to master (default address '0') e.g. rHello\n
 
  The controller now uses a PID controller for the motors for position control
  to follow a motion profile.
@@ -48,7 +48,6 @@
 //#define SERIAL_MASTER_INIT_TALK_ONLY
 
 
-
 //Pins for Motor Driver M1
 const uint8_t m1_driver_ena_pin = 5;             // the pin the motor driver ENA1 is attached to (PWM Pin)
 const uint8_t m1_driver_in1_pin = 4;             // the pin the motor driver IN1 is attached to
@@ -80,11 +79,13 @@ const uint8_t radio_mosi_pin = 11;           // Hardware SPI Interface
 const uint8_t radio_miso_pin = 12;           // Hardware SPI Interface
 const uint8_t radio_sck_pin = 13;           // Hardware SPI Interface
 const uint8_t radio_gdo0_pin = A0;           // Input to sense incoming package
-const char radio_master_address = '0';
 
-//Pins for Battery Monitor
+//Pins for Battery Monitor / DIP Switch / LED
 const uint8_t battery_monitor_pin = A7;         // Analog Pin
+const uint8_t dip_switch_pin = A6;
+const uint8_t status_led_pin = A3;
 
+// ---- END OF PIN ASSIGNMENT  ----
 
 //Tunings for motors
 const double m1_kp = 0.005;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kp = 0.040
@@ -95,13 +96,16 @@ const int m1_error_to_stop = 50.0;          // Maximum absolute step error for t
 const double m1_home_position_step = -1000;
 const int motor_run_interval = 10;          // Motor PID sample Interval in millis()
 
-
 // Settings for radio communications
-const uint8_t radio_selfAddress = 49;       // Address default to char '1'
+const char radio_master_address = '0';      // Address of default master radio
+const char radio_selfAddress = '1';       // Address default to char '1'
 const CFREQ frequency = CFREQ_433;          // CFREQ_868 CFREQ_915 CFREQ_433 CFREQ_918
 const byte channelNumber = 0;       
 const uint8_t radio_power = PA_LongDistance;    // PA_MinimalPower PA_ReducedPower PA_LowPower PA_LongDistance
 constexpr byte radio_syncWord[2] = { 01, 27 };
+
+
+
 
 // ---- END OF MODIFIABLE SETTINGS - Do not modify below ----
 
@@ -141,6 +145,16 @@ void setup() {
     pinMode(battery_monitor_pin, INPUT);
 
     RadioStartup();
+
+    //
+    pinMode(dip_switch_pin, INPUT);
+
+    while (true) {
+        Serial.println(analogRead(dip_switch_pin));
+        delay(1000);
+    }
+
+
 }
 
 // Routine to start Radio
@@ -164,14 +178,14 @@ void RadioStartup() {
     // Determine if radio is found. If everything is zero, the radio is probably dead.
     if (radio_partnum == 0 && radio_version == 0 && radio_marcstate == 0) {
         // Radio Not Found - report to Serial
-        #if defined(SerialComment)
         Serial.println(F("(CC1101 radio abnormal)"));
+        #if defined(SerialComment)
         #endif
 
     } else {
         // Radio Found - Report to Serial
-        #if defined(SerialComment)
         Serial.println(F("(CC1101 radio ok)"));
+        #if defined(SerialComment)
         Serial.print(F("(CC1101_PARTNUM = "));
         Serial.print(radio_partnum);
         Serial.print(F(" , CC1101_VERSION "));

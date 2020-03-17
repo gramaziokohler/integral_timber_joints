@@ -1,4 +1,4 @@
-# Tokyo Clamp
+Tokyo Clamp
 
 ## Wiring
 
@@ -131,11 +131,44 @@ status_led_pin
 
 ### **DIP Switch**
 
-For easily changeable settings. 
+A DIP switch with a resistor ladder. Occupy only a sinlge analog pin. SW1 is the Most Significant Bit
 
-Radio Address
+This can be used for changing settings easily without recompilation. Such as Radio address. 
 
-dip_switch_pin
+| R0   | R1   | R2   | R3   | R4   |
+| ---- | ---- | ---- | ---- | ---- |
+| 1.6k | 2.2K | 4.7k | 10k  | 20k  |
+
+
+
+| Arduino Pin | Name in Code   |
+| ----------- | -------------- |
+| A6          | dip_switch_pin |
+
+**Radio Address Setting**
+
+Tested with battery attached, 5V is provided 7805 regulator.
+
+| SW1  | SW2  | SW3  | SW4  | Analog Reading (Board 1) | Analog Reading (Board 2) |
+| ---- | ---- | ---- | ---- | ------------------------ | ------------------------ |
+| 0    | 0    | 0    | 0    | 0                        | 0                        |
+| 0    | 0    | 0    | 1    | 73                       | 74                       |
+| 0    | 0    | 1    | 0    | 140                      | 141                      |
+| 0    | 0    | 1    | 1    | 198                      | 197                      |
+| 0    | 1    | 0    | 0    | 258                      | 257                      |
+| 0    | 1    | 0    | 1    | 302                      | 301                      |
+| 0    | 1    | 1    | 0    | 341                      | 340                      |
+| 0    | 1    | 1    | 1    | 376                      | 375                      |
+| 1    | 0    | 0    | 0    | 431                      | 430                      |
+| 1    | 0    | 0    | 1    | 457                      | 457                      |
+| 1    | 0    | 1    | 0    | 482                      | 481                      |
+| 1    | 0    | 1    | 1    | 504                      | 503                      |
+| 1    | 1    | 0    | 0    | 529                      | 528                      |
+| 1    | 1    | 0    | 1    | 547                      | 546                      |
+| 1    | 1    | 1    | 0    | 564                      | 564                      |
+| 1    | 1    | 1    | 1    | 580                      | 580                      |
+
+
 
 
 
@@ -169,4 +202,35 @@ dip_switch_pin
 | Motor Encoder | A5          |                          | **m2_encoder2_pin**      |
 | DIP Switch    | A6          | dip_switch_pin           | dip_switch_pin           |
 | Battery Sense | A7          | battery_monitor_pin      | battery_monitor_pin      |
+
+## Operational Notes
+
+### Setting Device Address
+
+
+
+| SW1  | SW2  | SW3  | Device Address (char) | Device Address (int) |
+| ---- | ---- | ---- | --------------------- | -------------------- |
+| 0    | 0    | 0    | 1                     | 49                   |
+| 0    | 0    | 1    | 2                     | 50                   |
+| 0    | 1    | 0    | 3                     | 51                   |
+| 0    | 1    | 1    | 4                     | 52                   |
+| 1    | 0    | 0    | 5                     | 53                   |
+| 1    | 0    | 1    | 6                     | 54                   |
+| 1    | 1    | 0    | 7                     | 55                   |
+| 1    | 1    | 1    | 8                     | 56                   |
+
+Clamp 1 address is '1'.
+
+Clamp 2 address is '2'.
+
+Simple.
+
+## Status Message
+
+| Value Item      | Meaning | Type / Range |
+| --------------- | ------- | ------------ |
+| get_status_code |         | byte         |
+|                 |         |              |
+|                 |         |              |
 
