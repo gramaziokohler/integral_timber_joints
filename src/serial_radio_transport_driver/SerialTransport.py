@@ -14,19 +14,19 @@ class SerialRadioTransport(object):
         self._eom_char = eom_char
         self.set_end_of_msg_char(eom_char)
 
-        self._address = None
-        self._freq = None
-        self._channel = None
+        self._address = address
+        self._freq = frequency
+        self._channel = channel
         # Clear Serial port just in case
-        self.serial.reset_input_buffer()
+        #self.serial.reset_input_buffer()
         # Configure Radio
-        self.set_address(address)
-        self.set_frequency(frequency)
-        self.set_channel(channel)
+        #self.set_address(address)
+        #self.set_frequency(frequency)
+        #self.set_channel(channel)
 
     def send_message(self, message:Message):
         self.serial.reset_input_buffer()    #Flush buffer before sending new text
-        #print ("Sending Message:" + msg.receiver_address+msg.sender_address+msg.body)
+        #print ("Sending Message:" + message.receiver_address + message.sender_address + message.body + self._eom_char)
         self.serial.write((message.receiver_address + message.sender_address + message.body + self._eom_char).encode("ascii", "replace"))
         
     def receive_message(self):
@@ -51,27 +51,35 @@ class SerialRadioTransport(object):
         while (self.serial.inWaiting()>0):
 
             #Read one available char
-            newChar = self.serial.read(1).decode('ascii')
+            try:
+                newChar = self.serial.read(1)
+                newChar = newChar.decode('ascii') 
+                
+                #If this is the first character, check if message is for me.
+                if (len(self._receive_buffer) == 0):
+                    if (newChar != self._address):
+                        self._messageForMe  = False   #Set messageForMe Flag . This stops subsquent storage.
 
-            #If this is the first character, check if message is for me.
-            if (len(self._receive_buffer) == 0):
-                if (newChar != self._address):
-                    self._messageForMe  = False   #Set messageForMe Flag . This stops subsquent storage.
+                # End of message character - end char array with 0 and return true
+                if (newChar == self._eom_char):
+                    if (self._messageForMe):
+                        self._messageWiatingFlag = True
+                        return True
+                    else:                           # Message is not for me but now it ends.
+                        self._receive_buffer = ""       #Reset Receive Index (This will consume the message)
+                        self._messageForMe = True      #Reset messageForMe Flag
+                        continue                        #Skip the following storage in buffer
 
-            # End of message character - end char array with 0 and return true
-            if (newChar == self._eom_char):
-                if (self._messageForMe):
-                    self._messageWiatingFlag = True
-                    return True
-                else:                           # Message is not for me but now it ends.
-                    self._receive_buffer = ""       #Reset Receive Index (This will consume the message)
-                    self._messageForMe = True      #Reset messageForMe Flag
-                    continue                        #Skip the following storage in buffer
+                # Normal character - proceed to store in buffer
+                else:
+                    if (self._messageForMe):
+                        self._receive_buffer += newChar
+            except  UnicodeDecodeError:
+                # Discard Unparseable letter, probably garbage
+                pass
+            except:
+                raise
 
-            # Normal character - proceed to store in buffer
-            else:
-                if (self._messageForMe):
-                    self._receive_buffer += newChar
         # Reachable if no more characters to read
         return False
 
@@ -111,6 +119,10 @@ class SerialRadioTransport(object):
 
     def get_end_of_msg_char(self):
         return self._eom_char
+
+    def reset_input_buffer(self):
+        self.serial.reset_input_buffer()
+
 
 if __name__ == "__main__":
     import time
