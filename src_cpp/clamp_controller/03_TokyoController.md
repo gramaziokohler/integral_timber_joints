@@ -149,24 +149,24 @@ This can be used for changing settings easily without recompilation. Such as Rad
 
 Tested with battery attached, 5V is provided 7805 regulator.
 
-| SW1  | SW2  | SW3  | SW4  | Analog Reading (Board 1) | Analog Reading (Board 2) |
-| ---- | ---- | ---- | ---- | ------------------------ | ------------------------ |
-| 0    | 0    | 0    | 0    | 0                        | 0                        |
-| 0    | 0    | 0    | 1    | 73                       | 74                       |
-| 0    | 0    | 1    | 0    | 140                      | 141                      |
-| 0    | 0    | 1    | 1    | 198                      | 197                      |
-| 0    | 1    | 0    | 0    | 258                      | 257                      |
-| 0    | 1    | 0    | 1    | 302                      | 301                      |
-| 0    | 1    | 1    | 0    | 341                      | 340                      |
-| 0    | 1    | 1    | 1    | 376                      | 375                      |
-| 1    | 0    | 0    | 0    | 431                      | 430                      |
-| 1    | 0    | 0    | 1    | 457                      | 457                      |
-| 1    | 0    | 1    | 0    | 482                      | 481                      |
-| 1    | 0    | 1    | 1    | 504                      | 503                      |
-| 1    | 1    | 0    | 0    | 529                      | 528                      |
-| 1    | 1    | 0    | 1    | 547                      | 546                      |
-| 1    | 1    | 1    | 0    | 564                      | 564                      |
-| 1    | 1    | 1    | 1    | 580                      | 580                      |
+| SW1  | SW2  | SW3  | SW4  | Analog Reading <br />(Board 1) | Analog Reading <br />(Board 2) | Address |
+| ---- | ---- | ---- | ---- | ------------------------------ | ------------------------------ | ------- |
+| 0    | 0    | 0    | 0    | 0                              | 0                              | 0       |
+| 0    | 0    | 0    | 1    | 73                             | 74                             | 1       |
+| 0    | 0    | 1    | 0    | 140                            | 141                            | 2       |
+| 0    | 0    | 1    | 1    | 198                            | 197                            | 3       |
+| 0    | 1    | 0    | 0    | 258                            | 257                            | 4       |
+| 0    | 1    | 0    | 1    | 302                            | 301                            | 5       |
+| 0    | 1    | 1    | 0    | 341                            | 340                            | 6       |
+| 0    | 1    | 1    | 1    | 376                            | 375                            | 7       |
+| 1    | 0    | 0    | 0    | 431                            | 430                            | 8       |
+| 1    | 0    | 0    | 1    | 457                            | 457                            | 9       |
+| 1    | 0    | 1    | 0    | 482                            | 481                            | 10      |
+| 1    | 0    | 1    | 1    | 504                            | 503                            | 11      |
+| 1    | 1    | 0    | 0    | 529                            | 528                            | 12      |
+| 1    | 1    | 0    | 1    | 547                            | 546                            | 13      |
+| 1    | 1    | 1    | 0    | 564                            | 564                            | 14      |
+| 1    | 1    | 1    | 1    | 580                            | 580                            | 15      |
 
 
 
@@ -203,11 +203,54 @@ Tested with battery attached, 5V is provided 7805 regulator.
 | DIP Switch    | A6          | dip_switch_pin           | dip_switch_pin           |
 | Battery Sense | A7          | battery_monitor_pin      | battery_monitor_pin      |
 
+## Communication
+
+### Serial Commands
+
+| Command            | Format          | Notes                                                        | Example   |
+| ------------------ | --------------- | ------------------------------------------------------------ | --------- |
+| Goto               | g[position]`\n` | [position] can be any signed long integer<br />Value counted in step | g1000`\n` |
+| Stop               | s`\n`           |                                                              | s`\n`     |
+| Home               | h`\n`           |                                                              | h`\n`     |
+| Set Velocity       | v[velocity]`\n` | [velocity] can be any signed double<br />Value counted in step/s | v2000`\n` |
+| Get Status Message | ?`\n`           | See table below                                              | ?`\n`     |
+
+All commands are non-blocking. 
+
+A newly arrived command will override an older command. 
+
+- **Goto** command will go to new target even if previous goto command is not completed.
+- 
+- **Stop** command can stop **Goto** or **Home** motions at anytime.
+- **Set Velocity** command will not affect the speed of ongoing motion. It will affect the next Goto motion.
+- **Get Status Message** command prints a 
+
+### Radio Communication
+
+Radio communication is performed with a USB to Radio dongle. This dongle runs Serial2Radio_Tokyo.ino sketch. Which preconfigures frequency / channel / sync word etc for the communication. **Do not** connect LCD screen to dongle.
+
+Commands similar to the Serial commands above are sent to the dongle with the addition of two header bytes in front for addressing. The radio is configured to use '\n' as End-Of-Message Termination character, similar to the Serial Command, therefore one '\n' is sufficient
+
+**Format**: Clamp Address + Master Address = '0' + Serial Command 
+
+**Example**: `10h\n` means sending to clamp '1' from master '0' the home command  
+
+When any message is received at the clamp controller, it will reply with a full status message regardless of what commands are given.
+
+**Note**: The **Get Status Message**   `10?\n` command should not be used to get a remote response of the status message because it also causes the local Serial port to perform a printout. This unnecessarily slows down the controller. An empty message with only address header, such as`10\n` should be used to get back the status. 
+
+### Status Message
+
+| Value Item                  | Meaning                                                      | Type / Range      |
+| --------------------------- | ------------------------------------------------------------ | ----------------- |
+| status_code                 | Bit [0] = Homed<br />Bit [1] = MotorRunning<br />Bit [2] = DirectionExtending | (byte) 0 -7       |
+| currentPosition             | PID Loop current position                                    | (long int)        |
+| currentTarget               | Current PID positional control target.                       | (long int)        |
+| currentMotorPowerPercentage | Current PID output for motor driver                          | (int) -100 to 100 |
+
 ## Operational Notes
 
 ### Setting Device Address
-
-
 
 | SW1  | SW2  | SW3  | Device Address (char) | Device Address (int) |
 | ---- | ---- | ---- | --------------------- | -------------------- |
@@ -220,17 +263,7 @@ Tested with battery attached, 5V is provided 7805 regulator.
 | 1    | 1    | 0    | 7                     | 55                   |
 | 1    | 1    | 1    | 8                     | 56                   |
 
-Clamp 1 address is '1'.
-
-Clamp 2 address is '2'.
+**During operation:** Clamp 1 address is '1'. Clamp 2 address is '2'.
 
 Simple.
-
-## Status Message
-
-| Value Item      | Meaning | Type / Range |
-| --------------- | ------- | ------------ |
-| get_status_code |         | byte         |
-|                 |         |              |
-|                 |         |              |
 
