@@ -22,7 +22,7 @@ if len(ports) == 0 :
 selected_port = ports[0][0]
 
 # Override
-selected_port = "COM11"
+selected_port = "COM12"
 
 # Connect to Serial Port
 print("Connecting to " + str(selected_port))
@@ -68,8 +68,8 @@ while (command != ""):
     # Monitor
     for i in range(10):
         time.sleep(0.1)
-        count += try_receive_status_blocking(transport, '1', 100)
-        count += try_receive_status_blocking(transport, '2', 100)
+        count += try_receive_status_blocking(transport, '1', 150)
+        count += try_receive_status_blocking(transport, '2', 150)
 
     print("# of response received: %s" % count)
     command = input("Please enter a command:\n")
@@ -79,5 +79,3 @@ print("Serial Port Ends")
 
 #Prepare Messenger
 #messenger = ReliableMessenger(transport)
-
-
