@@ -32,7 +32,7 @@ Note: Pin names in quote is reserved pin for 2 motor situation.
 
 ### GW4058-555 Worm Gearbox 1:54
 
-The integrated hall sensor on the 555 DC motors have 11 steps per rev per channel. Effectively **44 steps per rev**. (100kHz max)
+The integrated hall sensor on the 555 DC motors have 17 steps per rev per channel. Effectively **68 steps per rev**. (100kHz max). After the gear box, the conversion is **3672 steps per rev.**
 
 | Pin Function    | Label | Connection  | Cable Color | Arduino Pin | Name in Code    |
 | --------------- | ----- | ----------- | ----------- | ----------- | --------------- |
