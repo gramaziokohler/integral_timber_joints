@@ -97,7 +97,7 @@ const double m1_ki = 0.200;                 // Tuning based on result from Motor
 const double m1_kd = 0.0002;                // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kd = 0.0002
 const double m1_accel = 3000;               // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_accel = 3000
 const int m1_error_to_stop = 50.0;          // Maximum absolute step error for the controller to stop itself without reaching the goal.
-const double m1_home_position_step = -1000;
+const double m1_home_position_step = -1650;
 const int motor_run_interval = 10;          // Motor PID sample Interval in millis()
 
 // Settings for radio communications
@@ -326,7 +326,7 @@ void run_command_handle(const char * command) {
 
     if (*command == 'h') {
         Serial.println("Command Home : Homing");
-        MotorController1.home(true, 500);
+        MotorController1.home(true, 1000);
     }
 
     if (*command == '?') {
