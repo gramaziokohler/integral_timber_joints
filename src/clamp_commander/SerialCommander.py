@@ -48,7 +48,6 @@ class SerialCommander(object):
 
         print("Connected to %s."% (selected_port))
 
-
     def add_clamp(self, clamp:ClampModel):
         clamp.last_comm_time = None
         #clamp.last_comm_lqi = None
@@ -56,28 +55,13 @@ class SerialCommander(object):
         clamp.last_comm_latency = 0
         self.clamps[clamp.receiver_address] = clamp
         
-
-    def update_clamps_status(self, time_out_millis:int = 40):
+    def update_clamps_status(self, retry:int = 0, time_out_millis:int = 40):
         for address, clamp in self.clamps.items():
-            self.update_clamp_status(clamp, time_out_millis)
+            self.update_clamp_status(clamp, retry = retry, time_out_millis = time_out_millis)
 
-
-    # def update_clamp_status (self, clamp:ClampModel, time_out_millis:int = 100):
-    #     self.transport.reset_input_buffer()
-    #     self.transport.send_message(Message(clamp.receiver_address,'0', '_'))
-    #     attempt_ends = current_milli_time() + time_out_millis # 100 millis to wait for response
-    #     while (current_milli_time() < attempt_ends):
-    #         received_message = self.transport.receive_message()
-    #         if received_message is not None:
-    #             print ("Clamp%s : %s" % (received_message.sender_address, received_message.body))
-    #             clamp.last_comm_time = time.time()
-    #             return clamp.update_status(received_message)
-    #     print ("Clamp%s : No Response" % (clamp.receiver_address))
-    #     return False
-
-    def update_clamp_status (self, clamp:ClampModel, time_out_millis:int = 40):
+    def update_clamp_status (self, clamp:ClampModel, retry:int = 0, time_out_millis:int = 40):
         # Send empty message to clamp , without auto status update
-        response = self.message_clamp(clamp, "_", retry = 0, time_out_millis = time_out_millis, update_clamp_status = False)
+        response = self.message_clamp(clamp, "_", retry = retry, time_out_millis = time_out_millis, update_clamp_status = False)
         if response is not None:
             # Update clamp status
             update_result = clamp.update_status(response)
@@ -91,6 +75,9 @@ class SerialCommander(object):
             print ("Clamp%s : No Response" % (clamp.receiver_address))
             return False
 
+    def stop_clamps(self):
+        for address, clamp in self.clamps.items():
+            self.message_clamp(clamp, "s", retry = 3, time_out_millis = 30)
 
     def message_clamp (self, clamp:ClampModel, message:str, retry:int = 0, time_out_millis:int = 100, update_clamp_status:bool = True):
         self.transport.reset_input_buffer()
@@ -113,3 +100,25 @@ class SerialCommander(object):
                 return (received_message.body)
         # In case there are no response after all attempts 
         return None
+
+    def send_clamp_to_jaw_position(self, clamp: ClampModel, jaw_position_mm:float, velocity_mm_sec:float):
+        # Check position min max
+        if (jaw_position_mm < clamp.SoftLimitMin_mm):
+            raise ValueError("Target Position (%s) < Limit (%s)"%(jaw_position_mm, clamp.SoftLimitMin_mm))
+        if (jaw_position_mm > clamp.SoftLimitMax_mm):
+            raise ValueError("Target Position (%s) > Limit (%s)"%(jaw_position_mm, clamp.SoftLimitMax_mm))
+
+        # Convert velocity and target into step units
+        motor_position = int(clamp.to_motor_position(jaw_position_mm))
+        velocity_step_sec = int(velocity_mm_sec * clamp.StepPerMM)
+        print("v" + str(velocity_step_sec))
+        print("g" + str(motor_position))
+        
+        # Set Speed
+        response1 = self.message_clamp(clamp, "v" + str(velocity_step_sec), retry=3, time_out_millis=30)
+        # Stop and Returns False if the send is not successful
+        if response1 is None: return False
+        # Send Target to Go
+        response2 = self.message_clamp(clamp, "g" + str(motor_position), retry=3, time_out_millis=30)
+        # Returns True if the send is successful
+        return (response2 is not None)
