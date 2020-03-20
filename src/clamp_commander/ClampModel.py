@@ -6,9 +6,12 @@ class ClampModel(object):
     def __init__(
         self,
         receiver_address:str ='b',
-        StepPerMM:float = 200,
-        BattMin:float = 0,
-        BattMax:float = 1024
+        StepPerMM:float = 200.0,
+        JawOffset:float = 0.0, # (in mmm) / Jaw Position = Offset +  (_raw_currentPosition /  StepPerMM)
+        SoftLimitMin_mm:float = -0.1,
+        SoftLimitMax_mm:float = 100,
+        BattMin:float = 0.0,
+        BattMax:float = 1024.0
         ):
 
         assert type(receiver_address) == str
@@ -17,8 +20,11 @@ class ClampModel(object):
 
         # High level mointoring configurations for the clamp
         self.StepPerMM = StepPerMM
+        self.JawOffset = JawOffset
         self.BattMin = BattMin
         self.BattMax = BattMax
+        self.SoftLimitMin_mm = SoftLimitMin_mm
+        self.SoftLimitMax_mm = SoftLimitMax_mm
 
         # Internal model variable store raw values
         self._raw_currentPosition = None
@@ -45,24 +51,35 @@ class ClampModel(object):
 
     # Read only properities
 
+    """Returns the Motor Position Raw Value in steps  """
     @property
-    def currentPosition(self):
+    def currentMotorPosition(self):
         if self._raw_currentPosition is None: return None
-        return self._raw_currentPosition / self.StepPerMM
+        return self._raw_currentPosition
 
+    """Returns the Jaw Position in mm (Offset Included) """
     @property
-    def currentTarget(self):
+    def currentJawPosition(self):
+        if self._raw_currentPosition is None: return None
+        return self.to_jaw_position(self._raw_currentPosition)
+
+    """Returns the Motor Position Target that is set by PID Controller """
+    @property
+    def currentMotorTarget(self):
         if self._raw_currentTarget is None: return None
         return self._raw_currentTarget / self.StepPerMM
 
+    """Returns the Motor Power Input that is set by PID Controller """
     @property
     def currentMotorPowerPercentage(self):
         return self._raw_currentMotorPowerPercentage
 
+    """Returns the Battery Percentage (offset included) """
     @property
     def batteryPercentage(self):
         if self._raw_battery is None: return None
         return int ((self._raw_battery - self.BattMin ) / (self.BattMax - self.BattMin) * 100)
+    
     @property
     def statusCode(self):
         return self._raw_statusCode
@@ -116,6 +133,13 @@ class ClampModel(object):
     def __is_set(x, n):
         return x & 1 << n != 0
 
+    # Method to convert between jaw_position and motor_position
+    def to_motor_position(self, jaw_position_mm:float):
+        return (jaw_position_mm - self.JawOffset ) * self.StepPerMM
+
+    def to_jaw_position(self, motor_position_step:int):
+        return (motor_position_step / self.StepPerMM) + self.JawOffset
+
     # set the status flags according to the status code
     def __set_statusCode(self, statusCodeNumber):
         self._ishomed = self.__is_set(statusCodeNumber, 0)
@@ -123,9 +147,9 @@ class ClampModel(object):
         self._isDirectionExtend = self.__is_set(statusCodeNumber, 2)
 
     def __str__(self):
-        if self.currentPosition is None: return "ClampModel Object Address=%s (Not Connected)" % self.receiver_address
+        if self.currentMotorPosition is None: return "ClampModel Object Address=%s (Not Connected)" % self.receiver_address
         homed_string = "Homed" if self.ishomed else "Not-Homed"
-        return "ClampModel Object Address=%s BatteryLevel=%s%% Postion=%4.2fmm %s"  % (self.receiver_address, self.batteryPercentage, self.currentPosition, homed_string)
+        return "ClampModel Object Address=%s BatteryLevel=%s%% Postion=%4.2fmm %s"  % (self.receiver_address, self.batteryPercentage, self.currentJawPosition, homed_string)
 
 if __name__ == "__main__":
 
