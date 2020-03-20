@@ -4,9 +4,9 @@ from ClampModel import ClampModel
 # Create the Commanding Object and monitor the clamps
 commander = SerialCommander()
 commander.start()
-# ClampModel(Address,StepPerMM, BattMin, BattMax)
-clamp1 = ClampModel('1', 918, 880, 1024)
-clamp2 = ClampModel('2', 918, 880, 1024)
+# ClampModel(Address,StepPerMM, JawOffset, BattMin, BattMax)
+clamp1 = ClampModel('1', 918, 95.0, 880.0, 1010.0)
+clamp2 = ClampModel('2', 918, 95.0, 880.0, 1010.0)
 commander.add_clamp(clamp1)
 commander.add_clamp(clamp2)
 
