@@ -267,3 +267,19 @@ When any message is received at the clamp controller, it will reply with a full 
 
 Simple.
 
+### Position
+
+Clamp Jaw **Extension** Direction is **Positive**
+
+The motor has **3672 steps per rev.** / with the 1204 lead scew: **918 steps per mm**
+
+Homing Switch Position have an approximately 93mm jaw opening. After homing the controller reset to **step -1650** (~-1.8mm). Typical use should then go towards zero (+ve direction) by issuing `g0\n` command.
+
+| Description                    | Controller Position (step) | Controller Position (mm) | Jaw Spacing (mm) |      |
+| ------------------------------ | -------------------------- | ------------------------ | ---------------- | ---- |
+| Homed Position                 | -1650                      | -1.8                     | 93.2             |      |
+| Zero / <br />Closed Jaw (Thin) | 0                          | 0                        | 95               |      |
+| Closed Jaw (Thick)             | 13770                      | 15                       | 110              |      |
+| Jaw Engage Joint               | 64260                      | 70                       | 165              |      |
+| Open Jaw                       | 105570                     | 115                      | 210              |      |
+| Maximum Extension              | 119340                     | 130                      | 225              |      |
