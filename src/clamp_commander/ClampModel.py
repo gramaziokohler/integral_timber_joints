@@ -18,7 +18,7 @@ class ClampModel(object):
         assert len(receiver_address) == 1
         self._receiver_address = receiver_address
 
-        # High level mointoring configurations for the clamp
+        # High level mointoring configurations for the clamp (# Settings of the controller)
         self.StepPerMM = StepPerMM
         self.JawOffset = JawOffset
         self.BattMin = BattMin
@@ -26,18 +26,22 @@ class ClampModel(object):
         self.SoftLimitMin_mm = SoftLimitMin_mm
         self.SoftLimitMax_mm = SoftLimitMax_mm
 
-        # Internal model variable store raw values
+        # State variable of the clamp firmware, raw values.
         self._raw_currentPosition = None
         self._raw_currentTarget = None
         self._raw_currentMotorPowerPercentage = None
         self._raw_statusCode = None
         self._raw_battery = None
-        
-        # Status Code
+
+        # Status Code Derived state.
         self._ishomed = None
         self._isMotorRunning = None
         self._isDirectionExtend = None
 
+        # Status / communication update time
+        self._state_timestamp = None
+        self._last_set_velocity = None
+        self._last_set_position = None
 
     @property
     def receiver_address(self):
@@ -95,6 +99,18 @@ class ClampModel(object):
     @property
     def isDirectionExtend(self):
         return self._isDirectionExtend
+
+    @property
+    def state_to_data(self):
+        data = {}
+        data['raw_currentPosition'] = self._raw_currentPosition
+        data['raw_currentTarget'] = self._raw_currentTarget
+        data['raw_currentMotorPowerPercentage'] = self._raw_currentMotorPowerPercentage
+        data['raw_statusCode'] = self._raw_statusCode
+        data['raw_battery'] = self._raw_battery
+        data['state_timestamp'] = self._state_timestamp
+
+        return data
 
     # Exposed setter function to take a the status String
     # Return true if all sainity checks are passed
