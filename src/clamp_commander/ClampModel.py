@@ -1,5 +1,6 @@
 # Each ClampModel class represent a digital twin of a real clamp
 # 
+import time
 
 class ClampModel(object):
 
@@ -19,29 +20,29 @@ class ClampModel(object):
         self._receiver_address = receiver_address
 
         # High level mointoring configurations for the clamp (# Settings of the controller)
-        self.StepPerMM = StepPerMM
-        self.JawOffset = JawOffset
-        self.BattMin = BattMin
-        self.BattMax = BattMax
-        self.SoftLimitMin_mm = SoftLimitMin_mm
-        self.SoftLimitMax_mm = SoftLimitMax_mm
+        self.StepPerMM: float = StepPerMM
+        self.JawOffset: float  = JawOffset
+        self.BattMin: float  = BattMin
+        self.BattMax: float  = BattMax
+        self.SoftLimitMin_mm: float  = SoftLimitMin_mm
+        self.SoftLimitMax_mm: float  = SoftLimitMax_mm
 
         # State variable of the clamp firmware, raw values.
-        self._raw_currentPosition = None
-        self._raw_currentTarget = None
-        self._raw_currentMotorPowerPercentage = None
-        self._raw_statusCode = None
-        self._raw_battery = None
+        self._raw_currentPosition: int = None
+        self._raw_currentTarget: int = None
+        self._raw_currentMotorPowerPercentage: int = None
+        self._raw_statusCode: int = None
+        self._raw_battery: int = None
 
         # Status Code Derived state.
-        self._ishomed = None
-        self._isMotorRunning = None
-        self._isDirectionExtend = None
+        self._ishomed: bool = None
+        self._isMotorRunning: bool = None
+        self._isDirectionExtend: bool = None
 
         # Status / communication update time
-        self._state_timestamp = None
-        self._last_set_velocity = None
-        self._last_set_position = None
+        self._state_timestamp: int = None
+        self._last_set_velocity: float = None
+        self._last_set_position: float = None
 
     @property
     def receiver_address(self):
@@ -80,16 +81,16 @@ class ClampModel(object):
 
     """Returns the Battery Percentage (offset included) """
     @property
-    def batteryPercentage(self):
+    def batteryPercentage(self) -> int:
         if self._raw_battery is None: return None
         return int ((self._raw_battery - self.BattMin ) / (self.BattMax - self.BattMin) * 100)
     
     @property
-    def statusCode(self):
+    def statusCode(self) -> int:
         return self._raw_statusCode
 
     @property
-    def ishomed(self):
+    def ishomed(self) -> bool:
         return self._ishomed
 
     @property
@@ -139,6 +140,9 @@ class ClampModel(object):
         self._raw_currentMotorPowerPercentage = values[3]
         self._raw_battery = values[4]
         
+        # Record the timestamp of this status
+        self._state_timestamp = self.current_milli_time()
+
         # Return true is update is successful
         return True
 
@@ -146,8 +150,12 @@ class ClampModel(object):
 
     # Check if a bit is set
     @staticmethod
-    def __is_set(x, n):
+    def __is_set(x, n) -> bool:
         return x & 1 << n != 0
+
+    @staticmethod
+    def current_milli_time() -> int:
+        return int(round(time.time() * 1000))
 
     # Method to convert between jaw_position and motor_position
     def to_motor_position(self, jaw_position_mm:float):

@@ -1,83 +1,82 @@
 import tkinter as tk
+from enum import Enum
+import queue
+from threading import Thread
 from tkinter import ttk
+from types import SimpleNamespace
 
-from SerialCommanderTokyo import SerialCommanderTokyo
 from ClampModel import ClampModel
-import serial.tools.list_ports
+from CommanderGUI import *
+from SerialCommanderTokyo import SerialCommanderTokyo
+import time
+current_milli_time = lambda: int(round(time.time() * 1000))
 
+def handle_ui_commands(guiref, commander:SerialCommanderTokyo, q):
+    msg = None
 
-class ClampCommanderApp(tk.Tk):
-    def __init__(self):
-        tk.Tk.__init__(self)
+    while True:
+        # Process UI commands
+        try:
+            msg = q.get(timeout=0.1)
+            
+            if hasattr(msg, 'type'):
+                if msg.type == UiCommand.SERIAL_CONNECT:
+                    print("Ctr: Command Received to Connect to %s" % msg.port)
+                    commander.connect(msg.port)
 
-        # Initialize models behind
-        self.commander = SerialCommanderTokyo()
+        except queue.Empty:
+            pass
+        
+        # Read Status from Clamps
+        # read = commander.port.read(commander.port.in_waiting)
+        # if len(read) > 0:
+        #     guiref.label.set(read.decode())
 
-        # Create UI
-        self.create_ui_connect()
-        self.create_Ui_status()
-        self.create_ui_control()
-        self.create_ui_log()
-        # self.remaining = 0
-        # self.countdown(10)
+def update_status(guiref, commander:SerialCommanderTokyo, run_interval_millis = 500):
+    while True:
 
-    def create_ui_connect(self):
-        # Title and frame
-        title = tk.Label(self, text = "Connection")
-        title.pack(anchor = tk.NW, expand= 0, side = tk.TOP, padx = 3, pady = 3)
-        frame = ttk.Frame(self, borderwidth = 2, relief = 'solid')
-        frame.pack(fill = tk.BOTH, expand = 0, side = tk.TOP, padx = 6, pady = 3)
+        if ((commander.serial_port is not None) and commander.serial_port.isOpen()):
+            commander.update_clamps_status(1)
+            for clamp in commander.clamps.values():
+                if clamp.ishomed is not None:
+                    guiref['status'][clamp.receiver_address]['homed'].set("Yes" if clamp.ishomed else "No")
+                if clamp.currentJawPosition is not None:
+                    guiref['status'][clamp.receiver_address]['position'].set("%smm" % clamp.currentJawPosition)
+                    guiref['status'][clamp.receiver_address]['error'].set("%i steps" % int(clamp.currentMotorPosition - clamp.currentMotorTarget))
+                if clamp.batteryPercentage is not None :
+                    guiref['status'][clamp.receiver_address]['battery'].set("%i%%"%clamp.batteryPercentage)
+                if clamp._state_timestamp is not None :
+                    guiref['status'][clamp.receiver_address]['last_com'].set("%dms"%(current_milli_time() - clamp._state_timestamp))
+                if clamp._last_set_position is not None :
+                    guiref['status'][clamp.receiver_address]['last_pos'].set("%smm"%clamp._last_set_position)
+                if clamp._last_set_velocity is not None :
+                    guiref['status'][clamp.receiver_address]['last_vel'].set("%smm"%clamp._last_set_velocity)
 
-        # Label
-        label_1 = tk.Label(frame, text = "Serial Port for USB Radio")
-        label_1.pack(side = tk.LEFT)
-
-        # Combo box
-        def list_serial_ports():    
-            return serial.tools.list_ports.comports()
-        def on_serial_cb_select(event=None):
-            # get selection from event    
-            print("event.widget:", event.widget.get())
-        self.serial_cb = ttk.Combobox(frame, values=[1,2,3])
-        self.serial_cb.pack(side = tk.LEFT)
-        self.serial_cb.bind('<<ComboboxSelected>>', on_serial_cb_select)
-
-        # Button
-        def on_connect_button_click(event=None):
-            self.commander.start()
-        button = tk.Button(frame, text = "Connect / Reconnect", command = on_connect_button_click)
-        button.pack(side = tk.LEFT)
-
-
-    def create_Ui_status(self):
-        # Title and frame
-        title = tk.Label(self, text = "Status")
-        title.pack(anchor = tk.NW, expand= 0, side = tk.TOP, padx = 3, pady = 3)
-        frame = ttk.Frame(self, borderwidth = 2, relief = 'solid')
-        frame.pack(fill = tk.BOTH, expand = 0, side = tk.TOP, padx = 6, pady = 3)
-
-        # Create one row of status per clamp         
-        checkbox_1 = tk.Checkbutton(frame)
-        checkbox_1.pack(side = tk.LEFT)
-
-    def create_ui_control(self):
-        pass
-
-    def create_ui_log(self):
-        pass
-    # def countdown(self, remaining = None):
-    #     if remaining is not None:
-    #         self.remaining = remaining
-
-    #     if self.remaining <= 0:
-    #         self.label.configure(text="time's up!")
-    #     else:
-    #         self.label.configure(text="%d" % self.remaining)
-    #         self.remaining = self.remaining - 1
-    #         self.after(1000, self.countdown)
-
-
+        time.sleep(run_interval_millis / 1000.0)
 
 if __name__ == "__main__":
-    app = ClampCommanderApp()
-    app.mainloop()
+    # Root TK Object
+    root = tk.Tk()
+    root.title("Tokyo Clamps Commander")
+    root.geometry("1000x400")
+    # Command queue
+    q = queue.Queue()
+    # Create Model
+    commander = SerialCommanderTokyo()
+    # Get GUI Reference
+    guiref = create_commander_gui(root, q, commander.clamps.values())
+    
+    # 
+    
+    # Start the background thread that processes UI commands
+    t1 = Thread(target=handle_ui_commands, args=(guiref, commander, q))
+    t1.daemon = True
+    t1.start()
+
+    # Start the background thread that updates clamps status automatically
+    t2 = Thread(target=update_status, args=(guiref, commander, 200))
+    t2.daemon = True
+    t2.start()
+
+    # Start the TK GUI Thread
+    tk.mainloop()

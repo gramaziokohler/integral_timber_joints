@@ -8,21 +8,26 @@ from serial_radio_transport_driver.SerialTransport import SerialRadioTransport
 from serial_radio_transport_driver.Message import Message
 
 from ClampModel import ClampModel
-
+from typing import Optional, Dict
 current_milli_time = lambda: int(round(time.time() * 1000))
 
 class SerialCommander(object):
     
     def __init__(self):
-        self.clamps = {}
+        self.clamps : Dict[str, ClampModel] = {}
+        self.serial_port = None
         pass
 
-    def start(self):
+    ''' Launch a GUI to allow user to select a COM PORT.
+    Then, connect to that COM port
+    return true if success
+    '''
+    def connect_with_CLI (self):
         # Check connected COM ports
         ports = list(serial.tools.list_ports.comports())
         if len(ports) == 0 :
             print ("No COM Ports available. Terminating")
-            exit()
+            return False
         
         # If there is more than one list available, list the Serial Ports to user
         if len(ports) > 1 :
@@ -36,17 +41,34 @@ class SerialCommander(object):
         else:
             selected_port = ports[0][0]
 
+        return self.connect(selected_port)
+
+    ''' Connect to a specified COM port
+    return true if success
+    '''
+    def connect(self, port_name:str):
+        # Check if existing port is connected, if so, disconned first:
+        if (self.serial_port is not None):
+            if (self.serial_port.isOpen()):
+                print("CMD: Closing existing port: %s" % (self.serial_port.port))
+                self.serial_port.close()
+
         # Connect to Serial Port
-        print("Connecting to %s ..." % (selected_port))
-        serial_port = Serial(selected_port, 115200, timeout=1)
-        serial_port.reset_input_buffer()
+        print("CMD: Connecting to %s ..." % (port_name))
+        try:
+            serial_port = Serial(port_name, 115200, timeout=1)
+            serial_port.reset_input_buffer()
+        except:
+            print("CMD: Connection failed. Check if other termianals are already connected to %s" % (port_name))
+            return False
+
         # Need to wait for a while for ARduino to Reset
         time.sleep(3) 
         self.serial_port = serial_port
         # Prepare SerialTransport
         self.transport = SerialRadioTransport(serial_port, address='0', eom_char='\n')
-
-        print("Connected to %s."% (selected_port))
+        print("CMD: Connected to %s."% (serial_port.port))
+        return True
 
     def add_clamp(self, clamp:ClampModel):
         clamp.last_comm_time = None
@@ -56,8 +78,11 @@ class SerialCommander(object):
         self.clamps[clamp.receiver_address] = clamp
         
     def update_clamps_status(self, retry:int = 0, time_out_millis:int = 40):
+        results = []
         for address, clamp in self.clamps.items():
-            self.update_clamp_status(clamp, retry = retry, time_out_millis = time_out_millis)
+            result = self.update_clamp_status(clamp, retry = retry, time_out_millis = time_out_millis)
+            results.append(result)
+        return results
 
     def update_clamp_status (self, clamp:ClampModel, retry:int = 0, time_out_millis:int = 40):
         # Send empty message to clamp , without auto status update
@@ -66,13 +91,13 @@ class SerialCommander(object):
             # Update clamp status
             update_result = clamp.update_status(response)
             if update_result:
-                print ("Clamp%s Status Updated: %s" % (clamp.receiver_address, response))
+                print ("CMD: Clamp%s Status Updated: %s" % (clamp.receiver_address, response))
                 return True
             else:
-                print ("Clamp%s Bad Response: %s" % (clamp.receiver_address, response))
+                print ("CMD: Clamp%s Bad Response: %s" % (clamp.receiver_address, response))
                 return False
         else:
-            print ("Clamp%s : No Response" % (clamp.receiver_address))
+            print ("CMD: Clamp%s : No Response" % (clamp.receiver_address))
             return False
 
     def stop_clamps(self):
