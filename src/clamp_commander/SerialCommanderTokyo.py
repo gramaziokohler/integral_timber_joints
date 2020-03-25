@@ -10,10 +10,3 @@ class SerialCommanderTokyo(SerialCommander):
         self.add_clamp(self.clamp1)
         self.add_clamp(self.clamp2)
 
-    def send_all_clamps_to_jaw_position(self, jaw_position_mm:float, velocity_mm_sec:float):
-        for addr, clamp in self.clamps.items():
-            send_success = self.send_clamp_to_jaw_position(clamp, jaw_position_mm, velocity_mm_sec)
-            if not send_success:
-                self.stop_clamps()
-                return False
-        return True
