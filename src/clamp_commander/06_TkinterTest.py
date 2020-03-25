@@ -8,9 +8,11 @@ from types import SimpleNamespace
 from ClampModel import ClampModel
 from CommanderGUI import *
 from SerialCommanderTokyo import SerialCommanderTokyo
-import time
+import time, datetime
+import logging
 current_milli_time = lambda: int(round(time.time() * 1000))
 
+logger_ctr = logging.getLogger("app.ctr")
 # Initialize multi-tasking variables.
 last_status_update_time = 0
 
@@ -18,9 +20,11 @@ def background_thread(guiref, commander:SerialCommanderTokyo, q):
     # This is a sudo time-split multi-task with priority execution.
     # Tasks higher up in the list have higher priority.
     # Task must return True if it was executed and return False if it was not executed.
+    logging.getLogger("app.bg").info("Background Thread Started")
     while True:
         if handle_ui_commands(guiref, commander, q): continue
         if update_status(guiref, commander): continue
+    logging.getLogger("app.bg").info("Background Thread Stopped")
 
 def get_checkbox_selected_clamps(guiref, commander:SerialCommanderTokyo):
     # Determine if the clamps are selected
@@ -31,74 +35,64 @@ def get_checkbox_selected_clamps(guiref, commander:SerialCommanderTokyo):
     return clamps_selected
 
 def handle_ui_commands(guiref, commander:SerialCommanderTokyo, q):
+    
     try:
         msg = None
         msg = q.get(timeout=0.1)
         if hasattr(msg, 'type'):
             # Handelling SERIAL_CONNECT
             if msg.type == UiCommand.SERIAL_CONNECT:
-                print("Ctr: Command Received to Connect to %s" % msg.port)
+                logger_ctr.info("Command Received to Connect to %s" % msg.port)
                 commander.connect(msg.port)
                 
             # Handelling CMD_GOTO
             if msg.type == UiCommand.CMD_GOTO:
                 if not commander.is_connected:
-                    print("Ctr: Connect to Serial Radio first")
+                    logger_ctr.warning("Connect to Serial Radio first")
                     return True
                 # Instruct commander to send command
                 position = msg.position
                 clamps_to_communicate = get_checkbox_selected_clamps(guiref, commander)
                 if len(clamps_to_communicate) > 0:
-                    result = commander.send_clamps_to_jaw_position(clamps_to_communicate, msg.position, None)
-                    if result:
-                        print ("Ctr: Message successfully sent.")
-                    else:
-                        print ("Ctr: Message failed to send.")
+                    result = commander.send_clamps_to_jaw_position(clamps_to_communicate, position, None)
+                    logger_ctr.info("Sending movement command (%smm) to %s, result = %s" % (position, clamps_to_communicate, result))
 
             # Handelling CMD_STOP
             if msg.type == UiCommand.CMD_STOP:
                 if not commander.is_connected:
-                    print("Ctr: Connect to Serial Radio first")
+                    logger_ctr.warning("Connect to Serial Radio first")
                     return True
                 # Instruct commander to send command
                 clamps_to_communicate = get_checkbox_selected_clamps(guiref, commander)
                 if len(clamps_to_communicate) == 0: return True
                 result = commander.stop_clamps(clamps_to_communicate)
-                if result:
-                    print ("Ctr: Message successfully sent.")
-                else:
-                    print ("Ctr: Message failed to send.")
+                logger_ctr.info("Sending stop command to %s, result = %s" % (clamps_to_communicate, result))
+
 
             # Handelling CMD_HOME
             if msg.type == UiCommand.CMD_HOME:
                 if not commander.is_connected:
-                    print("Ctr: Connect to Serial Radio first")
+                    logger_ctr.warning("Connect to Serial Radio first")
                     return True
                 # Instruct commander to send command
                 clamps_to_communicate = get_checkbox_selected_clamps(guiref, commander)
-                # Need to loop through.
-                for clamp in clamps_to_communicate:
-                    response = commander.message_clamp(clamp,'h',3)
-                    if response is not None:
-                        print ("Ctr: Message to Clamp %s successfully sent." % clamp.receiver_address)
-                    else:
-                        print ("Ctr: Message to Clamp %s failed to send." % clamp.receiver_address)
+                results = commander.home_clamps(clamps_to_communicate)
+                logger_ctr.info("Sending home command to %s, results = %s" % (clamps_to_communicate, results))
 
             # Handelling CMD_VELO
             if msg.type == UiCommand.CMD_VELO:
                 if not commander.is_connected:
-                    print("Ctr: Connect to Serial Radio first")
+                    logger_ctr.warning("Connect to Serial Radio first")
                     return True
                 # Instruct commander to send command
                 velocity = msg.velocity
                 clamps_to_communicate = get_checkbox_selected_clamps(guiref, commander)
-                # Need to loop through.
-                for clamp in clamps_to_communicate:
-                    result = commander.set_clamp_velocity(clamp, velocity)
-                    if result:
-                        print ("Ctr: Message to Clamp %s successfully sent." % clamp.receiver_address)
-                    else:
-                        print ("Ctr: Message to Clamp %s failed to send." % clamp.receiver_address)
+                results = commander.set_clamps_velocity(clamps_to_communicate, velocity)
+                logger_ctr.info("Sending Velocity command (%s) to %s, results = %s" % (velocity, clamps_to_communicate, results))
+
+
+            # Handelling CMD_VELO
+
 
 
             # Return True if q.get() didn't return empty
@@ -115,7 +109,7 @@ def update_status(guiref, commander:SerialCommanderTokyo):
     if (last_status_update_time + commander.status_update_interval_ms <= current_milli_time()):
         last_status_update_time = current_milli_time()
         # Request status from commander
-        commander.update_clamps_status(1)
+        commander.update_all_clamps_status(1)
         # Set UI variables
         for clamp in commander.clamps.values():
             if clamp.ishomed is not None:
@@ -145,7 +139,29 @@ def update_status(guiref, commander:SerialCommanderTokyo):
     else:
         return False
 
+def initialize_logging(filename: str):
+    # Logging Setup
+    logger = logging.getLogger("app")
+    logger.setLevel(logging.DEBUG)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # create file handler which logs even debug messages
+    log_file_handler = logging.FileHandler(filename)
+    log_file_handler.setLevel(logging.DEBUG)
+    log_file_handler.setFormatter(formatter)
+    # create console handler with a higher log level
+    log_console_handler = logging.StreamHandler()
+    log_console_handler.setLevel(logging.INFO)
+    log_console_handler.setFormatter(formatter)
+    # add the handlers to logger
+    logger.addHandler(log_file_handler)
+    logger.addHandler(log_console_handler)
+    logger.info("App Started")
+
 if __name__ == "__main__":
+
+    initialize_logging("TokyoCommander." + datetime.date.today().strftime("%Y-%m-%d") + ".debug.log")
+
     # Root TK Object
     root = tk.Tk()
     root.title("Tokyo Clamps Commander")
@@ -154,7 +170,6 @@ if __name__ == "__main__":
     q = queue.Queue()
     # Create Model
     commander = SerialCommanderTokyo()
-    commander.status_update_interval_ms = 250
     # Get GUI Reference
     guiref = create_commander_gui(root, q, commander.clamps.values())
     

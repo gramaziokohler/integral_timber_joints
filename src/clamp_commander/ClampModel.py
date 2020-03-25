@@ -104,12 +104,13 @@ class ClampModel(object):
     @property
     def state_to_data(self):
         data = {}
+        data['state_timestamp'] = self._state_timestamp
         data['raw_currentPosition'] = self._raw_currentPosition
         data['raw_currentTarget'] = self._raw_currentTarget
         data['raw_currentMotorPowerPercentage'] = self._raw_currentMotorPowerPercentage
         data['raw_statusCode'] = self._raw_statusCode
         data['raw_battery'] = self._raw_battery
-        data['state_timestamp'] = self._state_timestamp
+        data['is_running'] = self.isMotorRunning
 
         return data
 
@@ -171,9 +172,15 @@ class ClampModel(object):
         self._isDirectionExtend = self.__is_set(statusCodeNumber, 2)
 
     def __str__(self):
-        if self.currentMotorPosition is None: return "ClampModel Object Address=%s (Not Connected)" % self.receiver_address
-        homed_string = "Homed" if self.ishomed else "Not-Homed"
-        return "ClampModel Object Address=%s BatteryLevel=%s%% Postion=%4.2fmm %s"  % (self.receiver_address, self.batteryPercentage, self.currentJawPosition, homed_string)
+        # Readable
+        return "Clamp %s" % self.receiver_address
+        # if self.currentMotorPosition is None: return "ClampModel Object Address=%s (Not Connected)" % self.receiver_address
+        # homed_string = "Homed" if self.ishomed else "Not-Homed"
+        # return "ClampModel Object Address=%s BatteryLevel=%s%% Postion=%4.2fmm %s"  % (self.receiver_address, self.batteryPercentage, self.currentJawPosition, homed_string)
+    
+    def __repr__(self):
+        # unambiguous
+        return "Clamp %s" % self.receiver_address
 
 if __name__ == "__main__":
 

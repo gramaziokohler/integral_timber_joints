@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from ClampModel import ClampModel
 
 from serial.tools import list_ports
+import logging
+logger_ui = logging.getLogger("app.UI")
 
 class UiCommand(Enum):
     SERIAL_CONNECT = 1
@@ -14,6 +16,8 @@ class UiCommand(Enum):
     CMD_STOP = 3
     CMD_HOME = 4
     CMD_VELO = 5
+    LOGGING = 6
+
 # class ClampCommanderApp(tk.Tk):
 #     def __init__(self):
 #         tk.Tk.__init__(self)
@@ -33,6 +37,7 @@ def create_commander_gui(root, q:Queue, clamps):
     ui_handles['connect'] = create_ui_connect(root, q)
     ui_handles['status'] = create_ui_status(root, q, clamps)
     ui_handles['control'] = create_ui_control(root, q)
+    ui_handles['logging'] = create_ui_logging(root, q)
     return ui_handles
     
 def create_ui_connect(root, q:Queue):
@@ -60,9 +65,11 @@ def create_ui_connect(root, q:Queue):
     def on_connect_button_click(event=None):
         cb_value = serial_cb.get()
         ports = list_serial_ports()
+        # Loop though ports to find the selected port object
+        logger_ui.info("Button Pressed: Connect Serial")
         for port in ports:
             if (cb_value == port.__str__()):
-                print ("UI: Selected Port: %s" % port[0])
+                logger_ui.info ("Selected Port: %s" % port[0])
                 q.put(SimpleNamespace(type=UiCommand.SERIAL_CONNECT, port=port[0]))
                 break
     button = tk.Button(frame, text = "Connect / Reconnect", command = on_connect_button_click)
@@ -123,6 +130,7 @@ def create_one_ui_status(root, q:Queue, clamp:ClampModel):
     return ui_handles
 
 def create_ui_control(root, q:Queue):
+    
     ui_handles = {}
 
     font_key = tkFont.Font(family="Lucida Grande", size=10)
@@ -136,7 +144,7 @@ def create_ui_control(root, q:Queue):
 
     # Buttons
     def on_goto_button_click(position):
-        print("UI: Button: Go to Position %s" % position)
+        logger_ui.info("Button Pressed: Go to Position %s" % position)
         q.put(SimpleNamespace(type = UiCommand.CMD_GOTO, position = position))
 
     tk.Label(frame, text = "Go to Position: ", font = font_key, anchor = tk.SE).pack(side = tk.LEFT, fill=tk.Y)
@@ -149,7 +157,7 @@ def create_ui_control(root, q:Queue):
     tk.Button(frame, text = "220mm", command = lambda: on_goto_button_click(220)).pack(side = tk.LEFT)
     
     def on_velo_button_click(velocity):
-        print("UI: Button: Set Velocity %s" % velocity)
+        logger_ui.info("Button Pressed: Set Velocity %s" % velocity)
         q.put(SimpleNamespace(type = UiCommand.CMD_VELO, velocity = velocity))
 
     tk.Label(frame, text = "Set Velocity: ", font = font_key, anchor = tk.SE).pack(side = tk.LEFT, fill=tk.Y, padx = 10)
@@ -161,14 +169,14 @@ def create_ui_control(root, q:Queue):
 
 
     def on_stop_button_click():
-        print("UI: Button: STOP")
+        logger_ui.info("Button Pressed: STOP")
         q.put(SimpleNamespace(type = UiCommand.CMD_STOP))
 
     tk.Label(frame, text = "Stop: ", font = font_key, anchor = tk.SE).pack(side = tk.LEFT, fill=tk.Y, padx = 10)
     tk.Button(frame, text = "Stop Now", command = on_stop_button_click).pack(side = tk.LEFT)
     
     def on_home_button_click():
-        print("UI: Button: HOME")
+        logger_ui.info("Button Pressed: HOME")
         q.put(SimpleNamespace(type = UiCommand.CMD_HOME))
 
     tk.Label(frame, text = "Home: ", font = font_key, anchor = tk.SE).pack(side = tk.LEFT, fill=tk.Y, padx = 10)
@@ -176,8 +184,32 @@ def create_ui_control(root, q:Queue):
 
     return ui_handles
 
-def create_ui_log(root):
-    pass
+def create_ui_logging(root, q:Queue):
+
+    ui_handles = {}
+
+    font_key = tkFont.Font(family="Lucida Grande", size=10)
+    font_value = tkFont.Font(family="Lucida Grande", size=20)
+
+    # Title and frame
+    title = tk.Label(root, text = "Logging")
+    title.pack(anchor = tk.NW, expand= 0, side = tk.TOP, padx = 3, pady = 3)
+    frame = ttk.Frame(root, borderwidth = 2, relief = 'solid')
+    frame.pack(fill = tk.BOTH, expand = 0, side = tk.TOP, padx = 6, pady = 3)
+
+    # Button
+    def on_logging_button_click(event=None):
+        logger_ui.info ("Button Pressed: logging_button")
+        q.put(SimpleNamespace(type=UiCommand.LOGGING))
+    
+    ui_handles['logging_button_text'] = tk.StringVar(value = "Start Logging")
+    tk.Button(frame, textvariable = ui_handles['logging_button_text'], command = on_logging_button_click).pack(side = tk.LEFT)
+    #ui_handles['logging_status_text'] = tk.StringVar(value = "Not Logging Yet")
+    #tk.Label(frame, textvariable = ui_handles["logging_status_text"], font = font_value).pack(side = tk.LEFT, fill=tk.Y, padx=5)
+
+
+    return ui_handles
+
 
 
 
