@@ -12,6 +12,16 @@ import time, datetime
 import logging
 current_milli_time = lambda: int(round(time.time() * 1000))
 
+# This UI implemented a Model-View-Controller pattern.
+
+# Model is a single SerialCommanderTokyo() object
+# View is the TKInter UI that is created by CommanderGUI.create_commander_gui()
+# Controller for the UI is the tk.mainloop().
+# Controller for background task is the background_thread() that runs on a separate thread.
+# - The background thread implemented a time-share based multi-task execution.
+# - It is separated to handle_ui_commands() and update_status()
+
+# Initialize logger for the controller
 logger_ctr = logging.getLogger("app.ctr")
 # Initialize multi-tasking variables.
 last_status_update_time = 0

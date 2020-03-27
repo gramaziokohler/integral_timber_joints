@@ -267,6 +267,18 @@ When any message is received at the clamp controller, it will reply with a full 
 
 Simple.
 
+### Digital Twin Declaration
+
+SerialCommanderTokyo.py implemented the two following lines to initiate the ClampModel
+
+```
+self.clamp1 = ClampModel('1', 918, 95.0, 94.0, 225.0, 860.0, 1004.0)
+
+self.clamp2 = ClampModel('2', 918, 95.0, 94.0, 225.0, 860.0, 1004.0)
+```
+
+
+
 ### Position
 
 Clamp Jaw **Extension** Direction is **Positive**
