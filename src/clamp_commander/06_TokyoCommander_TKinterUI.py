@@ -51,12 +51,12 @@ def handle_ui_commands(guiref, commander:SerialCommanderTokyo, q):
         msg = q.get(timeout=0.1)
         if hasattr(msg, 'type'):
             # Handelling SERIAL_CONNECT
-            if msg.type == UiCommand.SERIAL_CONNECT:
+            if msg.type == BackgroundCommand.SERIAL_CONNECT:
                 logger_ctr.info("Command Received to Connect to %s" % msg.port)
                 commander.connect(msg.port)
                 
             # Handelling CMD_GOTO
-            if msg.type == UiCommand.CMD_GOTO:
+            if msg.type == BackgroundCommand.CMD_GOTO:
                 if not commander.is_connected:
                     logger_ctr.warning("Connect to Serial Radio first")
                     return True
@@ -68,7 +68,7 @@ def handle_ui_commands(guiref, commander:SerialCommanderTokyo, q):
                     logger_ctr.info("Sending movement command (%smm) to %s, result = %s" % (position, clamps_to_communicate, result))
 
             # Handelling CMD_STOP
-            if msg.type == UiCommand.CMD_STOP:
+            if msg.type == BackgroundCommand.CMD_STOP:
                 if not commander.is_connected:
                     logger_ctr.warning("Connect to Serial Radio first")
                     return True
@@ -80,7 +80,7 @@ def handle_ui_commands(guiref, commander:SerialCommanderTokyo, q):
 
 
             # Handelling CMD_HOME
-            if msg.type == UiCommand.CMD_HOME:
+            if msg.type == BackgroundCommand.CMD_HOME:
                 if not commander.is_connected:
                     logger_ctr.warning("Connect to Serial Radio first")
                     return True
@@ -90,7 +90,7 @@ def handle_ui_commands(guiref, commander:SerialCommanderTokyo, q):
                 logger_ctr.info("Sending home command to %s, results = %s" % (clamps_to_communicate, results))
 
             # Handelling CMD_VELO
-            if msg.type == UiCommand.CMD_VELO:
+            if msg.type == BackgroundCommand.CMD_VELO:
                 if not commander.is_connected:
                     logger_ctr.warning("Connect to Serial Radio first")
                     return True

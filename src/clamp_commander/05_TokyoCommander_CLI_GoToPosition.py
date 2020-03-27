@@ -31,12 +31,15 @@ while (True):
         continue
 
     # Send messages
-    send_success1 =  commander.send_all_clamps_to_jaw_position(jaw_target, default_speed)
+
+    send_success1 =  commander.send_clamp_to_jaw_position(commander.clamp1, jaw_target)
+    send_success2 =  commander.send_clamp_to_jaw_position(commander.clamp2, jaw_target)
     print("Message sent: %s" % (send_success1))
 
     # Monitor Status until motor stops
     for i in range(10):
-        commander.update_clamps_status()
+        commander.update_clamp_status(commander.clamp1)
+        commander.update_clamp_status(commander.clamp2)
         print ("%s, %s" % (commander.clamp1, commander.clamp2))
         
 print("Serial Port Ends")
