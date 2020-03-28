@@ -1,3 +1,18 @@
+# TokyoClampCommunicationViaRos provides simple to use functions to send clamp commands via ROS
+# The receiving Clamp Controller should be started.
+
+# Typical usage:
+#   hostip = '192.168.43.141'
+#   clamps_connection = TokyoClampCommunicationViaRos(hostip)
+# Command to send clamp to target (non-blocking)
+#   clamps_connection.send_ROS_VEL_GOTO_COMMAND(100.0, 1.0)
+# Command to send clamp to target (blocking)
+#   success = clamps_connection.send_ROS_VEL_GOTO_COMMAND_wait(100.0, 1.0, 1000)
+# Command to stop clamps (non-blocking)
+#   clamps_connection.send_ROS_STOP_COMMAND(['1','2'])
+
+# Directly running this file creates a CLI for sending movement commands.
+
 import time, datetime
 import json 
 import roslibpy
@@ -6,7 +21,7 @@ current_milli_time = lambda: int(round(time.time() * 1000))
 from roslibpy import Ros
 
 class TokyoClampCommunicationViaRos(Ros):
-
+        
     def __init__(self, host_ip:str):
         Ros.__init__(self, host=host_ip, port=9090)
         self.run()
@@ -61,7 +76,7 @@ class TokyoClampCommunicationViaRos(Ros):
         self.sequence_id += 1
         print("Sent Message to \clamp_instruction:", message)
         return self.sequence_id - 1
-
+    
     # Return true if sending is successful. False if timeout
     def send_ROS_VEL_GOTO_COMMAND_wait(self, clamps_id: str, position: float, velocity: float, timeout_ms: int = 1000) -> bool:
         start_time = current_milli_time()
