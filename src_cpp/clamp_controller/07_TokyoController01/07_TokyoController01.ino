@@ -11,8 +11,9 @@
  Radio commands can also be accepted. (This controller's default address is '1')
  h              - Home the axis
  ?              - Print out status
- g[position]    - move to a given position, can be positive or negative value.
+ g[position]    - move to a given position (step), can be positive or negative value.
  s              - immediately stop
+ v[velocity]    - Set Velocity in (step/s)
  r[message]     - Send radio message to master (default address '0') e.g. rHello\n
 
  The controller now uses a PID controller for the motors for position control
@@ -93,10 +94,11 @@ const uint8_t status_led_pin = A3;
 
 //Tunings for motors
 const double m1_kp = 0.005;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kp = 0.040
-const double m1_ki = 0.200;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_ki = 0.200
-const double m1_kd = 0.0002;                // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kd = 0.0002
-const double m1_accel = 3000;               // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_accel = 3000
-const int m1_error_to_stop = 50.0;          // Maximum absolute step error for the controller to stop itself without reaching the goal.
+const double m1_ki = 0.003;                 // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_ki = 0.200
+const double m1_kd = 0.0001;                // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_kd = 0.0002
+
+const double m1_accel = 5000;               // Tuning based on result from Motor08_PID_TrapezoidalMotionProfile m1_accel = 3000
+const int m1_error_to_stop = 200.0;          // Maximum absolute step error for the controller to stop itself without reaching the goal.
 const double m1_home_position_step = -1650;
 const int motor_run_interval = 10;          // Motor PID sample Interval in millis()
 

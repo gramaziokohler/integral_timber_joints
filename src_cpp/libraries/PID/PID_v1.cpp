@@ -66,7 +66,8 @@ bool PID::Compute()
       double input = *myInput;
       double error = *mySetpoint - input;
       double dInput = (input - lastInput);
-      outputSum+= (ki * error);
+      //outputSum+= (ki * error);
+      outputSum += (ki * error * timeChange);
 
       /*Add Proportional on Measurement, if P_ON_M is specified*/
       if(!pOnE) outputSum-= kp * dInput;
@@ -80,7 +81,8 @@ bool PID::Compute()
       else output = 0;
 
       /*Compute Rest of PID Output*/
-      output += outputSum - kd * dInput;
+      //output += outputSum - kd * dInput;
+      output += outputSum - kd * dInput / timeChange;
 
 	    if(output > outMax) output = outMax;
       else if(output < outMin) output = outMin;
@@ -110,8 +112,10 @@ void PID::SetTunings(double Kp, double Ki, double Kd, int POn)
 
    double SampleTimeInSec = ((double)SampleTime)/1000;
    kp = Kp;
-   ki = Ki * SampleTimeInSec;
-   kd = Kd / SampleTimeInSec;
+   //ki = Ki * SampleTimeInSec;
+   //kd = Kd / SampleTimeInSec;
+   ki = Ki / 1000.0; // This is a modification to take care of irregular sample time. Pre-convertion to ms
+   kd = Kd * 1000.0; // This is a modification to take care of irregular sample time. Pre-convertion to ms
 
   if(controllerDirection ==REVERSE)
    {
@@ -135,11 +139,11 @@ void PID::SetSampleTime(int NewSampleTime)
 {
    if (NewSampleTime > 0)
    {
-      double ratio  = (double)NewSampleTime
-                      / (double)SampleTime;
-      ki *= ratio;
-      kd /= ratio;
-      SampleTime = (unsigned long)NewSampleTime;
+      //double ratio  = (double)NewSampleTime
+      //                / (double)SampleTime;
+      //ki *= ratio;
+      //kd /= ratio;
+      SampleTime = (unsigned long)NewSampleTime; // Record the intended Sample Time
    }
 }
 
@@ -192,6 +196,7 @@ void PID::Initialize()
    lastInput = *myInput;
    if(outputSum > outMax) outputSum = outMax;
    else if(outputSum < outMin) outputSum = outMin;
+   lastTime = millis() - SampleTime;    // Reintroduce the reset of last Time.
 }
 
 /* SetControllerDirection(...)*************************************************
@@ -204,7 +209,7 @@ void PID::SetControllerDirection(int Direction)
 {
    if(inAuto && Direction !=controllerDirection)
    {
-	    kp = (0 - kp);
+	  kp = (0 - kp);
       ki = (0 - ki);
       kd = (0 - kd);
    }
