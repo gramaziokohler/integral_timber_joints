@@ -19,6 +19,8 @@ def current_milli_time(): return int(round(time.time() * 1000))
 class RosClampCommandListener(Ros):
 
     def __init__(self, host, command_callback, is_secure=False):
+        from twisted.internet import reactor
+        reactor.timeout = lambda : 0.00001
         Ros.__init__(self, host, 9090, is_secure)
         self.command_callback = command_callback
         # Setup replier topic.
@@ -28,7 +30,7 @@ class RosClampCommandListener(Ros):
         def receive_callback(message):
             command_dict = json.loads(message['data'])
             # Reply to the message.
-            reply_message = {}
+            reply_message = {'msg':'This is just ROS ack. Not necessary clamps moving.' }
             reply_message['sequence_id'] = command_dict['sequence_id']
             reply_message['timestamp'] = current_milli_time()
             self.replier.publish(roslibpy.Message({'data': json.dumps(reply_message)}))
