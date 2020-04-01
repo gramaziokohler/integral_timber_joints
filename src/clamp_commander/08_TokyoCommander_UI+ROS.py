@@ -162,13 +162,16 @@ def handle_background_commands(guiref, commander: SerialCommanderTokyo, q):
 
                 # Replace the clamp_id with the retrived ClampModel
                 clamp_pos_velo_list = [(commander.clamps[clamp_id], position, velocity) for clamp_id, position, velocity in instructions]
-
+                
                 # Instruct commander to send command
                 success = commander.sync_clamps_move(clamp_pos_velo_list)
 
-                if not success:
-                    logger_ctr.warning("ROS Command Fail: send_clamp_to_jaw_position(%s,%s) Fail" % (clamp, position))
-                logger_ctr.info("ROS_VEL_GOTO_COMMAND Command Executed: Instructions = %s, results = Success" % (instructions))
+                if success:
+                    logger_ctr.info("ROS_VEL_GOTO_COMMAND Command Executed: Instructions = %s, results = Success" % (instructions))
+                else:
+                    clamps = [commander.clamps[clamp_id] for clamp_id, position, velocity in instructions]
+                    positions = [position for clamp_id, position, velocity in instructions]
+                    logger_ctr.warning("ROS Command Fail: send_clamp_to_jaw_position(%s,%s) Fail" % (clamps, positions))
 
             # Handelling ROS_STOP_COMMAND
             if msg.type == BackgroundCommand.ROS_STOP_COMMAND:
@@ -201,23 +204,40 @@ def update_status(guiref, commander: SerialCommanderTokyo):
         for clamp in commander.clamps.values():
             if clamp.ishomed is not None:
                 guiref['status'][clamp.receiver_address]['home'].set("Yes" if clamp.ishomed else "No")
+                guiref['status'][clamp.receiver_address]['home_label'].config(fg = "red" if not clamp.ishomed else "black")
+            # Clamp Running Label
             if clamp.isMotorRunning is not None:
                 if clamp.isMotorRunning:
                     if clamp.isDirectionExtend:
                         guiref['status'][clamp.receiver_address]['motion'].set("Extending")
+                        guiref['status'][clamp.receiver_address]['motion_label'].config(fg = "green")
                     else:
                         guiref['status'][clamp.receiver_address]['motion'].set("Retracting")
+                        guiref['status'][clamp.receiver_address]['motion_label'].config(fg = "green")
                 else:
                     guiref['status'][clamp.receiver_address]['motion'].set("Stopped")
+                    guiref['status'][clamp.receiver_address]['motion_label'].config(fg = "black")
+            # Jaw Position Label
             if clamp.currentJawPosition is not None:
                 guiref['status'][clamp.receiver_address]['position'].set("%04.1fmm" % clamp.currentJawPosition)
+            # Step Error with orange Label > abs(100 steps)
+            if clamp._raw_currentPosition is not None:    
                 guiref['status'][clamp.receiver_address]['error'].set("%3i steps" % int(clamp._raw_currentPosition - clamp._raw_currentTarget))
+                guiref['status'][clamp.receiver_address]['power_label'].config(fg = "orange" if abs(clamp._raw_currentPosition - clamp._raw_currentTarget) > 100 else "black")
+            # Motor Power percentage with Orange Label > 90%
             if clamp.currentMotorPowerPercentage is not None:
                 guiref['status'][clamp.receiver_address]['power'].set("%3i%%" % clamp.currentMotorPowerPercentage)
+                guiref['status'][clamp.receiver_address]['power_label'].config(fg = "orange" if abs(clamp.currentMotorPowerPercentage) > 90 else "black")
+
+            # Battery percentage with Red Label < 10%
             if clamp.batteryPercentage is not None:
                 guiref['status'][clamp.receiver_address]['battery'].set("%2i%%" % clamp.batteryPercentage)
+                guiref['status'][clamp.receiver_address]['battery_label'].config(fg = "red" if clamp.batteryPercentage < 10 else "black")
+
+            # Clamp Last Communicate Time with Read Label > 500ms 
             if clamp._state_timestamp is not None:
                 guiref['status'][clamp.receiver_address]['last_com'].set("%2dms" % (current_milli_time() - clamp._state_timestamp))
+                guiref['status'][clamp.receiver_address]['last_com_label'].config(fg = "red" if (current_milli_time() - clamp._state_timestamp) > 500 else "black")
             if clamp._last_set_position is not None:
                 guiref['status'][clamp.receiver_address]['last_pos'].set("%04.1fmm" % clamp._last_set_position)
             if clamp._last_set_velocity is not None:
@@ -288,7 +308,7 @@ if __name__ == "__main__":
     t1.start()
 
     # Override default ip
-    guiref['ros']['ros_ip_entry'].set('192.168.43.141')
+    guiref['ros']['ros_ip_entry'].set('192.168.0.115')
     # hostip = '192.168.43.141'
     # try:
     #     commander.ros_client = RosCommandListener(hostip, partial(ros_command_callback, q = q))

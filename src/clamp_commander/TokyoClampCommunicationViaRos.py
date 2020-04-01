@@ -23,6 +23,8 @@ from roslibpy import Ros
 class TokyoClampCommunicationViaRos(Ros):
         
     def __init__(self, host_ip:str):
+        from twisted.internet import reactor
+        reactor.timeout = lambda : 0.00001
         Ros.__init__(self, host=host_ip, port=9090)
         self.run()
 
@@ -108,7 +110,7 @@ class TokyoClampCommunicationViaRos(Ros):
 # CLI Loop
 if __name__ == "__main__":
 
-    hostip = '192.168.43.141'
+    hostip = '192.168.0.117'
     clamps_connection = TokyoClampCommunicationViaRos(hostip)
 
     # Command to send clamp to target (non-blocking)
