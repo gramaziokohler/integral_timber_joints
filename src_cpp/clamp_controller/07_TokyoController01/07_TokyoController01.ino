@@ -133,6 +133,7 @@ ResistorLadderID DipSwitch(A6, addressValues, 16);
 BufferedSerial bufferedSerial(1);
 CC1101 radio;
 uint8_t radio_partnum, radio_version, radio_marcstate;	// Stores the register values of the radio fetched at startup.
+unsigned long radio_last_receive_millis = 0;
 
 // Variables for profiling
 unsigned long profile_start_micros = 0;
@@ -279,8 +280,11 @@ void loop() {
         strcpy((char *)packet_reply.data + 2, status_string);
         radio.sendDataSpecial(packet_reply);
 
+        // Record the last Radio Reception time
+        radio_last_receive_millis = millis();
     }
 
+    run_radio_frozen_fix();
     //CCPACKET packet;
     //radio.receiveData(&packet);
 
@@ -397,6 +401,22 @@ void run_batt_monitor() {
             next_run_time = millis() + MONITOR_PEIROD_MILLIS;
             batt_value = analogRead(battery_monitor_pin);
             //profile_end("Batt Monitor Time Taken : ");
+        }
+
+    }
+}
+
+// Battery Monitor - To be separated into its own class and file.
+void run_radio_frozen_fix() {
+    {
+        const unsigned long RADIO_FROZEN_TIMEOUT = 3000;
+        // If radio do not receive anything within timeout, radio will reset itself into RX mode.
+        if (millis() > radio_last_receive_millis + RADIO_FROZEN_TIMEOUT) {
+            radio.setRxState();
+            //radio.flushRxFifo();
+            //radio.flushTxFifo();
+            Serial.println(F("RadioFixApplied"));
+            radio_last_receive_millis = millis();
         }
 
     }
