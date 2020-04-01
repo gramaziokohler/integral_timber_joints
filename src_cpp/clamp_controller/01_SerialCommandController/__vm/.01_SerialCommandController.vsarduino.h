@@ -28,8 +28,15 @@
 #define __extension__
 #define __inline__
 #define __volatile__
-#define GCC_VERSION 40902
 #define __cplusplus 201103L
+
+//#define GCC_VERSION 40902
+//https://www.visualmicro.com/forums/YaBB.pl?num=1569762585/5#5
+#define __GNUC__             5
+#define __GNUC_MINOR__       4
+#define __GNUC_PATCHLEVEL__  0
+#define GCC_VERSION ((__GNUC__*10000)+(__GNUC_MINOR__*100)+__GNUC_PATCHLEVEL__)) 
+
 
 #define volatile(va_arg) 
 #define _CONST
@@ -72,6 +79,7 @@ typedef void *__builtin_va_list;
 //typedef unsigned char uint8_t;
 //typedef unsigned int uint8_t;
 
+#define pgm_read_byte_near(address_short) uint8_t()
 #define pgm_read_byte(address_short) uint8_t() 
 #define pgm_read_word(address_short) uint16_t() 
 #define pgm_read_dword(address_short) uint32_t()
