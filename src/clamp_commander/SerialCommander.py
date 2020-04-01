@@ -182,6 +182,7 @@ class SerialCommander(object):
             success = self.send_clamp_to_jaw_position(clamp, jaw_position_mm)
             processed_clamps.append(clamp)
             if not success:
+                self.logger.warning("Sync Clamp Move Not Successful, %s no response." % processed_clamps[-1])
                 self.stop_clamps(processed_clamps)
                 return False
 
@@ -192,9 +193,13 @@ class SerialCommander(object):
     def send_clamp_to_jaw_position(self, clamp: ClampModel, jaw_position_mm: float) -> bool:
         # Check position min max
         if (jaw_position_mm < clamp.SoftLimitMin_mm):
-            raise ValueError("Target Position (%s) < Limit (%s)" % (jaw_position_mm, clamp.SoftLimitMin_mm))
+            # raise ValueError("Target Position (%s) < Limit (%s)" % (jaw_position_mm, clamp.SoftLimitMin_mm))
+            self.logger.error("Target Position (%s) < Limit (%s)" % (jaw_position_mm, clamp.SoftLimitMin_mm))
+            return False
         if (jaw_position_mm > clamp.SoftLimitMax_mm):
-            raise ValueError("Target Position (%s) > Limit (%s)" % (jaw_position_mm, clamp.SoftLimitMax_mm))
+            # raise ValueError("Target Position (%s) > Limit (%s)" % (jaw_position_mm, clamp.SoftLimitMax_mm))
+            self.logger.error("Target Position (%s) > Limit (%s)" % (jaw_position_mm, clamp.SoftLimitMax_mm))
+            return False
 
         # Convert velocity and target into step units
         motor_position = int(clamp.to_motor_position(jaw_position_mm))
@@ -214,7 +219,7 @@ class SerialCommander(object):
 
     def home_clamps(self, clamps: List[ClampModel]) -> List[bool]:
         successes = []
-        for address, clamp in self.clamps.items():
+        for clamp in clamps:
             response = self.message_clamp(clamp, "h")
             successes.append(response is not None)
         if any(successes):
@@ -225,7 +230,7 @@ class SerialCommander(object):
 
     def stop_clamps(self, clamps: List[ClampModel]) -> List[bool]:
         successes = []
-        for address, clamp in self.clamps.items():
+        for clamp in clamps:
             response = self.message_clamp(clamp, "s")
             successes.append(response is not None)
         return successes
@@ -243,9 +248,13 @@ class SerialCommander(object):
         this_clamp_VelocityMin_mm_sec = 0.01  # TO Do. Integrate this into clampModel
         this_clamp_VelocityMax_mm_sec = 10.0  # TO Do. Integrate this into clampModel
         if (velocity_mm_sec < this_clamp_VelocityMin_mm_sec):
-            raise ValueError("Target Velocity (%s) < Limit (%s)" % (velocity_mm_sec, this_clamp_VelocityMin_mm_sec))
+            #raise ValueError("Target Velocity (%s) < Limit (%s)" % (velocity_mm_sec, this_clamp_VelocityMin_mm_sec))
+            self.logger.error("Target Velocity (%s) < Limit (%s)" % (velocity_mm_sec, this_clamp_VelocityMin_mm_sec))
+            return False
         if (velocity_mm_sec > this_clamp_VelocityMax_mm_sec):
-            raise ValueError("Target Position (%s) > Limit (%s)" % (velocity_mm_sec, this_clamp_VelocityMax_mm_sec))
+            #raise ValueError("Target Velocity (%s) > Limit (%s)" % (velocity_mm_sec, this_clamp_VelocityMax_mm_sec))
+            self.logger.error("Target Velocity (%s) > Limit (%s)" % (velocity_mm_sec, this_clamp_VelocityMax_mm_sec))
+            return False
 
         # Convert units
         velocity_step_sec = int(velocity_mm_sec * clamp.StepPerMM)
