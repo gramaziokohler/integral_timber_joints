@@ -106,11 +106,15 @@ def create_one_ui_status(root, q: Queue, clamp: ClampModel):
     ui_handles['checkbox'] = tk.BooleanVar(value=True)
     tk.Checkbutton(frame, variable=ui_handles['checkbox']).pack(side=tk.LEFT, padx=10)
 
-    def create_label_pair(label_text, handle_name):
+    def create_label_pair(label_text, textvariable_name, label_name = None):
         tk.Label(frame, text=label_text, font=tk.font_key, anchor=tk.SE).pack(side=tk.LEFT, fill=tk.Y)
-        ui_handles[handle_name] = tk.StringVar()
-        ui_handles[handle_name].set("<?>")
-        tk.Label(frame, textvariable=ui_handles[handle_name], font=tk.font_value).pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        ui_handles[textvariable_name] = tk.StringVar()
+        ui_handles[textvariable_name].set("<?>")
+        if label_name is None:
+            label_name = textvariable_name + "_label"
+        ui_handles[label_name] = tk.Label(frame, textvariable=ui_handles[textvariable_name], font=tk.font_value)
+        ui_handles[label_name].pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        
 
     # Create the fields
     create_label_pair("addr", "addr")
