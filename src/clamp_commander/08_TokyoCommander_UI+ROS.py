@@ -167,8 +167,12 @@ def handle_background_commands(guiref, commander: SerialCommanderTokyo, q):
                 success = commander.sync_clamps_move(clamp_pos_velo_list)
 
                 if success:
+                    # Log
                     logger_ctr.info("ROS_VEL_GOTO_COMMAND Command Executed: Instructions = %s, results = Success" % (instructions))
+                    # Send ACK back to ROS (No reply on Failed Send)
+                    commander.ros_client.reply_ack_result(msg.sequence_id, success)
                 else:
+                    # Log
                     clamps = [commander.clamps[clamp_id] for clamp_id, position, velocity in instructions]
                     positions = [position for clamp_id, position, velocity in instructions]
                     logger_ctr.warning("ROS Command Fail: send_clamp_to_jaw_position(%s,%s) Fail" % (clamps, positions))
@@ -278,12 +282,12 @@ def ros_command_callback(message, q=None):
     if message_type == "ROS_VEL_GOTO_COMMAND":
         sequence_id = message['sequence_id']
         instructions = message['instruction_body']
-        q.put(SimpleNamespace(type=BackgroundCommand.ROS_VEL_GOTO_COMMAND, clmap_pos_velo=instructions))
+        q.put(SimpleNamespace(type=BackgroundCommand.ROS_VEL_GOTO_COMMAND, clmap_pos_velo=instructions, sequence_id = sequence_id))
 
     if message_type == "ROS_STOP_COMMAND":
         sequence_id = message['sequence_id']
         clamps_id = message['instruction_body']
-        q.put(SimpleNamespace(type=BackgroundCommand.ROS_STOP_COMMAND, clamps_id=clamps_id))
+        q.put(SimpleNamespace(type=BackgroundCommand.ROS_STOP_COMMAND, clamps_id=clamps_id, sequence_id = sequence_id))
 
 
 if __name__ == "__main__":
@@ -308,7 +312,7 @@ if __name__ == "__main__":
     t1.start()
 
     # Override default ip
-    guiref['ros']['ros_ip_entry'].set('192.168.0.115')
+    guiref['ros']['ros_ip_entry'].set('192.168.0.117')
     # hostip = '192.168.43.141'
     # try:
     #     commander.ros_client = RosCommandListener(hostip, partial(ros_command_callback, q = q))

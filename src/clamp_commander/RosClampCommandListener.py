@@ -41,6 +41,13 @@ class RosClampCommandListener(Ros):
         self.listener = roslibpy.Topic(self, '/clamp_command', 'std_msgs/String')
         self.listener.subscribe(receive_callback)
 
+    def reply_ack_result(self, sequence_id, ack_result):
+        reply_message = {'msg':' Clamps Ack result.' }
+        reply_message['sequence_id'] = sequence_id
+        reply_message['timestamp'] = current_milli_time()
+        reply_message['ack'] = ack_result
+        self.replier.publish(roslibpy.Message({'data': json.dumps(reply_message)}))
+
 # Directly calling this script creates a listener that will print out messages.
 # It will also show the one way trip time.
 

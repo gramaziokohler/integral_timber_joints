@@ -189,7 +189,7 @@ class SerialCommander(object):
         # If nothing went wrong, this is a success
         return True
 
-    # Return True if all messages are successfully sent
+    # Return True if messages are successfully sent and acked
     def send_clamp_to_jaw_position(self, clamp: ClampModel, jaw_position_mm: float) -> bool:
         # Check position min max
         if (jaw_position_mm < clamp.SoftLimitMin_mm):
@@ -205,17 +205,18 @@ class SerialCommander(object):
         motor_position = int(clamp.to_motor_position(jaw_position_mm))
 
         # Send Target to Go
-        response = self.message_clamp(clamp, "g" + str(motor_position))
+        message = "g" + str(motor_position)
+        response = self.message_clamp(clamp, message)
         success = response is not None
+
         # Returns True if the send is successful
-        if (success):
+        if success:
             clamp._last_set_position = jaw_position_mm
             if not self.status_update_high_freq:
                 self.logger.info("send_clamp_to_jaw_position() Issued. Status Update Freq = High")
                 self.status_update_high_freq = True
-            return True
-        else:
-            return False
+        self.logger.info("send_clamp_to_jaw_position(%s,%s), message = %s, success = %s"%(clamp, jaw_position_mm, message, success))
+        return success
 
     def home_clamps(self, clamps: List[ClampModel]) -> List[bool]:
         successes = []
@@ -260,11 +261,13 @@ class SerialCommander(object):
         velocity_step_sec = int(velocity_mm_sec * clamp.StepPerMM)
 
         # Send message to clamp
-        response = self.message_clamp(clamp, "v" + str(velocity_step_sec))
+        message =  "v" + str(velocity_step_sec)
+        response = self.message_clamp(clamp, message)
         success = response is not None
         # Record this last sent value
         if success:
             clamp._last_set_velocity = velocity_mm_sec
+        self.logger.info("set_clamp_velocity(%s,%s), message = %s, success = %s"%(clamp, velocity_mm_sec, message, success))
         return success
 
     def set_clamps_velocity(self, clamps: List[ClampModel], velocity_mm_sec: float) -> List[bool]:
