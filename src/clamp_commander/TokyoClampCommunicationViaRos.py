@@ -81,7 +81,7 @@ class TokyoClampCommunicationViaRos(Ros):
         message['received'] = False # Keep track of ACK.
         self.sent_messages_ack[self.sequence_id] = message
         self.sequence_id += 1
-        print("Sent Message to \clamp_instruction:", message)
+        print("Sent Message to clamp_command:", message)
         return self.sequence_id - 1
     
     # Return true if sending is successful. False if timeout
