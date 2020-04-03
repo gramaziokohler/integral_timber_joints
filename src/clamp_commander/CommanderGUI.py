@@ -148,12 +148,17 @@ def create_ui_control(root, q: Queue):
 
     tk.Label(frame, text="Go to Position: ", font=tk.font_key, anchor=tk.SE).pack(side=tk.LEFT, fill=tk.Y)
     tk.Button(frame, text="95mm", command=lambda: on_goto_button_click(95)).pack(side=tk.LEFT)
-    tk.Button(frame, text="100mm", command=lambda: on_goto_button_click(100)).pack(side=tk.LEFT)
+    tk.Button(frame, text="97mm", command=lambda: on_goto_button_click(97)).pack(side=tk.LEFT)
     tk.Button(frame, text="110mm", command=lambda: on_goto_button_click(110)).pack(side=tk.LEFT)
-    tk.Button(frame, text="120mm", command=lambda: on_goto_button_click(120)).pack(side=tk.LEFT)
+    tk.Button(frame, text="112mm", command=lambda: on_goto_button_click(112)).pack(side=tk.LEFT)
     tk.Button(frame, text="140mm", command=lambda: on_goto_button_click(140)).pack(side=tk.LEFT)
+    tk.Button(frame, text="170mm", command=lambda: on_goto_button_click(170)).pack(side=tk.LEFT)
     tk.Button(frame, text="200mm", command=lambda: on_goto_button_click(200)).pack(side=tk.LEFT)
     tk.Button(frame, text="220mm", command=lambda: on_goto_button_click(220)).pack(side=tk.LEFT)
+
+    ui_handles['custom_pos'] = tk.StringVar(value="100.5")
+    tk.Entry(frame, textvariable=ui_handles['custom_pos'], width = 10,  justify=tk.CENTER).pack(side=tk.LEFT)
+    tk.Button(frame, text="mm (Custom Pos)", command=lambda: on_goto_button_click(float(ui_handles['custom_pos'].get()))).pack(side=tk.LEFT)
 
     def on_velo_button_click(velocity):
         logger_ui.info("Button Pressed: Set Velocity %s" % velocity)
@@ -165,6 +170,11 @@ def create_ui_control(root, q: Queue):
     tk.Button(frame, text="3mm/s", command=lambda: on_velo_button_click(3)).pack(side=tk.LEFT)
     tk.Button(frame, text="4mm/s", command=lambda: on_velo_button_click(4)).pack(side=tk.LEFT)
     tk.Button(frame, text="5mm/s", command=lambda: on_velo_button_click(5)).pack(side=tk.LEFT)
+
+    ui_handles['custom_vel'] = tk.StringVar(value="2.5")
+    tk.Entry(frame, textvariable=ui_handles['custom_vel'], width = 10, justify=tk.CENTER).pack(side=tk.LEFT)
+    tk.Button(frame, text="mm/s (Custom Vel)", command=lambda: on_velo_button_click(float(ui_handles['custom_vel'].get()))).pack(side=tk.LEFT)
+
 
     def on_stop_button_click():
         logger_ui.info("Button Pressed: STOP")
