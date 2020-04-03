@@ -298,7 +298,7 @@ if __name__ == "__main__":
     # Root TK Object
     root = tk.Tk()
     root.title("Tokyo Clamps Commander")
-    root.geometry("1300x400")
+    root.geometry("1500x400")
     # Command queue
     q = queue.Queue()
     # Create Model
