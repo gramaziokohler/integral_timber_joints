@@ -2,16 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
-
 from compas.datastructures import Network
-
-from .element import Element
-from .utilities import _deserialize_from_data
-from .utilities import _serialize_to_data
-
-__all__ = ['Assembly']
-
 
 class Assembly(Network):
     """A data structure for discrete element assemblies.
@@ -53,162 +44,31 @@ class Assembly(Network):
         # Create default attributes
         self.attributes.update({
             'name': 'Unnamed_Assembly',
-            'assembly_sequence': [],
+            'sequence': [],
             })
+        # Default attributes for beams (node)
         self.update_default_node_attributes({
             'is_planned': False,
-            'is_placed': False
+            'is_placed': False,
+            'is_visible': True,
+            'is_attached': True,
         })
 
+    # ----------------------------
+    # Properity Setter and Getter
+    # ----------------------------
 
     @property
     def name(self):
         """str : The name of the assembly."""
-        return self.attributes.get('name', None)
+        return self.attributes['name']
 
     @name.setter
     def name(self, value):
         self.attributes['name'] = value
 
-    def sequence(self):
-        return self.attributes['assembly_sequence']
-
-    def number_of_elements(self):
-        """Compute the number of elements of the assembly.
-
-        Returns
-        -------
-        int
-            The number of elements.
-
-        """
-        return self.number_of_nodes()
-
-    def number_of_connections(self):
-        """Compute the number of connections of the assembly.
-
-        Returns
-        -------
-        int
-            the number of connections.
-
-        """
-        return self.number_of_edges()
-
-    @property
-    def data(self):
-        """dict : A data dict representing all internal persistant data for serialisation.
-        The dict has the following structure:
-        * 'type'            => string (name of the class)
-        * 'beams'           => list of dict of Beam.to_data()
-        """
-        from copy import deepcopy
-        # Call super class to_data
-        data_dict = super(Assembly, self.__class__).data.fget(self)
-
-        # Overridding part of the to_data method to serialize the beams
-        for key in self.node:
-            data_dict['node'][repr(key)] = deepcopy(self.node[key])
-            data_dict['node'][repr(key)]['beam'] = data_dict['node'][repr(key)]['beam'].to_data()
-
-        # Niceity reminder of the serialized data type
-        data_dict['type'] = self.__class__.__name__
-
-        return data_dict
-
-    # @data.setter
-    # def data(self, data):
-    #     # Deserialize elements from vertex dictionary
-    #     for _vkey, vdata in data['vertex'].items():
-    #         vdata['element'] = Element.from_data(vdata['element'])
-
-    #     self.network = Network.from_data(data)
-
-    @data.setter
-    def data(self, data):
-        # Call super class data.setter
-        super(Assembly, self.__class__).data.fset(self, data)
-
-        # Reconstruct the Beam objects
-        for key, attr in iter(self.node.items()):
-            self.node[key]['beam'] = Beam.from_data(self.node[key]['beam'])
-
-    def clear(self):
-        """Clear all the assembly data."""
-        self.clear()
-
-    def add_element(self, element, key=None, attr_dict={}, **kwattr):
-        """Add an element to the assembly.
-
-        Parameters
-        ----------
-        element : Element
-            The element to add.
-        attr_dict : dict, optional
-            A dictionary of element attributes. Default is ``None``.
-
-        Returns
-        -------
-        hashable
-            The identifier of the element.
-        """
-        attr_dict.update(kwattr)
-        x, y, z = element.frame.point
-        key = self.add_node(
-            key=key,
-            attr_dict=attr_dict,
-            x=x, y=y, z=z, element=element)
-        return key
-
-    def add_connection(self, u, v, attr_dict=None, **kwattr):
-        """Add a connection between two elements and specify its attributes.
-
-        Parameters
-        ----------
-        u : hashable
-            The identifier of the first element of the connection.
-        v : hashable
-            The identifier of the second element of the connection.
-        attr_dict : dict, optional
-            A dictionary of connection attributes.
-        kwattr
-            Other connection attributes as additional keyword arguments.
-
-        Returns
-        -------
-        tuple
-            The identifiers of the elements.
-        """
-        return self.network.add_edge(u, v, attr_dict, **kwattr)
-
-    def transform(self, transformation):
-        """Transforms this assembly.
-
-        Parameters
-        ----------
-        transformation : :class:`Transformation`
-
-        Returns
-        -------
-        None
-        """
-        for _k, element in self.elements(data=False):
-            element.transform(transformation)
-
-    def transformed(self, transformation):
-        """Returns a transformed copy of this assembly.
-
-        Parameters
-        ----------
-        transformation : :class:`Transformation`
-
-        Returns
-        -------
-        Assembly
-        """
-        assembly = self.copy()
-        assembly.transform(transformation)
-        return assembly
+    def __str__(self):
+        return self.name
 
     def copy(self):
         """Returns a copy of this assembly.
@@ -216,70 +76,113 @@ class Assembly(Network):
         Elements and their _source are copied
         Connecions and their dictionary type of data are copied
         """
+        from copy import deepcopy
+        return deepcopy(self)
 
-        return Assembly.from_data(self.to_data())
+    @property
+    def sequence(self):
+        return self.attributes['sequence']
 
-    def element(self, key):
-        """Get an element by its key."""
-        return self.network.vertex[key]['element']
+    @property
+    def number_of_beams(self):
+        return self.number_of_nodes()
 
-    def elements(self, data=False):
-        """Iterate over the elements of the assembly.
+    @property
+    def number_of_joints(self):
+        return self.number_of_edges()
 
-        Parameters
-        ----------
-        data : bool, optional
-            If ``True``, yield both the identifier and the attributes.
+    # ----------------------------
+    # Adding Beams and Joints
+    # ----------------------------
 
-        Yields
-        ------
-        2-tuple
-            The next element as a (key, element) tuple, if ``data`` is ``False``.
-        3-tuple
-            The next element as a (key, element, attr) tuple, if ``data`` is ``True``.
+    def add_beam(self, beam):
+        # type: (Beam) -> None
+        """Add a beam"""
+        assert self.has_node(beam.name) == False
+        self.add_node(beam.name, {'beam' : beam})
 
-        """
-        if data:
-            for vkey, vattr in self.network.vertices(True):
-                yield vkey, vattr['element'], vattr
-        else:
-            for vkey in self.network.vertices(data):
-                yield vkey, self.network.vertex[vkey]['element']
+    def add_one_joint(self, joint, beam_id, neighbour_beam_id):
+        # type: (Joint, str, str) -> None
+        """Add a joint"""
+        self.add_edge(beam_id, neighbour_beam_id, {'joint' : joint})
+
+    def add_joint_pair(self, joint1, joint2, beam1_id, beam2_id):
+        # type: (Joint, Joint, str, str) -> None
+        """Add a joint"""
+        self.add_one_joint(joint1, beam1_id, beam2_id)
+        self.add_one_joint(joint2, beam2_id, beam1_id)
+
+    # ----------------------------
+    # Getting / Iterating Beams and Joints
+    # ----------------------------
+
+    def get_beam(self, key):
+        """Get a beam by its key."""
+        return self.node_attribute(key, 'beam')
+
+    def get_joint(self, beam_id, neighbour_beam_id):
+        """Get a joint by its id."""
+        return self.edge_attribute((beam_id, neighbour_beam_id), 'joint')
 
     def beams(self):
-        for key, element in self.elements():
-            yield element._source
+        for key, data in self.nodes(data = True):
+            yield data['beam']
 
-    def beam(self, key):
-        """Get an element by its key."""
-        return self.network.vertex[key]['element']._source
-
-    def connections(self, data=False):
-        """Iterate over the connections of the network.
+    def beam_ids(self):
+        for key in self.nodes(data = False):
+            yield key
+    def set_beam_attribute(self, beam_id, attribute_key, value):
+        """ Setting an attribute of one beam
 
         Parameters
         ----------
-        data : bool, optional
-            If ``True``, yield both the identifier and the attributes.
+        beam_id : str
+            Identifier of the Beam (Beam.name)
+        attribute_key : str
+        value : str
 
-        Yields
-        ------
-        2-tuple
-            The next connection identifier (u, v), if ``data`` is ``False``.
-        3-tuple
-            The next connection as a (u, v, attr) tuple, if ``data`` is ``True``.
-
+        Returns
+        -------
+        [obj]
+            Returns the attribute
         """
-        return self.network.edges(data)
+        self.node_attribute(beam_id, attribute_key, value)
 
-    def set_beam_attribute(self, beam_id, key, value):
-        return self.network.set_vertex_attribute(beam_id, key, value)
+    def get_beam_attribute(self, beam_id, attribute_key):
+        """ Getting an attribute of one beam
 
-    def get_beam_attribute(self, beam_id, key, value=None):
-        return self.network.get_vertex_attribute(beam_id, key, value)
+        Parameters
+        ----------
+        beam_id : str
+            Identifier of the Beam (Beam.name)
+        attribute_key : str
 
-    def set_joint_attribute(self, joint_id, key, value):
-        return self.network.set_edge_attribute(joint_id, key, value)
+        Returns
+        -------
+        [obj]
+            Returns the attribute
+        """
+        return self.node_attribute(beam_id, attribute_key)
 
-    def get_joint_attribute(self, joint_id, key, value=None):
-        return self.network.get_edge_attribute(joint_id, key, value)
+    def set_joint_attribute(self, joint_id, attribute_key, value):
+        """ Setting an attribute of one joint
+
+        Parameters
+        ----------
+        joint_id : (str, str)
+            Identifier of the Joint (beam_id, neighbour_beam_id)
+        attribute_key : [str]
+        value : [obj]
+        """
+        self.edge_attribute(joint_id, attribute_key, value)
+
+    def get_joint_attribute(self, joint_id, attribute_key):
+        """ Getting an attribute of one joint
+
+        Parameters
+        ----------
+        joint_id : (str, str)
+            Identifier of the Joint (beam_id, neighbour_beam_id)
+        attribute_key : [str]
+        """
+        return self.edge_attribute(joint_id, attribute_key)
