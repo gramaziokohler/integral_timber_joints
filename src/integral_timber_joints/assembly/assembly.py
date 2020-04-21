@@ -83,6 +83,9 @@ class Assembly(Network):
     def sequence(self):
         return self.attributes['sequence']
 
+    @sequence.setter
+    def sequence(self, beam_id_list):
+        self.attributes['sequence'] = beam_id_list
     @property
     def number_of_beams(self):
         return self.number_of_nodes()
