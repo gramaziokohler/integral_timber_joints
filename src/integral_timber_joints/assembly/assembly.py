@@ -5,8 +5,6 @@ from __future__ import print_function
 import json
 
 from compas.datastructures import Network
-from compas.datastructures._mixins import FromToData
-from compas.datastructures._mixins import FromToJson
 
 from .element import Element
 from .utilities import _deserialize_from_data
@@ -15,7 +13,7 @@ from .utilities import _serialize_to_data
 __all__ = ['Assembly']
 
 
-class Assembly(FromToData, FromToJson):
+class Assembly(Network):
     """A data structure for discrete element assemblies.
 
     An assembly is essentially a network of assembly elements.
@@ -47,44 +45,33 @@ class Assembly(FromToData, FromToJson):
     >>>     assembly.add_element(element)
     """
 
-    def __init__(self,
-                 elements=None,
-                 attributes=None,
-                 default_element_attribute=None,
-                 default_connection_attributes=None):
-        
-        self.network = Network()
-        self.network.attributes.update({'name': 'Assembly'})
+    def __init__(self):
 
-        if attributes is not None:
-            self.network.attributes.update(attributes)
+        # Call super class init
+        Network.__init__(self)
 
-        self.network.default_vertex_attributes.update({
+        # Create default attributes
+        self.attributes.update({
+            'name': 'Unnamed_Assembly',
+            'assembly_sequence': [],
+            })
+        self.update_default_node_attributes({
             'is_planned': False,
             'is_placed': False
         })
 
-        if default_element_attribute is not None:
-            self.network.default_vertex_attributes.update(default_element_attribute)
-
-        if default_connection_attributes is not None:
-            self.network.default_edge_attributes.update(default_connection_attributes)
-
-        if elements:
-            for element in elements:
-                self.add_element(element)
 
     @property
     def name(self):
         """str : The name of the assembly."""
-        return self.network.attributes.get('name', None)
+        return self.attributes.get('name', None)
 
     @name.setter
     def name(self, value):
-        self.network.attributes['name'] = value
+        self.attributes['name'] = value
 
     def sequence(self):
-        return self.network.attributes['sequence']
+        return self.attributes['assembly_sequence']
 
     def number_of_elements(self):
         """Compute the number of elements of the assembly.
@@ -95,7 +82,7 @@ class Assembly(FromToData, FromToJson):
             The number of elements.
 
         """
-        return self.network.number_of_vertices()
+        return self.number_of_nodes()
 
     def number_of_connections(self):
         """Compute the number of connections of the assembly.
@@ -106,36 +93,49 @@ class Assembly(FromToData, FromToJson):
             the number of connections.
 
         """
-        return self.network.number_of_edges()
+        return self.number_of_edges()
 
     @property
     def data(self):
-        """Return a data dictionary of the assembly.
+        """dict : A data dict representing all internal persistant data for serialisation.
+        The dict has the following structure:
+        * 'type'            => string (name of the class)
+        * 'beams'           => list of dict of Beam.to_data()
         """
-        # Network data does not recursively serialize to data...
-        d = self.network.data
+        from copy import deepcopy
+        # Call super class to_data
+        data_dict = super(Assembly, self.__class__).data.fget(self)
 
-        # so we need to trigger that for elements stored in vertices
-        vertex = {}
-        for vkey, vdata in d['vertex'].items():
-            vertex[vkey] = {key: vdata[key] for key in vdata.keys() if key != 'element'}
-            vertex[vkey]['element'] = vdata['element'].to_data()
+        # Overridding part of the to_data method to serialize the beams
+        for key in self.node:
+            data_dict['node'][repr(key)] = deepcopy(self.node[key])
+            data_dict['node'][repr(key)]['beam'] = data_dict['node'][repr(key)]['beam'].to_data()
 
-        d['vertex'] = vertex
+        # Niceity reminder of the serialized data type
+        data_dict['type'] = self.__class__.__name__
 
-        return d
+        return data_dict
+
+    # @data.setter
+    # def data(self, data):
+    #     # Deserialize elements from vertex dictionary
+    #     for _vkey, vdata in data['vertex'].items():
+    #         vdata['element'] = Element.from_data(vdata['element'])
+
+    #     self.network = Network.from_data(data)
 
     @data.setter
     def data(self, data):
-        # Deserialize elements from vertex dictionary
-        for _vkey, vdata in data['vertex'].items():
-            vdata['element'] = Element.from_data(vdata['element'])
+        # Call super class data.setter
+        super(Assembly, self.__class__).data.fset(self, data)
 
-        self.network = Network.from_data(data)
+        # Reconstruct the Beam objects
+        for key, attr in iter(self.node.items()):
+            self.node[key]['beam'] = Beam.from_data(self.node[key]['beam'])
 
     def clear(self):
         """Clear all the assembly data."""
-        self.network.clear()
+        self.clear()
 
     def add_element(self, element, key=None, attr_dict={}, **kwattr):
         """Add an element to the assembly.
@@ -154,8 +154,10 @@ class Assembly(FromToData, FromToJson):
         """
         attr_dict.update(kwattr)
         x, y, z = element.frame.point
-        key = self.network.add_vertex(key=key, attr_dict=attr_dict,
-                                      x=x, y=y, z=z, element=element)
+        key = self.add_node(
+            key=key,
+            attr_dict=attr_dict,
+            x=x, y=y, z=z, element=element)
         return key
 
     def add_connection(self, u, v, attr_dict=None, **kwattr):
@@ -192,7 +194,7 @@ class Assembly(FromToData, FromToJson):
         """
         for _k, element in self.elements(data=False):
             element.transform(transformation)
-    
+
     def transformed(self, transformation):
         """Returns a transformed copy of this assembly.
 
@@ -207,10 +209,10 @@ class Assembly(FromToData, FromToJson):
         assembly = self.copy()
         assembly.transform(transformation)
         return assembly
-    
+
     def copy(self):
         """Returns a copy of this assembly.
-        
+
         Elements and their _source are copied
         Connecions and their dictionary type of data are copied
         """
@@ -223,7 +225,7 @@ class Assembly(FromToData, FromToJson):
 
     def elements(self, data=False):
         """Iterate over the elements of the assembly.
-    
+
         Parameters
         ----------
         data : bool, optional
