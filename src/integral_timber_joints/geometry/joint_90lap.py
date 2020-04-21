@@ -11,6 +11,8 @@ from compas.datastructures import Mesh
 from compas.geometry import Box
 from compas.geometry import Frame
 
+from compas.geometry import distance_point_point, intersection_line_line
+
 from integral_timber_joints.geometry.joint import Joint
 
 __all__ = ['Joint_90lap']
@@ -38,86 +40,8 @@ class Joint_90lap(Joint):
         # if frame is not None:
         #     self.update_joint_mesh()
 
-
-    @property
-    def data(self):
-        """dict : A data dict representing all internal persistant data for serialisation.
-        The dict has the following structure:
-        * 'type'            => string (name of the class)
-        * 'name'            => string (name)
-        * 'distance'        => double
-        * 'face_id'         => int
-        * 'length'           => double
-        * 'width'           => double
-        * 'height'          => double
-        * 'mesh'            => dict of compas.mesh.to_data()
-        """
-        data = {
-            'type'      : self.__class__.__name__, #Keep this line for deserialization
-            'name'      : self.name,
-            'distance'  : self.distance,
-            'face_id'   : self.face_id,
-            'length'    : self.length,
-            'width'     : self.width,
-            'height'    : self.height,
-            'mesh'      : None,
-            }
-        if (self.mesh is not None) :
-            data['mesh'] = self.mesh.to_data()
-        return data
-
-    @data.setter
-    def data(self, data):
-        self.name       = data.get('name')
-        self.distance   = data.get('distance')
-        self.face_id    = data.get('face_id')
-        self.length     = data.get('length')
-        self.width      = data.get('width')
-        self.height     = data.get('height')
-        self.mesh       = None
-        if (data.get('mesh') is not None): self.mesh = compas.datastructures.Mesh.from_data(data.get('mesh'))
-
-    @classmethod
-    def from_data(cls,data):
-        new_object = cls(None,None,None,None,None) # Only this line needs to be updated
-        new_object.data = data
-        return new_object
-
-    # def _update_joint_mesh(self, BeamRef):
-    #     """Compute the negative mesh volume of the joint.
-    #     Returns
-    #     -------
-    #     object
-    #         A compas.Mesh
-    #     Note
-    #     ----
-    #     The self.mesh is updated with the new mesh
-    #     """
-    #     TOLEARNCE = 10.0
-
-    #     # Get face_frame from Beam (the parent Beam)
-    #     face_frame = BeamRef.face_frame(self.face_id)
-
-    #     # Compute beam frame
-    #     box_frame_origin = face_frame.to_world_coords([(self.distance), self.height / 2 - TOLEARNCE / 2 , self.length / 2])
-    #     box_frame = Frame(box_frame_origin, face_frame.xaxis, face_frame.yaxis)
-
-    #     # Compute 3 Box dimensions
-
-    #     box_x = self.width
-    #     box_y = self.height + TOLEARNCE
-    #     box_z = self.length + 2 * TOLEARNCE
-
-    #     # Draw Boolean Box
-    #     boolean_box = Box(box_frame, box_x, box_y, box_z)
-    #     boolean_box_mesh = Mesh.from_vertices_and_faces(boolean_box.vertices, boolean_box.faces)
-
-    #     # Draw boolean box and assign to self.mesh
-    #     self.mesh = boolean_box_mesh
-    #     return self.mesh
-
     def get_feature_mesh(self, BeamRef):
-        # type: (integral_timber_joints.geometry.Beam) -> compas.datastructures.Mesh
+        # type: (Beam) -> Mesh
         """Compute the negative mesh volume of the joint.
         Parameters
         ----------
@@ -155,7 +79,20 @@ class Joint_90lap(Joint):
         self.mesh = boolean_box_mesh
         return self.mesh
 
-    def get_clamp_frame(self, beam):
+    def get_clamp_frames(self, beam):
+        # type: (Beam) -> list[Frame]
+        """Compute the possible frames where the clamp can be attached.
+
+        Parameters
+        ----------
+        beam : Beam
+            Beam Object
+
+        Returns
+        -------
+        list(Frame)
+            Frames in WCF
+        """
         #print "Dist%s" % self.distance
         face_frame = beam.face_frame(self.face_id)
         origin = face_frame.to_world_coords([self.distance, beam.face_height(self.face_id), beam.face_width(self.face_id)/2])
@@ -172,6 +109,29 @@ class Joint_90lap(Joint):
         #print "Dist%s" % self.distance
         face_frame = beam.face_plane(self.face_id)
         return face_frame.normal.scaled(-1 * beam.face_height(self.face_id))
+
+def Joint_90lap_from_beam_beam_intersection(beam1, beam2, face_choice = 0):
+    # type: (Beam, Beam): -> Tuple[Joint_90lap, Joint_90lap]
+
+    # Find coplanar faces
+    face_pairs = beam1.get_beam_beam_coplanar_face_ids(beam2)
+    if len(face_pairs) == 0: return (None, None)
+
+    # Compute Centerline Intersection Distances
+    f1, f2 = face_pairs[face_choice]
+    f2 = (f2 + 2 - 1) % 4 + 1
+    c1 = beam1.get_face_center_line(f1)
+    c2 = beam2.get_face_center_line(f2)
+    intersection_line = intersection_line_line(c1,c2)
+    dist1 = distance_point_point(intersection_line[0], c1[0])
+    dist2 = distance_point_point(intersection_line[1], c2[0])
+
+    # Construct Joint object
+    #print ("Creating 2 Joints: Beam=%s,Face=%s,Distance=%s, Beam=%s,Face=%s,Distance=%s" % (bid_1, f1, dist1, bid_2, f2, dist2))
+    joint1 = Joint_90lap(dist1, f1, beam1.get_face_width(f1), beam2.get_face_width(f2), beam1.get_face_height(f1)/2, name = '%s-%s'%(beam1.name, beam2.name))
+    joint2 = Joint_90lap(dist2, f2, beam2.get_face_width(f2), beam1.get_face_width(f1), beam2.get_face_height(f2)/2, name = '%s-%s'%(beam2.name, beam1.name))
+
+    return (joint1, joint2)
 
 
 if __name__ == "__main__":

@@ -26,8 +26,7 @@ def test_beam_in_assembly():
     assert beam2 in a.beams()
 
     # Check sequence
-    a.sequence = ['b1', 'b2']
-    assert len(a.sequence) == 2
+    assert a.sequence == ['b1', 'b2']
 
     # Check display functions
     assert str(a) is not None

@@ -53,6 +53,10 @@ class Assembly(Network):
             'is_visible': True,
             'is_attached': True,
         })
+        # Deault attributes for joints (edge)
+        self.update_default_edge_attributes({
+            'sequence_earlier' : False
+        })
 
     # ----------------------------
     # Properity Setter and Getter
@@ -103,11 +107,17 @@ class Assembly(Network):
         """Add a beam"""
         assert self.has_node(beam.name) == False
         self.add_node(beam.name, {'beam' : beam})
+        self.sequence.append(beam.name)
 
     def add_one_joint(self, joint, beam_id, neighbour_beam_id):
         # type: (Joint, str, str) -> None
-        """Add a joint"""
+        """Add a joint.
+        If the joint already exist, the new joint object will orverwrite the old one.
+        """
         self.add_edge(beam_id, neighbour_beam_id, {'joint' : joint})
+        # Check assembly sequence to see if this side of the joint is the earlier
+        sequence_earlier = self.sequence.index(beam_id) < self.sequence.index(neighbour_beam_id)
+        self.set_joint_attribute((beam_id, neighbour_beam_id), 'sequence_earlier', sequence_earlier)
 
     def add_joint_pair(self, joint1, joint2, beam1_id, beam2_id):
         # type: (Joint, Joint, str, str) -> None
@@ -115,25 +125,11 @@ class Assembly(Network):
         self.add_one_joint(joint1, beam1_id, beam2_id)
         self.add_one_joint(joint2, beam2_id, beam1_id)
 
-    # ----------------------------
-    # Getting / Iterating Beams and Joints
-    # ----------------------------
 
-    def get_beam(self, key):
-        """Get a beam by its key."""
-        return self.node_attribute(key, 'beam')
+    # ----------------------------------------------
+    # Getting / Iterating Beams and Joint attributes
+    # ----------------------------------------------
 
-    def get_joint(self, beam_id, neighbour_beam_id):
-        """Get a joint by its id."""
-        return self.edge_attribute((beam_id, neighbour_beam_id), 'joint')
-
-    def beams(self):
-        for key, data in self.nodes(data = True):
-            yield data['beam']
-
-    def beam_ids(self):
-        for key in self.nodes(data = False):
-            yield key
     def set_beam_attribute(self, beam_id, attribute_key, value):
         """ Setting an attribute of one beam
 
@@ -189,3 +185,65 @@ class Assembly(Network):
         attribute_key : [str]
         """
         return self.edge_attribute(joint_id, attribute_key)
+
+    def get_beam(self, key):
+        """Get a beam by its key."""
+        return self.node_attribute(key, 'beam')
+
+    def get_joint(self, beam_id, neighbour_beam_id):
+        """Get a joint by its id."""
+        return self.edge_attribute((beam_id, neighbour_beam_id), 'joint')
+
+    def get_joints_of_beam(self, beam_id):
+        """Get all the joints attached to a beam"""
+        joints = []
+        for neighbour_beam_id in self.neighbors_out(beam_id):
+            joints.append(self.get_joint(beam_id, neighbour_beam_id))
+
+        return joints
+
+
+    # --------------------------------------------
+    # Iterating through all Beams and Joints
+    # --------------------------------------------
+
+    def beams(self):
+        # type: () -> Iterator[Beams]
+        for key, data in self.nodes(data = True):
+            yield data['beam']
+
+    def beam_ids(self):
+        # type: () -> Iterator[str]
+        for key in self.nodes(data = False):
+            yield key
+
+    def joint_ids(self):
+        # type: () -> Iterator[Tuple[str, str]]
+        for key in self.edges(data = False):
+            yield key
+
+    def joints(self):
+        # type: () -> Iterator[Joint]
+        """ Iterate through a list of joints.
+        Typically each connection has two joint objects, belonging to each beam.
+        """
+        for key, data in self.edges(data = True):
+            yield data['joint']
+
+
+    def joint_id_pairs(self):
+        # type: () -> Iterator[Tuple[Tuple[str, str], Tuple[str, str]]]
+        """ Iterate through a list of joint pairs.
+        There is an assumption that all joints are in pairs.
+        """
+        for (bid_1, bid_2), data in self.edges(data = True):
+            if data['sequence_earlier']:
+                yield ((bid_1, bid_2), (bid_2, bid_1))
+
+    # --------------------------------------------
+    # Beam Joints Update Functions
+    # --------------------------------------------
+
+    def update_beam_mesh_with_joints(self, beam_id):
+        joints = self.get_joints_of_beam(beam_id)
+        self.get_beam(beam_id).update_cached_mesh(joints)

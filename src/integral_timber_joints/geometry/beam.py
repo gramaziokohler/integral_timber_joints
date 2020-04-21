@@ -63,9 +63,6 @@ class Beam(object):
         self.grasp_frame = Frame.worldXY() # Not Serialized # Local Coords
 
 
-    def __str__(self):
-        return "Beam (%s)" % self.name
-
     # -----------------------
     # Constructors
     # -----------------------
@@ -115,6 +112,13 @@ class Beam(object):
         beam.mesh = raw_mesh
 
         return beam
+
+    # -----------------------
+    # Str Repr Copy
+    # -----------------------
+
+    def __str__(self):
+        return "Beam (%s)" % self.name
 
     # -----------------------
     # Computed Properity
@@ -388,20 +392,24 @@ class Beam(object):
     def copy(self):
         return deepcopy(self)
 
-    @classmethod
-    def beam_beam_coplanar(cls,beam1, beam2):
+    # -----------------------
+    # Intersection
+    # -----------------------
+
+    def get_beam_beam_coplanar_face_ids(self, neighbour_beam):
+        # type: (Beam, Beam): List[Tuple[str,str]]
         """
         Computes the faces that are coplanar between two beams
         Returns:
-            List of [Tuples (face_id on Beam 1, face_id on Beam 2)]
+            List of [Tuples (face_id on self, face_id on neighbour_beam)]
         """
         ffx = []
         for i in range(1,5):
-            p1 = beam1.face_plane(i)
+            p1 = self.get_face_plane(i)
             for j in range(1,5):
-                p2 = beam2.face_plane(j)
+                p2 = neighbour_beam.get_face_plane(j)
                 if (is_point_on_plane(p1.point,p2) and is_point_on_plane(p2.point,p1)):
-                    #print ("Intersection Beam1.Face%s Beam2.Face%s " %(i , j))
+                    #print ("Intersection self.Face%s Beam2.Face%s " %(i , j))
                     ffx.append((i,j))
         return ffx
 
