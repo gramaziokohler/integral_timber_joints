@@ -266,7 +266,7 @@ class Beam(object):
         end = self.get_face_frame(face_id).to_world_coords([self.length, 0, self.get_face_width(face_id)/2])
         return Line(start, end)
 
-    def get_neighbour_face_plane(self,plane_id):
+    def get_neighbor_face_plane(self,plane_id):
         """Computes the adjacent planes of a plane
         ----------
         plane_id: (int) ID of plane
@@ -396,18 +396,18 @@ class Beam(object):
     # Intersection
     # -----------------------
 
-    def get_beam_beam_coplanar_face_ids(self, neighbour_beam):
+    def get_beam_beam_coplanar_face_ids(self, neighbor_beam):
         # type: (Beam, Beam): List[Tuple[str,str]]
         """
         Computes the faces that are coplanar between two beams
         Returns:
-            List of [Tuples (face_id on self, face_id on neighbour_beam)]
+            List of [Tuples (face_id on self, face_id on neighbor_beam)]
         """
         ffx = []
         for i in range(1,5):
             p1 = self.get_face_plane(i)
             for j in range(1,5):
-                p2 = neighbour_beam.get_face_plane(j)
+                p2 = neighbor_beam.get_face_plane(j)
                 if (is_point_on_plane(p1.point,p2) and is_point_on_plane(p2.point,p1)):
                     #print ("Intersection self.Face%s Beam2.Face%s " %(i , j))
                     ffx.append((i,j))

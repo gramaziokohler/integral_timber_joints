@@ -141,8 +141,8 @@ class Joint(object):
 
 if __name__ == "__main__":
     #Test to create a inherited joint object, serialize and deserialize it.
-    from integral_timber_joints.datastructures.joint_90lap import Joint_90lap
-    from compas.geometry.primitives import Frame
+    from integral_timber_joints.geometry.joint_90lap import Joint_90lap
+    from compas.geometry import Frame
 
     j =  Joint_90lap(Frame.worldXY(),1,50,100,100)
     j.to_json("n.json",pretty=True)

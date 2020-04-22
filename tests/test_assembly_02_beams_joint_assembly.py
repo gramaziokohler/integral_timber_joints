@@ -27,18 +27,18 @@ def test_beam_and_joint_in_assembly():
 
     # Check object add and retrival
     a.add_joint_pair(j1_2, j2_1, 'b1', 'b2')
-    assert a.joint('b1', 'b2') is j1_2
-    assert a.joint('b2', 'b1') is j2_1
+    assert a.joint(('b1', 'b2')) is j1_2
+    assert a.joint(('b2', 'b1')) is j2_1
 
     # Check muliple call to add joint will overwite old data.
     a.add_joint_pair(None, None, 'b2', 'b3')
     a.add_joint_pair(j2_3, j3_2, 'b2', 'b3')
-    assert a.joint('b2', 'b3') is j2_3
-    assert a.joint('b3', 'b2') is j3_2
+    assert a.joint(('b2', 'b3')) is j2_3
+    assert a.joint(('b3', 'b2') )is j3_2
 
     # Check connectivity and valance
     assert len(list(a.joints())) == 4
-    assert len(list(a.joint_id_pairs())) == 2
+    assert len(list(a.earlier_joint_ids())) == 2
 
     # Check get_joints_of_beam() function
     assert a.get_joints_of_beam('b1')[0] == j1_2
@@ -46,6 +46,11 @@ def test_beam_and_joint_in_assembly():
     assert len(a.get_joints_of_beam('b2')) == 2
     assert j2_1 in a.get_joints_of_beam('b2')
     assert j2_3 in a.get_joints_of_beam('b2')
+
+    assert a.get_already_built_neighbors('b1') == []
+    assert a.get_already_built_neighbors('b2') == ['b1']
+    assert a.get_already_built_neighbors('b3') == ['b2']
+
 
 
 if __name__ == "__main__":

@@ -36,6 +36,9 @@ class Joint_90lap(Joint):
         self.height = height
         self.mesh = None
 
+        # Constants
+        self.clamp_types = ['90lap']
+
         # #Perform initial calculation of the mesh (except when this is an empty object)
         # if frame is not None:
         #     self.update_joint_mesh()
@@ -94,8 +97,8 @@ class Joint_90lap(Joint):
             Frames in WCF
         """
         #print "Dist%s" % self.distance
-        face_frame = beam.face_frame(self.face_id)
-        origin = face_frame.to_world_coords([self.distance, beam.face_height(self.face_id), beam.face_width(self.face_id)/2])
+        face_frame = beam.get_face_frame(self.face_id)
+        origin = face_frame.to_world_coords([self.distance, beam.get_face_height(self.face_id), beam.get_face_width(self.face_id)/2])
         #print origin
         forward_clamp =  Frame(origin, face_frame.xaxis, face_frame.zaxis)
         backward_clamp =  Frame(origin,face_frame.xaxis.scaled(-1), face_frame.zaxis.scaled(-1))
@@ -107,8 +110,13 @@ class Joint_90lap(Joint):
         Returns the only possible assembly direction.
         '''
         #print "Dist%s" % self.distance
-        face_frame = beam.face_plane(self.face_id)
-        return face_frame.normal.scaled(-1 * beam.face_height(self.face_id))
+        face_frame = beam.get_face_plane(self.face_id)
+        return face_frame.normal.scaled(-1 * beam.get_face_height(self.face_id))
+
+    def swap_faceid_to_opposite_face(self):
+        old_face_id = self.face_id
+        new_id = (old_face_id + 1) % 4 + 1
+        self.face_id = new_id
 
 def Joint_90lap_from_beam_beam_intersection(beam1, beam2, face_choice = 0):
     # type: (Beam, Beam): -> Tuple[Joint_90lap, Joint_90lap]
@@ -132,6 +140,7 @@ def Joint_90lap_from_beam_beam_intersection(beam1, beam2, face_choice = 0):
     joint2 = Joint_90lap(dist2, f2, beam2.get_face_width(f2), beam1.get_face_width(f1), beam2.get_face_height(f2)/2, name = '%s-%s'%(beam2.name, beam1.name))
 
     return (joint1, joint2)
+
 
 
 if __name__ == "__main__":
