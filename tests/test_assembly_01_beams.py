@@ -18,8 +18,8 @@ def test_beam_in_assembly():
     a.add_beam(beam2)
 
     # Check object retrival
-    assert id(beam1) == id (a.get_beam('b1'))
-    assert id(beam2) == id (a.get_beam('b2'))
+    assert id(beam1) == id (a.beam('b1'))
+    assert id(beam2) == id (a.beam('b2'))
 
     # Check Iteration
     assert beam1 in a.beams()

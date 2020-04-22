@@ -186,11 +186,11 @@ class Assembly(Network):
         """
         return self.edge_attribute(joint_id, attribute_key)
 
-    def get_beam(self, key):
+    def beam(self, key):
         """Get a beam by its key."""
         return self.node_attribute(key, 'beam')
 
-    def get_joint(self, beam_id, neighbour_beam_id):
+    def joint(self, beam_id, neighbour_beam_id):
         """Get a joint by its id."""
         return self.edge_attribute((beam_id, neighbour_beam_id), 'joint')
 
@@ -198,7 +198,7 @@ class Assembly(Network):
         """Get all the joints attached to a beam"""
         joints = []
         for neighbour_beam_id in self.neighbors_out(beam_id):
-            joints.append(self.get_joint(beam_id, neighbour_beam_id))
+            joints.append(self.joint(beam_id, neighbour_beam_id))
 
         return joints
 
@@ -246,4 +246,4 @@ class Assembly(Network):
 
     def update_beam_mesh_with_joints(self, beam_id):
         joints = self.get_joints_of_beam(beam_id)
-        self.get_beam(beam_id).update_cached_mesh(joints)
+        self.beam(beam_id).update_cached_mesh(joints)
