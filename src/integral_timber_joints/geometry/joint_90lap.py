@@ -15,9 +15,6 @@ from compas.geometry import distance_point_point, intersection_line_line
 
 from integral_timber_joints.geometry.joint import Joint
 
-__all__ = ['Joint_90lap']
-
-
 class Joint_90lap(Joint):
     """
     joint class containing varied joints

@@ -8,9 +8,6 @@
 
 from integral_timber_joints.geometry.joint import Joint
 
-__all__ = ['Joint_90tenon']
-
-
 class Joint_90tenon(Joint):
 
     def __init__(self,a):
@@ -42,8 +39,6 @@ class Joint_90tenon(Joint):
         new_object = cls(None)
         new_object.data = data
         return new_object
-
-
 
 if __name__ == "__main__":
     j =  Joint_90tenon(10)

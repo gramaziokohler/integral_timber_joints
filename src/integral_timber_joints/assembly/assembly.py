@@ -45,6 +45,9 @@ class Assembly(Network):
         self.attributes.update({
             'name': 'Unnamed_Assembly',
             'sequence': [],
+            'clamps': [],
+            'grippers': [],
+            'actions': [],
             })
         # Default attributes for beams (node)
         self.update_default_node_attributes({
