@@ -1,0 +1,7 @@
+{
+    "include" : [
+        "src/integral_timber_joints/",
+        "C:\\Users\\leungp\\Documents\\GitHub\\compas\\src"],
+    "venv" : "itj"
+
+  }
