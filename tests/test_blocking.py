@@ -27,7 +27,18 @@ def test_proxycall_geometric_blocking_compas_vector():
     assert 0 in lin_set
     assert 1 in lin_set
 
+
+def test_blocking_negative_zero():
+    block_dirs = [Vector(0.000, 0.000, 1.000), Vector(0.000, 0.000, -1.000), Vector(-0.000, 1.000, 0.000)]
+    f_rays, lin_set = compute_feasible_region_from_block_dir_proxy(block_dirs)
+
+    assert [1.0, 0.0, 0.0] in f_rays
+    assert [0.0, -1.0, 0.0] in f_rays
+
+
+
 if __name__ == "__main__":
     test_proxycall_geometric_blocking()
     test_proxycall_geometric_blocking_compas_vector()
+    test_blocking_negative_zero()
     pass
