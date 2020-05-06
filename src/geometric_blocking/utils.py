@@ -1,9 +1,14 @@
-import numpy as np
-from numpy.linalg import norm
-import cdd
+try:
+    import numpy as np
+    from numpy.linalg import norm
+    import cdd
+except:
+    pass
+
 
 __all__ = [
     'compute_feasible_region_from_block_dir',
+    'blocked'
 ]
 
 def compute_feasible_region_from_block_dir(block_dirs, verbose=False):
@@ -66,3 +71,9 @@ def compute_feasible_region_from_block_dir(block_dirs, verbose=False):
         print('rays:\n {}'.format(f_rays))
 
     return f_rays, lin_set
+
+def blocked(block_dirs, test_vector, tolerance = 0.0000001):
+    #type: (List[Vector], Vector) -> bool
+    for block_dir in block_dirs:
+        if test_vector.dot(block_dir) > tolerance: return True
+    return False
