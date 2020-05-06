@@ -63,7 +63,9 @@ class Clamp (Tool):
         ---------------
         The left jaws opens towards -Y direction.
         The right jaw opens towards +Y direction.
-        The gripper opening should point towards +Z direction
+        The clamp jaw opens towards +Z direction.
+        The clamp jaw closes (clamping) towards -Z direction.
+        The clamp jaw opening faces +X direction.
         """
         robot_model = cls(name,type_name)
         robot_model.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max)
@@ -81,18 +83,16 @@ class Clamp (Tool):
         clamp_jaw_r = robot_model.add_link('clamp_jaw_r', mesh_clamp_jaw_r)
 
         #robot_model.add_joint('world_base_fixed_joint', Joint.FIXED, world_link, base_link)
-        gripper_limit_flipped = (robot_model.gripper_jaw_limits[1], robot_model.gripper_jaw_limits[0])
-        clamp_limit_flipped = (robot_model.clamp_jaw_limits[1], robot_model.clamp_jaw_limits[0])
-        robot_model.add_joint('joint_gripper_jaw_l', Joint.PRISMATIC, gripper_base, gripper_jaw_l, axis = [0,-1,0], limit = gripper_limit_flipped)
-        robot_model.add_joint('joint_gripper_jaw_r', Joint.PRISMATIC, gripper_base, gripper_jaw_r, axis = [0,1,0], limit = gripper_limit_flipped)
-        robot_model.add_joint('joint_clamp_jaw_l', Joint.PRISMATIC, gripper_jaw_l, clamp_jaw_l, axis = [0,0,1], limit = clamp_limit_flipped)
-        robot_model.add_joint('joint_clamp_jaw_r', Joint.PRISMATIC, gripper_jaw_r, clamp_jaw_r, axis = [0,0,1], limit = clamp_limit_flipped)
+        robot_model.add_joint('joint_gripper_jaw_l', Joint.PRISMATIC, gripper_base, gripper_jaw_l, axis = [0,-1,0], limit = robot_model.gripper_jaw_limits)
+        robot_model.add_joint('joint_gripper_jaw_r', Joint.PRISMATIC, gripper_base, gripper_jaw_r, axis = [0,1,0], limit = robot_model.gripper_jaw_limits)
+        robot_model.add_joint('joint_clamp_jaw_l', Joint.PRISMATIC, gripper_jaw_l, clamp_jaw_l, axis = [0,0,1], limit = robot_model.clamp_jaw_limits)
+        robot_model.add_joint('joint_clamp_jaw_r', Joint.PRISMATIC, gripper_jaw_r, clamp_jaw_r, axis = [0,0,1], limit = robot_model.clamp_jaw_limits)
 
+        # A constant list of vectors (ref t0cf) where the beam-in-jaw is blocked by the jaw
+        robot_model.jaw_block_vectors = [Vector(0, 0, 1.0), Vector(0, 0, -1.0), Vector(-1.0, 0, 0)]
+        # A directional vector describing how much distance the beam-in-jaw has to move to clear the jaw if moved out.
+        robot_model.jaw_clearance_vector = Vector(110, 0, 0)
         return robot_model
-
-    def ToString(self):
-        """Function for Grasshopper Tool Tip"""
-        return "Gripper (%s)" % self.name
 
     # --------------------------------------------------------
     # State Setting Functions
@@ -124,6 +124,16 @@ class Clamp (Tool):
 
     def _get_kinematic_state(self):
         return {'gripper_jaw_position' : self.gripper_jaw_position, 'clamp_jaw_position' : self.clamp_jaw_position}
+
+    @property
+    def jaw_blocking_vectors_in_wcf(self):
+        T = Transformation.from_frame(self.current_frame)
+        return [vec.transformed(T) for vec in self.jaw_block_vectors]
+
+    @property
+    def jaw_clearance_vectors_in_wcf(self):
+        T = Transformation.from_frame(self.current_frame)
+        return self.jaw_clearance_vector.transformed(T)
 
     # --------------------------------------------------------
     # Convinence Functions

@@ -70,15 +70,10 @@ class Gripper (Tool):
         gripper_jaw_r = robot_model.add_link('gripper_jaw_r', mesh_gripper_jaw_r)
 
         #robot_model.add_joint('world_base_fixed_joint', Joint.FIXED, world_link, base_link)
-        gripper_limit_flipped = (robot_model.gripper_jaw_limits[1], robot_model.gripper_jaw_limits[0])
-        robot_model.add_joint('joint_gripper_jaw_l', Joint.PRISMATIC, gripper_base, gripper_jaw_l, axis = [0,-1,0], limit = gripper_limit_flipped)
-        robot_model.add_joint('joint_gripper_jaw_r', Joint.PRISMATIC, gripper_base, gripper_jaw_r, axis = [0,1,0], limit = gripper_limit_flipped)
+        robot_model.add_joint('joint_gripper_jaw_l', Joint.PRISMATIC, gripper_base, gripper_jaw_l, axis = [0,-1,0], limit = robot_model.gripper_jaw_limits)
+        robot_model.add_joint('joint_gripper_jaw_r', Joint.PRISMATIC, gripper_base, gripper_jaw_r, axis = [0,1,0], limit = robot_model.gripper_jaw_limits)
 
         return robot_model
-
-    def ToString(self):
-        """Function for Grasshopper Tool Tip"""
-        return "Gripper (%s)" % self.name
 
     # --------------------------------------------------------
     # State Setting Functions

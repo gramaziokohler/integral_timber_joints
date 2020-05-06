@@ -11,7 +11,7 @@ class CompasRobotArtist(BaseRobotArtist):
     def transform(self, compas_mesh, transformation):
         compas_mesh.transform(transformation)
     def draw_geometry(self, geometry, name=None, color=None):
-        return geometry.copy()  # I think a copy would be required, to avoid screwing up stuff from the source model
+        return deepcopy(geometry) # I think a copy would be required, to avoid screwing up stuff from the source model
 
 class Tool (RobotModel):
     """ A tool is a RobotModel describing a robotic tool.
@@ -144,7 +144,7 @@ class Tool (RobotModel):
 
     def ToString(self):
         """Function for Grasshopper Tool Tip"""
-        return "Tool (%s)" % self.name
+        return "%s (%s)" % (self.type_name, self.name)
 
     def __str__(self):
         """ For mirroring the ToString function for print() """
@@ -154,6 +154,6 @@ class Tool (RobotModel):
         return deepcopy(self)
 
 if __name__ == "__main__":
-    pass
     # t = Tool('T1', 'tool')
     # print (t)
+    pass
