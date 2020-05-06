@@ -12,9 +12,6 @@
 
 
 import json
-
-__all__ = ['Joint']
-
 class Joint(object):
 
     def __init__(self):

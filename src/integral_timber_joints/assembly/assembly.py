@@ -55,6 +55,7 @@ class Assembly(Network):
             'is_placed': False,
             'is_visible': True,
             'is_attached': True,
+            'design_guide_vector_jawapproach' : None,
             'assembly_vector_final': None,
             'assembly_vector_jawapproach': None,
             'assembly_vector_pickup': None,
@@ -65,6 +66,11 @@ class Assembly(Network):
             'assembly_wcf_inclamp': None,           # Beam position inside the clamp, ready for final clamping move
             'assembly_wcf_final': None,             # Beam position in final modeled position, same as beam.frame
             'assembly_wcf_finalretract': None,      # Beam gripper position (modeled as beam frame) after releasing and retracting from final position.
+            'gripper_type': None,
+            'gripper_grasp_face': None,                # Grasp pose expressed in relationship to Beam Face
+            'gripper_grasp_dist_from_start': None,     # Grasp pose expressed in relationship to Beam Length Parameter
+            'gripper_tcp_in_ocf': None,    # Gripper grasp pose expressed in TCP location relative to the OCF
+
         })
         # Deault attributes for joints (edge)
         self.update_default_edge_attributes({
@@ -278,7 +284,17 @@ class Assembly(Network):
     # Beam Joints Geometrical Functions
     # --------------------------------------------
 
-    def update_beam_mesh_with_joints(self, beam_id):
+    def update_beam_mesh_with_joints(self, beam_id, skip_if_cached = False):
+        """Update the cached_mesh of a beam, taking into account all the joints attached.
+
+        Parameters
+        ----------
+        beam_id : int
+            index of the beam
+        skip_if_cached : bool, optional
+            Skip recomputeing cache mesh if it already exist, by default False.
+        """
+        if skip_if_cached and (self.beam(beam_id).cached_mesh is not None): return
         joints = self.get_joints_of_beam(beam_id)
         self.beam(beam_id).update_cached_mesh(joints)
 

@@ -12,14 +12,10 @@ import math
 from compas.geometry import Box
 from compas.datastructures import Mesh
 from compas.datastructures import mesh_bounding_box
-from compas.geometry import Frame
-from compas.geometry import Plane
-from compas.geometry import Point
-from compas.geometry import Line
-from compas.geometry import Transformation
-from compas.geometry import Translation
-from compas.geometry import distance_point_plane
-from compas.geometry import is_point_on_plane
+from compas.geometry import Vector, Frame, Plane
+from compas.geometry import Point, Line
+from compas.geometry import Transformation, Translation
+from compas.geometry import distance_point_plane, is_point_on_plane
 
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import create_id
@@ -28,10 +24,7 @@ from compas_ghpython.artists import MeshArtist
 
 from copy import deepcopy
 
-import sys
-
 __all__ = ['Beam']
-
 class Beam(object):
 
     def __init__(self, frame, length, width, height, name = None):
@@ -46,7 +39,7 @@ class Beam(object):
 
         """
         if (frame is None): frame = Frame.worldXY()
-        self.frame = frame.copy()
+        self.frame = frame.copy()       # type: Frame
         self.length = float(length)     # type: float
         self.width = float(width)       # type: float
         self.height = float(height)     # type: float
@@ -284,6 +277,39 @@ class Beam(object):
         if plane_id == 4:
             return [self.get_face_plane(1),self.get_face_plane(3)]
 
+    def refernce_side_ocf(self, side_id):
+        # type: (int) -> Frame
+        """ Returns the Coordinate Frame of a reference side as defined in BTLx 1.1
+        Reference to OCF
+        """
+        if side_id == 1:
+            origin = Point(0, 0, 0)
+            return Frame(origin, Vector.Xaxis(), Vector.Zaxis())
+        if side_id == 2:
+            origin = Point(0, self.height, 0)
+            return Frame(origin, Vector.Xaxis(), Vector.Yaxis().scaled(-1))
+        if side_id == 3:
+            origin = Point (0, self.height, self.width)
+            return Frame(origin, Vector.Xaxis(), Vector.Zaxis().scaled(-1))
+        if side_id == 4:
+            origin = Point (0, 0, self.width)
+            return Frame(origin, Vector.Xaxis(), Vector.Yaxis())
+        if side_id == 5:
+            origin = Point (0, 0, 0)
+            return Frame(origin, Vector.Zaxis(), Vector.Yaxis())
+        if side_id == 6:
+            origin = Point (self.length, self.height, 0)
+            return Frame(origin, Vector.Zaxis(), Vector.Yaxis().scaled(-1))
+        raise NameError("side_id only accepts (int) 1 - 6")
+
+    def refernce_side_wcf(self, side_id):
+        # type: (int) -> Frame
+        """ Returns the Coordinate Frame of a reference side as defined in BTLx 1.1
+        Reference to WCF
+        """
+        T = Transformation.from_frame(self.frame)
+        return self.refernce_side_ocf(side_id).transformed(T)
+
     # -----------------------
     # Geometrical
     # -----------------------
@@ -350,7 +376,6 @@ class Beam(object):
 
         return self.cached_mesh
 
-
     def set_state(self, state_dict):
         '''
         This function serves animation / viauslization purpose only
@@ -392,6 +417,22 @@ class Beam(object):
     def copy(self):
         return deepcopy(self)
 
+    # -----------------------
+    # Gripper / Clamp
+    # -----------------------
+
+    def grasp_frame_ocf(self, side_id, dist_from_start):
+        # type: (int) -> Frame
+        ''' Returns the Grasp Frame according to side_id and dist_from_start.
+        Grasp Frame Origin coincide with the center line on the selected surface.
+        Grasp Frame X Axis is aligned to the beam's X Axis
+        Grasp Frame Z Axis is pointing to the center of the beam
+        Reference to OCF
+        '''
+        ref_side_ocf = self.refernce_side_ocf(side_id)
+        T = Transformation.from_frame(ref_side_ocf)
+        new_origin = Point(dist_from_start , self.get_face_width(side_id) / 2 , 0).transformed(T)
+        return Frame(new_origin, ref_side_ocf.xaxis, ref_side_ocf.yaxis.scaled(-1.0))
     # -----------------------
     # Intersection
     # -----------------------
