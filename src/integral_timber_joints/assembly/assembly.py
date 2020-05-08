@@ -67,10 +67,10 @@ class Assembly(Network):
             'assembly_wcf_final': None,             # Beam position in final modeled position, same as beam.frame
             'assembly_wcf_finalretract': None,      # Beam gripper position (modeled as beam frame) after releasing and retracting from final position.
             'gripper_type': None,
-            'gripper_grasp_face': None,                # Grasp pose expressed in relationship to Beam Face
-            'gripper_grasp_dist_from_start': None,     # Grasp pose expressed in relationship to Beam Length Parameter
-            'gripper_tcp_in_ocf': None,    # Gripper grasp pose expressed in TCP location relative to the OCF
-
+            'gripper_grasp_face': None,             # Grasp pose expressed in relationship to Beam Face
+            'gripper_grasp_dist_from_start': None,  # Grasp pose expressed in relationship to Beam Length Parameter
+            'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
+            'design_guide_vector_grasp': None,      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
         })
         # Deault attributes for joints (edge)
         self.update_default_edge_attributes({
