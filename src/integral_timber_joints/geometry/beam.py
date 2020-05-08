@@ -277,30 +277,28 @@ class Beam(object):
         if plane_id == 4:
             return [self.get_face_plane(1),self.get_face_plane(3)]
 
+    # -------------------------
+    # BTLx Defined Properities
+    # -------------------------
+
     def refernce_side_ocf(self, side_id):
         # type: (int) -> Frame
         """ Returns the Coordinate Frame of a reference side as defined in BTLx 1.1
         Reference to OCF
         """
         if side_id == 1:
-            origin = Point(0, 0, 0)
-            return Frame(origin, Vector.Xaxis(), Vector.Zaxis())
+            return Frame(self.corner_ocf(1), Vector.Xaxis(), Vector.Zaxis())
         if side_id == 2:
-            origin = Point(0, self.height, 0)
-            return Frame(origin, Vector.Xaxis(), Vector.Yaxis().scaled(-1))
+            return Frame(self.corner_ocf(2), Vector.Xaxis(), Vector.Yaxis().scaled(-1))
         if side_id == 3:
-            origin = Point (0, self.height, self.width)
-            return Frame(origin, Vector.Xaxis(), Vector.Zaxis().scaled(-1))
+            return Frame(self.corner_ocf(3), Vector.Xaxis(), Vector.Zaxis().scaled(-1))
         if side_id == 4:
-            origin = Point (0, 0, self.width)
-            return Frame(origin, Vector.Xaxis(), Vector.Yaxis())
+            return Frame(self.corner_ocf(4), Vector.Xaxis(), Vector.Yaxis())
         if side_id == 5:
-            origin = Point (0, 0, 0)
-            return Frame(origin, Vector.Zaxis(), Vector.Yaxis())
+            return Frame(self.corner_ocf(1), Vector.Zaxis(), Vector.Yaxis())
         if side_id == 6:
-            origin = Point (self.length, self.height, 0)
-            return Frame(origin, Vector.Zaxis(), Vector.Yaxis().scaled(-1))
-        raise NameError("side_id only accepts (int) 1 - 6")
+            return Frame(self.corner_ocf(6), Vector.Zaxis(), Vector.Yaxis().scaled(-1))
+        raise IndexError("side_id only accepts (int) 1 - 6")
 
     def refernce_side_wcf(self, side_id):
         # type: (int) -> Frame
@@ -310,9 +308,23 @@ class Beam(object):
         T = Transformation.from_frame(self.frame)
         return self.refernce_side_ocf(side_id).transformed(T)
 
-    # -----------------------
-    # Geometrical
-    # -----------------------
+    # -------------------------------
+    # Extended Set of Geo Properities
+    # -------------------------------
+
+    def corner_ocf(self, corner):
+        # type: (int) -> Point
+        """Corner 1 to 4 corrisponds to the Start Point of Reference Edge 1 to 4
+        Corner 5 to 8 corrisponds to the End Point of Reference Edge 1 to 4
+        """
+        if corner == 1: return Point(0, 0, 0)
+        if corner == 2: return Point(0, self.height, 0)
+        if corner == 3: return Point(0, self.height, self.width)
+        if corner == 4: return Point(0, 0, self.width)
+
+        if corner >= 5 and corner <= 8: return self.corner_ocf(corner - 4) + Point(self.length, 0, 0)
+
+        raise IndexError("corner only accepts (int) 1 - 8")
 
     def draw_uncut_mesh(self):
         """Computes and returns the beam geometry.
