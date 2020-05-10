@@ -75,11 +75,26 @@ class Tool (RobotModel):
         """ Setting the current frame T0CP directly"""
         self._current_frame = frame.copy()
 
-    def set_current_frame_from_tcp(self, frame):
-        """ Setting the current_frame by supplying where the tool tip should go."""
-        T = Transformation.from_frame_to_frame(self.tool_coordinate_frame, frame)
+    def set_current_frame_from_tcp(self, tcp_frame):
+        # type: (Frame) -> Frame
+        """ Computing the current_frame by supplying where the tool tip should go.
+
+        Side Effect
+        -----------
+        self.current_frame is updated
+        """
+        T = Transformation.from_frame_to_frame(self.tool_coordinate_frame, tcp_frame)
         base_frame = Frame.worldXY().transformed(T)
         self.current_frame = base_frame
+        return base_frame.copy()
+
+    @property
+    def transformation_from_tcf_to_t0cf(self):
+        return self.transformation_from_t0cf_to_tcf.inverse()
+
+    @property
+    def transformation_from_t0cf_to_tcf(self):
+        return Transformation.from_frame(self.tool_coordinate_frame)
 
     # --------------------------------------------------------
     # State Setting Functions
