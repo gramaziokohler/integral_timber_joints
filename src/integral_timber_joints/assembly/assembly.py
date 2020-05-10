@@ -71,6 +71,7 @@ class Assembly(Network):
             'gripper_grasp_dist_from_start': None,  # Grasp pose expressed in relationship to Beam Length Parameter
             'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
             'design_guide_vector_grasp': None,      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
+            'design_guide_vector_storage_pickup': None # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
         })
         # Deault attributes for joints (edge)
         self.update_default_edge_attributes({
@@ -300,6 +301,7 @@ class Assembly(Network):
 
 
     def get_beam_transformaion_to(self, beam_id, attribute_name):
+        # type: (str, str) -> Optional[Transformation]
         """ Get the transformation from the beam's assembly_wcf_final to a frame specified in attributes"""
         from compas.geometry import Transformation
         source_frame = self.get_beam_attribute(beam_id, 'assembly_wcf_final')
