@@ -1,10 +1,10 @@
 from copy import deepcopy
 
-from compas.geometry import Vector, Translation
+from compas.geometry import Vector, Frame, Translation, Transformation
 from geometric_blocking import blocked
 from compas.rpc import Proxy
 from integral_timber_joints.assembly import Assembly
-from integral_timber_joints.geometry import Joint
+from integral_timber_joints.geometry import Beam, Joint
 from integral_timber_joints.tools import Clamp, Gripper
 
 # I thinkm I need somesort of collision checker, IK reachability checker, Blocking direction checker.
@@ -254,6 +254,212 @@ class RobotClampAssemblyProcess:
             if (gripper.type_name == type_name):
                 return gripper
         return None
+
+    def search_grasp_face_from_guide_vector_dir (self, beam_id):
+        # type: (str) -> Vector
+        """Return the best face number (1-4) for creating `gripper_tcp_in_ocf`
+        where the Z-Axis of the tcp_in_WCF, when beam is at 'assembly_wcf_final',
+        follows the direction of guide vector `design_guide_vector_grasp`
+
+        Side Effect
+        -----------
+        beam_attribute 'gripper_grasp_face' will be set.
+        """
+        # Get the guide Vector from beam_attribute
+        design_guide_vector_grasp = self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_grasp').unitized()
+        assert design_guide_vector_grasp is not None
+
+        # Try different grasp face and choose the one that aligns best.
+        beam = self.assembly.beam(beam_id)
+        best_face = 0
+        best_score = -1
+        for gripper_grasp_face in range(1, 5):
+            gripper_tcp_in_ocf = beam.grasp_frame_ocf(gripper_grasp_face, 0)
+            gripper_tcp_in_wcf = gripper_tcp_in_ocf.transformed(Transformation.from_frame(beam.frame))
+            # Compute the alignment score using dot product
+            alignment_score = gripper_tcp_in_wcf.zaxis.dot(design_guide_vector_grasp)
+            if alignment_score > best_score :
+                best_score = alignment_score
+                best_face = gripper_grasp_face
+
+        self.assembly.set_beam_attribute(beam_id, 'gripper_grasp_face', best_face)
+        return best_face
+
+    # -----------------------
+    # Beam Storage / Pick Up / Retract
+    # -----------------------
+
+    def compute_alignment_corner_from_grasp_face(self, beam_id, align_face_X0 = True, align_face_Y0 = True, align_face_Z0 = True):
+        # type: (str, Optional[bool], Optional[bool], Optional[bool]) -> int
+        """Returns one corner (int 1 - 8) of the chosen beam
+        in relation to the picking face set in 'gripper_grasp_face'.
+        There are 8 possible alignment relationship described by the three bool values.
+
+        The retrived int can be used in beam.corner_ocf(alignment_corner)
+        to retrive the corner coordinates in ocf of beam.
+
+        Example
+        -------
+        Beam-start, Y-Neg, bottom-slignment:  align_face_X0 = True, align_face_Y0 = True, align_face_Z0 = True (typical)
+        Beam-end, Y-Neg, bottom-slignment:  align_face_X0 = False, align_face_Y0 = False, align_face_Z0 = True
+        Beam-start, Y-Pos, bottom-slignment:  align_face_X0 = True, align_face_Y0 = False, align_face_Z0 = True
+        """
+        # Compute storage alignment corner based on 'gripper_grasp_face'
+        gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face') # type: int
+        assert gripper_grasp_face is not None
+        print ('gripper_grasp_face = %s' % gripper_grasp_face)
+
+        if (not align_face_Z0) and align_face_Y0: corner = 1
+        if align_face_Z0 and align_face_Y0: corner = 2
+        if align_face_Z0 and (not align_face_Y0): corner = 3
+        if (not align_face_Z0) and (not align_face_Y0): corner = 4
+
+        # For corners 1 - 4, adding the corner number will suffice because corner 1 to 4 are corresponding to face 1 - 4
+        corner = (gripper_grasp_face + corner - 2) % 4 + 1
+
+        # Corner 5-8 is only related to whether align_face_X0
+        if not align_face_X0: corner = corner + 4
+
+        return corner
+
+    def compute_storage_location_at_corner_aligning_pickup_location (self, beam_id, storage_station_frame, align_face_X0 = True, align_face_Y0 = True, align_face_Z0 = True):
+        # type: (str, Frame, Optional[bool], Optional[bool], Optional[bool]) -> None
+        """ Compute 'assembly_wcf_storage' alignment frame
+        by aligning a choosen corner relative to the 'gripper_grasp_face'
+        to the given storage_station_frame.
+
+        Note
+        ----
+        This function cannot be used for beam center alignment.
+
+        Side Effect
+        -----------
+        beam_attribute 'assembly_wcf_storage' will be set.
+
+        Example
+        -------
+        For a beam-start alignment: align_face_X0 = True, align_face_Y0 = True, align_face_Z0 = True
+        For a beam-end alignment: align_face_X0 = False, align_face_Y0 = False, align_face_Z0 = True
+        e.g
+        """
+        # Compute alignment frame origin - self.compute_alignment_corner_from_grasp_face()
+        beam = self.assembly.beam(beam_id) # type: Beam
+        alignment_corner = self.compute_alignment_corner_from_grasp_face(beam_id, align_face_X0, align_face_Y0, align_face_Z0)
+        #print ('alignment_corner = %s' % alignment_corner)
+        alignment_corner_ocf = beam.corner_ocf(alignment_corner)
+
+        # Compute alignment frame X and Y axis - derived from 'gripper_grasp_face' frame
+        gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')
+        gripper_grasp_face_frame_ocf = beam.refernce_side_ocf(gripper_grasp_face)
+        alignment_vector_X = gripper_grasp_face_frame_ocf.xaxis
+        alignment_vector_Y = gripper_grasp_face_frame_ocf.yaxis
+        if not align_face_X0: alignment_vector_X.scale(-1.0)
+        if not align_face_Y0: alignment_vector_Y.scale(-1.0)
+
+        # Alignment frame
+        alignment_frame_ocf = Frame(alignment_corner_ocf, alignment_vector_X, alignment_vector_Y)
+
+        # Compute the Transformation needed to bring beam OCF to meet with storage
+        T = Transformation.from_frame(beam.frame)
+        alignment_frame_wcf = alignment_frame_ocf.transformed(T)
+        T = Transformation.from_frame_to_frame(alignment_frame_wcf, storage_station_frame)
+
+        # Compute the beam ocf in the storage position, save result 'assembly_wcf_storage'
+        assembly_wcf_storage = beam.frame.transformed(T)
+        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', assembly_wcf_storage)
+
+    def compute_gripper_approach_vector_wcf_final(self, beam_id, _debug = False):
+        # type: (str, Optional[bool]) -> Vector
+        """Compute gripper approach_vector (wcf)
+        when beam is at final location (beam.frame)
+
+        Return
+        ------
+        'approach_vector_wcf_final'
+        """
+        beam = self.assembly.beam(beam_id)
+        if _debug: print ("beam_id = %s " % beam_id)
+
+        # Get approach vector from gripper
+        gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
+        assert gripper_type is not None
+        gripper = self.get_one_gripper_by_type(gripper_type)
+        approach_vector_tcf = gripper.approach_vector
+        if _debug: print ("approach_vector_tcf = %s " % approach_vector_tcf)
+
+        # Express the approach_vector in ocf of beam (beam.frame coordinate frame)
+        gripper_tcp_in_ocf = self.assembly.get_beam_attribute(beam_id, 'gripper_tcp_in_ocf')
+        T = Transformation.from_frame_to_frame(Frame.worldXY(), gripper_tcp_in_ocf)
+        approach_vector_ocf = approach_vector_tcf.transformed(T)
+        if _debug: print ("approach_vector_ocf = %s " % approach_vector_ocf)
+
+        # Express approach vector in World (wcf) for beam in 'assembly_wcf_final'
+        T = Transformation.from_frame_to_frame(Frame.worldXY(), beam.frame)
+        approach_vector_wcf_final = approach_vector_ocf.transformed(T)
+        if _debug: print ("approach_vector_wcf_final = %s " % approach_vector_wcf_final)
+
+        return approach_vector_wcf_final
+
+    def compute_storage_approach_and_final_retract(self, beam_id):
+        # type: (str) -> None
+        """ Compute gripper approach and retract positions from 'assembly_wcf_storage'.
+        Approach vector is taken from gripper's approach vector (tcf) -> (beam ocf)
+
+        Retract vector (wcf) is taken from beam attribute 'design_guide_vector_storage_pickup',
+        this is an optional parameter and if left out will default to Vector(0, 0, 1), lifting upwards by one world unit.
+
+        Side Effect
+        -----------
+        beam_attribute 'assembly_wcf_storageapproach' will be set.
+        beam_attribute 'assembly_wcf_finalretract' will be set.
+        """
+        approach_vector_wcf_final = self.compute_gripper_approach_vector_wcf_final(beam_id)
+
+        # Express approach vector in World (wcf) when beam is in 'assembly_wcf_storage'
+        T = self.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_storage')
+        approach_vector_wcf_storage = approach_vector_wcf_final.transformed(T)
+        print ("approach_vector_wcf_storage = %s " % approach_vector_wcf_storage)
+
+        # Compute assembly_wcf_storageapproach (wcf)
+        T = Translation(approach_vector_wcf_storage.scaled(-1))
+        assembly_wcf_storage = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
+        assert assembly_wcf_storage is not None
+        assembly_wcf_storageapproach = assembly_wcf_storage.transformed(T)
+        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageapproach', assembly_wcf_storageapproach)
+
+        # Compute assembly_wcf_finalretract (wcf)
+        T = Translation(approach_vector_wcf_final.scaled(-1))
+        assembly_wcf_final = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_final')
+        assembly_wcf_finalretract = assembly_wcf_final.transformed(T)
+        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_finalretract', assembly_wcf_finalretract)
+
+    def compute_storage_location_retract(self, beam_id):
+        # type: (str) -> None
+        """Compute 'assembly_wcf_storageretract' from beam attributes:
+        by transforming 'assembly_wcf_storage' along 'design_guide_vector_storage_pickup'.
+
+        Side Effect
+        -----------
+        beam_attribute 'assembly_wcf_storageretract' will be set.
+
+        """
+        # Retrive pickup vector : 'design_guide_vector_storage_pickup'
+        design_guide_vector_storage_pickup = self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_storage_pickup')
+        if design_guide_vector_storage_pickup is None: design_guide_vector_storage_pickup = Vector(0, 0, 1)
+
+        # Compute assembly_wcf_storageretract
+        assembly_wcf_storage = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
+        T = Translation(design_guide_vector_storage_pickup)
+        assembly_wcf_storageretract = assembly_wcf_storage.transformed(T)
+        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageretract', assembly_wcf_storageretract)
+
+
+
+
+
+
+
+
 
     def copy(self):
         return deepcopy(self)
