@@ -49,6 +49,7 @@ class Gripper (Tool):
         mesh_gripper_base,
         mesh_gripper_jaw_l,
         mesh_gripper_jaw_r,
+        approach_vector
         ):
         """ A Parallel gripper will have a base and two gripper jaw.
         Modelling guide
@@ -63,6 +64,8 @@ class Gripper (Tool):
         robot_model.tool_coordinate_frame = tool_coordinate_frame
         robot_model.tool_pick_up_frame = tool_pick_up_frame
         robot_model.tool_storage_frame = tool_storage_frame
+        robot_model.approach_vector = approach_vector # This vector is ref to tcf
+        # TODO: This and other paramters might need a clean up.
 
         #world_link = robot_model.add_link('world')
         gripper_base = robot_model.add_link('gripper_base', mesh_gripper_base)
