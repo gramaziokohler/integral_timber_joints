@@ -195,8 +195,7 @@ class RobotClampAssemblyProcess:
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
             clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final = True)
             blocking_vectors += clamp.jaw_blocking_vectors_in_wcf
-
-        # Rounding error fix for blocking vectors
+        # Fix rounding error for blocking vectors (Some -0.0 causes problems)
         ROUNDING_DIGITS = 10
         blocking_vectors = [Vector(round(x,ROUNDING_DIGITS),round(y,ROUNDING_DIGITS),round(z,ROUNDING_DIGITS)) for x,y,z in blocking_vectors]
 
@@ -216,6 +215,11 @@ class RobotClampAssemblyProcess:
         1st priority is to follow direction of `design_guide_vector_jawapproach`.
         2nd priority is to use a vector in the middle of the feisible non-blocking region from the clamp jaw.
         Returns None if no valid vector can be found or no clamps are attached.
+
+        Side Effect
+        -----------
+        beam_attribute 'assembly_vector_jawapproach' will be set.
+        beam_attribute 'assembly_wcf_inclampapproach' will be set.
         """
         # Exit if no clamp is needed to assemble this beam.
         if len(list(self.get_clamp_ids_for_beam(beam_id))) == 0 : return None
@@ -240,7 +244,7 @@ class RobotClampAssemblyProcess:
         return assembly_vector_jawapproach
 
     # -----------------------
-    # Gripper
+    # Gripper / Grip Pose
     # -----------------------
 
     def get_one_gripper_by_type(self, type_name):
