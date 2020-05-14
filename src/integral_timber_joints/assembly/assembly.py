@@ -67,22 +67,25 @@ class Assembly(Network):
             'assembly_wcf_final': None,             # Beam position in final modeled position, same as beam.frame
             'assembly_wcf_finalretract': None,      # Beam gripper position (modeled as beam frame) after releasing and retracting from final position.
             'gripper_type': None,
+            'gripper_id': None,
             'gripper_grasp_face': None,             # Grasp pose expressed in relationship to Beam Face
             'gripper_grasp_dist_from_start': None,  # Grasp pose expressed in relationship to Beam Length Parameter
             'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
             'design_guide_vector_grasp': None,      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
-            'design_guide_vector_storage_pickup': None # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
+            'design_guide_vector_storage_pickup': None, # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
         })
-        # Deault attributes for joints (edge)
+        # Default attributes for joints (edge)
         self.update_default_edge_attributes({
             'sequence_earlier' : False,
             'is_clamp_attached_side' : False,
             'clamp_wcf_attach_approach' : None,     # Clamp position beforing approaching attachment point
             'clamp_wcf_final' : None,               # Clamp position at attachment point "clamp_frame_wcf"
             'clamp_wcf_attach_retract' : None,      # Robot Position (modeled as clamp frame) after releasing the clamp at final position and retracting.
-            'clamp_wcf_detatch_retract1' : None,    # Clamp position after assembly, retracting from attachment point
-            'clamp_wcf_detatch_retract2' : None,
-            'clamp_type' : None
+            'clamp_wcf_detach_approach' : None,     # Robot Position (modeled as clamp frame) before picking up the clamp from final position.
+            'clamp_wcf_detach_retract1' : None,     # Clamp position after assembly, retracting from attachment point
+            'clamp_wcf_detach_retract2' : None,
+            'clamp_type' : None,
+            'clamp_id' : None,
         })
 
     # ----------------------------
@@ -230,10 +233,19 @@ class Assembly(Network):
         return joints
 
     def get_joint_ids_of_beam(self, beam_id):
-        """Get all the ids of joints that are attached to a beam"""
+        """Get all the ids of joints (beam_id, neighbor_beam_id) that are attached to a beam
+        """
         joint_ids = []
         for neighbor_beam_id in self.neighbors_out(beam_id):
             joint_ids.append((beam_id, neighbor_beam_id))
+        return joint_ids
+
+    def get_reverse_joint_ids_of_beam(self, beam_id):
+        """Get all the ids of joints (neighbor_beam_id, beam_id) that are attached to a beam
+        """
+        joint_ids = []
+        for neighbor_beam_id in self.neighbors_out(beam_id):
+            joint_ids.append((neighbor_beam_id, beam_id))
         return joint_ids
     # --------------------------------------------
     # Iterating through all Beams and Joints
@@ -315,6 +327,16 @@ class Assembly(Network):
         "Return the joints (id) that are connected to already-assembled beams"
         # The if statement checkes if the joint attribute 'sequence_earlier' == False
         return [joint_id for joint_id in self.get_joint_ids_of_beam(beam_id) if self.get_joint_attribute(joint_id, 'sequence_earlier') == False]
+
+    def get_joint_ids_of_beam_clamps(self, beam_id):
+        # type: (self)
+        """Return the list [joint_id] where is_clamp_attached_side = True
+        where
+        are attached.
+        """
+        # The if statement checkes if the joint attribute 'is_clamp_attached_side' == True
+        return [joint_id for joint_id in self.get_reverse_joint_ids_of_beam(beam_id) if self.get_joint_attribute(joint_id, 'is_clamp_attached_side') == True]
+
 
     def get_already_built_neighbors(self, beam_id):
         # type: (self)

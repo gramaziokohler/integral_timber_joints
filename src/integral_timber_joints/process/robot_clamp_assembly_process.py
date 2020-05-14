@@ -12,10 +12,12 @@ from integral_timber_joints.tools import Clamp, Gripper
 class RobotClampAssemblyProcess:
 
     def __init__(self, assembly):
-        # type(Assembly)
+        # type: (Assembly)
         self.assembly = assembly.copy() # type: Assembly
         self._clamps = {}    # type: Dict[str, Clamp]
         self._grippers = {}  # type: Dict[str, Gripper]
+        self.actions = []    # type: List[Action]
+        self.movements = []    # type: List[Movements]
 
     def add_clamp(self, clamp):
         self._clamps[clamp.name] = clamp.copy()
@@ -23,19 +25,32 @@ class RobotClampAssemblyProcess:
     def add_gripper(self, gripper):
         self._grippers[gripper.name] = gripper.copy()
 
-    def clamp(self, clamp_name):
-        return self._clamps[clamp_name]
+    def clamp(self, clamp_id):
+        # type: (str) -> Clamp
+        return self._clamps[clamp_id]
 
     @ property
     def clamps(self):
+        # type: List[Clamp]
         return self._clamps.values()
 
-    def gripper(self, gripper_name):
-        return self._grippers[gripper_name]
+    def gripper(self, gripper_id):
+        # type: (str) -> Clamp
+        return self._grippers[gripper_id]
 
     @ property
     def grippers(self):
+        # type: List[Gripper]
         return self._grippers.values()
+
+    def tool(self, tool_id):
+        # type: (str) -> Tool
+        if tool_id in self._grippers:
+            return self.gripper(tool_id)
+        elif tool_id in self._clamps:
+            return self.clamp(tool_id)
+        else:
+            raise KeyError ("tool_id (%s) cannot be found in process.grippers or process.clamps")
 
     @ property
     def available_clamp_types(self):
@@ -285,6 +300,26 @@ class RobotClampAssemblyProcess:
         self.assembly.set_beam_attribute(beam_id, 'gripper_grasp_face', best_face)
         return best_face
 
+    def get_gripper_t0cp_for_beam_at(self, beam_id, attribute_name):
+
+        # Get Gripper Object
+        gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
+        gripper = self.get_one_gripper_by_type(gripper_type)
+
+        # Get the TCP Frame at the beam's final-frame (gripper_tcp_in_wcf)
+        gripper_tcp_in_ocf = self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf")
+        beam_frame_wcf = self.assembly.beam(beam_id).frame
+        gripper_tcp_in_wcf = gripper_tcp_in_ocf.transformed(Transformation.from_frame(beam_frame_wcf))
+
+        # Move that TCP Frame (gripper_tcp_in_wcf) to the given beam's location (attribute_name)
+        T = self.assembly.get_beam_transformaion_to(beam_id, attribute_name)
+        if T is None: return None
+        gripper_tcp_in_wcf = gripper_tcp_in_wcf.transformed(T)
+
+        # Find t0cp from tcp
+        T = Transformation.from_frame_to_frame(gripper.tool_coordinate_frame, gripper_tcp_in_wcf)
+        return Frame.worldXY().transformed(T)
+
     # -----------------------
     # Beam Storage / Pick Up / Retract
     # -----------------------
@@ -452,14 +487,6 @@ class RobotClampAssemblyProcess:
         T = Translation(design_guide_vector_storage_pickup)
         assembly_wcf_storageretract = assembly_wcf_storage.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageretract', assembly_wcf_storageretract)
-
-
-
-
-
-
-
-
 
     def copy(self):
         return deepcopy(self)

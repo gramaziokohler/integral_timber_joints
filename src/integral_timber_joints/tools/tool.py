@@ -25,9 +25,9 @@ class Tool (RobotModel):
     def __init__(self,
         name,
         type_name,
-        tool_coordinate_frame,
-        tool_pick_up_frame = None,
-        tool_storage_frame = None,
+        tool_coordinate_frame,      # Ref to T0CF (TCF ~= TCP)
+        tool_pick_up_frame = None,  # Ref to T0CF
+        tool_storage_frame = None,  # Ref to WCF
         ):
 
         RobotModel.__init__(self, name)
@@ -96,6 +96,8 @@ class Tool (RobotModel):
     def transformation_from_t0cf_to_tcf(self):
         return Transformation.from_frame(self.tool_coordinate_frame)
 
+    def tool_pick_up_frame_in_wcf(self, current_frame):
+        return self.tool_pick_up_frame.transformed(Transformation.from_frame_to_frame(Frame.worldXY(), current_frame))
     # --------------------------------------------------------
     # State Setting Functions
     # --------------------------------------------------------
