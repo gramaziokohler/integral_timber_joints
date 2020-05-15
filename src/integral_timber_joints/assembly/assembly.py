@@ -78,12 +78,12 @@ class Assembly(Network):
         self.update_default_edge_attributes({
             'sequence_earlier' : False,
             'is_clamp_attached_side' : False,
-            'clamp_wcf_attach_approach' : None,     # Clamp position beforing approaching attachment point
+            'clamp_wcf_attachapproach' : None,     # Clamp position beforing approaching attachment point
             'clamp_wcf_final' : None,               # Clamp position at attachment point "clamp_frame_wcf"
-            'clamp_wcf_attach_retract' : None,      # Robot Position (modeled as clamp frame) after releasing the clamp at final position and retracting.
-            'clamp_wcf_detach_approach' : None,     # Robot Position (modeled as clamp frame) before picking up the clamp from final position.
-            'clamp_wcf_detach_retract1' : None,     # Clamp position after assembly, retracting from attachment point
-            'clamp_wcf_detach_retract2' : None,
+            'clamp_wcf_attachretract' : None,      # Robot Position (modeled as clamp frame) after releasing the clamp at final position and retracting.
+            'clamp_wcf_detachapproach' : None,     # Robot Position (modeled as clamp frame) before picking up the clamp from final position.
+            'clamp_wcf_detachretract1' : None,     # Clamp position after assembly, retracting from attachment point
+            'clamp_wcf_detachretract2' : None,
             'clamp_type' : None,
             'clamp_id' : None,
         })

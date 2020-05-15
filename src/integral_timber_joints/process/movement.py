@@ -25,12 +25,13 @@ class OperatorLoadBeamMovement(Movement):
     """ Manual movement to place beam on Pickup Station
     Default: operator_stop_after = True
     """
-    def __init__(self, beam_id):
+    def __init__(self, beam_id, grasp_face):
         Movement.__init__(self, operator_stop_after = True)
         self.beam_id = beam_id
+        self.grasp_face = grasp_face
 
     def __str__(self):
-        return "Load Beam (%s) to pickup station" % (self.beam_id)
+        return "Load Beam (%s) to pickup station. Side %s face-upwards" % (self.beam_id, self.grasp_face)
 
 class RoboticFreeMovement(RoboticMovement):
     def __init__(self, target_frame, attached_tool_id = None, attached_beam_id = None):

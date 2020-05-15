@@ -89,7 +89,8 @@ class LoadBeamAction(OperatorAction):
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         self.movements = []
-        self.movements.append(OperatorLoadBeamMovement(self.beam_id))
+        grasp_face = process.assembly.get_beam_attribute(self.beam_id, 'gripper_grasp_face')
+        self.movements.append(OperatorLoadBeamMovement(self.beam_id, grasp_face))
 
 class PickClampFromStorageAction(RobotAction, AttachToolAction):
     def __init__(self, tool_type = None):
@@ -170,17 +171,17 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         self.movements = []
         tool = process.tool(self.tool_id) # type: Clamp
 
-        clamp_wcf_attach_approach = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_attach_approach')
+        clamp_wcf_detachapproach = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_detachapproach')
         clamp_wcf_final = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_final')
-        clamp_wcf_detach_retract1 = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_detach_retract1')
-        clamp_wcf_detach_retract2 = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_detach_retract2')
+        clamp_wcf_detachretract1 = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_detachretract1')
+        clamp_wcf_detachretract2 = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_detachretract2')
 
-        self.movements.append(RoboticFreeMovement(clamp_wcf_attach_approach)) # Tool Approach Frame where tool is at structure
-        self.movements.append(RoboticLinearMovement(clamp_wcf_final)) # Tool Final Frame at structure
+        self.movements.append(RoboticFreeMovement(clamp_wcf_detachapproach))
+        self.movements.append(RoboticLinearMovement(clamp_wcf_final))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
-        self.movements.append(RoboticLinearMovement(clamp_wcf_detach_retract1, attached_tool_id=self.tool_id)) # Tool Retract Frame at structure
-        self.movements.append(RoboticLinearMovement(clamp_wcf_detach_retract2, attached_tool_id=self.tool_id)) # Tool Retract Frame at structure
+        self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract1, attached_tool_id=self.tool_id)) # Tool Retract Frame at structure
+        self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract2, attached_tool_id=self.tool_id)) # Tool Retract Frame at structure
 
 class PlaceClampToStructureAction(RobotAction, DetachToolAction):
     def __init__(self,  joint_id , tool_type = None):
@@ -204,14 +205,15 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.movements = []
         tool = process.tool(self.tool_id) # type: Clamp
 
-        clamp_wcf_attach_approach = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_attach_approach')
+        clamp_wcf_attachapproach = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_attachapproach')
         clamp_wcf_final = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_final')
+        clamp_wcf_attachretract = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_attachretract')
 
-        self.movements.append(RoboticFreeMovement(clamp_wcf_attach_approach, attached_tool_id=self.tool_id)) # Tool Approach Frame where tool is at structure
+        self.movements.append(RoboticFreeMovement(clamp_wcf_attachapproach, attached_tool_id=self.tool_id)) # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_final, attached_tool_id=self.tool_id)) # Tool Final Frame at structure
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool))
-        self.movements.append(RoboticLinearMovement(clamp_wcf_attach_approach)) # Tool Retract (current implementation is = clamp_wcf_attach_approach)
+        self.movements.append(RoboticLinearMovement(clamp_wcf_attachretract))
 
 class PickGripperFromStorageAction(PickClampFromStorageAction):
     def __init__(self, tool_type):
@@ -244,12 +246,13 @@ class PickBeamFromStorageAction(RobotAction, AttachBeamAction):
         assembly_wcf_storageapproach = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_storageapproach')
         assembly_wcf_storage = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_storage')
         assembly_wcf_storageretract = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_storageretract')
+        assert assembly_wcf_storageapproach is not None and assembly_wcf_storage is not None and assembly_wcf_storageretract is not None
 
         self.movements.append(RoboticFreeMovement(assembly_wcf_storageapproach, attached_tool_id=self.gripper_id)) # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
         self.movements.append(RoboticLinearMovement(assembly_wcf_storage, attached_tool_id=self.gripper_id)) # Tool Final Frame at structure
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper))
-        self.movements.append(RoboticLinearMovement(assembly_wcf_storageretract, attached_tool_id=self.gripper_id, attached_beam_id = self.beam_id)) # Tool Retract (current implementation is = clamp_wcf_attach_approach)
+        self.movements.append(RoboticLinearMovement(assembly_wcf_storageretract, attached_tool_id=self.gripper_id, attached_beam_id = self.beam_id)) # Tool Retract (current implementation is = clamp_wcf_attachapproach)
 
 class PlaceBeamWithoutClampsAction(RobotAction, DetachBeamAction):
     def __init__(self,  beam_id):
@@ -266,7 +269,19 @@ class PlaceBeamWithoutClampsAction(RobotAction, DetachBeamAction):
         # type: (RobotClampAssemblyProcess) -> None
         """ Movement for picking Beam (with a tool) from Storage
         """
-        pass # TODO
+        self.movements = []
+        tool = process.tool(self.gripper_id) # type: Clamp
+
+        assembly_wcf_inclamp = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_inclamp')
+        assembly_wcf_final = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_final')
+        assembly_wcf_finalretract = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_finalretract')
+        assert assembly_wcf_inclamp is not None and assembly_wcf_final is not None and assembly_wcf_finalretract is not None
+
+        self.movements.append(RoboticFreeMovement(assembly_wcf_inclamp, attached_tool_id=self.gripper_id, attached_beam_id = self.beam_id))
+        self.movements.append(RoboticLinearMovement(assembly_wcf_final, attached_tool_id=self.gripper_id, attached_beam_id = self.beam_id))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
+        self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract, attached_tool_id=self.gripper_id))
+
 
 class PlaceBeamWithClampsAction(RobotAction, DetachBeamAction):
     def __init__(self,  beam_id , joint_ids):
@@ -283,8 +298,24 @@ class PlaceBeamWithClampsAction(RobotAction, DetachBeamAction):
         clamp_id_str = [("?" if clamp_id is None else clamp_id) for clamp_id in self.clamp_ids]
         return "Place %s to %s using clamp %s" % (object_str, location_str, clamp_id_str)
 
+
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         """ Movement for picking Beam (with a tool) from Storage
         """
-        pass # TODO
+        self.movements = []
+        tool = process.tool(self.gripper_id) # type: Clamp
+
+        assembly_wcf_inclampapproach = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_inclampapproach')
+        assembly_wcf_inclamp = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_inclamp')
+        assembly_wcf_final = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_final')
+        assembly_wcf_finalretract = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_finalretract')
+        assert assembly_wcf_inclampapproach is not None and assembly_wcf_inclamp is not None and assembly_wcf_final is not None and assembly_wcf_finalretract is not None
+
+        self.movements.append(RoboticFreeMovement(assembly_wcf_inclampapproach, attached_tool_id=self.gripper_id, attached_beam_id = self.beam_id))
+        self.movements.append(RoboticLinearMovement(assembly_wcf_inclamp, attached_tool_id=self.gripper_id, attached_beam_id = self.beam_id))
+        # TODO, This should be a Robot Clamp Sync move
+        self.movements.append(RoboticLinearMovement(assembly_wcf_final, attached_tool_id=self.gripper_id, attached_beam_id = self.beam_id))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
+        self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract, attached_tool_id=self.gripper_id))
+

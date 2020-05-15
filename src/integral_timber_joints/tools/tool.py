@@ -98,6 +98,9 @@ class Tool (RobotModel):
 
     def tool_pick_up_frame_in_wcf(self, current_frame):
         return self.tool_pick_up_frame.transformed(Transformation.from_frame_to_frame(Frame.worldXY(), current_frame))
+
+    def tool_coordinate_frame_in_wcf(self, current_frame):
+        return self.tool_coordinate_frame.transformed(Transformation.from_frame_to_frame(Frame.worldXY(), current_frame))
     # --------------------------------------------------------
     # State Setting Functions
     # --------------------------------------------------------

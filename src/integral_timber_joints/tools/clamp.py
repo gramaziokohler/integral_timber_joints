@@ -57,7 +57,9 @@ class Clamp (Tool):
         mesh_gripper_jaw_r,
         mesh_clamp_jaw_l,
         mesh_clamp_jaw_r,
-        approach_vector
+        approach_vector,
+        detachretract1_vector,
+        detachretract2_vector,
         ):
         """ A Parallel gripper will have a base and two gripper jaw.
         Modelling guide
@@ -75,7 +77,9 @@ class Clamp (Tool):
         robot_model.tool_coordinate_frame = tool_coordinate_frame
         robot_model.tool_pick_up_frame = tool_pick_up_frame
         robot_model.tool_storage_frame = tool_storage_frame
-        robot_model.approach_vector = approach_vector # This vector is ref to tcf
+        robot_model.approach_vector = approach_vector               # This vector is ref to t0cf
+        robot_model.detachretract1_vector = detachretract1_vector   # This vector is ref to t0cf
+        robot_model.detachretract2_vector = detachretract2_vector   # This vector is ref to t0cf
 
         #world_link = robot_model.add_link('world')
         gripper_base = robot_model.add_link('gripper_base', mesh_gripper_base)
@@ -142,12 +146,16 @@ class Clamp (Tool):
     # --------------------------------------------------------
 
     def open_gripper(self):
-        self.gripper_jaw_position = self.gripper_jaw_position_max
+        self.gripper_jaw_position = self.gripper_jaw_limits[1]
 
     def close_gripper(self):
-        self.gripper_jaw_position = self.gripper_jaw_position_min
+        self.gripper_jaw_position = self.gripper_jaw_limits[0]
 
+    def open_clamp(self):
+        self.clamp_jaw_position = self.clamp_jaw_limits[1]
 
+    def close_clamp(self):
+        self.clamp_jaw_position = self.clamp_jaw_limits[0]
 
 if __name__ == "__main__":
     c = Clamp('c1')
