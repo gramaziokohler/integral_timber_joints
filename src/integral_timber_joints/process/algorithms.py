@@ -5,7 +5,7 @@ except:
 
 from integral_timber_joints.process.action import *
 from integral_timber_joints.process.target import *
-from integral_timber_joints.process import RobotClampAssemblyProcess, PathPlanner
+from integral_timber_joints.process import RobotClampAssemblyProcess, RFLPathPlanner
 from integral_timber_joints.process.movement import *
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, Joint
@@ -261,6 +261,7 @@ def create_movements_from_actions(process, verbose = True):
     assembly = process.assembly # type: Assembly
     actions = process.actions # type: List[Action]
 
+    # The functions to create_movements are located within each of the Action class.
     for action in actions:
             action.create_movements(process)
 
@@ -272,13 +273,12 @@ def debug_print_process_actions_movements(process):
         for j, movement in enumerate(action.movements):
             print ("|  |- Movement %s : %s" % (j, movement))
 
-def test_process_prepathplan():
+def test_process_prepathplan(json_path, json_output_path):
     #########################################################################
     # Load process
     #########################################################################
 
     import jsonpickle
-    json_path = "tests/SequencingScene_01_mm.json"
     f = open(json_path, 'r')
     json_str = f.read()
     process = jsonpickle.decode(json_str, keys=True) # type: RobotClampAssemblyProcess
@@ -323,7 +323,6 @@ def test_process_prepathplan():
     # Save process
     #########################################################################
 
-    json_output_path = "tests/SequencingScene_02_mm.json"
     print("\n> > > Saving Process to %s \n" % json_output_path)
     f = open(json_output_path, 'w')
     f.write(jsonpickle.encode(process, keys=True))
@@ -344,81 +343,16 @@ def test_process_pathPlan():
     #########################################################################
     # Connect to path planning backend and initialize robot parameters
     #########################################################################
-    from compas_fab.robots import Configuration
-    from compas.geometry import Frame
 
-    pp = PathPlanner(None)
-    pp.connect_to_ros_planner("192.168.43.141")
+    pp = RFLPathPlanner(None)
+    pp.connect_to_ros_planner("192.168.183.129")
     robot = pp.robot # type: compas_fab.robots.Robot
-    robot.scale = 1000 # millimeters
+
     # Add static collision mesh to planning scene
     # TODO: FLoor and other meshes
 
-    # Set robot home position
-    # home = {
-    #     "robot22_joint_EA_Z" : -4915,
-    #     "robot22_joint_EA_Y" : -12237,
-    #     "robot21_joint_EA_Z" : -4915,
-    #     "robot21_joint_EA_Y" : 0.0,
-    #     "bridge2_joint_EA_X" : 39805,
-    #     "robot12_joint_EA_Z" : -4915,
-    #     "robot12_joint_EA_Y" : -12237,
-    #     "robot11_joint_EA_Z" : -4915,
-    #     "robot11_joint_EA_Y" : 0.0,
-    #     "bridge1_joint_EA_X" : 0.0}
-    # values = []
-    # types = []
-    # joint_names = []
 
-    # for joint in robot.get_configurable_joints():
-    #     types.append(joint.type)
-    #     joint_names.append(joint.name)
-    #     if "EA" not in joint.name:
-    #         values.append(0.0)
-    #     else:
-    #         values.append(home[joint.name])
-    # home_configuration = Configuration(values, types, joint_names)
-
-    start_configuration = Configuration(
-    values = (
-        0,
-        0, -4915,
-        0, 0, 0, 0, 0, 0,
-        -12237, -4915,
-        0, 0, 0, 0, 0, 0,
-        38000,
-        0, -4915,
-        0, 0, 0, 0, 0, 0,
-        -12237, -4915,
-        0, 0, 0, 0, 0, 0
-        ),
-    types = (
-        2,
-        2, 2,
-        0, 0, 0, 0, 0, 0,
-        2, 2,
-        0, 0, 0, 0, 0, 0,
-        2,
-        2, 2,
-        0, 0, 0, 0, 0, 0,
-        2, 2,
-        0, 0, 0, 0, 0, 0
-        ),
-    joint_names = (
-        'bridge1_joint_EA_X',
-        'robot11_joint_EA_Y', 'robot11_joint_EA_Z',
-        'robot11_joint_1', 'robot11_joint_2', 'robot11_joint_3', 'robot11_joint_4', 'robot11_joint_5', 'robot11_joint_6',
-        'robot12_joint_EA_Y', 'robot12_joint_EA_Z',
-        'robot12_joint_1', 'robot12_joint_2', 'robot12_joint_3', 'robot12_joint_4', 'robot12_joint_5', 'robot12_joint_6',
-        'bridge2_joint_EA_X',
-        'robot21_joint_EA_Y', 'robot21_joint_EA_Z',
-        'robot21_joint_1', 'robot21_joint_2', 'robot21_joint_3', 'robot21_joint_4', 'robot21_joint_5', 'robot21_joint_6',
-        'robot22_joint_EA_Y', 'robot22_joint_EA_Z',
-        'robot22_joint_1', 'robot22_joint_2', 'robot22_joint_3', 'robot22_joint_4', 'robot22_joint_5', 'robot22_joint_6'
-        )
-    )
-
-    current_configuration = start_configuration
+    current_configuration = pp.rfl_timber_start_configuration()
     print(current_configuration)
     #########################################################################
     # Sequential path planning
@@ -430,23 +364,15 @@ def test_process_pathPlan():
     for i, movement in enumerate(action.movements):
         print ("Movement (%s) - %s" % (i, movement))
         if isinstance(movement, RoboticFreeMovement):
-            print ("\n> > > Plan RoboticFreeMovement")
-
             # Add already built beams to planning scene
 
             # Attach Tool and Beam to robot
 
             # Prepare Starting Config and Goal constraints
             # start_configuration = Configuration.from_revolute_values([0, 4.295, 0, -3.327, 4.755, 0.])
-            group = robot.main_group_name
-            print ("robot.main_group_name = %s" % robot.main_group_name)
-            tolerance_position = 0.001
-            tolerance_axes = [0.01] * 3
-            goal_constraints = robot.constraints_from_frame(movement.target_frame, tolerance_position, tolerance_axes, group)
-            trajectory = robot.plan_motion(goal_constraints, start_configuration = current_configuration, group = group, planner_id='RRT')
-
-            print("Computed kinematic path with %d configurations." % len(trajectory.points))
-            print("Executing this path at full speed would take approx. %.3f seconds." % trajectory.time_from_start)
+            trajectory = pp.plan_free_motion(movement.target_frame)
+            if trajectory:
+                print("> > Free Motion Planned (%s pts, %ssecs)" % (len(trajectory.points), trajectory.time_from_start))
 
     pp.ros_client.close()
     #########################################################################
@@ -456,8 +382,8 @@ def test_process_pathPlan():
 
 if __name__ == "__main__":
 
-    # test_process_prepathplan()
-    test_process_pathPlan()
+    test_process_prepathplan("tests/data/SequencingScene_mm.json", "tests/data/SequencingScene_mm_prepathplan.json")
+    #test_process_pathPlan()
 
     # Result Goal 1: Visualize action, movement, trajectory by visualizing scene objects and robots.
 
