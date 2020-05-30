@@ -25,9 +25,11 @@ from compas_ghpython.artists import MeshArtist
 from copy import deepcopy
 
 __all__ = ['Beam']
+
+
 class Beam(object):
 
-    def __init__(self, frame, length, width, height, name = None):
+    def __init__(self, frame, length, width, height, name=None):
         """
         initialization
         ----------------
@@ -38,23 +40,23 @@ class Beam(object):
             name:       str(optional):  UUID generated from id_generator as name for each mesh
 
         """
-        if (frame is None): frame = Frame.worldXY()
+        if (frame is None):
+            frame = Frame.worldXY()
         self.frame = frame.copy()       # type: Frame
         self.length = float(length)     # type: float
         self.width = float(width)       # type: float
         self.height = float(height)     # type: float
-        if (name == None): name = create_id()
+        if (name == None):
+            name = create_id()
         self.name = name                # type: str
         self.cached_mesh = None         # type: compas.datastructures.Mesh
 
-
         # Attribute for animation visualization
-        self.is_visible = True # Decides if the self.draw_visuals() draw or not.
-        self.is_attached = True # Decides if the self.draw_visuals() draws it differently.
-        self.current_location = frame.copy() # Not Serialized
-        self.storage_location = frame.copy() # Not Serialized
-        self.grasp_frame = Frame.worldXY() # Not Serialized # Local Coords
-
+        self.is_visible = True  # Decides if the self.draw_visuals() draw or not.
+        self.is_attached = True  # Decides if the self.draw_visuals() draws it differently.
+        self.current_location = frame.copy()  # Not Serialized
+        self.storage_location = frame.copy()  # Not Serialized
+        self.grasp_frame = Frame.worldXY()  # Not Serialized # Local Coords
 
     # -----------------------
     # Constructors
@@ -99,9 +101,9 @@ class Beam(object):
 
         xaxis = orientation_frame.xaxis
         yaxis = orientation_frame.yaxis
-        beam_frame = Frame(origin_point,xaxis,yaxis)
+        beam_frame = Frame(origin_point, xaxis, yaxis)
 
-        beam = cls(beam_frame, length, width, height, None )
+        beam = cls(beam_frame, length, width, height, None)
         beam.mesh = raw_mesh
 
         return beam
@@ -128,19 +130,28 @@ class Beam(object):
         distance (double)
         """
         YZ_Plane = self.get_face_plane(0)
-        dist = distance_point_plane(placed_point,YZ_Plane)
+        dist = distance_point_plane(placed_point, YZ_Plane)
         return dist
 
-    def get_center_point_at_beam_start(self, length = 0):
-        """Computes the centroid of a beam
+    def get_center_point_at_beam_start(self, length=0):
+        """Computes the center point of a beam on Reference Side 5 in WCF
         ----------
         Return:
         ------
         point[list]
         """
-        return self.frame.to_world_coords([length,self.width/2,self.height/2])
+        return self.frame.to_world_coords([length, self.width/2, self.height/2])
 
-    def get_face_frame(self,face_id):
+    def get_center_point(self):
+        """Computes the centroid of a beam in WCF
+        ----------
+        Return:
+        ------
+        point[list]
+        """
+        return self.frame.to_world_coords([self.length/2, self.width/2, self.height/2])
+
+    def get_face_frame(self, face_id):
         """Computes the frame of the selected face
         ----------
         face_id: (int) ID of selected face of Beam
@@ -152,18 +163,18 @@ class Beam(object):
         if face_id == 1:
             return self.frame.copy()
         if face_id == 2:
-            new_origin = self.frame.to_world_coords([0,self.width,0])
-            return Frame(new_origin,self.frame.xaxis, self.frame.normal)
+            new_origin = self.frame.to_world_coords([0, self.width, 0])
+            return Frame(new_origin, self.frame.xaxis, self.frame.normal)
         if face_id == 3:
-            new_origin = self.frame.to_world_coords([0,self.width,self.height])
-            return Frame(new_origin,self.frame.xaxis, self.frame.yaxis * -1.0)
+            new_origin = self.frame.to_world_coords([0, self.width, self.height])
+            return Frame(new_origin, self.frame.xaxis, self.frame.yaxis * -1.0)
         if face_id == 4:
-            new_origin = self.frame.to_world_coords([0,0,self.height])
-            return Frame(new_origin,self.frame.xaxis, self.frame.normal * -1.0)
+            new_origin = self.frame.to_world_coords([0, 0, self.height])
+            return Frame(new_origin, self.frame.xaxis, self.frame.normal * -1.0)
         else:
             raise IndexError('face_id index out of range')
 
-    def get_face_plane(self,plane_id):
+    def get_face_plane(self, plane_id):
         """Computes the plane of each face of a beam
         ----------
         plane_id: (int) ID of plane
@@ -193,17 +204,17 @@ class Beam(object):
             face_4 = self.get_face_frame(4).copy()
             plane = Plane(face_4.point, face_4.yaxis)
 
-        elif plane_id == 5: #horizontal plane that at the center of the beam
+        elif plane_id == 5:  # horizontal plane that at the center of the beam
             center_point = self.get_center_point_at_beam_start()
             plane = Plane(center_point, self.frame.normal)
 
-        elif plane_id == 6: #vertical plane that at the center of the beam
+        elif plane_id == 6:  # vertical plane that at the center of the beam
             center_point = self.get_center_point_at_beam_start()
             plane = Plane(center_point, self.frame.yaxis)
 
         return plane
 
-    def get_face_width(self,face_id):
+    def get_face_width(self, face_id):
         """Gets the width of the selected face
         Corrisponds to the dimension of the beam which is the width of the selected face.
         ----------
@@ -226,7 +237,7 @@ class Beam(object):
         else:
             raise IndexError()
 
-    def get_face_height(self,face_id):
+    def get_face_height(self, face_id):
         """Gets the height (depth) of the selected face.
         Corrisponds to the dimension of the beam which is normal to the selected face.
         ----------
@@ -259,7 +270,7 @@ class Beam(object):
         end = self.get_face_frame(face_id).to_world_coords([self.length, 0, self.get_face_width(face_id)/2])
         return Line(start, end)
 
-    def get_neighbor_face_plane(self,plane_id):
+    def get_neighbor_face_plane(self, plane_id):
         """Computes the adjacent planes of a plane
         ----------
         plane_id: (int) ID of plane
@@ -269,13 +280,13 @@ class Beam(object):
         compas plane
         """
         if plane_id == 1:
-            return [self.get_face_plane(2),self.get_face_plane(4)]
+            return [self.get_face_plane(2), self.get_face_plane(4)]
         if plane_id == 2:
-            return [self.get_face_plane(3),self.get_face_plane(1)]
+            return [self.get_face_plane(3), self.get_face_plane(1)]
         if plane_id == 3:
-            return [self.get_face_plane(4),self.get_face_plane(2)]
+            return [self.get_face_plane(4), self.get_face_plane(2)]
         if plane_id == 4:
-            return [self.get_face_plane(1),self.get_face_plane(3)]
+            return [self.get_face_plane(1), self.get_face_plane(3)]
 
     # -------------------------
     # BTLx Defined Properities
@@ -317,12 +328,17 @@ class Beam(object):
         """Corner 1 to 4 corrisponds to the Start Point of Reference Edge 1 to 4
         Corner 5 to 8 corrisponds to the End Point of Reference Edge 1 to 4
         """
-        if corner == 1: return Point(0, 0, 0)
-        if corner == 2: return Point(0, self.height, 0)
-        if corner == 3: return Point(0, self.height, self.width)
-        if corner == 4: return Point(0, 0, self.width)
+        if corner == 1:
+            return Point(0, 0, 0)
+        if corner == 2:
+            return Point(0, self.height, 0)
+        if corner == 3:
+            return Point(0, self.height, self.width)
+        if corner == 4:
+            return Point(0, 0, self.width)
 
-        if corner >= 5 and corner <= 8: return self.corner_ocf(corner - 4) + Point(self.length, 0, 0)
+        if corner >= 5 and corner <= 8:
+            return self.corner_ocf(corner - 4) + Point(self.length, 0, 0)
 
         raise IndexError("corner only accepts (int) 1 - 8")
 
@@ -338,15 +354,15 @@ class Beam(object):
         # Compas Box origin is at the center of the box
         box_center_point = self.frame.to_world_coords(Point(self.length/2, self.width/2, self.height/2))
         box_center_frame = Frame(box_center_point, self.frame.xaxis, self.frame.yaxis)
-        box = Box(box_center_frame, self.length,self.width,self.height)
+        box = Box(box_center_frame, self.length, self.width, self.height)
 
         # Convert Box to Mesh
         from compas.datastructures import mesh_quads_to_triangles
-        box_mesh = Mesh.from_vertices_and_faces(box.vertices, box.faces) # type: compas.datastructures.Mesh
+        box_mesh = Mesh.from_vertices_and_faces(box.vertices, box.faces)  # type: compas.datastructures.Mesh
         mesh_quads_to_triangles(box_mesh)
         return box_mesh
 
-    def update_cached_mesh(self, beam_features = []):
+    def update_cached_mesh(self, beam_features=[]):
         """Computes the beam geometry with boolean difference of all joints and features.
         This is manually triggered.
         Parameters
@@ -366,21 +382,21 @@ class Beam(object):
         """
 
         meshes = []
-        #First mesh in the list is the uncut beam mesh
+        # First mesh in the list is the uncut beam mesh
         self.cached_mesh = self.draw_uncut_mesh()
 
-        if len(beam_features) > 0 :
+        if len(beam_features) > 0:
             meshes.append(self.cached_mesh)
 
-            #Compute the negative meshes from the features
+            # Compute the negative meshes from the features
             for feature in beam_features:
                 negative_mesh = feature.get_feature_mesh(self)
                 meshes.append(negative_mesh)
 
-            #Calls trimesh to perform boolean
+            # Calls trimesh to perform boolean
             from compas.rpc import Proxy
             trimesh_proxy = Proxy(package='compas_trimesh')
-            #print(meshes)
+            # print(meshes)
             result = trimesh_proxy.trimesh_subtract_multiple(meshes)
             self.cached_mesh = Mesh.from_data(result['value'])
 
@@ -406,14 +422,14 @@ class Beam(object):
         state_dict['is_visible'] = self.is_visible
         state_dict['is_attached'] = self.is_attached
 
-
         return state_dict
 
     def draw_visuals(self):
         '''
         This function serves animation / viauslization purpose only
         '''
-        if not self.is_visible: return []
+        if not self.is_visible:
+            return []
         # Create the transformation
         T = Transformation.from_frame_to_frame(self.frame, self.current_location)
         # Create a copy of the mesh, transformed.
@@ -443,7 +459,7 @@ class Beam(object):
         '''
         ref_side_ocf = self.refernce_side_ocf(side_id)
         T = Transformation.from_frame(ref_side_ocf)
-        new_origin = Point(dist_from_start , self.get_face_width(side_id) / 2 , 0).transformed(T)
+        new_origin = Point(dist_from_start, self.get_face_width(side_id) / 2, 0).transformed(T)
         return Frame(new_origin, ref_side_ocf.xaxis, ref_side_ocf.yaxis.scaled(-1.0))
     # -----------------------
     # Intersection
@@ -457,13 +473,13 @@ class Beam(object):
             List of [Tuples (face_id on self, face_id on neighbor_beam)]
         """
         ffx = []
-        for i in range(1,5):
+        for i in range(1, 5):
             p1 = self.get_face_plane(i)
-            for j in range(1,5):
+            for j in range(1, 5):
                 p2 = neighbor_beam.get_face_plane(j)
-                if (is_point_on_plane(p1.point,p2) and is_point_on_plane(p2.point,p1)):
+                if (is_point_on_plane(p1.point, p2) and is_point_on_plane(p2.point, p1)):
                     #print ("Intersection self.Face%s Beam2.Face%s " %(i , j))
-                    ffx.append((i,j))
+                    ffx.append((i, j))
         return ffx
 
     @classmethod
@@ -472,11 +488,11 @@ class Beam(object):
         from compas.geometry import Point
         from compas.geometry import Vector
         from integral_timber_joints.geometry.joint_90lap import Joint_90lap
-        #Create Beam object
-        beam = cls(Frame(Point(0, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)),1000,100,150,"dummy_beam_1")
-        #Create Joint object
+        # Create Beam object
+        beam = cls(Frame(Point(0, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)), 1000, 100, 150, "dummy_beam_1")
+        # Create Joint object
         if (include_joint):
-            return (beam, Joint_90lap(100,3,100,100,50,"dummy_joint"))
+            return (beam, Joint_90lap(100, 3, 100, 100, 50, "dummy_joint"))
         else:
             return beam
 
