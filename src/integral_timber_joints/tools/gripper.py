@@ -103,10 +103,10 @@ class Gripper (Tool):
     # --------------------------------------------------------
 
     def open_gripper(self):
-        self.gripper_jaw_position = self.gripper_jaw_position_max
+        self.gripper_jaw_position = self.gripper_jaw_limits[1]
 
     def close_gripper(self):
-        self.gripper_jaw_position = self.gripper_jaw_position_min
+        self.gripper_jaw_position = self.gripper_jaw_limits[0]
 
 if __name__ == "__main__":
     g = Gripper('g1')
