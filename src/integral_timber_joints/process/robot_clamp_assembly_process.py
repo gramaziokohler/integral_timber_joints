@@ -1,23 +1,25 @@
 from copy import deepcopy
 
-from compas.geometry import Vector, Frame, Translation, Transformation
-from geometric_blocking import blocked
+from compas.geometry import Frame, Transformation, Translation, Vector
 from compas.rpc import Proxy
+from geometric_blocking import blocked
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, Joint
-from integral_timber_joints.tools import Clamp, Gripper
+from integral_timber_joints.tools import Clamp, Gripper, PickupStation
 
 # I thinkm I need somesort of collision checker, IK reachability checker, Blocking direction checker.
+
 
 class RobotClampAssemblyProcess:
 
     def __init__(self, assembly):
         # type: (Assembly)
-        self.assembly = assembly.copy() # type: Assembly
+        self.assembly = assembly.copy()  # type: Assembly
         self._clamps = {}    # type: Dict[str, Clamp]
         self._grippers = {}  # type: Dict[str, Gripper]
         self.actions = []    # type: List[Action]
         self.movements = []    # type: List[Movements]
+        self.pickup_station = None
 
     def add_clamp(self, clamp):
         self._clamps[clamp.name] = clamp.copy()
@@ -50,7 +52,7 @@ class RobotClampAssemblyProcess:
         elif tool_id in self._clamps:
             return self.clamp(tool_id)
         else:
-            raise KeyError ("tool_id (%s) cannot be found in process.grippers or process.clamps")
+            raise KeyError("tool_id (%s) cannot be found in process.grippers or process.clamps")
 
     @ property
     def available_clamp_types(self):
@@ -85,7 +87,7 @@ class RobotClampAssemblyProcess:
         clamp = self.get_one_clamp_by_type(clamp_type)
         if set_position_to_clamp_wcf_final:
             clamp_wcf_final = self.assembly.get_joint_attribute(joint_id, 'clamp_wcf_final')
-            assert clamp_wcf_final is not None # clamp_wcf_final must be computed beforehand.
+            assert clamp_wcf_final is not None  # clamp_wcf_final must be computed beforehand.
             # clamp.set_current_frame_from_tcp(clamp_wcf_final)
             clamp.current_frame = clamp_wcf_final
         return clamp
@@ -104,7 +106,7 @@ class RobotClampAssemblyProcess:
                         self.assembly.set_joint_attribute(joint_id, "clamp_type", clamp_type)
                 if self.get_clamp_type_of_joint(joint_id) is None:
                     raise RuntimeError("Cannot assign clamp types")
-                print ("Joint (%s) assigned clamp_type: %s" % (joint_id , self.assembly.get_joint_attribute(joint_id, "clamp_type")))
+                print("Joint (%s) assigned clamp_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
 
     def get_clamp_orientation_options(self, beam_id):
         """Each beam assembly may have multiple clamps involved
@@ -146,7 +148,7 @@ class RobotClampAssemblyProcess:
             results = []
             for frame in frames:
                 results.append((dot_vectors(guiding_vector, frame.xaxis.scaled(-1.0)), frame))
-            guide_score, best_frame = sorted(results, key=lambda x: x[0])[-1] #Lst item of the sorted list has the best
+            guide_score, best_frame = sorted(results, key=lambda x: x[0])[-1]  # Lst item of the sorted list has the best
             return best_frame
 
         # Loop through all the clamp_orientation_options
@@ -155,7 +157,7 @@ class RobotClampAssemblyProcess:
             selected_frame = choose_frame_by_guide_vector(attachment_frames, guiding_vector)
 
             # Set clamp tcp to selected_frame using set_current_frame_from_tcp()
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final = False)
+            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=False)
             clamp.set_current_frame_from_tcp(selected_frame)
 
             # Save clamp.current_frame as 'clamp_wcf_final'
@@ -171,7 +173,7 @@ class RobotClampAssemblyProcess:
             if self.assembly.get_joint_attribute(joint_id, 'is_clamp_attached_side') == True:
                 yield joint_id
 
-    def compute_jawapproach_vector_length(self, beam_id, vector_dir, min_dist = 20, max_dist = 150):
+    def compute_jawapproach_vector_length(self, beam_id, vector_dir, min_dist=20, max_dist=150):
         # type: (str, Vector) -> Vector
         """Return a `assembly_vector_jawapproach` with correct length that will clear the clamp jaws
         Current implementation do not tkae into account of the angle of the clamp.
@@ -180,7 +182,7 @@ class RobotClampAssemblyProcess:
         # Compute the length of the movement to clear the clamp jaw
         clearance_length = min_dist
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final = False)
+            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=False)
             clearance_length = max(clearance_length, clamp.jaw_clearance_vectors_in_wcf.length)
         clearance_length = min(max_dist, clearance_length)
 
@@ -196,7 +198,7 @@ class RobotClampAssemblyProcess:
 
         # Check to see if the guide is blocked by any of the clamp jaws
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final = True)
+            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
             if blocked(clamp.jaw_blocking_vectors_in_wcf, design_guide_vector_jawapproach.scaled(-1.0)):
                 return None
 
@@ -215,15 +217,16 @@ class RobotClampAssemblyProcess:
         # Collect blocking vectors from attached clamps
         blocking_vectors = []
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final = True)
+            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
             blocking_vectors += clamp.jaw_blocking_vectors_in_wcf
         # Fix rounding error for blocking vectors (Some -0.0 causes problems)
         ROUNDING_DIGITS = 10
-        blocking_vectors = [Vector(round(x,ROUNDING_DIGITS),round(y,ROUNDING_DIGITS),round(z,ROUNDING_DIGITS)) for x,y,z in blocking_vectors]
+        blocking_vectors = [Vector(round(x, ROUNDING_DIGITS), round(y, ROUNDING_DIGITS), round(z, ROUNDING_DIGITS)) for x, y, z in blocking_vectors]
 
         # Compute the analytical result of the feasible region and take a average from the resulting region
         feasible_disassem_rays, lin_set = geometric_blocking.compute_feasible_region_from_block_dir(blocking_vectors)
-        if len(feasible_disassem_rays) == 0 : return None
+        if len(feasible_disassem_rays) == 0:
+            return None
         # # Remove the feasible_rays that are linear (bi-directional)
         feasible_disassem_rays = [Vector(*ray) for (index, ray) in enumerate(feasible_disassem_rays) if (index not in lin_set)]
         feasible_rays_averaged = Vector.sum_vectors(feasible_disassem_rays)
@@ -244,7 +247,8 @@ class RobotClampAssemblyProcess:
         beam_attribute 'assembly_wcf_inclampapproach' will be set.
         """
         # Exit if no clamp is needed to assemble this beam.
-        if len(list(self.get_clamp_ids_for_beam(beam_id))) == 0 : return None
+        if len(list(self.get_clamp_ids_for_beam(beam_id))) == 0:
+            return None
 
         # Compute vector with different strategies.
         # Each strategy function must return None if no valid solution is found.
@@ -277,7 +281,7 @@ class RobotClampAssemblyProcess:
                 return gripper
         return None
 
-    def search_grasp_face_from_guide_vector_dir (self, beam_id):
+    def search_grasp_face_from_guide_vector_dir(self, beam_id):
         # type: (str) -> Vector
         """Return the best face number (1-4) for creating `gripper_tcp_in_ocf`
         where the Z-Axis of the tcp_in_WCF, when beam is at 'assembly_wcf_final',
@@ -300,7 +304,7 @@ class RobotClampAssemblyProcess:
             gripper_tcp_in_wcf = gripper_tcp_in_ocf.transformed(Transformation.from_frame(beam.frame))
             # Compute the alignment score using dot product
             alignment_score = gripper_tcp_in_wcf.zaxis.dot(design_guide_vector_grasp)
-            if alignment_score > best_score :
+            if alignment_score > best_score:
                 best_score = alignment_score
                 best_face = gripper_grasp_face
 
@@ -320,7 +324,8 @@ class RobotClampAssemblyProcess:
 
         # Move that TCP Frame (gripper_tcp_in_wcf) to the given beam's location (attribute_name)
         T = self.assembly.get_beam_transformaion_to(beam_id, attribute_name)
-        if T is None: return None
+        if T is None:
+            return None
         gripper_tcp_in_wcf = gripper_tcp_in_wcf.transformed(T)
 
         # Find t0cp from tcp
@@ -331,7 +336,7 @@ class RobotClampAssemblyProcess:
     # Beam Storage / Pick Up / Retract
     # -----------------------
 
-    def compute_alignment_corner_from_grasp_face(self, beam_id, align_face_X0 = True, align_face_Y0 = True, align_face_Z0 = True):
+    def compute_alignment_corner_from_grasp_face(self, beam_id, align_face_X0=True, align_face_Y0=True, align_face_Z0=True):
         # type: (str, Optional[bool], Optional[bool], Optional[bool]) -> int
         """Returns one corner (int 1 - 8) of the chosen beam
         in relation to the picking face set in 'gripper_grasp_face'.
@@ -347,24 +352,29 @@ class RobotClampAssemblyProcess:
         Beam-start, Y-Pos, bottom-slignment:  align_face_X0 = True, align_face_Y0 = False, align_face_Z0 = True
         """
         # Compute storage alignment corner based on 'gripper_grasp_face'
-        gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face') # type: int
+        gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')  # type: int
         assert gripper_grasp_face is not None
-        print ('gripper_grasp_face = %s' % gripper_grasp_face)
+        print('gripper_grasp_face = %s' % gripper_grasp_face)
 
-        if (not align_face_Z0) and align_face_Y0: corner = 1
-        if align_face_Z0 and align_face_Y0: corner = 2
-        if align_face_Z0 and (not align_face_Y0): corner = 3
-        if (not align_face_Z0) and (not align_face_Y0): corner = 4
+        if (not align_face_Z0) and align_face_Y0:
+            corner = 1
+        if align_face_Z0 and align_face_Y0:
+            corner = 2
+        if align_face_Z0 and (not align_face_Y0):
+            corner = 3
+        if (not align_face_Z0) and (not align_face_Y0):
+            corner = 4
 
         # For corners 1 - 4, adding the corner number will suffice because corner 1 to 4 are corresponding to face 1 - 4
         corner = (gripper_grasp_face + corner - 2) % 4 + 1
 
         # Corner 5-8 is only related to whether align_face_X0
-        if not align_face_X0: corner = corner + 4
+        if not align_face_X0:
+            corner = corner + 4
 
         return corner
 
-    def compute_storage_location_at_corner_aligning_pickup_location (self, beam_id, storage_station_frame, align_face_X0 = True, align_face_Y0 = True, align_face_Z0 = True):
+    def compute_storage_location_at_corner_aligning_pickup_location(self, beam_id, pickup_station = None):
         # type: (str, Frame, Optional[bool], Optional[bool], Optional[bool]) -> None
         """ Compute 'assembly_wcf_storage' alignment frame
         by aligning a choosen corner relative to the 'gripper_grasp_face'
@@ -384,8 +394,14 @@ class RobotClampAssemblyProcess:
         For a beam-end alignment: align_face_X0 = False, align_face_Y0 = False, align_face_Z0 = True
         e.g
         """
+        if pickup_station is None: pickup_station = self.pickup_station
+        storage_station_frame = pickup_station.alignment_frame
+        align_face_X0 = pickup_station.align_face_X0
+        align_face_Y0 = pickup_station.align_face_Y0
+        align_face_Z0 = pickup_station.align_face_Z0
+
         # Compute alignment frame origin - self.compute_alignment_corner_from_grasp_face()
-        beam = self.assembly.beam(beam_id) # type: Beam
+        beam = self.assembly.beam(beam_id)  # type: Beam
         alignment_corner = self.compute_alignment_corner_from_grasp_face(beam_id, align_face_X0, align_face_Y0, align_face_Z0)
         #print ('alignment_corner = %s' % alignment_corner)
         alignment_corner_ocf = beam.corner_ocf(alignment_corner)
@@ -395,8 +411,10 @@ class RobotClampAssemblyProcess:
         gripper_grasp_face_frame_ocf = beam.refernce_side_ocf(gripper_grasp_face)
         alignment_vector_X = gripper_grasp_face_frame_ocf.xaxis
         alignment_vector_Y = gripper_grasp_face_frame_ocf.yaxis
-        if not align_face_X0: alignment_vector_X.scale(-1.0)
-        if not align_face_Y0: alignment_vector_Y.scale(-1.0)
+        if not align_face_X0:
+            alignment_vector_X.scale(-1.0)
+        if not align_face_Y0:
+            alignment_vector_Y.scale(-1.0)
 
         # Alignment frame
         alignment_frame_ocf = Frame(alignment_corner_ocf, alignment_vector_X, alignment_vector_Y)
@@ -410,7 +428,7 @@ class RobotClampAssemblyProcess:
         assembly_wcf_storage = beam.frame.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', assembly_wcf_storage)
 
-    def compute_gripper_approach_vector_wcf_final(self, beam_id, verbose = False):
+    def compute_gripper_approach_vector_wcf_final(self, beam_id, verbose=False):
         # type: (str, Optional[bool]) -> Vector
         """Compute gripper approach_vector (wcf)
         when beam is at final location (beam.frame)
@@ -420,25 +438,29 @@ class RobotClampAssemblyProcess:
         'approach_vector_wcf_final'
         """
         beam = self.assembly.beam(beam_id)
-        if verbose: print ("beam_id = %s " % beam_id)
+        if verbose:
+            print("beam_id = %s " % beam_id)
 
         # Get approach vector from gripper
         gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
         assert gripper_type is not None
         gripper = self.get_one_gripper_by_type(gripper_type)
         approach_vector_tcf = gripper.approach_vector.transformed(gripper.transformation_from_t0cf_to_tcf)
-        if verbose: print ("approach_vector_tcf = %s " % approach_vector_tcf)
+        if verbose:
+            print("approach_vector_tcf = %s " % approach_vector_tcf)
 
         # Express the approach_vector in ocf of beam (beam.frame coordinate frame)
         gripper_tcp_in_ocf = self.assembly.get_beam_attribute(beam_id, 'gripper_tcp_in_ocf')
         T = Transformation.from_frame_to_frame(Frame.worldXY(), gripper_tcp_in_ocf)
         approach_vector_ocf = approach_vector_tcf.transformed(T)
-        if verbose: print ("approach_vector_ocf = %s " % approach_vector_ocf)
+        if verbose:
+            print("approach_vector_ocf = %s " % approach_vector_ocf)
 
         # Express approach vector in World (wcf) for beam in 'assembly_wcf_final'
         T = Transformation.from_frame_to_frame(Frame.worldXY(), beam.frame)
         approach_vector_wcf_final = approach_vector_ocf.transformed(T)
-        if verbose: print ("approach_vector_wcf_final = %s " % approach_vector_wcf_final)
+        if verbose:
+            print("approach_vector_wcf_final = %s " % approach_vector_wcf_final)
 
         return approach_vector_wcf_final
 
@@ -460,7 +482,7 @@ class RobotClampAssemblyProcess:
         # Express approach vector in World (wcf) when beam is in 'assembly_wcf_storage'
         T = self.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_storage')
         approach_vector_wcf_storage = approach_vector_wcf_final.transformed(T)
-        print ("approach_vector_wcf_storage = %s " % approach_vector_wcf_storage)
+        print("approach_vector_wcf_storage = %s " % approach_vector_wcf_storage)
 
         # Compute assembly_wcf_storageapproach (wcf)
         T = Translation(approach_vector_wcf_storage.scaled(-1))
@@ -487,7 +509,8 @@ class RobotClampAssemblyProcess:
         """
         # Retrive pickup vector : 'design_guide_vector_storage_pickup'
         design_guide_vector_storage_pickup = self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_storage_pickup')
-        if design_guide_vector_storage_pickup is None: design_guide_vector_storage_pickup = Vector(0, 0, 1)
+        if design_guide_vector_storage_pickup is None:
+            design_guide_vector_storage_pickup = Vector(0, 0, 1)
 
         # Compute assembly_wcf_storageretract
         assembly_wcf_storage = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
@@ -495,7 +518,7 @@ class RobotClampAssemblyProcess:
         assembly_wcf_storageretract = assembly_wcf_storage.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageretract', assembly_wcf_storageretract)
 
-    def compute_clamp_attachapproach_attachretract_detachapproach(self, beam_id, verbose = False):
+    def compute_clamp_attachapproach_attachretract_detachapproach(self, beam_id, verbose=False):
         """ Compute 'clamp_wcf_attachapproach', 'clamp_wcf_attachretract' and 'clamp_wcf_detachapproach'
         from 'clamp_wcf_final' and clamp intrinsic properties.
 
@@ -504,9 +527,11 @@ class RobotClampAssemblyProcess:
         One of the process.clamps instance clamp.current_frame is modified.
         """
         joint_ids = self.assembly.get_joint_ids_of_beam_clamps(beam_id)
-        if verbose: print ("Beam (%s)" % beam_id)
+        if verbose:
+            print("Beam (%s)" % beam_id)
         for joint_id in joint_ids:
-            if verbose: print ("|- Clamp at Joint (%s-%s)" % joint_id)
+            if verbose:
+                print("|- Clamp at Joint (%s-%s)" % joint_id)
             clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
 
             # clamp_wcf_attachapproach is based on moveing clamp_wcf_final backwards along clamp.approach_vector
@@ -518,7 +543,6 @@ class RobotClampAssemblyProcess:
             clamp_wcf_attachapproach = clamp.current_frame.transformed(Translation(approach_vector_wcf.scaled(-1)))
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachapproach', clamp_wcf_attachapproach)
 
-
             # clamp_wcf_attachretract is based on tool.tool_pick_up_frame transformed to wcf
             # ------------------------------------------------------------
             clamp_wcf_attachretract = clamp.tool_pick_up_frame_in_wcf(clamp.current_frame)
@@ -529,11 +553,14 @@ class RobotClampAssemblyProcess:
             clamp_wcf_detachapproach = clamp_wcf_attachretract.copy()
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_detachapproach', clamp_wcf_detachapproach)
 
-            if verbose: print("|  |- clamp_wcf_attachapproach = %s" % clamp_wcf_attachapproach)
-            if verbose: print("|  |- clamp_wcf_final = %s" % clamp.current_frame)
-            if verbose: print("|  |- clamp_wcf_attachretract = %s" % clamp_wcf_attachretract)
+            if verbose:
+                print("|  |- clamp_wcf_attachapproach = %s" % clamp_wcf_attachapproach)
+            if verbose:
+                print("|  |- clamp_wcf_final = %s" % clamp.current_frame)
+            if verbose:
+                print("|  |- clamp_wcf_attachretract = %s" % clamp_wcf_attachretract)
 
-    def compute_clamp_detachretract(self, beam_id, verbose = False):
+    def compute_clamp_detachretract(self, beam_id, verbose=False):
         """ Compute detachretract1 and detachretract1
         from 'clamp_wcf_final' and clamp intrinsic properties.
 
@@ -542,9 +569,11 @@ class RobotClampAssemblyProcess:
         One of the process.clamps instance clamp.current_frame is modified.
         """
         joint_ids = self.assembly.get_joint_ids_of_beam_clamps(beam_id)
-        if verbose: print ("Beam (%s)" % beam_id)
+        if verbose:
+            print("Beam (%s)" % beam_id)
         for joint_id in joint_ids:
-            if verbose: print ("|- Clamp at Joint (%s-%s)" % joint_id)
+            if verbose:
+                print("|- Clamp at Joint (%s-%s)" % joint_id)
             clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
 
             # Moveing clamp_wcf_final backwards along clamp.detachretract1_vector
@@ -560,9 +589,10 @@ class RobotClampAssemblyProcess:
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_detachretract1', clamp_wcf_detachretract1)
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_detachretract2', clamp_wcf_detachretract2)
 
-            if verbose: print("|  |- clamp_wcf_detachretract1 = %s" % clamp_wcf_detachretract1)
-            if verbose: print("|  |- clamp_wcf_detachretract2 = %s" % clamp_wcf_detachretract2)
-
+            if verbose:
+                print("|  |- clamp_wcf_detachretract1 = %s" % clamp_wcf_detachretract1)
+            if verbose:
+                print("|  |- clamp_wcf_detachretract2 = %s" % clamp_wcf_detachretract2)
 
     def copy(self):
         return deepcopy(self)
