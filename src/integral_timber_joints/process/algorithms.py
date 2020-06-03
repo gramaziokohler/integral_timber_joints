@@ -273,13 +273,13 @@ def debug_print_process_actions_movements(process):
         for j, movement in enumerate(action.movements):
             print ("|  |- Movement %s : %s" % (j, movement))
 
-def test_process_prepathplan(json_path, json_output_path):
+def test_process_prepathplan(json_path_in, json_path_out):
     #########################################################################
     # Load process
     #########################################################################
 
     import jsonpickle
-    f = open(json_path, 'r')
+    f = open(json_path_in, 'r')
     json_str = f.read()
     process = jsonpickle.decode(json_str, keys=True) # type: RobotClampAssemblyProcess
     f.close()
@@ -323,19 +323,18 @@ def test_process_prepathplan(json_path, json_output_path):
     # Save process
     #########################################################################
 
-    print("\n> > > Saving Process to %s \n" % json_output_path)
-    f = open(json_output_path, 'w')
+    print("\n> > > Saving Process to %s \n" % json_path_out)
+    f = open(json_path_out, 'w')
     f.write(jsonpickle.encode(process, keys=True))
     f.close()
 
-def test_process_pathPlan():
+def test_process_pathPlan(json_path_in, json_path_out):
     #########################################################################
     # Load process
     #########################################################################
 
     import jsonpickle
-    json_path = "tests/SequencingScene_02_mm.json"
-    f = open(json_path, 'r')
+    f = open(json_path_in, 'r')
     json_str = f.read()
     process = jsonpickle.decode(json_str, keys=True) # type: RobotClampAssemblyProcess
     f.close()
@@ -375,16 +374,26 @@ def test_process_pathPlan():
                 print("> > Free Motion Planned (%s pts, %ssecs)" % (len(trajectory.points), trajectory.time_from_start))
 
     pp.ros_client.close()
+
     #########################################################################
     # Save Results
     #########################################################################
 
+    f = open(json_path_out, 'w')
+    f.write(jsonpickle.encode(process, keys=True))
+    f.close()
 
 if __name__ == "__main__":
 
-    test_process_prepathplan("tests/data/SequencingScene_mm.json", "tests/data/SequencingScene_mm_prepathplan.json")
-    #test_process_pathPlan()
+    test_process_prepathplan(
+        "examples/process_design_example/frame_ortho_lap_joints_no_rfl_process.json",
+        "examples/process_design_example/frame_ortho_lap_joints_no_rfl_pathplan.json",
+        )
 
+    test_process_pathPlan(
+        "examples/process_design_example/frame_ortho_lap_joints_no_rfl_process.json",
+        "examples/process_design_example/frame_ortho_lap_joints_no_rfl_pathplan.json",
+        )
     # Result Goal 1: Visualize action, movement, trajectory by visualizing scene objects and robots.
 
     # Result Goal 2: Execute movements

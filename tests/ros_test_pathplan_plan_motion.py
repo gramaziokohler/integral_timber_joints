@@ -66,7 +66,7 @@ tolerances_axes = [math.radians(tolerance_xaxis_deg), math.radians(tolerance_yax
 path_constraints = []
 
 
-with RosClient('192.168.43.141') as client:
+with RosClient('192.168.43.28') as client:
 
     # Load URDF from ROS with local cache enabled
     loader = RosFileServerLoader(client, local_cache=True)
