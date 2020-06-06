@@ -63,7 +63,7 @@ class Joint_90lap(Joint):
         face_frame = BeamRef.get_face_frame(self.face_id) # type: compas.datastructures.Mesh
 
         # Compute beam boolean box location
-        box_frame_origin = face_frame.to_world_coords([(self.distance), self.height / 2 - TOLEARNCE / 2 , self.length / 2])
+        box_frame_origin = face_frame.to_world_coordinates([(self.distance), self.height / 2 - TOLEARNCE / 2 , self.length / 2])
         box_frame = Frame(box_frame_origin, face_frame.xaxis, face_frame.yaxis)
 
         # Compute 3 Box dimensions
@@ -95,7 +95,7 @@ class Joint_90lap(Joint):
         """
         #print "Dist%s" % self.distance
         face_frame = beam.get_face_frame(self.face_id)
-        origin = face_frame.to_world_coords([self.distance, beam.get_face_height(self.face_id), beam.get_face_width(self.face_id)/2])
+        origin = face_frame.to_world_coordinates([self.distance, beam.get_face_height(self.face_id), beam.get_face_width(self.face_id)/2])
         #print origin
         forward_clamp =  Frame(origin, face_frame.xaxis, face_frame.zaxis)
         backward_clamp =  Frame(origin,face_frame.xaxis.scaled(-1), face_frame.zaxis.scaled(-1))

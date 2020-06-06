@@ -537,7 +537,7 @@ class RobotClampAssemblyProcess:
             # clamp_wcf_attachapproach is based on moveing clamp_wcf_final backwards along clamp.approach_vector
             # ------------------------------------------------------------
             # Compute the approach vector in wcf
-            approach_vector_wcf = clamp.current_frame.to_world_coords(clamp.approach_vector)
+            approach_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.approach_vector)
 
             # compute approach frame
             clamp_wcf_attachapproach = clamp.current_frame.transformed(Translation(approach_vector_wcf.scaled(-1)))
@@ -579,8 +579,8 @@ class RobotClampAssemblyProcess:
             # Moveing clamp_wcf_final backwards along clamp.detachretract1_vector
             # ------------------------------------------------------------
             # Compute the approach vector in wcf
-            detachretract1_vector_wcf = clamp.current_frame.to_world_coords(clamp.detachretract1_vector)
-            detachretract2_vector_wcf = clamp.current_frame.to_world_coords(clamp.detachretract2_vector)
+            detachretract1_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.detachretract1_vector)
+            detachretract2_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.detachretract2_vector)
 
             # compute detachretract frame by translating along retract vectors
             clamp_wcf_detachretract1 = clamp.current_frame.transformed(Translation(detachretract1_vector_wcf))

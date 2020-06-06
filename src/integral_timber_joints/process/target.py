@@ -7,13 +7,13 @@ class Target(object):
         """
         All vectors and frames are resolved at Target resolving time.
         All frames are robotic flange (TCP0) frames.
-        """        
+        """
         self.target_frame = None    # ref to wcf
         self.approach_frame = None  # ref to wcf
         self.approach_vector = None # ref to wcf
         self.retract_frame = None  # ref to wcf
         self.retract_vector = None # ref to wcf
-    
+
     def unresolved(self):
         return (self.target_frame is None or self.approach_frame is None or self.retract_frame is None)
 
@@ -21,15 +21,15 @@ class Target(object):
         self.target_frame = target_frame
         if (approach_vector_in_local_coords is None):
             approach_vector_in_local_coords = Vector(0,0,0)
-        self.approach_vector = target_frame.to_world_coords(approach_vector_in_local_coords)
-        T = Translation(self.approach_vector.scaled(-1)) # Reverse the vector 
+        self.approach_vector = target_frame.to_world_coordinates(approach_vector_in_local_coords)
+        T = Translation(self.approach_vector.scaled(-1)) # Reverse the vector
         self.approach_frame = self.target_frame.transformed(T)
         # If not further defined, retract frame is equal to approach frame
         if (retract_vector_in_local_coords is None):
             self.retract_vector = self.approach_vector.scaled(-1)
             self.retract_frame = self.approach_frame
         else:
-            self.retract_vector = target_frame.to_world_coords(retract_vector_in_local_coords)
+            self.retract_vector = target_frame.to_world_coordinates(retract_vector_in_local_coords)
             self.retract_frame = self.target_frame.transformed(Translation(self.retract_vector))
 
     def __str__(self):
@@ -67,7 +67,7 @@ class BeamAboveJawTarget(Target):
 
 
 class BeamFinalTarget(Target):
-    ''' Beam at its final assembled location '''  
+    ''' Beam at its final assembled location '''
     def __init__(self, beam):
         Target.__init__(self)
         self.beam = beam
