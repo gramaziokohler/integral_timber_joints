@@ -1,8 +1,11 @@
 import math
+import time
 
 from compas.geometry import Frame
 from compas_fab.backends import RosClient
 from compas_fab.robots import Configuration
+from compas_fab.robots import PlanningScene
+from compas_fab.robots import CollisionMesh
 
 
 class PathPlanner:
@@ -15,10 +18,11 @@ class PathPlanner:
         # type: (RobotClampAssemblyProcess) -> None
         self.process = process  # type: RobotClampAssemblyProcess
         self.ros_client = None  # type: RosClient
-        self.robot = None  # type:
+        self.robot = None  # type: Robot
+        self.scene = None  # type: PlanningScene
 
         # Variable for keeping last planned state
-        self.last_trajectory = None # type: compas_fab.robots.JointTrajectory
+        self.last_trajectory = None  # type: compas_fab.robots.JointTrajectory
         self.last_planning_success = False  # type: bool
 
     def connect_to_ros_planner(self, ip_address):
@@ -41,11 +45,21 @@ class PathPlanner:
 
         # Load Robot without geometry (faaster)
         self.robot = self.ros_client.load_robot(load_geometry=False)
+        self.scene = PlanningScene(self.robot)
 
     def disconnect_to_ros_planner(self):
         if self.ros_client is not None:
             self.ros_client.terminate()
 
+    def append_collision_mesh(self, mesh, id):
+        # type: (compas.datastructure.Mesh, str) -> None
+        cm = CollisionMesh(mesh, id)
+        self.scene.append_collision_mesh(cm, scale=True)
+        time.sleep(1)
+
+    def remove_collision_mesh(self, id):
+        # type: (str) -> None
+        self.scene.remove_collision_mesh(id)
 
 class RFLPathPlanner(PathPlanner):
     """RFL Robot Specific Path Planner
@@ -60,6 +74,14 @@ class RFLPathPlanner(PathPlanner):
     def __init__(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         PathPlanner.__init__(self, process)
+        self.current_configuration = None  # type: Configuration
+
+        self.free_motion_tolerance_position_mm = 0.1
+        self.free_motion_tolerance_angular_deg = 0.5
+        self.free_motion_allowed_planning_time = 5.0
+        self.free_motion_planner_id = "RRT"
+        self.linear_motion_step_distance = 1.0
+        self.planning_group = "robot11_eaXYZ"
 
     def connect_to_ros_planner(self, ip_address):
         PathPlanner.connect_to_ros_planner(self, ip_address)
@@ -197,46 +219,68 @@ class RFLPathPlanner(PathPlanner):
             print("robot.plan_motion error:", e)
             self.last_planning_success = False
 
-    def plan_free_motion(self, target_frame, start_configuration = None, tolerance_position_mm = 0.1, tolerance_angular_deg = 0.5, verbose = False):
+    def plan_motion(self, target_frame, free_motion=True, start_configuration=None, verbose=False):
         # type: ()-> # type: compas_fab.robots.JointTrajectory
-        planning_group = "robot11_eaXYZ"
 
         # Sanity Check
         assert self.ros_client.is_connected
 
         # Start configuration
         if start_configuration is None:
+            start_configuration = self.current_configuration
+        if start_configuration is None:
             start_configuration = self.rfl_timber_start_configuration()
-
-        # goal_constraints parameters
-        frame_WCF = self.rfl_timber_test_target()
-        tolerances_axes = [math.radians(tolerance_angular_deg)] * 3
-        goal_constraints = self.robot.constraints_from_frame(target_frame, tolerance_position_mm, tolerances_axes, planning_group)
 
         # path constraint
         path_constraints = []
 
         # Path planning in a try block
-        try:
-            trajectory = self.robot.plan_motion(goal_constraints,
+
+        if free_motion:
+            # goal_constraints parameters
+            tolerances_axes = [math.radians(self.free_motion_tolerance_angular_deg)] * 3
+            goal_constraints = self.robot.constraints_from_frame(target_frame, self.free_motion_tolerance_position_mm, tolerances_axes, self.planning_group)
+            try:
+                trajectory = self.robot.plan_motion(goal_constraints,
                                                 start_configuration,
-                                                planning_group,
-                                                allowed_planning_time=2.0,
-                                                planner_id="RRT",
-                                                path_constraints=path_constraints)  # type: compas_fab.robots.JointTrajectory
-            if verbose: print("Computed kinematic path with %d configurations." % len(trajectory.points))
-            if verbose: print("Executing this path at full speed would take approx. %.3f seconds." % trajectory.time_from_start)
-            if (trajectory.fraction == 1):
-                self.last_planning_success = True
-            if verbose: print("%3.0f%% of the path is computed." % (trajectory.fraction * 100))
+                                                self.planning_group,
+                                                allowed_planning_time=self.free_motion_allowed_planning_time,
+                                                planner_id=self.free_motion_planner_id,
+                                                path_constraints=path_constraints,  # type: compas_fab.robots.JointTrajectory
+                                                )
+            except Exception as e:
+                if verbose:
+                    print("robot.plan_motion error:", e)
+                    # raise e
+                self.last_planning_success = False
+                return None
+        else:
+            try:
+                trajectory = self.robot.plan_cartesian_motion([target_frame],
+                                                            start_configuration,
+                                                            max_step=self.linear_motion_step_distance,
+                                                            avoid_collisions=True
+                                                            )
+            except Exception as e:
+                if verbose:
+                    print("robot.plan_cartesian_motion error:", e)
+                    # raise e
+                self.last_planning_success = False
+                return None
+        if verbose:
+            print("Computed kinematic path with %d configurations." % len(trajectory.points))
+        if verbose:
+            print("Executing this path at full speed would take approx. %.3f seconds." % trajectory.time_from_start)
+        if (trajectory.fraction == 1):
+            self.last_planning_success = True
+        if verbose:
+            print("%3.0f%% of the path is computed." % (trajectory.fraction * 100))
 
-            self.last_trajectory = trajectory
-            return trajectory
+        self.last_trajectory = trajectory
+        return trajectory
 
-        except Exception as e:
-            if verbose: print("robot.plan_motion error:", e)
-            self.last_planning_success = False
-            return None
+
+
 
 if __name__ == "__main__":
 
@@ -247,7 +291,7 @@ if __name__ == "__main__":
     pp.test_plan_motion()
 
     # Test Print out the trajectory
-    print (pp.last_trajectory.joint_names)
+    print(pp.last_trajectory.joint_names)
     for point in pp.last_trajectory.points:
-        print ("t=%.3f: %s" % (point.time_from_start.seconds, point.values))
+        print("t=%.3f: %s" % (point.time_from_start.seconds, point.values))
     pp.disconnect_to_ros_planner()
