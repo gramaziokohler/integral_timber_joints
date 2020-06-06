@@ -38,69 +38,6 @@ class Clamp (Tool):
         self.clamp_jaw_limits = (clamp_jaw_position_min, clamp_jaw_position_max) # type: Tuple[float, float]
 
     # --------------------------------------------------------
-    # Factory to construct Gripper
-    # --------------------------------------------------------
-
-    @ classmethod
-    def Lap90ClampFactory(cls,
-        name,
-        type_name,
-        gripper_jaw_position_min,
-        gripper_jaw_position_max,
-        clamp_jaw_position_min,
-        clamp_jaw_position_max,
-        tool_coordinate_frame,  # Ref to T0CF (TCF ~= TCP)
-        tool_pick_up_frame,     # Ref to T0CF
-        tool_storage_frame,     # Ref to WCF
-        mesh_gripper_base,
-        mesh_gripper_jaw_l,
-        mesh_gripper_jaw_r,
-        mesh_clamp_jaw_l,
-        mesh_clamp_jaw_r,
-        approach_vector,
-        detachretract1_vector,
-        detachretract2_vector,
-        ):
-        """ A Parallel gripper will have a base and two gripper jaw.
-        Modelling guide
-        ---------------
-        The left jaws opens towards -Y direction.
-        The right jaw opens towards +Y direction.
-        The clamp jaw opens towards +Z direction.
-        The clamp jaw closes (clamping) towards -Z direction.
-        The clamp jaw opening faces +X direction.
-        """
-        robot_model = cls(name,type_name)
-        robot_model.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max)
-        robot_model.clamp_jaw_limits = (clamp_jaw_position_min, clamp_jaw_position_max)
-
-        robot_model.tool_coordinate_frame = tool_coordinate_frame
-        robot_model.tool_pick_up_frame = tool_pick_up_frame
-        robot_model.tool_storage_frame = tool_storage_frame
-        robot_model.approach_vector = approach_vector               # This vector is ref to t0cf
-        robot_model.detachretract1_vector = detachretract1_vector   # This vector is ref to t0cf
-        robot_model.detachretract2_vector = detachretract2_vector   # This vector is ref to t0cf
-
-        #world_link = robot_model.add_link('world')
-        gripper_base = robot_model.add_link('gripper_base', mesh_gripper_base)
-        gripper_jaw_l = robot_model.add_link('gripper_jaw_l',mesh_gripper_jaw_l)
-        gripper_jaw_r = robot_model.add_link('gripper_jaw_r', mesh_gripper_jaw_r)
-        clamp_jaw_l = robot_model.add_link('clamp_jaw_l',mesh_clamp_jaw_l)
-        clamp_jaw_r = robot_model.add_link('clamp_jaw_r', mesh_clamp_jaw_r)
-
-        #robot_model.add_joint('world_base_fixed_joint', Joint.FIXED, world_link, base_link)
-        robot_model.add_joint('joint_gripper_jaw_l', Joint.PRISMATIC, gripper_base, gripper_jaw_l, axis = [0,-1,0], limit = robot_model.gripper_jaw_limits)
-        robot_model.add_joint('joint_gripper_jaw_r', Joint.PRISMATIC, gripper_base, gripper_jaw_r, axis = [0,1,0], limit = robot_model.gripper_jaw_limits)
-        robot_model.add_joint('joint_clamp_jaw_l', Joint.PRISMATIC, gripper_jaw_l, clamp_jaw_l, axis = [0,0,1], limit = robot_model.clamp_jaw_limits)
-        robot_model.add_joint('joint_clamp_jaw_r', Joint.PRISMATIC, gripper_jaw_r, clamp_jaw_r, axis = [0,0,1], limit = robot_model.clamp_jaw_limits)
-
-        # A constant list of vectors (ref t0cf) where the beam-in-jaw is blocked by the jaw
-        robot_model.jaw_block_vectors = [Vector(0, 0, 1.0), Vector(0, 0, -1.0), Vector(-1.0, 0, 0)]
-        # A directional vector describing how much distance the beam-in-jaw has to move to clear the jaw if moved out.
-        robot_model.jaw_clearance_vector = Vector(110, 0, 0)
-        return robot_model
-
-    # --------------------------------------------------------
     # State Setting Functions
     # --------------------------------------------------------
 
@@ -156,6 +93,69 @@ class Clamp (Tool):
 
     def close_clamp(self):
         self.clamp_jaw_position = self.clamp_jaw_limits[0]
+
+# --------------------------------------------------------
+# Factory to construct Clamp
+# --------------------------------------------------------
+
+def Lap90ClampFactory(
+    name,
+    type_name,
+    gripper_jaw_position_min,
+    gripper_jaw_position_max,
+    clamp_jaw_position_min,
+    clamp_jaw_position_max,
+    tool_coordinate_frame,  # Ref to T0CF (TCF ~= TCP)
+    tool_pick_up_frame,     # Ref to T0CF
+    tool_storage_frame,     # Ref to WCF
+    mesh_gripper_base,
+    mesh_gripper_jaw_l,
+    mesh_gripper_jaw_r,
+    mesh_clamp_jaw_l,
+    mesh_clamp_jaw_r,
+    approach_vector,
+    detachretract1_vector,
+    detachretract2_vector,
+    ):
+    """ A Parallel gripper will have a base and two gripper jaw.
+    Modelling guide
+    ---------------
+    The left jaws opens towards -Y direction.
+    The right jaw opens towards +Y direction.
+    The clamp jaw opens towards +Z direction.
+    The clamp jaw closes (clamping) towards -Z direction.
+    The clamp jaw opening faces +X direction.
+    """
+    robot_model = Clamp(name,type_name)
+    robot_model.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max)
+    robot_model.clamp_jaw_limits = (clamp_jaw_position_min, clamp_jaw_position_max)
+
+    robot_model.tool_coordinate_frame = tool_coordinate_frame
+    robot_model.tool_pick_up_frame = tool_pick_up_frame
+    robot_model.tool_storage_frame = tool_storage_frame
+    robot_model.approach_vector = approach_vector               # This vector is ref to t0cf
+    robot_model.detachretract1_vector = detachretract1_vector   # This vector is ref to t0cf
+    robot_model.detachretract2_vector = detachretract2_vector   # This vector is ref to t0cf
+
+    #world_link = robot_model.add_link('world')
+    gripper_base = robot_model.add_link('gripper_base', mesh_gripper_base)
+    gripper_jaw_l = robot_model.add_link('gripper_jaw_l',mesh_gripper_jaw_l)
+    gripper_jaw_r = robot_model.add_link('gripper_jaw_r', mesh_gripper_jaw_r)
+    clamp_jaw_l = robot_model.add_link('clamp_jaw_l',mesh_clamp_jaw_l)
+    clamp_jaw_r = robot_model.add_link('clamp_jaw_r', mesh_clamp_jaw_r)
+
+    #robot_model.add_joint('world_base_fixed_joint', Joint.FIXED, world_link, base_link)
+    robot_model.add_joint('joint_gripper_jaw_l', Joint.PRISMATIC, gripper_base, gripper_jaw_l, axis = [0,-1,0], limit = robot_model.gripper_jaw_limits)
+    robot_model.add_joint('joint_gripper_jaw_r', Joint.PRISMATIC, gripper_base, gripper_jaw_r, axis = [0,1,0], limit = robot_model.gripper_jaw_limits)
+    robot_model.add_joint('joint_clamp_jaw_l', Joint.PRISMATIC, gripper_jaw_l, clamp_jaw_l, axis = [0,0,1], limit = robot_model.clamp_jaw_limits)
+    robot_model.add_joint('joint_clamp_jaw_r', Joint.PRISMATIC, gripper_jaw_r, clamp_jaw_r, axis = [0,0,1], limit = robot_model.clamp_jaw_limits)
+
+    # A constant list of vectors (ref t0cf) where the beam-in-jaw is blocked by the jaw
+    robot_model.jaw_block_vectors = [Vector(0, 0, 1.0), Vector(0, 0, -1.0), Vector(-1.0, 0, 0)]
+    # A directional vector describing how much distance the beam-in-jaw has to move to clear the jaw if moved out.
+    robot_model.jaw_clearance_vector = Vector(110, 0, 0)
+    return robot_model
+
 
 if __name__ == "__main__":
     c = Clamp('c1')
