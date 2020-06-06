@@ -6,28 +6,22 @@ import time
 
 json_path_in = "examples/process_design_example/frame_ortho_lap_joints_no_rfl_process.json"
 json_path_out = "examples/process_design_example/frame_ortho_lap_joints_no_rfl_prepathplan.json"
+movement_log_file_out = "examples/process_design_example/frame_ortho_lap_joints_no_rfl_movements.txt"
 
 #########################################################################
 # Load process from file
 #########################################################################
-
+ms = time.time()*1000.0
 f = open(json_path_in, 'r')
 json_str = f.read()
+print ("json_str len:" , len(json_str))
 process = jsonpickle.decode(json_str, keys=True)  # type: RobotClampAssemblyProcess
 f.close()
-
-#########################################################################
-# Pre computation
-#########################################################################
-
-# process.assign_clamp_type_to_joints()
-# for beam_id in process.assembly.sequence:
-#     process.compute_clamp_attachapproach_attachretract(beam_id, verbose = True)
+print("> Loading Process from %s\n    Time: %sms" % (json_path_in, time.time()*1000.0 - ms))
 
 #########################################################################
 # From process.sequence, create actions (high level actions)
 #########################################################################
-
 
 ms = time.time()*1000.0
 create_actions_from_sequence(process, verbose=False)
@@ -58,7 +52,7 @@ print("> create_movements_from_actions(process)\n    Time: %sms" % (time.time()*
 # List out actions and movements
 #########################################################################
 
-# debug_print_process_actions_movements(process)
+debug_print_process_actions_movements(process, movement_log_file_out)
 
 #########################################################################
 # Save process from file
@@ -66,6 +60,9 @@ print("> create_movements_from_actions(process)\n    Time: %sms" % (time.time()*
 
 ms = time.time()*1000.0
 f = open(json_path_out, 'w')
-f.write(jsonpickle.encode(process, keys=True))
+json_str = jsonpickle.encode(process, keys=True)
+print ("json_str len:" , len(json_str))
+f.write(json_str)
 f.close()
+
 print("> Saving Process to %s \n    Time: %sms" % (json_path_out, time.time()*1000.0 - ms))
