@@ -45,9 +45,6 @@ class Assembly(Network):
         self.attributes.update({
             'name': 'Unnamed_Assembly',
             'sequence': [],                     # List of (beam_id / beam.name / node key)
-            'clamps': [],                       # Obsolete after process.clamps
-            'grippers': [],                     # Obsolete after process.grippers
-            'actions': [],                      # Obsolete after process.actions
         })
         # Default attributes for beams (node)
         self.update_default_node_attributes({
@@ -356,8 +353,14 @@ class Assembly(Network):
         # The if statement checkes if the joint attribute 'is_clamp_attached_side' == True
         return [joint_id for joint_id in self.get_reverse_joint_ids_of_beam(beam_id) if self.get_joint_attribute(joint_id, 'is_clamp_attached_side') == True]
 
+    def get_already_built_beams(self, beam_id):
+         # type: (self) -> list[str]
+        "Return the beam ids of already-built beams relative to the given beam_id"
+        this_beam_sequence = self.get_beam_sequence(beam_id)
+        return self.sequence[:this_beam_sequence]
+
     def get_already_built_neighbors(self, beam_id):
-        # type: (self)
+        # type: (self) -> list[str]
         "Return the beam ids of neighbours that are connected to already-assembled beams"
         # The if statement checkes if the joint attribute 'sequence_earlier' == False
         this_beam_sequence = self.get_beam_sequence(beam_id)
