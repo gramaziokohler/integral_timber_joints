@@ -27,10 +27,10 @@ def create_actions_from_sequence(process, verbose = True):
     process.actions = []
     actions = process.actions # type: List[Action]
 
-    for beam_id in assembly.sequence:
+    for seq_n, beam_id in enumerate(assembly.sequence):
         beam = assembly.beam(beam_id) # type: Beam
         if verbose: print ("Beam %s" % beam_id)
-        actions.append(LoadBeamAction(beam_id))
+        actions.append(LoadBeamAction(seq_n, beam_id))
         if verbose: print ('|- ' + actions[-1].__str__())
 
         # move clamps from storage to structure
@@ -40,40 +40,40 @@ def create_actions_from_sequence(process, verbose = True):
 
         for joint_id in joint_id_of_clamps:
             clamp_type = assembly.get_joint_attribute(joint_id, "clamp_type")
-            actions.append(PickClampFromStorageAction(clamp_type))
+            actions.append(PickClampFromStorageAction(seq_n, clamp_type))
             if verbose: print ('|- ' + actions[-1].__str__())
-            actions.append(PlaceClampToStructureAction(joint_id, clamp_type))
+            actions.append(PlaceClampToStructureAction(seq_n, joint_id, clamp_type))
             if verbose: print ('|- ' + actions[-1].__str__())
 
             #if verbose: print ("|- Detatch Clamp at Joint %s-%s" % clamp)
 
         # attach gripper
         gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
-        actions.append(PickGripperFromStorageAction(gripper_type))
+        actions.append(PickGripperFromStorageAction(seq_n, gripper_type))
         if verbose: print ('|- ' + actions[-1].__str__())
 
         # pick place beam
-        actions.append(PickBeamFromStorageAction(beam_id))
+        actions.append(PickBeamFromStorageAction(seq_n, beam_id))
         if verbose: print ('|- ' + actions[-1].__str__())
 
         #Syncronized clamp and move beam action
         if len(joint_id_of_clamps) > 0:
-            actions.append(PlaceBeamWithClampsAction(beam_id, joint_id_of_clamps))
+            actions.append(PlaceBeamWithClampsAction(seq_n, beam_id, joint_id_of_clamps))
             if verbose: print ('|- ' + actions[-1].__str__())
         else:
-            actions.append(PlaceBeamWithoutClampsAction(beam_id))
+            actions.append(PlaceBeamWithoutClampsAction(seq_n, beam_id))
             if verbose: print ('|- ' + actions[-1].__str__())
 
         # return gripper
-        actions.append(PlaceGripperToStorageAction(gripper_type))
+        actions.append(PlaceGripperToStorageAction(seq_n, gripper_type))
         if verbose: print ('|- ' + actions[-1].__str__())
 
         # remove clamps from structure to storage
         for joint_id in joint_id_of_clamps:
             clamp_type = assembly.get_joint_attribute(joint_id, "clamp_type")
-            actions.append(PickClampFromStructureAction(joint_id, clamp_type))
+            actions.append(PickClampFromStructureAction(seq_n, joint_id, clamp_type))
             if verbose: print ('|- ' + actions[-1].__str__())
-            actions.append(PlaceClampToStorageAction(clamp_type))
+            actions.append(PlaceClampToStorageAction(seq_n, clamp_type))
             if verbose: print ('|- ' + actions[-1].__str__())
 
 def assign_tools_to_actions(process, verbose = True):
@@ -265,13 +265,28 @@ def create_movements_from_actions(process, verbose = True):
     for action in actions:
             action.create_movements(process)
 
-def debug_print_process_actions_movements(process):
+def debug_print_process_actions_movements(process, file_path = None):
+    if file_path is not None:
+        f = open(file_path, 'w')
     for i, action in enumerate(process.actions):
+        # Print the separator between each beam
         if isinstance(action, LoadBeamAction):
-            print ("\nBeam %s assembly" % action.beam_id)
-        print ("|- Action %s : %s" % (i, action))
+            line = "\nBeam %s assembly\n" % action.beam_id
+            if file_path is not None: f.write(line)
+            else: print (line)
+
+        # Print Action Name
+        line = "|- Action %s (%s): %s\n" % (i, action.__class__.__name__, action)
+        if file_path is not None: f.write(line)
+        else: print (line)
+
+        # Print Movement Name
         for j, movement in enumerate(action.movements):
-            print ("|  |- Movement %s : %s" % (j, movement))
+            line = "|  |- Movement %s (%s): %s\n" % (j, movement.__class__.__name__, movement)
+            if file_path is not None: f.write(line)
+            else: print (line)
+
+    f.close()
 
 def test_process_prepathplan(json_path_in, json_path_out):
     #########################################################################
