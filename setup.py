@@ -35,11 +35,7 @@ setup(
     author=about['__author__'],
     author_email=about['__author_email__'],
     url=about['__url__'],
-    long_description='%s\n%s' % (
-        re.compile('^.. start-badges.*^.. end-badges', re.M |
-                   re.S).sub('', read('README.rst')),
-        re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
-    ),
+    long_description='Library for designing timber structures with integral joints.',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
