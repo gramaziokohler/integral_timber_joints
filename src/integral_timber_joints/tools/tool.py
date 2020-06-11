@@ -10,8 +10,10 @@ from compas_fab.robots import Configuration
 class CompasRobotArtist(BaseRobotArtist):
     def transform(self, compas_mesh, transformation):
         compas_mesh.transform(transformation)
+
     def draw_geometry(self, geometry, name=None, color=None):
-        return deepcopy(geometry) # I think a copy would be required, to avoid screwing up stuff from the source model
+        return deepcopy(geometry)  # I think a copy would be required, to avoid screwing up stuff from the source model
+
 
 class Tool (RobotModel):
     """ A tool is a RobotModel describing a robotic tool.
@@ -22,15 +24,17 @@ class Tool (RobotModel):
 
     The tool (it's meshes and other reference frame) should be modeled at the origin.
     """
-    def __init__(self,
-        name,
-        type_name,
-        tool_coordinate_frame,      # Ref to T0CF (TCF ~= TCP)
-        tool_pick_up_frame = None,  # Ref to T0CF
-        tool_storage_frame = None,  # Ref to WCF
-        ):
 
-        RobotModel.__init__(self, name)
+    def __init__(self,
+                 name,
+                 type_name,
+                 tool_coordinate_frame,      # Ref to T0CF (TCF ~= TCP)
+                 tool_pick_up_frame=None,  # Ref to T0CF
+                 tool_storage_frame=None,  # Ref to WCF
+                 ):
+
+        # RobotModel.__init__(self, name)
+        super(Tool, self).__init__(name)
 
         self.name = name
         self.type_name = type_name
@@ -40,8 +44,8 @@ class Tool (RobotModel):
         # --------------------------------------------------------
 
         self.is_visible = True  # type: bool                # If the tool is in scene
-        self.is_attached = False # type: bool               # If the tool is currently attached to the robot
-        self._current_frame = Frame.worldXY() # type: Frame # Current location of the tool in the WCF
+        self.is_attached = False  # type: bool               # If the tool is currently attached to the robot
+        self._current_frame = Frame.worldXY()  # type: Frame # Current location of the tool in the WCF
 
         # --------------------------------------------------------
         # Intrinsic properities of the tool
@@ -50,16 +54,15 @@ class Tool (RobotModel):
         """ Tool tip in reference to T0CP.
         This is the offset from the T0CP to the Gripping Pose
         I used to call it placement_frame but now deprecated"""
-        self.tool_coordinate_frame = tool_coordinate_frame # type: Frame
+        self.tool_coordinate_frame = tool_coordinate_frame  # type: Frame
 
         """ Tool changer approach frame in reference to T0CP.
         This is the position of the robot before picking up the tool via toolchanger.
         I used to use the concept of approach_vector but now deprecated"""
-        self.tool_pick_up_frame = tool_pick_up_frame # type: Frame
+        self.tool_pick_up_frame = tool_pick_up_frame  # type: Frame
 
         """ Storage location in wcf. If no toolchange is intended, can be set to None """
-        self.tool_storage_frame = tool_storage_frame # type: Frame
-
+        self.tool_storage_frame = tool_storage_frame  # type: Frame
 
     # --------------------------------------------------------
     # Frame to Frame Transformation function
@@ -116,7 +119,7 @@ class Tool (RobotModel):
         pass
 
     def get_state(self):
-        state_dict = self._get_kinematic_state() # type: Dict[str, float]
+        state_dict = self._get_kinematic_state()  # type: Dict[str, float]
         state_dict["current_frame"] = self._current_frame.copy()
         state_dict['is_visible'] = self.is_visible
         state_dict['is_attached'] = self.is_attached
@@ -128,7 +131,6 @@ class Tool (RobotModel):
         self.is_visible = state_dict['is_visible']
         self.is_attached = state_dict['is_attached']
 
-
     # --------------------------------------------------------
     # Visualization Function
     # --------------------------------------------------------
@@ -139,7 +141,8 @@ class Tool (RobotModel):
         in the location determined by its internal state.
         """
         # Return empty list if is_visible is False
-        if not self.is_visible: return []
+        if not self.is_visible:
+            return []
 
         # Create a new robot artist is necessary
         artist = CompasRobotArtist(self)
@@ -147,7 +150,7 @@ class Tool (RobotModel):
         # Grab all joint values and create a Configuration (Artist want it)
         joint_names = [j.name for j in self.get_configurable_joints()]
         joint_positions = [j.position for j in self.get_configurable_joints()]
-        robot_configuration = Configuration.from_prismatic_and_revolute_values(joint_positions,[])
+        robot_configuration = Configuration.from_prismatic_and_revolute_values(joint_positions, [])
 
         # Artist performs update of the transformations
         artist.update(robot_configuration, joint_names)
@@ -172,6 +175,7 @@ class Tool (RobotModel):
 
     def copy(self):
         return deepcopy(self)
+
 
 if __name__ == "__main__":
     # t = Tool('T1', 'tool')
