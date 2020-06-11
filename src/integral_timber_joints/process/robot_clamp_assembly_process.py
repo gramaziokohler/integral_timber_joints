@@ -10,7 +10,7 @@ from integral_timber_joints.tools import Clamp, Gripper, PickupStation
 # I thinkm I need somesort of collision checker, IK reachability checker, Blocking direction checker.
 
 
-class RobotClampAssemblyProcess:
+class RobotClampAssemblyProcess(object):
 
     def __init__(self, assembly):
         # type: (Assembly)
@@ -263,7 +263,7 @@ class RobotClampAssemblyProcess:
 
         # Compute 'ssembly_wcf_inclampapproach' from reversing 'assembly_vector_jawapproach'
         assembly_wcf_inclamp = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_inclamp')
-        T = Translation(assembly_vector_jawapproach.scaled(-1))
+        T = Translation.from_vector(assembly_vector_jawapproach.scaled(-1))
         assembly_wcf_inclampapproach = assembly_wcf_inclamp.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_inclampapproach', assembly_wcf_inclampapproach)
 
@@ -485,14 +485,14 @@ class RobotClampAssemblyProcess:
         print("approach_vector_wcf_storage = %s " % approach_vector_wcf_storage)
 
         # Compute assembly_wcf_storageapproach (wcf)
-        T = Translation(approach_vector_wcf_storage.scaled(-1))
+        T = Translation.from_vector(approach_vector_wcf_storage.scaled(-1))
         assembly_wcf_storage = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
         assert assembly_wcf_storage is not None
         assembly_wcf_storageapproach = assembly_wcf_storage.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageapproach', assembly_wcf_storageapproach)
 
         # Compute assembly_wcf_finalretract (wcf)
-        T = Translation(approach_vector_wcf_final.scaled(-1))
+        T = Translation.from_vector(approach_vector_wcf_final.scaled(-1))
         assembly_wcf_final = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_final')
         assembly_wcf_finalretract = assembly_wcf_final.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_finalretract', assembly_wcf_finalretract)
@@ -514,7 +514,7 @@ class RobotClampAssemblyProcess:
 
         # Compute assembly_wcf_storageretract
         assembly_wcf_storage = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
-        T = Translation(design_guide_vector_storage_pickup)
+        T = Translation.from_vector(design_guide_vector_storage_pickup)
         assembly_wcf_storageretract = assembly_wcf_storage.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageretract', assembly_wcf_storageretract)
 
@@ -540,7 +540,7 @@ class RobotClampAssemblyProcess:
             approach_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.approach_vector)
 
             # compute approach frame
-            clamp_wcf_attachapproach = clamp.current_frame.transformed(Translation(approach_vector_wcf.scaled(-1)))
+            clamp_wcf_attachapproach = clamp.current_frame.transformed(Translation.from_vector(approach_vector_wcf.scaled(-1)))
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachapproach', clamp_wcf_attachapproach)
 
             # clamp_wcf_attachretract is based on tool.tool_pick_up_frame transformed to wcf
@@ -583,8 +583,8 @@ class RobotClampAssemblyProcess:
             detachretract2_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.detachretract2_vector)
 
             # compute detachretract frame by translating along retract vectors
-            clamp_wcf_detachretract1 = clamp.current_frame.transformed(Translation(detachretract1_vector_wcf))
-            clamp_wcf_detachretract2 = clamp_wcf_detachretract1.transformed(Translation(detachretract2_vector_wcf))
+            clamp_wcf_detachretract1 = clamp.current_frame.transformed(Translation.from_vector(detachretract1_vector_wcf))
+            clamp_wcf_detachretract2 = clamp_wcf_detachretract1.transformed(Translation.from_vector(detachretract2_vector_wcf))
 
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_detachretract1', clamp_wcf_detachretract1)
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_detachretract2', clamp_wcf_detachretract2)

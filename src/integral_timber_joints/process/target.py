@@ -22,7 +22,7 @@ class Target(object):
         if (approach_vector_in_local_coords is None):
             approach_vector_in_local_coords = Vector(0,0,0)
         self.approach_vector = target_frame.to_world_coordinates(approach_vector_in_local_coords)
-        T = Translation(self.approach_vector.scaled(-1)) # Reverse the vector
+        T = Translation.from_vector(self.approach_vector.scaled(-1)) # Reverse the vector
         self.approach_frame = self.target_frame.transformed(T)
         # If not further defined, retract frame is equal to approach frame
         if (retract_vector_in_local_coords is None):
@@ -30,7 +30,7 @@ class Target(object):
             self.retract_frame = self.approach_frame
         else:
             self.retract_vector = target_frame.to_world_coordinates(retract_vector_in_local_coords)
-            self.retract_frame = self.target_frame.transformed(Translation(self.retract_vector))
+            self.retract_frame = self.target_frame.transformed(Translation.from_vector(self.retract_vector))
 
     def __str__(self):
         return "Target (?)"

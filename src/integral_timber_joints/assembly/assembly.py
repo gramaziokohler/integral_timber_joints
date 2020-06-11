@@ -412,6 +412,6 @@ class Assembly(Network):
                 print("Assembly Direction of Beam (%s) using downward movement %s (ref to wcf)." % (beam.name, assembly_direction_wcf))
 
             # Compute the assembly_wcf_inclamp by moving back along the assembly_direction_wcf.
-            wcf_clamp_transform = Translation(assembly_vector_wcf.scaled(-1.0))
+            wcf_clamp_transform = Translation.from_vector(assembly_vector_wcf.scaled(-1.0))
             self.set_beam_attribute(beam_id, 'assembly_vector_final', assembly_vector_wcf)
             self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', beam.frame.transformed(wcf_clamp_transform))
