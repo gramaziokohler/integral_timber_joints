@@ -19,8 +19,8 @@ class Gripper (Tool):
 
         # Call Tool init
         if tool_coordinate_frame is None: tool_coordinate_frame = Frame.worldXY()
-        Tool.__init__(self, name, type_name, tool_coordinate_frame)
-
+        # Tool.__init__(self, name, type_name, tool_coordinate_frame)
+        super(Gripper, self).__init__(name, type_name, tool_coordinate_frame)
         # --------------------------------------------------------
         # Extrinsic properities (Gripper Specific)
         # --------------------------------------------------------
