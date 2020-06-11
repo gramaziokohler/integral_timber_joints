@@ -51,7 +51,7 @@ Install the following python dependency (pip install)
 Run the following code in terminal to add them to Rhino Grasshopper Python library path:
 
 ```
-python -m compas_rhino.install -p compas compas_fab jsonpickle trimesh
+python -m compas_rhino.install -p compas compas_fab compas_rhino jsonpickle trimesh integral_timber_joints
 ```
 
 ### Software dependency
