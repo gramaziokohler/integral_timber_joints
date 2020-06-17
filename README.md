@@ -43,15 +43,16 @@ invoke add-to-rhino
 
 Install the following python dependency (pip install)
 
-- compas
-- compas_fab
-- jsonpickle
-- trimesh
+- compas (Library for geometrical modeling and graph relationship)
+- compas_fab (Library for modelling Tools and Robots, functions to call ROS backend for path planning)
+- jsonpickle (Serialization library for Tools, Assembly, Process)
+- trimesh (Call Openscad in the background to perform Mesh Boolean)
+- pycddlib (Computation of blocking direction analysis)
 
 Run the following code in terminal to add them to Rhino Grasshopper Python library path:
 
 ```
-python -m compas_rhino.install -p compas compas_fab compas_rhino jsonpickle trimesh integral_timber_joints
+python -m compas_rhino.install -p compas compas_fab compas_rhino jsonpickle integral_timber_joints
 ```
 
 ### Software dependency
@@ -64,7 +65,9 @@ Install the following software:
 
 - [Openscad](https://www.openscad.org/downloads.html) (This will be running in the background. Start the software at least once after installing)
 
+## Module Structure
 
+See [this file](src/integral_timber_joints/Module_Structure.md)
 
 Credits
 -------------
