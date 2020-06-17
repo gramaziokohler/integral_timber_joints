@@ -28,9 +28,16 @@ def create_actions_from_sequence(process, verbose = True):
     actions = process.actions # type: List[Action]
 
     for seq_n, beam_id in enumerate(assembly.sequence):
+        # Fuction to keep count of act_n
+
+        def act_n(reset = False):
+            if reset: act_n.counter = 0
+            else: act_n.counter += 1
+            return act_n.counter
+
         beam = assembly.beam(beam_id) # type: Beam
         if verbose: print ("Beam %s" % beam_id)
-        actions.append(LoadBeamAction(seq_n, beam_id))
+        actions.append(LoadBeamAction(seq_n, act_n(True), beam_id))
         if verbose: print ('|- ' + actions[-1].__str__())
 
         # move clamps from storage to structure
@@ -40,40 +47,40 @@ def create_actions_from_sequence(process, verbose = True):
 
         for joint_id in joint_id_of_clamps:
             clamp_type = assembly.get_joint_attribute(joint_id, "clamp_type")
-            actions.append(PickClampFromStorageAction(seq_n, clamp_type))
+            actions.append(PickClampFromStorageAction(seq_n, act_n(), clamp_type))
             if verbose: print ('|- ' + actions[-1].__str__())
-            actions.append(PlaceClampToStructureAction(seq_n, joint_id, clamp_type))
+            actions.append(PlaceClampToStructureAction(seq_n, act_n(), joint_id, clamp_type))
             if verbose: print ('|- ' + actions[-1].__str__())
 
             #if verbose: print ("|- Detatch Clamp at Joint %s-%s" % clamp)
 
         # attach gripper
         gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
-        actions.append(PickGripperFromStorageAction(seq_n, gripper_type))
+        actions.append(PickGripperFromStorageAction(seq_n, act_n(), gripper_type))
         if verbose: print ('|- ' + actions[-1].__str__())
 
         # pick place beam
-        actions.append(PickBeamFromStorageAction(seq_n, beam_id))
+        actions.append(PickBeamFromStorageAction(seq_n, act_n(), beam_id))
         if verbose: print ('|- ' + actions[-1].__str__())
 
         #Syncronized clamp and move beam action
         if len(joint_id_of_clamps) > 0:
-            actions.append(PlaceBeamWithClampsAction(seq_n, beam_id, joint_id_of_clamps))
+            actions.append(PlaceBeamWithClampsAction(seq_n, act_n(), beam_id, joint_id_of_clamps))
             if verbose: print ('|- ' + actions[-1].__str__())
         else:
-            actions.append(PlaceBeamWithoutClampsAction(seq_n, beam_id))
+            actions.append(PlaceBeamWithoutClampsAction(seq_n, act_n(), beam_id))
             if verbose: print ('|- ' + actions[-1].__str__())
 
         # return gripper
-        actions.append(PlaceGripperToStorageAction(seq_n, gripper_type))
+        actions.append(PlaceGripperToStorageAction(seq_n, act_n(), gripper_type))
         if verbose: print ('|- ' + actions[-1].__str__())
 
         # remove clamps from structure to storage
         for joint_id in joint_id_of_clamps:
             clamp_type = assembly.get_joint_attribute(joint_id, "clamp_type")
-            actions.append(PickClampFromStructureAction(seq_n, joint_id, clamp_type))
+            actions.append(PickClampFromStructureAction(seq_n, act_n(), joint_id, clamp_type))
             if verbose: print ('|- ' + actions[-1].__str__())
-            actions.append(PlaceClampToStorageAction(seq_n, clamp_type))
+            actions.append(PlaceClampToStorageAction(seq_n, act_n(), clamp_type))
             if verbose: print ('|- ' + actions[-1].__str__())
 
 def assign_tools_to_actions(process, verbose = True):
@@ -285,8 +292,8 @@ def debug_print_process_actions_movements(process, file_path = None):
             line = "|  |- Movement %s (%s): %s\n" % (j, movement.__class__.__name__, movement)
             if file_path is not None: f.write(line)
             else: print (line)
-
-    f.close()
+    if file_path is not None:
+        f.close()
 
 def test_process_prepathplan(json_path_in, json_path_out):
     #########################################################################
