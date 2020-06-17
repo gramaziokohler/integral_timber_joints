@@ -167,17 +167,27 @@ class Assembly(Network):
         beam_id : str
             Identifier of the Beam (Beam.name)
         attribute_key : str
-        value : str
+        value : any
 
-        Returns
-        -------
-        [obj]
-            Returns the attribute
+        Note
+        ----
+        Value will be deepcopied if value.copy() is callable,
+        otherwise copy.deepcopy(value) will be used.
+
+        This deep copying resolves a problem with jsonpickle not de/serializing properly,
+        between IPy and cpython. Throwing error `IDproxy not subscriptable`
+
         """
         if value is None:
             self.unset_node_attribute(beam_id, attribute_key)
         else:
-            self.node_attribute(beam_id, attribute_key, value)
+            # Make a copy of the attribute before setting it.
+            if callable(getattr(value, "copy", None)):
+                copied_value = value.copy()
+            else:
+                from copy import deepcopy
+                copied_value = deepcopy(value)
+            self.node_attribute(beam_id, attribute_key, copied_value)
 
 
     def get_beam_attribute(self, beam_id, attribute_key):
@@ -204,12 +214,27 @@ class Assembly(Network):
         joint_id : (str, str)
             Identifier of the Joint (beam_id, neighbor_beam_id)
         attribute_key : [str]
-        value : [obj]
+        value : any
+
+        Note
+        ----
+        Value will be deepcopied if value.copy() is callable,
+        otherwise copy.deepcopy(value) will be used.
+
+        This deep copying resolves a problem with jsonpickle not de/serializing properly,
+        between IPy and cpython. Throwing error `IDproxy not subscriptable`
+
         """
         if value is None:
             self.unset_edge_attribute(joint_id, attribute_key)
         else:
-            self.edge_attribute(joint_id, attribute_key, value)
+            # Make a copy of the attribute before setting it.
+            if callable(getattr(value, "copy", None)):
+                copied_value = value.copy()
+            else:
+                from copy import deepcopy
+                copied_value = deepcopy(value)
+            self.edge_attribute(joint_id, attribute_key, copied_value)
 
     def get_joint_attribute(self, joint_id, attribute_key):
         """ Getting an attribute of one joint
