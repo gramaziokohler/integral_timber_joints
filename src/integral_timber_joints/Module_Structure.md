@@ -1,16 +1,27 @@
-└── src
+# Module Structure
+
+The structure of integral_timber_joints library
+
+```
+─── src
     ├── integral_timber_joints
-    │   ├── datastructures  (static data structure classes)
+    │   ├── geometry  (basic geometry classes)
     |   |   ├── beam.py
     |   |   ├── joint.py
-    |   |   └── ...
-    │   ├── rhino           (interactive functions to be run from Rhino Python)
-    |   |   ├── add_beam.py
-    |   |   ├── joint_beam.py
-    |   |   └──
-    │   └── algorithms      (functions to operate on the classes)
-    |       ├── 
-    |       └──
-    └── compas_trimesh (Boolean Helper)
-        ├── __init__.py
-        └── boolean.py
+    |   |   ├── joint90lap.py
+    |   |   ├── griphole.py
+    |   |   └── ...    
+    │   ├── assembly  (Assembly classes - a network of beams and joints)
+    |   |   └── assembly.py
+    │   └── process  (Process Classes - clamp assembly process related classes)
+    |       ├── robot_clamp_assembly_process.py
+    |       ├── actions.py
+    |       ├── movements.py
+    |       ├── pathplanner.py
+    |       └── algorithms.py
+    ├── compas_trimesh (Boolean Helper)
+    |   └── boolean.py
+    └── geometric_blocking (Blocking Direction Calculation Helper)
+        └── utils.py
+```
+
