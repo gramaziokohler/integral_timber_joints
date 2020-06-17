@@ -279,13 +279,31 @@ class RFLPathPlanner(PathPlanner):
         self.last_trajectory = trajectory
         return trajectory
 
+    def ik_solution(self, target_frame, start_configuration=None, verbose=False):
+        # Start configuration
+        if start_configuration is None:
+            start_configuration = self.current_configuration
+        if start_configuration is None:
+            start_configuration = self.rfl_timber_start_configuration()
 
-
+        try:
+            configuration = self.robot.inverse_kinematics(
+                target_frame,
+                start_configuration = start_configuration,
+                group = self.planning_group,
+                return_full_configuration=True)
+            print("robot.ik_solution success: %s " % configuration)
+            return configuration
+        except Exception as e:
+            if verbose:
+                print("robot.ik_solution error:", e)
+                # raise e
+            return None
 
 if __name__ == "__main__":
 
     pp = RFLPathPlanner(None)
-    pp.connect_to_ros_planner("192.168.183.129")
+    pp.connect_to_ros_planner("192.168.43.28")
     print('Connected: %s' % pp.ros_client.is_connected)
     print('Loaded Robot: %s' % pp.robot.name)
     pp.test_plan_motion()
