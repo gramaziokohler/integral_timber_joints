@@ -12,6 +12,7 @@ class Action(object):
     def __init__(self):
         self.movements = [] # type: Movement
         self.seq_n = 0 # type: int
+        self.act_n = 0 # type: int
 
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
@@ -79,10 +80,11 @@ class DetachBeamAction(object):
 ##############################
 
 class LoadBeamAction(OperatorAction):
-    def __init__(self, seq_n, beam_id):
+    def __init__(self, seq_n, act_n, beam_id):
         # type: (str) -> None
         OperatorAction.__init__(self)
         self.seq_n = seq_n
+        self.act_n = act_n
         self.beam_id = beam_id
 
     def __str__(self):
@@ -95,11 +97,12 @@ class LoadBeamAction(OperatorAction):
         self.movements.append(OperatorLoadBeamMovement(self.beam_id, grasp_face))
 
 class PickClampFromStorageAction(RobotAction, AttachToolAction):
-    def __init__(self, seq_n, tool_type = None):
+    def __init__(self, seq_n, act_n, tool_type = None):
         # type: (str) -> None
         RobotAction.__init__(self)
         AttachToolAction.__init__(self, tool_type)
         self.seq_n = seq_n
+        self.act_n = act_n
 
     def __str__(self):
         if self.tool_id:
@@ -124,11 +127,12 @@ class PickClampFromStorageAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_wcf.copy(), attached_tool_id=self.tool_id)) # Tool Storage Retract
 
 class PlaceClampToStorageAction(RobotAction, DetachToolAction):
-    def __init__(self, seq_n, tool_type = None):
+    def __init__(self, seq_n, act_n, tool_type = None):
         # type: (str) -> None
         RobotAction.__init__(self)
         DetachToolAction.__init__(self, tool_type)
         self.seq_n = seq_n
+        self.act_n = act_n
 
     def __str__(self):
         if self.tool_id:
@@ -154,11 +158,12 @@ class PlaceClampToStorageAction(RobotAction, DetachToolAction):
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_wcf.copy())) # Tool Storage Retract
 
 class PickClampFromStructureAction(RobotAction, AttachToolAction):
-    def __init__(self, seq_n, joint_id , tool_type = None):
+    def __init__(self, seq_n, act_n, joint_id , tool_type = None):
         # type: (Tuple[str, str], str) -> None
         RobotAction.__init__(self)
         AttachToolAction.__init__(self, tool_type)
         self.seq_n = seq_n
+        self.act_n = act_n
         self.joint_id = joint_id
 
     def __str__(self):
@@ -189,11 +194,12 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract2.copy(), attached_tool_id=self.tool_id)) # Tool Retract Frame at structure
 
 class PlaceClampToStructureAction(RobotAction, DetachToolAction):
-    def __init__(self, seq_n, joint_id , tool_type = None):
+    def __init__(self, seq_n, act_n, joint_id , tool_type = None):
         # type: (Tuple[str, str], str) -> None
         RobotAction.__init__(self)
         DetachToolAction.__init__(self, tool_type)
         self.seq_n = seq_n
+        self.act_n = act_n
         self.joint_id = joint_id
 
     def __str__(self):
@@ -222,21 +228,22 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachretract.copy()))
 
 class PickGripperFromStorageAction(PickClampFromStorageAction):
-    def __init__(self, seq_n, tool_type):
+    def __init__(self, seq_n, act_n, tool_type):
         # type: (str) -> None
-        PickClampFromStorageAction.__init__(self, seq_n, tool_type)
+        PickClampFromStorageAction.__init__(self, seq_n, act_n, tool_type)
 
 class PlaceGripperToStorageAction(PlaceClampToStorageAction):
-    def __init__(self, seq_n, tool_type):
+    def __init__(self, seq_n, act_n, tool_type):
         # type: (str) -> None
-        PlaceClampToStorageAction.__init__(self, seq_n, tool_type)
+        PlaceClampToStorageAction.__init__(self, seq_n, act_n, tool_type)
 
 class PickBeamFromStorageAction(RobotAction, AttachBeamAction):
-    def __init__(self, seq_n, beam_id):
+    def __init__(self, seq_n, act_n, beam_id):
         # type: (str, str) -> None
         RobotAction.__init__(self)
         AttachBeamAction.__init__(self, beam_id)
         self.seq_n = seq_n
+        self.act_n = act_n
 
     def __str__(self):
         object_str = "Beam (%s)" % (self.beam_id)
@@ -262,11 +269,12 @@ class PickBeamFromStorageAction(RobotAction, AttachBeamAction):
         self.movements.append(RoboticLinearMovement(assembly_wcf_storageretract.copy(), attached_tool_id=self.gripper_id, attached_beam_id = self.beam_id)) # Tool Retract (current implementation is = clamp_wcf_attachapproach)
 
 class PlaceBeamWithoutClampsAction(RobotAction, DetachBeamAction):
-    def __init__(self, seq_n, beam_id):
+    def __init__(self, seq_n, act_n, beam_id):
         # type: (Tuple[str, str]) -> None
         RobotAction.__init__(self)
         DetachBeamAction.__init__(self, beam_id)
         self.seq_n = seq_n
+        self.act_n = act_n
 
     def __str__(self):
         object_str = "Beam (%s)" % (self.beam_id)
@@ -292,11 +300,12 @@ class PlaceBeamWithoutClampsAction(RobotAction, DetachBeamAction):
 
 
 class PlaceBeamWithClampsAction(RobotAction, DetachBeamAction):
-    def __init__(self, seq_n, beam_id , joint_ids):
+    def __init__(self, seq_n, act_n, beam_id , joint_ids):
         # type: (str, List[Tuple[str, str]]) -> None
         RobotAction.__init__(self)
         DetachBeamAction.__init__(self, beam_id)
         self.seq_n = seq_n
+        self.act_n = act_n
         self.joint_ids = joint_ids # type: List[Tuple[str, str]]
         self.clamp_ids = [None for _ in joint_ids] # type: List[str]
 
