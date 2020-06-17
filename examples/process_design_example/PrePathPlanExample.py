@@ -64,5 +64,3 @@ json_str = jsonpickle.encode(process, keys=True)
 print ("json_str len:" , len(json_str))
 f.write(json_str)
 f.close()
-
-print("> Saving Process to %s \n    Time: %sms" % (json_path_out, time.time()*1000.0 - ms))

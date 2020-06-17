@@ -6,9 +6,9 @@ import time
 
 json_path_in = "examples/process_design_example/frame_ortho_lap_joints_no_rfl_prepathplan.json"
 json_path_out = "examples/process_design_example/frame_ortho_lap_joints_no_rfl_pathplan.json"
-pickle_path_out = "examples/process_design_example/frame_ortho_lap_joints_no_rfl_pathplan.pickle"
-
+# replan = True # If Replan is true, the previous pathplanned process file is loaded.
 ros_planner_ip = "192.168.43.28"
+
 
 #########################################################################
 # Connect to path planning backend and initialize robot parameters
@@ -45,39 +45,74 @@ pp.append_collision_mesh(process.pickup_station.collision_mesh, "PickupStation")
 # TODO: FLoor and other meshes
 
 #########################################################################
+# Sequentially copy movement target_frame to next movement source_frame
+#########################################################################
+
+_source_frame = None
+for ia, action in enumerate(process.actions):
+    for im, movement in enumerate(action.movements):
+        if isinstance(movement, RoboticMovement):
+            movement.source_frame = _source_frame
+            _source_frame = movement.target_frame
+
+#########################################################################
 # Sequential path planning
 #########################################################################
+last_configuration = pp.rfl_timber_start_configuration()
+
 t = time.time()
 for ia, action in enumerate(process.actions):
-    if ia not in list(range(0, 10)): continue
+    # if ia not in list(range(0, 20)): continue
     seq_n = action.seq_n
-    # print ("Seq(%s) Acion (%s) - %s \n" % (seq_n, ia, action))
+    act_n = action.act_n
 
     for im, movement in enumerate(action.movements):
-        print ("Seq(%s) Act (%s) Mov (%s) - %s" % (seq_n, ia, im, movement))
+        print ("Seq(%s) Act (%s) Mov (%s) - %s" % (seq_n, act_n, im, movement))
 
         if isinstance(movement, RoboticMovement):
             # Add already built beams to planning scene
-            already_built_beam_ids = assembly.get_already_built_beams(assembly.sequence[seq_n])
-
+            # beam_id = assembly.sequence[seq_n]
+            # already_built_beam_ids = assembly.get_already_built_beams(beam_id)
+            # pp.remove_collision_mesh('already_built_beams')
+            # for already_beam_id in already_built_beam_ids:
+            #     pp.append_collision_mesh(assembly.beam(already_beam_id).cached_mesh, 'already_built_beams')
+                
             # Attach Tool and Beam to robot
 
-            # Prepare Starting Config and Goal constraints
-            # start_configuration = Configuration.from_revolute_values([0, 4.295, 0, -3.327, 4.755, 0.])
-            trajectory = pp.plan_motion(movement.target_frame, free_motion = True, verbose = True)
+            # Prepare Starting Configuration
+            if last_configuration is not None:
+                # retrive last planned trajectory's last config
+                start_configuration = last_configuration
+            else:
+                # Previous planning failed, compute config based on source_frame
+                # Source frame is created in the beginning of this file.
+                start_configuration = pp.ik_solution(movement.source_frame, verbose=True)
 
-            if trajectory:
+            # Perform planning if start_configuration is not None.
+            if start_configuration is not None:
+                trajectory = pp.plan_motion(
+                    movement.target_frame,
+                    start_configuration = start_configuration,
+                    free_motion = True,
+                    verbose = True)
+            else:
+                trajectory = None
+
+            # Post Planning
+            if trajectory and trajectory.fraction == 1.0:
+                # Path planning succeeded
                 print("> > Motion Planned (%s pts, %.1f secs)" % (len(trajectory.points), trajectory.time_from_start))
                 print("> > Last Point: %s" % trajectory.points[-1])
 
                 # Assign Last frame of the path to next configuration.
                 last_configuration = robot.merge_group_with_full_configuration(trajectory.points[-1], pp.current_configuration, pp.planning_group)
-                pp.current_configuration = last_configuration
 
                 # Save trajectory to movement
-                # movement.trajectory = trajectory
+                movement.trajectory = trajectory
             else:
+                # Path planning failed.
                 print("> > Motion Plan Fail !!!")
+                last_configuration = None
         else:
             print("> > No Robotic Motion")
         print("")
@@ -89,12 +124,8 @@ pp.ros_client.close()
 # Save Results
 #########################################################################
 
-# f = open(json_path_out, 'w')
-# json_str = jsonpickle.encode(process, keys=True)
-# print ("json_str len:" , len(json_str))
-# f.write(json_str)
-# f.close()
-
-import pickle
-with open(pickle_path_out, 'wb') as f:
-    pickle.dump(process, f, protocol=2)
+f = open(json_path_out, 'w')
+json_str = jsonpickle.encode(process, keys=True)
+print ("out json_str len:" , len(json_str))
+f.write(json_str)
+f.close()
