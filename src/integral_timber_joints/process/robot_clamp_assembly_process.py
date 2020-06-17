@@ -19,7 +19,8 @@ class RobotClampAssemblyProcess(object):
         self._grippers = {}  # type: Dict[str, Gripper]
         self.actions = []    # type: List[Action]
         self.movements = []    # type: List[Movements]
-        self.pickup_station = None
+        self.pickup_station = None # type: PickupStation
+        self.environment_meshes = [] # type: List[Mesh]
 
     def add_clamp(self, clamp):
         self._clamps[clamp.name] = clamp.copy()
@@ -375,7 +376,7 @@ class RobotClampAssemblyProcess(object):
         return corner
 
     def compute_storage_location_at_corner_aligning_pickup_location(self, beam_id, pickup_station = None):
-        # type: (str, Frame, Optional[bool], Optional[bool], Optional[bool]) -> None
+        # type: (str, PickupStation) -> None
         """ Compute 'assembly_wcf_storage' alignment frame
         by aligning a choosen corner relative to the 'gripper_grasp_face'
         to the given storage_station_frame.
