@@ -1,4 +1,3 @@
-from integral_timber_joints.process.target import ClampTarget
 from integral_timber_joints.process.movement import *
 
 ##############################

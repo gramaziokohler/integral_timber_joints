@@ -4,7 +4,6 @@ except:
     pass
 
 from integral_timber_joints.process.action import *
-from integral_timber_joints.process.target import *
 from integral_timber_joints.process import RobotClampAssemblyProcess, RFLPathPlanner
 from integral_timber_joints.process.movement import *
 from integral_timber_joints.assembly import Assembly
