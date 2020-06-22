@@ -14,7 +14,8 @@ class RobotClampAssemblyProcess(object):
 
     def __init__(self, assembly):
         # type: (Assembly)
-        self.assembly = assembly.copy()  # type: Assembly
+        if assembly is not None:
+            self.assembly = assembly.copy()  # type: Assembly
         self._clamps = {}    # type: Dict[str, Clamp]
         self._grippers = {}  # type: Dict[str, Gripper]
         self.actions = []    # type: List[Action]

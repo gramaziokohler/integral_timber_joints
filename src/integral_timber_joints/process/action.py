@@ -81,7 +81,8 @@ class DetachBeamAction(object):
 class LoadBeamAction(OperatorAction):
     def __init__(self, seq_n, act_n, beam_id):
         # type: (str) -> None
-        OperatorAction.__init__(self)
+        super(LoadBeamAction, self).__init__()
+        # OperatorAction.__init__(self)
         self.seq_n = seq_n
         self.act_n = act_n
         self.beam_id = beam_id
