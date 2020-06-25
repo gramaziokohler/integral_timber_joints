@@ -1,0 +1,5 @@
+compas @ git+https://git@github.com/compas-dev/compas.git@9287cea889a46c8fa820eb33cb73a4a6b1ed7062#egg=compas-0.16
+compas_fab>=0.11
+jsonpickle
+trimesh
+pycddlib

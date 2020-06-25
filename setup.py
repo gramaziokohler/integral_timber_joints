@@ -9,11 +9,6 @@ from os.path import abspath, basename, dirname, join, splitext
 
 from setuptools import find_packages, setup
 
-# NOTE: Write dependencies (i.e. http://python-packaging.readthedocs.io/en/latest/dependencies.html)
-requirements = [] # type: ignore
-# NOTE: Write a list of keywords (i.e. ['ros', 'ros-bridge', 'robotics', 'websockets'])
-keywords_list = []# type: ignore
-
 here = abspath(dirname(__file__))
 
 
@@ -24,7 +19,12 @@ def read(*names, **kwargs):
     ).read()
 
 
-about = {}# type: ignore
+# NOTE: Write dependencies (i.e. http://python-packaging.readthedocs.io/en/latest/dependencies.html)
+requirements = [r for r in read('requirements.txt').split('\n') if r]  # type: ignore
+# NOTE: Write a list of keywords (i.e. ['ros', 'ros-bridge', 'robotics', 'websockets'])
+keywords_list = []  # type: ignore
+
+about = {}  # type: ignore
 exec(read('src', 'integral_timber_joints', '__version__.py'), about)
 
 setup(
