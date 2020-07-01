@@ -47,6 +47,8 @@ https://github.com/gramaziokohler/deep_timber/blob/master/docs/interfaces_ros_br
 
 https://github.com/gramaziokohler/compas_rrc_ros
 
+
+
 ## Running the services
 
 ### Linux side
@@ -97,4 +99,41 @@ print('Connected.')
 abb.close()
 abb.terminate()
 ```
+
+
+
+## Updating 2020-07-01 (partially reinstalling)
+
+Update Windows Robot Studio to version 2020.1
+
+- Backup Controller 
+
+Update Robot Studio Licence
+
+- refer to 190527_X000_Activate-RobotStudio-License_PF.docx send from Matteo
+
+Update compas_rrc_ros on Linux
+
+- ```
+  cd catkin_ws/src
+  git clone https://github.com/gramaziokohler/compas_rrc_ros.git
+  cd ..
+  catkin_build 
+  ```
+
+- 
+
+Test ROS to Robot Connection
+
+- PP to Main on pendent
+- Run Bringup command from ROS `roslaunch compas_rrc_driver bringup-1_2.launch robot ip:=192.168.0.11`
+
+Updated compas_rrc package in (windows side) python environment
+
+- Switched to `development` branch of https://bitbucket.org/ethrfl/compas_rrc/src/development/
+
+- ```
+  pip install -r requirements-dev.txt
+  invoke add-to-rhino
+  ```
 
