@@ -292,7 +292,7 @@ class Beam(object):
     # BTLx Defined Properities
     # -------------------------
 
-    def refernce_side_ocf(self, side_id):
+    def reference_side_ocf(self, side_id):
         # type: (int) -> Frame
         """ Returns the Coordinate Frame of a reference side as defined in BTLx 1.1
         Reference to OCF
@@ -311,13 +311,34 @@ class Beam(object):
             return Frame(self.corner_ocf(6), Vector.Zaxis(), Vector.Yaxis().scaled(-1))
         raise IndexError("side_id only accepts (int) 1 - 6")
 
-    def refernce_side_wcf(self, side_id):
+    def reference_side_wcf(self, side_id):
         # type: (int) -> Frame
         """ Returns the Coordinate Frame of a reference side as defined in BTLx 1.1
         Reference to WCF
         """
         T = Transformation.from_frame(self.frame)
-        return self.refernce_side_ocf(side_id).transformed(T)
+        return self.reference_side_ocf(side_id).transformed(T)
+
+    def reference_edge_wcf(self, edge_id, wrap_edge_id = True):
+        """Returns the reference edge as defined in BTLx 1.1.
+        For example Reference Edge 1 corrispond to the X axis of Reference Side 1.
+
+        Valid edge_id are from (1 to 4), values outside will be wrapped if wrap_edge_id = True
+
+        Returns
+        -------
+        compas.geometry.Line
+        """
+
+        if wrap_edge_id:
+            edge_id = (edge_id - 1) % 4 + 1
+
+        if edge_id in range(1, 5):
+            return Line(self.corner_wcf(edge_id), self.corner_wcf(edge_id + 4))
+
+        # In case of wrap_edge_id = False
+        raise IndexError("edge_id only accepts (int) 1 - 4 if wrap_edge_id = False")
+
 
     # -------------------------------
     # Extended Set of Geo Properities
@@ -341,6 +362,13 @@ class Beam(object):
             return self.corner_ocf(corner - 4) + Point(self.length, 0, 0)
 
         raise IndexError("corner only accepts (int) 1 - 8")
+
+    def corner_wcf(self, corner):
+        # type: (int) -> Point
+        """Corner 1 to 4 corrisponds to the Start Point of Reference Edge 1 to 4
+        Corner 5 to 8 corrisponds to the End Point of Reference Edge 1 to 4
+        """
+        return self.frame.to_world_coordinates(self.corner_ocf(corner))
 
     def draw_uncut_mesh(self):
         """Computes and returns the beam geometry.
@@ -457,7 +485,7 @@ class Beam(object):
         Grasp Frame Z Axis is pointing to the center of the beam
         Reference to OCF
         '''
-        ref_side_ocf = self.refernce_side_ocf(side_id)
+        ref_side_ocf = self.reference_side_ocf(side_id)
         T = Transformation.from_frame(ref_side_ocf)
         new_origin = Point(dist_from_start, self.get_face_width(side_id) / 2, 0).transformed(T)
         return Frame(new_origin, ref_side_ocf.xaxis, ref_side_ocf.yaxis.scaled(-1.0))
