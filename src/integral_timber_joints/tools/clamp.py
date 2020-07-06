@@ -37,6 +37,10 @@ class Clamp (Tool):
         self.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max) # type: Tuple[float, float]
         self.clamp_jaw_limits = (clamp_jaw_position_min, clamp_jaw_position_max) # type: Tuple[float, float]
 
+        # Blocking directions for computing jaw_approach directions.
+        # Vector direction is the direction where the beam cannot move towards.
+        self.jaw_block_vectors = [] # type: List[Vector]
+
     # --------------------------------------------------------
     # State Setting Functions
     # --------------------------------------------------------
