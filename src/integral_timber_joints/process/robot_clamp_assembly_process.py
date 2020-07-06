@@ -107,7 +107,7 @@ class RobotClampAssemblyProcess(object):
                     if clamp_type in self.available_clamp_types:
                         self.assembly.set_joint_attribute(joint_id, "clamp_type", clamp_type)
                 if self.get_clamp_type_of_joint(joint_id) is None:
-                    raise RuntimeError("Cannot assign clamp types")
+                    raise RuntimeError("Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, self.assembly.joint(joint_id).clamp_types))
                 print("Joint (%s) assigned clamp_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
 
     def get_clamp_orientation_options(self, beam_id):
@@ -134,7 +134,7 @@ class RobotClampAssemblyProcess(object):
         This is applied to all the joints on beam(beam_id) that needs to be clamped.
         where joint(neighbour_id, beam_id)
 
-        Joint attribute 'design_guide_vector_jawapproach')' should be set before hand.
+        Joint attribute 'design_guide_vector_jawapproach' should be set before hand.
         The -X Axis Vector of the clamp will attempt to align with this vector.
         The vector that is used to place a beam into the jaw.
 
@@ -236,6 +236,24 @@ class RobotClampAssemblyProcess(object):
         # Compute the vector length to clear jaw, and return the `assembly_vector_jawapproach`
         return self.compute_jawapproach_vector_length(beam_id, feasible_rays_averaged.scaled(-1))
 
+    def compute_jawapproach_vector_from_joints_y(self, beam_id):
+        # Take the face_id from the first joint with neighbour
+        joint_id = list(self.assembly.get_joints_of_beam_connected_to_already_built(beam_id))[0]
+        face_id = self.assembly.joint(joint_id).face_id
+
+        face_y_axis = self.assembly.beam(beam_id).reference_side_wcf(face_id).yaxis
+
+        # Gather blocking vectors from all clamps
+        blocking_vectors = []
+        for joint_id in self.get_clamp_ids_for_beam(beam_id):
+            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
+            blocking_vectors += clamp.jaw_blocking_vectors_in_wcf
+
+        # Check if either direction of the vector is free
+        if not blocked(blocking_vectors, face_y_axis): return self.compute_jawapproach_vector_length(beam_id, face_y_axis.scaled(-1.0))
+        if not blocked(blocking_vectors, face_y_axis.scaled(-1.0)): return self.compute_jawapproach_vector_length(beam_id, face_y_axis.copy())
+        return None
+
     def search_valid_jawapproach_vector_prioritizing_guide_vector(self, beam_id):
         # type: (str) -> Vector
         """Search for the `assembly_vector_jawapproach` and `assembly_wcf_inclampapproach`.
@@ -255,6 +273,41 @@ class RobotClampAssemblyProcess(object):
         # Compute vector with different strategies.
         # Each strategy function must return None if no valid solution is found.
         assembly_vector_jawapproach = self.compute_jawapproach_vector_from_guide_vector_dir(beam_id)
+        if assembly_vector_jawapproach is None:
+            assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id)
+        if assembly_vector_jawapproach is None:
+            return None
+
+        # Save result in beam_attribute
+        self.assembly.set_beam_attribute(beam_id, 'assembly_vector_jawapproach', assembly_vector_jawapproach)
+
+        # Compute 'ssembly_wcf_inclampapproach' from reversing 'assembly_vector_jawapproach'
+        assembly_wcf_inclamp = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_inclamp')
+        T = Translation.from_vector(assembly_vector_jawapproach.scaled(-1))
+        assembly_wcf_inclampapproach = assembly_wcf_inclamp.transformed(T)
+        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_inclampapproach', assembly_wcf_inclampapproach)
+
+        return assembly_vector_jawapproach
+
+    def search_valid_jawapproach_vector_prioritizing_beam_side(self, beam_id):
+        # type: (str) -> Vector
+        """Search for the `assembly_vector_jawapproach` and `assembly_wcf_inclampapproach`.
+        1st priority is to follow direction of engaging-joints reference side Y direction.
+        2nd priority is to use a vector in the middle of the feisible non-blocking region from the clamp jaw.
+        Returns None if no valid vector can be found or no clamps are attached.
+
+        Side Effect
+        -----------
+        beam_attribute 'assembly_vector_jawapproach' will be set.
+        beam_attribute 'assembly_wcf_inclampapproach' will be set.
+        """
+        # Exit if no clamp is needed to assemble this beam.
+        if len(list(self.get_clamp_ids_for_beam(beam_id))) == 0:
+            return None
+
+        # Compute vector with different strategies.
+        # Each strategy function must return None if no valid solution is found.
+        assembly_vector_jawapproach = self.compute_jawapproach_vector_from_joints_y(beam_id)
         if assembly_vector_jawapproach is None:
             assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id)
         if assembly_vector_jawapproach is None:
@@ -410,7 +463,7 @@ class RobotClampAssemblyProcess(object):
 
         # Compute alignment frame X and Y axis - derived from 'gripper_grasp_face' frame
         gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')
-        gripper_grasp_face_frame_ocf = beam.refernce_side_ocf(gripper_grasp_face)
+        gripper_grasp_face_frame_ocf = beam.reference_side_ocf(gripper_grasp_face)
         alignment_vector_X = gripper_grasp_face_frame_ocf.xaxis
         alignment_vector_Y = gripper_grasp_face_frame_ocf.yaxis
         if not align_face_X0:
@@ -587,7 +640,7 @@ class RobotClampAssemblyProcess(object):
                 print("|- Clamp at Joint (%s-%s)" % joint_id)
             clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
 
-            # Moveing clamp_wcf_final backwards along clamp.detachretract1_vector
+            # Moving clamp_wcf_final backwards along clamp.detachretract1_vector
             # ------------------------------------------------------------
             # Compute the approach vector in wcf
             detachretract1_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.detachretract1_vector)
