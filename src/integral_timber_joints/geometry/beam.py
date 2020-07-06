@@ -493,7 +493,7 @@ class Beam(object):
     # Intersection
     # -----------------------
 
-    def get_beam_beam_coplanar_face_ids(self, neighbor_beam):
+    def get_beam_beam_coplanar_face_ids(self, neighbor_beam, tol = 0.005):
         # type: (Beam, Beam): List[Tuple[str,str]]
         """
         Computes the faces that are coplanar between two beams
@@ -505,7 +505,7 @@ class Beam(object):
             p1 = self.get_face_plane(i)
             for j in range(1, 5):
                 p2 = neighbor_beam.get_face_plane(j)
-                if (is_point_on_plane(p1.point, p2) and is_point_on_plane(p2.point, p1)):
+                if (is_point_on_plane(p1.point, p2, tol) and is_point_on_plane(p2.point, p1, tol)):
                     #print ("Intersection self.Face%s Beam2.Face%s " %(i , j))
                     ffx.append((i, j))
         return ffx
