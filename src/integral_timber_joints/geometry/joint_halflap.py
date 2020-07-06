@@ -33,9 +33,6 @@ class Joint_halflap(Joint):
         self.name = name
         self.mesh = None
 
-        # Constants
-        self.clamp_types = ['CL3']  # The clamp type capable of assembling this joint
-
         # #Perform initial calculation of the mesh (except when this is an empty object)
         # if frame is not None:
         #     self.update_joint_mesh()
@@ -70,9 +67,9 @@ class Joint_halflap(Joint):
         angled_length = self.length / math.cos(math.radians(self.angle - 90))
         vertices = []
         vertices.append(Point(self.distance, 0, -self.height))  # point on -x -y -z
-        vertices.append(Point(self.distance + self.angle_lead, self.width, -self.height))  # point on -x +y -z
-        vertices.append(Point(self.distance + self.angle_lead + angled_length, self.width, -self.height))  # point on +x +y -z
-        vertices.append(Point(self.distance + angled_length, 0, -self.height))  # point on -x +y -z
+        vertices.append(Point(self.distance + self.angled_lead, self.width, -self.height))  # point on -x +y -z
+        vertices.append(Point(self.distance + self.angled_lead + self.angled_length, self.width, -self.height))  # point on +x +y -z
+        vertices.append(Point(self.distance + self.angled_length, 0, -self.height))  # point on -x +y -z
 
         # moving the trim box to -X and +X direction for easier boolean
         vector_0_1 = Vector.from_start_end(vertices[0], vertices[1]).unitized().scaled(TOLEARNCE)
@@ -103,6 +100,11 @@ class Joint_halflap(Joint):
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]
         """Compute the possible frames where the clamp can be attached.
+        The clamp frame is located at the opposite side of the face_id.
+
+        Orgin of the frame is located on the surface of that face, at the center point of the joint.
+        X Axis is along the length of the beam.
+        Z axis is pointing into the beam.
 
         Parameters
         ----------
@@ -114,12 +116,16 @@ class Joint_halflap(Joint):
         list(Frame)
             Frames in WCF
         """
-        # print "Dist%s" % self.distance
-        face_frame = beam.get_face_frame(self.face_id)
-        origin = face_frame.to_world_coordinates([self.distance, beam.get_face_height(self.face_id), beam.get_face_width(self.face_id)/2])
-        # print origin
-        forward_clamp = Frame(origin, face_frame.xaxis, face_frame.zaxis)
-        backward_clamp = Frame(origin, face_frame.xaxis.scaled(-1), face_frame.zaxis.scaled(-1))
+        # The clamp frame locate at the opposite
+
+        reference_side_wcf = beam.reference_side_wcf((self.face_id - 1 + 2) % 4 + 1)
+        origin = reference_side_wcf.to_world_coordinates(Point(
+            self.distance + self.angled_lead / 2 + self.angled_length / 2,
+            beam.get_face_height(self.face_id) / 2,
+            0))
+
+        forward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis.scaled(-1))
+        backward_clamp = Frame(origin, reference_side_wcf.xaxis.scaled(-1), reference_side_wcf.yaxis)
         return [forward_clamp, backward_clamp]
 
     # This method is not generalizable and should be removed in future
@@ -137,17 +143,35 @@ class Joint_halflap(Joint):
         new_id = (old_face_id + 1) % 4 + 1
         self.face_id = new_id
 
-        # Distance point change by angle_lead distance
-        self.distance = self.distance + self.angle_lead
+        # Distance point change by angled_lead distance
+        self.distance = self.distance + self.angled_lead
         # Angle flip
         self.angle = 180 - self.angle
 
     @property
-    def angle_lead(self):
+    def angled_lead(self):
         # Calculate the lap joint lead distance (relative to width) caused by angled joint
-        # Distance on X axis between point 0 and 1
+        # Distance on X axis (length) between point 0 and 1.
         # Positive lead if angle > 90, Negative lead if angle < 90
         return math.tan(math.radians(self.angle - 90)) * self.width
+
+    @property
+    def angled_length(self):
+        # Calculates the length of the lap opening.
+        # Distance on X axis (length) between point 1 and 2. or point 0 and 3.
+        # The value is equal to self.length when angle = 90 degrees.
+        return self.length / math.cos(math.radians(self.angle - 90))
+
+    @property
+    def clamp_types(self):
+        # Returns a list of clamps types that can assemble this joint
+        clamps = []
+        if self.angle > 24.9 and self.angle < 90.1:
+            clamps.append('CL3')
+        if self.angle > 89.9 and self.angle < 155.1:
+            clamps.append('CL3M')
+
+        return clamps
 
 
 def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0):
