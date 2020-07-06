@@ -241,13 +241,16 @@ class RFLPathPlanner(PathPlanner):
             tolerances_axes = [math.radians(self.free_motion_tolerance_angular_deg)] * 3
             goal_constraints = self.robot.constraints_from_frame(target_frame, self.free_motion_tolerance_position_mm, tolerances_axes, self.planning_group)
             try:
-                trajectory = self.robot.plan_motion(goal_constraints,
-                                                start_configuration,
-                                                self.planning_group,
-                                                allowed_planning_time=self.free_motion_allowed_planning_time,
-                                                planner_id=self.free_motion_planner_id,
-                                                path_constraints=path_constraints,  # type: compas_fab.robots.JointTrajectory
-                                                )
+                trajectory = self.robot.plan_motion(
+                    goal_constraints = goal_constraints,
+                    start_configuration = start_configuration,
+                    group = self.planning_group,
+                    options = {
+                        'allowed_planning_time':self.free_motion_allowed_planning_time,
+                        'planner_id': self.free_motion_planner_id,
+                        'path_constraints' : path_constraints
+                        }
+                    )
             except Exception as e:
                 if verbose:
                     print("robot.plan_motion error:", e)
@@ -291,7 +294,7 @@ class RFLPathPlanner(PathPlanner):
                 target_frame,
                 start_configuration = start_configuration,
                 group = self.planning_group,
-                return_full_configuration=True)
+                options = {'return_full_configuration':True})
             print("robot.ik_solution success: %s " % configuration)
             return configuration
         except Exception as e:
