@@ -521,7 +521,8 @@ class RobotClampAssemblyProcess(object):
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageretract', assembly_wcf_storageretract)
 
     def compute_clamp_attachapproach_attachretract_detachapproach(self, beam_id, verbose=False):
-        """ Compute 'clamp_wcf_attachapproach', 'clamp_wcf_attachretract' and 'clamp_wcf_detachapproach'
+        """ Compute 'clamp_wcf_attachapproach1', 'clamp_wcf_attachapproach2',
+        'clamp_wcf_attachretract' and 'clamp_wcf_detachapproach'
         from 'clamp_wcf_final' and clamp intrinsic properties.
 
         Side Effect
@@ -539,11 +540,18 @@ class RobotClampAssemblyProcess(object):
             # clamp_wcf_attachapproach is based on moveing clamp_wcf_final backwards along clamp.approach_vector
             # ------------------------------------------------------------
             # Compute the approach vector in wcf
-            approach_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.approach_vector)
+            # approach_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.approach_vector)
+            approach1_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.approach1_vector)
+            approach2_vector_wcf = clamp.current_frame.to_world_coordinates(clamp.approach2_vector)
 
             # compute approach frame
-            clamp_wcf_attachapproach = clamp.current_frame.transformed(Translation.from_vector(approach_vector_wcf.scaled(-1)))
-            self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachapproach', clamp_wcf_attachapproach)
+            # clamp_wcf_attachapproach = clamp.current_frame.transformed(Translation.from_vector(approach_vector_wcf.scaled(-1)))
+            clamp_wcf_attachapproach2 = clamp.current_frame.transformed(Translation.from_vector(approach2_vector_wcf.scaled(-1)))
+            clamp_wcf_attachapproach1 = clamp_wcf_attachapproach2.transformed(Translation.from_vector(approach1_vector_wcf.scaled(-1)))
+
+
+            self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachapproach1', clamp_wcf_attachapproach1)
+            self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachapproach2', clamp_wcf_attachapproach2)
 
             # clamp_wcf_attachretract is based on tool.tool_pick_up_frame transformed to wcf
             # ------------------------------------------------------------
@@ -556,7 +564,8 @@ class RobotClampAssemblyProcess(object):
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_detachapproach', clamp_wcf_detachapproach)
 
             if verbose:
-                print("|  |- clamp_wcf_attachapproach = %s" % clamp_wcf_attachapproach)
+                print("|  |- clamp_wcf_attachapproach1 = %s" % clamp_wcf_attachapproach1)
+                print("|  |- clamp_wcf_attachapproach2 = %s" % clamp_wcf_attachapproach2)
             if verbose:
                 print("|  |- clamp_wcf_final = %s" % clamp.current_frame)
             if verbose:
