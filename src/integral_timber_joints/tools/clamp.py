@@ -48,8 +48,11 @@ class Clamp (Tool):
     @gripper_jaw_position.setter
     def gripper_jaw_position(self, position):
         self._gripper_jaw_position = position
-        self.get_joint_by_name('joint_gripper_jaw_l').position = position
-        self.get_joint_by_name('joint_gripper_jaw_r').position = position
+        for joint in self.get_configurable_joints():
+            if joint.name.startswith('joint_gripper_'):
+                joint.position = position
+        # self.get_joint_by_name('joint_gripper_jaw_l').position = position
+        # self.get_joint_by_name('joint_gripper_jaw_r').position = position
 
     @property
     def clamp_jaw_position(self):
@@ -58,8 +61,11 @@ class Clamp (Tool):
     @clamp_jaw_position.setter
     def clamp_jaw_position(self, position):
         self._clamp_jaw_position = position
-        self.get_joint_by_name('joint_clamp_jaw_l').position = position
-        self.get_joint_by_name('joint_clamp_jaw_r').position = position
+        for joint in self.get_configurable_joints():
+            if joint.name.startswith('joint_clamp_'):
+                joint.position = position
+        # self.get_joint_by_name('joint_clamp_jaw_l').position = position
+        # self.get_joint_by_name('joint_clamp_jaw_r').position = position
 
     def _set_kinematic_state(self, state_dict):
         self.gripper_jaw_position = state_dict['gripper_jaw_position']

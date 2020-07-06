@@ -18,11 +18,17 @@ class CompasRobotArtist(BaseRobotArtist):
 class Tool (RobotModel):
     """ A tool is a RobotModel describing a robotic tool.
     Typically being attached to a robot or placed on a tool changer.
-    A tool is capable of kinematic components and can be modelled and simulated.
+    A tool in this repo's context is capable of kinematic movements
+    with movable components that can be modelled and simulated.
 
     We inherete from the RobotModel class for its ability to perform forward-kinematics.
 
-    The tool (it's meshes and other reference frame) should be modeled at the origin.
+    The tool (it's meshes and other reference frame) should be modeled where the root
+    of the tool (T0CF) is at the origin. In the presence of a tool changer in between,
+    assume the tool changer's tip is the root.
+
+    tool_storage_frame is the location (in WCF) where the tool is stored. Assuming the
+    tool is moved from the tool_coordinate_frame to the tool_storage_frame
     """
 
     def __init__(self,
