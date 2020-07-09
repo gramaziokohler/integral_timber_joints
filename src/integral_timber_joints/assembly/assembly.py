@@ -357,8 +357,7 @@ class Assembly(Network):
         from compas.geometry import Transformation
         source_frame = self.get_beam_attribute(beam_id, 'assembly_wcf_final')
         target_frame = self.get_beam_attribute(beam_id, attribute_name)
-        if source_frame is None:
-            return None
+        assert source_frame is not None
         if target_frame is None:
             return None
         return Transformation.from_frame_to_frame(source_frame, target_frame)
@@ -398,11 +397,29 @@ class Assembly(Network):
         Based on the assembly sequence of the beams. We can deduce the assembly direction
         from the joints that are to be clamped to the already-assembled beams.
 
+        All joint pairs are checked and if they contradict,
+        'assembly_vector_final' and 'assembly_wcf_inclamp' will be set to None
+
+        Side Effect
+        -----------
+
+        beam_attribute 'assembly_wcf_final' is set
+        beam_attribute 'assembly_vector_final' is set (if no contradict)
+        beam_attribute 'assembly_wcf_inclamp' is set (if no contradict)
         """
         from compas.geometry import Vector
         from compas.geometry import Translation
+
+        def assembly_direction_contradict(vectors):
+            for i, vector_i in enumerate(vectors):
+                for j, vector_j in enumerate(list(vectors)[i+1:]):
+                    if vector_i.dot(vector_j) < 0: return True
+            return False
+
         for beam_id in self.sequence:
+
             beam = self.beam(beam_id)
+            print ("> %s" % beam)
             # Compute assembly_wcf_final.
             # It is equal to beam.frame, because the beam is modelled in its final position
             self.set_beam_attribute(beam_id, 'assembly_wcf_final', beam.frame.copy())
@@ -415,29 +432,37 @@ class Assembly(Network):
             assembly_direction_wcf = []
             assembly_vector_length = 0.0
             for _, neighbout_beam_id in self.get_joints_of_beam_connected_to_already_built(beam_id):
+                print ("neighbout_beam_id: %s" % neighbout_beam_id)
                 joint_on_this_beam = self.joint((beam_id, neighbout_beam_id))
                 joint_on_this_neighbor = self.joint((neighbout_beam_id, beam_id))
 
                 assembly_direction_wcf.append(joint_on_this_beam.get_assembly_direction(beam).unitized())
                 assembly_vector_length = max(joint_on_this_neighbor.height + joint_on_this_beam.height, assembly_vector_length)
 
-            # Handles no_clamp (perhaps) grounded beams v.s. typical clamp installed beams
-            if len(assembly_direction_wcf) > 0:
-                # Test if the list of assembly_direction_wcf contradicts itself
-
-                geometric_blocking = Proxy(package='geometric_blocking')
-                feasible_disassem_rays, lin_set = geometric_blocking.compute_feasible_region_from_block_dir(assembly_direction_wcf)
-                if len(feasible_disassem_rays) == 0 :
-                    print("WARNING: Beam (%s) Assembly direction is blocked by joints." % (beam_id))
-                    continue
-
-                assembly_vector_wcf = Vector.sum_vectors(assembly_direction_wcf).unitized().scaled(assembly_vector_length + beam_in_jaw_position_gap_offset)
-                print("Assembly Direction of Beam (%s) computed from Joints to be %s (ref to wcf)." % (beam_id, assembly_direction_wcf))
-            else:
+            if len(assembly_direction_wcf) == 0:
+                # No Neighbouring joint case
+                # Handles no_clamp (perhaps) grounded beams v.s. typical clamp installed beams
                 assembly_vector_wcf = assembly_vector_if_no_joint
                 print("Assembly Direction of Beam (%s) using downward movement %s (ref to wcf)." % (beam.name, assembly_direction_wcf))
+            else:
+                # Test if the list of assembly_direction_wcf contradicts eachother
+                contradict = assembly_direction_contradict(assembly_direction_wcf)
+                if contradict :
+                    # No Solution Case
+                    print("WARNING: Beam (%s) Assembly direction is blocked by joints." % (beam_id))
+                    assembly_vector_wcf = None
+                else:
+                    # Solution exist Case
+                    assembly_vector_wcf = Vector.sum_vectors(assembly_direction_wcf).unitized().scaled(assembly_vector_length + beam_in_jaw_position_gap_offset)
+                    print("Assembly Direction of Beam (%s) computed from Joints to be %s (ref to wcf)." % (beam_id, assembly_direction_wcf))
+
+            self.set_beam_attribute(beam_id, 'assembly_vector_final', assembly_vector_wcf)
 
             # Compute the assembly_wcf_inclamp by moving back along the assembly_direction_wcf.
-            wcf_clamp_transform = Translation.from_vector(assembly_vector_wcf.scaled(-1.0))
-            self.set_beam_attribute(beam_id, 'assembly_vector_final', assembly_vector_wcf)
-            self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', beam.frame.transformed(wcf_clamp_transform))
+            if assembly_vector_wcf is None:
+                self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
+                print ('assembly_wcf_inclamp set to None')
+
+            else:
+                wcf_clamp_transform = Translation.from_vector(assembly_vector_wcf.scaled(-1.0))
+                self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', beam.frame.transformed(wcf_clamp_transform))
