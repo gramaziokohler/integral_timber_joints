@@ -3,11 +3,10 @@ from copy import deepcopy
 from compas.geometry import Frame, Transformation, Translation, Vector
 from compas.rpc import Proxy
 from geometric_blocking import blocked
+
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, Joint
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation
-
-# I thinkm I need somesort of collision checker, IK reachability checker, Blocking direction checker.
 
 
 class RobotClampAssemblyProcess(object):
@@ -15,13 +14,15 @@ class RobotClampAssemblyProcess(object):
     def __init__(self, assembly):
         # type: (Assembly)
         if assembly is not None:
-            self.assembly = assembly.copy()  # type: Assembly
-        self._clamps = {}    # type: Dict[str, Clamp]
-        self._grippers = {}  # type: Dict[str, Gripper]
-        self.actions = []    # type: List[Action]
-        self.movements = []    # type: List[Movements]
-        self.pickup_station = None # type: PickupStation
-        self.environment_meshes = [] # type: List[Mesh]
+            self.assembly = assembly.copy()     # type: Assembly
+        self._clamps = {}                       # type: Dict[str, Clamp]
+        self._grippers = {}                     # type: Dict[str, Gripper]
+        self.robot_toolchanger = []                   # type: List[ToolChanger]
+        self.robot_wrist_collision_mesh = []                    # type: List[Mesh]
+        self.actions = []                       # type: List[Action]
+        self.movements = []                     # type: List[Movements]
+        self.pickup_station = None              # type: PickupStation
+        self.environment_meshes = []            # type: List[Mesh]
 
     def add_clamp(self, clamp):
         self._clamps[clamp.name] = clamp.copy()
@@ -250,8 +251,10 @@ class RobotClampAssemblyProcess(object):
             blocking_vectors += clamp.jaw_blocking_vectors_in_wcf
 
         # Check if either direction of the vector is free
-        if not blocked(blocking_vectors, face_y_axis): return self.compute_jawapproach_vector_length(beam_id, face_y_axis.scaled(-1.0))
-        if not blocked(blocking_vectors, face_y_axis.scaled(-1.0)): return self.compute_jawapproach_vector_length(beam_id, face_y_axis.copy())
+        if not blocked(blocking_vectors, face_y_axis):
+            return self.compute_jawapproach_vector_length(beam_id, face_y_axis.scaled(-1.0))
+        if not blocked(blocking_vectors, face_y_axis.scaled(-1.0)):
+            return self.compute_jawapproach_vector_length(beam_id, face_y_axis.copy())
         return None
 
     def search_valid_jawapproach_vector_prioritizing_guide_vector(self, beam_id):
@@ -429,7 +432,7 @@ class RobotClampAssemblyProcess(object):
 
         return corner
 
-    def compute_storage_location_at_corner_aligning_pickup_location(self, beam_id, pickup_station = None):
+    def compute_storage_location_at_corner_aligning_pickup_location(self, beam_id, pickup_station=None):
         # type: (str, PickupStation) -> None
         """ Compute 'assembly_wcf_storage' alignment frame
         by aligning a choosen corner relative to the 'gripper_grasp_face'
@@ -449,7 +452,8 @@ class RobotClampAssemblyProcess(object):
         For a beam-end alignment: align_face_X0 = False, align_face_Y0 = False, align_face_Z0 = True
         e.g
         """
-        if pickup_station is None: pickup_station = self.pickup_station
+        if pickup_station is None:
+            pickup_station = self.pickup_station
         storage_station_frame = pickup_station.alignment_frame
         align_face_X0 = pickup_station.align_face_X0
         align_face_Y0 = pickup_station.align_face_Y0
@@ -601,7 +605,6 @@ class RobotClampAssemblyProcess(object):
             # clamp_wcf_attachapproach = clamp.current_frame.transformed(Translation.from_vector(approach_vector_wcf.scaled(-1)))
             clamp_wcf_attachapproach2 = clamp.current_frame.transformed(Translation.from_vector(approach2_vector_wcf.scaled(-1)))
             clamp_wcf_attachapproach1 = clamp_wcf_attachapproach2.transformed(Translation.from_vector(approach1_vector_wcf.scaled(-1)))
-
 
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachapproach1', clamp_wcf_attachapproach1)
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachapproach2', clamp_wcf_attachapproach2)
