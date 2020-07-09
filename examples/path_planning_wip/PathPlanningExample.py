@@ -4,8 +4,8 @@ from integral_timber_joints.process.algorithms import *
 
 import time
 
-json_path_in = "examples/process_design_example/frame_ortho_lap_joints_no_rfl_prepathplan.json"
-json_path_out = "examples/process_design_example/frame_ortho_lap_joints_no_rfl_pathplan.json"
+json_path_in = "examples/path_planning_wip/timber_box_prepathplan.json"
+json_path_out = "examples/path_planning_wip/timber_box_pathplan.json"
 # replan = True # If Replan is true, the previous pathplanned process file is loaded.
 ros_planner_ip = "192.168.43.28"
 
@@ -76,7 +76,7 @@ for ia, action in enumerate(process.actions):
             # pp.remove_collision_mesh('already_built_beams')
             # for already_beam_id in already_built_beam_ids:
             #     pp.append_collision_mesh(assembly.beam(already_beam_id).cached_mesh, 'already_built_beams')
-                
+
             # Attach Tool and Beam to robot
 
             # Prepare Starting Configuration
