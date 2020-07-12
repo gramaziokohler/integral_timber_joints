@@ -84,7 +84,7 @@ Install the following software:
 Run the following code in terminal to add them to Rhino Grasshopper Python library path:
 
 ```
-python -m compas_rhino.install -p compas compas_fab roslibpy compas_rhino jsonpickle integral_timber_joints geometric_blocking compas_trimesh
+python -m compas_rhino.install -p compas compas_fab compas_ghpython roslibpy compas_rhino jsonpickle integral_timber_joints geometric_blocking compas_trimesh
 ```
 
 ## Module Structure
