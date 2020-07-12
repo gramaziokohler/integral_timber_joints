@@ -33,6 +33,18 @@ conda create --name itj python=3.7
 conda activate itj
 ```
 
+One of the dependency from `compas` is planarity, which depends of `cython`. You will need to install this manually:
+
+``` 
+pip install cython --install-option="--no-cython-compile"
+```
+
+or 
+
+```
+conda install cython
+```
+
 Install this library from source by cloning this repo to local and install from source. Run this code in terminal from the root folder of this repo. Note that there maybe error message from `pip` indicating version incompatibility of `compas` with `compas_fab`, this is fine. 
 
 ```
@@ -72,7 +84,7 @@ Install the following software:
 Run the following code in terminal to add them to Rhino Grasshopper Python library path:
 
 ```
-python -m compas_rhino.install -p compas compas_fab roslibpy compas_rhino jsonpickle integral_timber_joints geometric_blocking
+python -m compas_rhino.install -p compas compas_fab roslibpy compas_rhino jsonpickle integral_timber_joints geometric_blocking compas_trimesh
 ```
 
 ## Module Structure
