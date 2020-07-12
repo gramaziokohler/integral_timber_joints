@@ -190,7 +190,6 @@ class Assembly(Network):
                 copied_value = deepcopy(value)
             self.node_attribute(beam_id, attribute_key, copied_value)
 
-
     def get_beam_attribute(self, beam_id, attribute_key):
         """ Getting an attribute of one beam
 
@@ -285,7 +284,8 @@ class Assembly(Network):
         """ Returns the (0-counting) position of the beam in self.sequence
         If beam is not in self.sequence, returns None
         """
-        if beam_id not in self.sequence: return None
+        if beam_id not in self.sequence:
+            return None
         return self.sequence.index(beam_id)
     # --------------------------------------------
     # Iterating through all Beams and Joints
@@ -379,7 +379,7 @@ class Assembly(Network):
         return [joint_id for joint_id in self.get_reverse_joint_ids_of_beam(beam_id) if self.get_joint_attribute(joint_id, 'is_clamp_attached_side') == True]
 
     def get_already_built_beams(self, beam_id):
-         # type: (self) -> list[str]
+        # type: (self) -> list[str]
         "Return the beam ids of already-built beams relative to the given beam_id"
         this_beam_sequence = self.get_beam_sequence(beam_id)
         return self.sequence[:this_beam_sequence]
@@ -413,13 +413,14 @@ class Assembly(Network):
         def assembly_direction_contradict(vectors):
             for i, vector_i in enumerate(vectors):
                 for j, vector_j in enumerate(list(vectors)[i+1:]):
-                    if vector_i.dot(vector_j) < 0: return True
+                    if vector_i.dot(vector_j) < 0:
+                        return True
             return False
 
         for beam_id in self.sequence:
 
             beam = self.beam(beam_id)
-            print ("> %s" % beam)
+            print("> %s" % beam)
             # Compute assembly_wcf_final.
             # It is equal to beam.frame, because the beam is modelled in its final position
             self.set_beam_attribute(beam_id, 'assembly_wcf_final', beam.frame.copy())
@@ -432,7 +433,7 @@ class Assembly(Network):
             assembly_direction_wcf = []
             assembly_vector_length = 0.0
             for _, neighbout_beam_id in self.get_joints_of_beam_connected_to_already_built(beam_id):
-                print ("neighbout_beam_id: %s" % neighbout_beam_id)
+                print("neighbout_beam_id: %s" % neighbout_beam_id)
                 joint_on_this_beam = self.joint((beam_id, neighbout_beam_id))
                 joint_on_this_neighbor = self.joint((neighbout_beam_id, beam_id))
 
@@ -447,7 +448,7 @@ class Assembly(Network):
             else:
                 # Test if the list of assembly_direction_wcf contradicts eachother
                 contradict = assembly_direction_contradict(assembly_direction_wcf)
-                if contradict :
+                if contradict:
                     # No Solution Case
                     print("WARNING: Beam (%s) Assembly direction is blocked by joints." % (beam_id))
                     assembly_vector_wcf = None
@@ -461,7 +462,7 @@ class Assembly(Network):
             # Compute the assembly_wcf_inclamp by moving back along the assembly_direction_wcf.
             if assembly_vector_wcf is None:
                 self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
-                print ('assembly_wcf_inclamp set to None')
+                print('assembly_wcf_inclamp set to None')
 
             else:
                 wcf_clamp_transform = Translation.from_vector(assembly_vector_wcf.scaled(-1.0))
