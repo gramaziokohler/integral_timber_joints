@@ -4,9 +4,9 @@ from integral_timber_joints.process.algorithms import *
 
 import time
 
-json_path_in = "examples/path_planning_wip/halflap_structure_process.json"
-json_path_out = "examples/path_planning_wip/halflap_structure_prepathplan.json"
-movement_log_file_out = "examples/path_planning_wip/halflap_structure_movements.txt"
+json_path_in = "examples/path_planning_wip/example_process.json"
+json_path_out = "examples/path_planning_wip/example_prepathplan.json"
+movement_log_file_out = "examples/path_planning_wip/example_movements.txt"
 
 #########################################################################
 # Load process from file
