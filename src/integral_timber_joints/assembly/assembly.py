@@ -391,6 +391,35 @@ class Assembly(Network):
         this_beam_sequence = self.get_beam_sequence(beam_id)
         return [neighbor_id for neighbor_id in self.neighbors_out(beam_id) if self.get_beam_sequence(neighbor_id) < this_beam_sequence]
 
+    # -----------------------
+    # Advanced Algorithms
+    # -----------------------
+
+    def search_for_halflap_joints_with_previous_beams(self, beam_id, guide_assembly_vector = None, parallel_tolerance = 0.001):
+        ''' Computes the joints between the given beam, and it's (earlier) neighbours.
+        And adds the joints to the assembly.
+        '''
+        from integral_timber_joints.geometry import Joint_halflap_from_beam_beam_intersection
+
+        for bid_neighbor in self.get_already_built_neighbors(beam_id):
+            beam1 = self.beam(beam_id)
+            beam2 = self.beam(bid_neighbor)
+
+            option1 = Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0) # joint1, joint2
+            option2 = Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=1)
+            if option1[0] is not None and option1[1] is not None:
+                # Pick a guide vector (here just pick option 1 ffs)
+                if guide_assembly_vector is None:
+                    guide_assembly_vector = option1[0].get_assembly_direction(beam1)
+
+                # Pick between option 1 or 2.
+                # Of course only if option 2 is possible
+                if guide_assembly_vector.angle(option1[0].get_assembly_direction(beam1)) < parallel_tolerance or option2[0] is None or option2[1] is None:
+                    self.add_joint_pair(option1[0], option1[1], beam_id, bid_neighbor)
+                else:
+                    self.add_joint_pair(option2[0], option2[1], beam_id, bid_neighbor)
+
+
     def compute_assembly_direction_from_joints_and_sequence(self, assembly_vector_if_no_joint, beam_in_jaw_position_gap_offset):
         """Computes the assembly of all beams based on the assembly sequence and the joints the beam
 
