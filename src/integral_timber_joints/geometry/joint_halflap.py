@@ -2,12 +2,10 @@
 #   Joint_lap object are used to model variable angle lap joint.
 
 import math
+
 import compas
 from compas.datastructures import Mesh
-from compas.geometry import Box
-from compas.geometry import Frame, Vector, Point
-
-from compas.geometry import distance_point_point, intersection_line_line
+from compas.geometry import Box, Frame, Point, Vector, distance_point_point, intersection_line_line
 
 from integral_timber_joints.geometry.joint import Joint
 
@@ -174,11 +172,19 @@ class Joint_halflap(Joint):
         return clamps
 
 
-def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0):
+def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0, dist_tol=1e-5, coplanar_tol=5e-3):
+    ''' Compute the intersection between two beams.
+    Returns a tuple of [Joint_halflap, Joint_halflap] when a valid joint pair can be found.
+
+    The function will check for beam center-line intersections.
+
+    If no intersection can be found or the two beam are not coplanar,
+    Returns a tuple of [None, None]
+    '''
     # type: (Beam, Beam): -> Tuple[Joint_halflap, Joint_halflap]
 
     # Find coplanar faces
-    face_pairs = beam1.get_beam_beam_coplanar_face_ids(beam2)
+    face_pairs = beam1.get_beam_beam_coplanar_face_ids(beam2, coplanar_tol)
     if len(face_pairs) == 0:
         return (None, None)
     beam1_face_id, beam2_face_id = face_pairs[face_choice]
@@ -189,13 +195,19 @@ def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0):
     beam2_frnt_edge = beam2.reference_edge_wcf(beam2_face_id)
     beam2_back_edge = beam2.reference_edge_wcf(beam2_face_id - 1)
 
-    # Compute intersection distance
+    # Compute intersection distance, Return None if they don't intersect
     def llx_distance(line1, line2):
-        intersection_result = intersection_line_line(line1, line2)[0]
+        intersection_result = intersection_line_line(line1, line2, dist_tol)[0]
+        if intersection_result is None:
+            return None
         return distance_point_point(intersection_result, line1.start)
 
     beam1_distance = min(llx_distance(beam1_frnt_edge, beam2_frnt_edge), llx_distance(beam1_frnt_edge, beam2_back_edge))
     beam2_distance = min(llx_distance(beam2_frnt_edge, beam1_frnt_edge), llx_distance(beam2_frnt_edge, beam1_back_edge))
+
+    # Handles the case where the intersecion fails.
+    if beam1_distance is None or beam2_distance is None:
+        return (None, None)
 
     # Compute angle
     def llx_llx_angle(line1, line2, angled_line):
