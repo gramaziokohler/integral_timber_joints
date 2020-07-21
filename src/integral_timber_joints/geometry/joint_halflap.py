@@ -6,6 +6,7 @@ import math
 import compas
 from compas.datastructures import Mesh
 from compas.geometry import Box, Frame, Point, Vector, distance_point_point, intersection_line_line
+from compas.geometry import intersection_segment_segment
 
 from integral_timber_joints.geometry.joint import Joint
 
@@ -197,8 +198,8 @@ def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0, dist_
 
     # Compute intersection distance, Return None if they don't intersect
     def llx_distance(line1, line2):
-        intersection_result = intersection_line_line(line1, line2, dist_tol)[0]
-        if intersection_result is None:
+        intersection_result = intersection_segment_segment(line1, line2, dist_tol)
+        if intersection_result is None :
             return None
         return distance_point_point(intersection_result, line1.start)
 
