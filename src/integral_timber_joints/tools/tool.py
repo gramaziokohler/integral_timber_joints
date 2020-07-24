@@ -84,6 +84,12 @@ class Tool (RobotModel):
         """ Setting the current frame T0CP directly"""
         self._current_frame = frame.copy()
 
+    @property
+    def current_tcf(self):
+        """ Getting the current tool coordinate frame (tool tip) in WCF"""
+        T = Transformation.from_frame_to_frame(Frame.worldXY(), self._current_frame)
+        return self.tool_coordinate_frame.transformed(T)
+
     def set_current_frame_from_tcp(self, tcp_frame):
         # type: (Frame) -> Frame
         """ Computing the current_frame by supplying where the tool tip should go.
