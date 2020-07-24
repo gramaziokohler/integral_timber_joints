@@ -41,6 +41,7 @@ class Clamp (Tool):
         # Vector direction is the direction where the beam cannot move towards.
         self.jaw_block_vectors = [] # type: List[Vector]
 
+        self.gripper_drill_lines = []
     # --------------------------------------------------------
     # State Setting Functions
     # --------------------------------------------------------
@@ -184,6 +185,7 @@ def CL3Factory(
     approach2_vector,
     detachretract1_vector,
     detachretract2_vector,
+    gripper_drill_lines,
     ):
     """ A Parallel gripper will have a base and two gripper jaw.
     Modelling guide
@@ -204,6 +206,7 @@ def CL3Factory(
     robot_model.approach2_vector = approach2_vector               # This vector is ref to t0cf
     robot_model.detachretract1_vector = detachretract1_vector   # This vector is ref to t0cf
     robot_model.detachretract2_vector = detachretract2_vector   # This vector is ref to t0cf
+    robot_model.gripper_drill_lines = gripper_drill_lines
 
     #world_link = robot_model.add_link('world')
     gripper_base = robot_model.add_link('gripper_base', base_mesh)
