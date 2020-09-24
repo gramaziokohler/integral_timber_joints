@@ -319,9 +319,11 @@ class Beam(object):
         T = Transformation.from_frame(self.frame)
         return self.reference_side_ocf(side_id).transformed(T)
 
-    def reference_edge_wcf(self, edge_id, wrap_edge_id = True):
+    def reference_edge_ocf(self, edge_id, wrap_edge_id = True):
         """Returns the reference edge as defined in BTLx 1.1.
         For example Reference Edge 1 corrispond to the X axis of Reference Side 1.
+        Line is drawn from beam start side to beam end side.
+        Line coordinate in beam object coordinate frame (OCF)
 
         Valid edge_id are from (1 to 4), values outside will be wrapped if wrap_edge_id = True
 
@@ -334,10 +336,24 @@ class Beam(object):
             edge_id = (edge_id - 1) % 4 + 1
 
         if edge_id in range(1, 5):
-            return Line(self.corner_wcf(edge_id), self.corner_wcf(edge_id + 4))
+            return Line(self.corner_ocf(edge_id), self.corner_ocf(edge_id + 4))
 
         # In case of wrap_edge_id = False
         raise IndexError("edge_id only accepts (int) 1 - 4 if wrap_edge_id = False")
+
+    def reference_edge_wcf(self, edge_id, wrap_edge_id = True):
+        """Returns the reference edge as defined in BTLx 1.1.
+        For example Reference Edge 1 corrispond to the X axis of Reference Side 1.
+        Line is drawn from beam start side to beam end side.
+        Line coordinate in world coordinate frame (WCF)
+
+        Valid edge_id are from (1 to 4), values outside will be wrapped if wrap_edge_id = True
+
+        Returns
+        -------
+        compas.geometry.Line
+        """
+        return self.frame.to_world_coordinates(self.reference_edge_ocf(edge_id, wrap_edge_id))
 
 
     # -------------------------------

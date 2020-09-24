@@ -3,6 +3,9 @@ from __future__ import absolute_import, division, print_function
 from compas.datastructures import Network
 from compas.rpc import Proxy
 
+from integral_timber_joints.geometry.joint import Joint
+from integral_timber_joints.geometry.beam import Beam
+
 
 class Assembly(Network):
     """A data structure for discrete element assemblies.
@@ -48,10 +51,11 @@ class Assembly(Network):
         })
         # Default attributes for beams (node)
         self.update_default_node_attributes({
-            'is_planned': False,
-            'is_placed': False,
-            'is_visible': True,
-            'is_attached': True,
+            'beam': None,                           # This should always contain a beam object, assigned by add_beam()
+            'is_planned': False,                    # Parameter used in visualization
+            'is_placed': False,                     # Parameter used in visualization
+            'is_visible': True,                     # Parameter used in visualization
+            'is_attached': True,                    # Parameter used in visualization
             'design_guide_vector_jawapproach': None,
             'assembly_vector_final': None,
             'assembly_vector_jawapproach': None,
@@ -70,6 +74,8 @@ class Assembly(Network):
             'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
             'design_guide_vector_grasp': None,      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
             'design_guide_vector_storage_pickup': None,  # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
+            'beam_cut_start': None,                 # Beamcut object at the start of the beam. Can be None
+            'beam_cut_end': None,                   # Beamcut object at the end of the beam. Can be None
         })
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
@@ -248,10 +254,12 @@ class Assembly(Network):
         return self.edge_attribute(joint_id, attribute_key)
 
     def beam(self, key):
+        # type: (str) -> Beam
         """Get a beam by its key."""
         return self.node_attribute(key, 'beam')
 
     def joint(self, joint_id):
+        # type: (tuple[str,str]) -> Optional[Joint]
         """Get a joint by its id.
         joint_id is a Tuple """
         return self.edge_attribute(joint_id, 'joint')
@@ -272,6 +280,7 @@ class Assembly(Network):
         return joint_ids
 
     def get_reverse_joint_ids_of_beam(self, beam_id):
+        # type: (str) -> list[tuple[str,str]]
         """Get all the ids of joints (neighbor_beam_id, beam_id) that are attached to a beam
         """
         joint_ids = []
@@ -280,13 +289,37 @@ class Assembly(Network):
         return joint_ids
 
     def get_beam_sequence(self, beam_id):
-        # type: (str) -> optional(int)
+        # type: (str) -> Optional[int]
         """ Returns the (0-counting) position of the beam in self.sequence
         If beam is not in self.sequence, returns None
         """
         if beam_id not in self.sequence:
             return None
         return self.sequence.index(beam_id)
+
+    # --------------------------------------------
+    # Extra Geometrical Features
+    # --------------------------------------------
+    def set_beam_cut_start(self, beam_id, beamcut):
+        # type: (str, Beamcut) -> None
+        """Set the Beamcut object at the start of beam. None if un-cut."""
+        self.set_beam_attribute(beam_id, 'beam_cut_start', beamcut)
+
+    def set_beam_cut_end(self, beam_id, beamcut):
+        # type: (str, Beamcut) -> None
+        """Set the Beamcut object at the end of beam. None if un-cut."""
+        self.set_beam_attribute(beam_id, 'beam_cut_end', beamcut)
+
+    def get_beam_cut_start(self, beam_id):
+        # type: (str) -> Beamcut
+        """Get the Beamcut object at the start of beam. None if un-cut."""
+        return self.get_beam_attribute(beam_id, 'beam_cut_start')
+
+    def get_beam_cut_end(self, beam_id):
+        # type: (str) -> Beamcut       
+        """Get the Beamcut object at the end of beam. None if un-cut."""
+        return self.get_beam_attribute(beam_id, 'beam_cut_end')
+
     # --------------------------------------------
     # Iterating through all Beams and Joints
     # --------------------------------------------
@@ -348,8 +381,17 @@ class Assembly(Network):
         """
         if skip_if_cached and (self.beam(beam_id).cached_mesh is not None):
             return
+
+        # Collect all the features
         joints = self.get_joints_of_beam(beam_id)
-        self.beam(beam_id).update_cached_mesh(joints)
+        beam_cut_start = self.get_beam_cut_start(beam_id)
+        beam_cut_end = self.get_beam_cut_end(beam_id)
+
+        features = joints
+        features += [beam_cut_start] if beam_cut_start is not None else []
+        features += [beam_cut_end] if beam_cut_end is not None else []
+
+        self.beam(beam_id).update_cached_mesh(features)
 
     def get_beam_transformaion_to(self, beam_id, attribute_name):
         # type: (str, str) -> Optional[Transformation]
@@ -363,14 +405,14 @@ class Assembly(Network):
         return Transformation.from_frame_to_frame(source_frame, target_frame)
 
     def get_joints_of_beam_connected_to_already_built(self, beam_id):
-        # type: (self)
+        # type: (str, bool) -> list[tuple[str,str]]
         """Return the joints ids (beam_id, neighbor_id) that are connected to already-assembled beams
         """
         sequence_i_of_beam = self.get_beam_sequence(beam_id)
         return [(beam_id, neighbor_id) for neighbor_id in self.get_already_built_neighbors(beam_id)]
 
     def get_joint_ids_of_beam_clamps(self, beam_id, clamping_this_beam = True):
-        # type: (self)
+        # type: (str, bool) -> list[tuple[str,str]]
         """Return the list [joint_id] of clamps related to the beam_id.
         - If clamping_this_beam == True, clamps are clamping the assembly of beam(beam_id)
         - If clamping_this_beam == False, clamps are attached to beam(beam_id) for the assembly of later beams
@@ -386,13 +428,13 @@ class Assembly(Network):
             return [joint_id for joint_id in self.get_joint_ids_of_beam(beam_id) if self.get_joint_attribute(joint_id, 'is_clamp_attached_side') == True]
 
     def get_already_built_beams(self, beam_id):
-        # type: (self) -> list[str]
+        # type: (str) -> list[str]
         "Return the beam ids of already-built beams relative to the given beam_id"
         this_beam_sequence = self.get_beam_sequence(beam_id)
         return self.sequence[:this_beam_sequence]
 
     def get_already_built_neighbors(self, beam_id):
-        # type: (self) -> list[str]
+        # type: (str) -> list[str]
         "Return the beam ids of neighbours that are connected to already-assembled beams"
         # The if statement checkes if the joint attribute 'sequence_earlier' == False
         this_beam_sequence = self.get_beam_sequence(beam_id)
