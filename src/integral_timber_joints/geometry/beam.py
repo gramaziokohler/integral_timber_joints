@@ -140,7 +140,7 @@ class Beam(object):
         ------
         point[list]
         """
-        return self.frame.to_world_coordinates([length, self.width/2, self.height/2])
+        return self.frame.to_world_coordinates([length, self.height/2, self.width/2])
 
     def get_center_point(self):
         """Computes the centroid of a beam in WCF
@@ -149,7 +149,7 @@ class Beam(object):
         ------
         point[list]
         """
-        return self.frame.to_world_coordinates([self.length/2, self.width/2, self.height/2])
+        return self.frame.to_world_coordinates([self.length/2, self.height/2, self.width/2])
 
     def get_face_frame(self, face_id):
         """Computes the frame of the selected face
@@ -163,13 +163,13 @@ class Beam(object):
         if face_id == 1:
             return self.frame.copy()
         if face_id == 2:
-            new_origin = self.frame.to_world_coordinates([0, self.width, 0])
+            new_origin = self.frame.to_world_coordinates([0, self.height, 0])
             return Frame(new_origin, self.frame.xaxis, self.frame.normal)
         if face_id == 3:
-            new_origin = self.frame.to_world_coordinates([0, self.width, self.height])
+            new_origin = self.frame.to_world_coordinates([0, self.height, self.width])
             return Frame(new_origin, self.frame.xaxis, self.frame.yaxis * -1.0)
         if face_id == 4:
-            new_origin = self.frame.to_world_coordinates([0, 0, self.height])
+            new_origin = self.frame.to_world_coordinates([0, 0, self.width])
             return Frame(new_origin, self.frame.xaxis, self.frame.normal * -1.0)
         else:
             raise IndexError('face_id index out of range')
@@ -183,6 +183,7 @@ class Beam(object):
         ------
         compas plane
         """
+        plane = None
 
         origin_frame = self.frame.copy()
         if plane_id == 0:
@@ -222,29 +223,6 @@ class Beam(object):
 
         Return:
         ------
-        Face 1 and 3 = beam.height
-        Face 2 and 4 = beam.width
-
-        """
-        if face_id == 1:
-            return self.height
-        if face_id == 2:
-            return self.width
-        if face_id == 3:
-            return self.height
-        if face_id == 4:
-            return self.width
-        else:
-            raise IndexError()
-
-    def get_face_height(self, face_id):
-        """Gets the height (depth) of the selected face.
-        Corrisponds to the dimension of the beam which is normal to the selected face.
-        ----------
-        plane_id: (int) ID of plane
-
-        Return:
-        ------
         Face 1 and 3 = beam.width
         Face 2 and 4 = beam.height
 
@@ -260,9 +238,32 @@ class Beam(object):
         else:
             raise IndexError()
 
+    def get_face_height(self, face_id):
+        """Gets the height (depth) of the selected face.
+        Corrisponds to the dimension of the beam which is normal to the selected face.
+        ----------
+        plane_id: (int) ID of plane
+
+        Return:
+        ------
+        Face 1 and 3 = beam.height
+        Face 2 and 4 = beam.width
+
+        """
+        if face_id == 1:
+            return self.height
+        if face_id == 2:
+            return self.width
+        if face_id == 3:
+            return self.height
+        if face_id == 4:
+            return self.width
+        else:
+            raise IndexError()
+
     def get_center_line(self):
-        start = self.frame.to_world_coordinates([0, self.width/2, self.height/2])
-        end = self.frame.to_world_coordinates([self.length, self.width/2, self.height/2])
+        start = self.frame.to_world_coordinates([0, self.height/2, self.width/2])
+        end = self.frame.to_world_coordinates([self.length, self.height/2, self.width/2])
         return Line(start, end)
 
     def get_face_center_line(self, face_id):
@@ -396,9 +397,9 @@ class Beam(object):
 
         """
         # Compas Box origin is at the center of the box
-        box_center_point = self.frame.to_world_coordinates(Point(self.length/2, self.width/2, self.height/2))
+        box_center_point = self.frame.to_world_coordinates(Point(self.length/2, self.height/2, self.width/2))
         box_center_frame = Frame(box_center_point, self.frame.xaxis, self.frame.yaxis)
-        box = Box(box_center_frame, self.length, self.width, self.height)
+        box = Box(box_center_frame, self.length, self.height, self.width)
 
         # Convert Box to Mesh
         from compas.datastructures import mesh_quads_to_triangles
@@ -494,7 +495,7 @@ class Beam(object):
     # -----------------------
 
     def grasp_frame_ocf(self, side_id, dist_from_start):
-        # type: (int) -> Frame
+        # type: (int, float) -> Frame
         ''' Returns the Grasp Frame according to side_id and dist_from_start.
         Grasp Frame Origin coincide with the center line on the selected surface.
         Grasp Frame X Axis is aligned to the beam's X Axis
@@ -510,7 +511,7 @@ class Beam(object):
     # -----------------------
 
     def get_beam_beam_coplanar_face_ids(self, neighbor_beam, tol = 0.005):
-        # type: (Beam, Beam): List[Tuple[str,str]]
+        # type: (Beam, float) -> list[tuple[str,str]]
         """
         Computes the faces that are coplanar between two beams
         Returns:
