@@ -14,12 +14,13 @@ from compas.geometry import Frame
 from compas.geometry import distance_point_point, intersection_line_line
 
 from integral_timber_joints.geometry.joint import Joint
+from integral_timber_joints.geometry.beam import Beam
 
 class Joint_90lap(Joint):
     """
     joint class containing varied joints
     """
-    def __init__(self, distance,face_id, length, width, height, name = None):
+    def __init__(self, distance, face_id, length, width, height, name = None):
 
         """
         :param distance:  double
@@ -57,19 +58,19 @@ class Joint_90lap(Joint):
         The self.mesh is updated with the new mesh
 
         """
-        TOLEARNCE = 10.0
+        OVERSIZE = 10.0
 
         # Get face_frame from Beam (the parent Beam)
         face_frame = BeamRef.get_face_frame(self.face_id) # type: compas.datastructures.Mesh
 
         # Compute beam boolean box location
-        box_frame_origin = face_frame.to_world_coordinates([(self.distance), self.height / 2 - TOLEARNCE / 2 , self.length / 2])
+        box_frame_origin = face_frame.to_world_coordinates([(self.distance), self.height / 2 - OVERSIZE / 2 , self.length / 2])
         box_frame = Frame(box_frame_origin, face_frame.xaxis, face_frame.yaxis)
 
         # Compute 3 Box dimensions
         box_x = self.width
-        box_y = self.height + TOLEARNCE
-        box_z = self.length + 2 * TOLEARNCE
+        box_y = self.height + OVERSIZE
+        box_z = self.length + 2 * OVERSIZE
 
         # Draw Boolean Box
         boolean_box = Box(box_frame, box_x, box_y, box_z)
@@ -116,7 +117,7 @@ class Joint_90lap(Joint):
         self.face_id = new_id
 
 def Joint_90lap_from_beam_beam_intersection(beam1, beam2, face_choice = 0):
-    # type: (Beam, Beam): -> Tuple[Joint_90lap, Joint_90lap]
+    # type: (Beam, Beam, int) -> tuple[Joint_90lap, Joint_90lap]
 
     # Find coplanar faces
     face_pairs = beam1.get_beam_beam_coplanar_face_ids(beam2)

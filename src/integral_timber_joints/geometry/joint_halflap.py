@@ -9,7 +9,7 @@ from compas.geometry import Box, Frame, Point, Vector, distance_point_point, int
 from compas.geometry import intersection_segment_segment
 
 from integral_timber_joints.geometry.joint import Joint
-
+from integral_timber_joints.geometry.beam import Beam
 
 class Joint_halflap(Joint):
     """
@@ -53,16 +53,20 @@ class Joint_halflap(Joint):
         The self.mesh is updated with the new mesh
 
         """
-        TOLEARNCE = 10.0
+        OVERSIZE = 10.0
 
         # Get face_frame from Beam (the parent Beam)
         face_frame = BeamRef.reference_side_wcf(self.face_id)  # type: compas.datastructures.Mesh
 
         # Compute beam boolean box location
-        box_frame_origin = face_frame.to_world_coordinates([(self.distance), self.height / 2 - TOLEARNCE / 2, self.length / 2])
+        box_frame_origin = face_frame.to_world_coordinates([(self.distance), self.height / 2 - OVERSIZE / 2, self.length / 2])
         box_frame = Frame(box_frame_origin, face_frame.xaxis, face_frame.yaxis)
 
-        # The box vertex order is not well documented:
+        # The 8 corners of a box:
+        # With respect to the local Z axis, the vertices of the bottom
+        # face are listed first in clockwise direction, starting at the bottom left corner.
+        # The vertices of the top face are listed in counterclockwise direction.
+
         angled_length = self.length / math.cos(math.radians(self.angle - 90))
         vertices = []
         vertices.append(Point(self.distance, 0, -self.height))  # point on -x -y -z
@@ -71,8 +75,8 @@ class Joint_halflap(Joint):
         vertices.append(Point(self.distance + self.angled_length, 0, -self.height))  # point on -x +y -z
 
         # moving the trim box to -X and +X direction for easier boolean
-        vector_0_1 = Vector.from_start_end(vertices[0], vertices[1]).unitized().scaled(TOLEARNCE)
-        vector_2_3 = Vector.from_start_end(vertices[2], vertices[3]).unitized().scaled(TOLEARNCE)
+        vector_0_1 = Vector.from_start_end(vertices[0], vertices[1]).unitized().scaled(OVERSIZE)
+        vector_2_3 = Vector.from_start_end(vertices[2], vertices[3]).unitized().scaled(OVERSIZE)
         if self.thru_x_neg:
             vertices[0] = vertices[0] - vector_0_1
         if self.thru_x_pos:
@@ -83,10 +87,10 @@ class Joint_halflap(Joint):
             vertices[3] = vertices[3] + vector_2_3
 
         # add the last 4 points related to the height and tolerance
-        vertices.append(vertices[0] + Point(0, 0, self.height + TOLEARNCE))  # relative to point 0
-        vertices.append(vertices[3] + Point(0, 0, self.height + TOLEARNCE))  # relative to point 3
-        vertices.append(vertices[2] + Point(0, 0, self.height + TOLEARNCE))  # relative to point 2
-        vertices.append(vertices[1] + Point(0, 0, self.height + TOLEARNCE))  # relative to point 1
+        vertices.append(vertices[0] + Point(0, 0, self.height + OVERSIZE))  # relative to point 0
+        vertices.append(vertices[3] + Point(0, 0, self.height + OVERSIZE))  # relative to point 3
+        vertices.append(vertices[2] + Point(0, 0, self.height + OVERSIZE))  # relative to point 2
+        vertices.append(vertices[1] + Point(0, 0, self.height + OVERSIZE))  # relative to point 1
 
         box = Box(Frame.worldXY(), 1, 1, 1)
         boolean_box_mesh = Mesh.from_vertices_and_faces(vertices, box.faces)
