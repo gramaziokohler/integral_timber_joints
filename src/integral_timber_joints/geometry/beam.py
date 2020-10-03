@@ -20,7 +20,13 @@ from compas.geometry import distance_point_plane, is_point_on_plane
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import create_id
 
-from compas_ghpython.artists import MeshArtist
+import compas
+if compas.IPY:
+    try:
+        from compas_ghpython.artists import MeshArtist
+    except:
+        pass
+
 
 from copy import deepcopy
 
@@ -49,7 +55,7 @@ class Beam(object):
         if (name == None):
             name = create_id()
         self.name = name                # type: str
-        self.cached_mesh = None         # type: compas.datastructures.Mesh
+        self.cached_mesh = None         # type: Mesh
 
         # Attribute for animation visualization
         self.is_visible = True  # Decides if the self.draw_visuals() draw or not.

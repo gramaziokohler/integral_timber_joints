@@ -6,23 +6,23 @@ from geometric_blocking import blocked
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, Joint
-from integral_timber_joints.tools import Clamp, Gripper, PickupStation
+from integral_timber_joints.tools import Clamp, Gripper, PickupStation, ToolChanger
 
 
 class RobotClampAssemblyProcess(object):
 
     def __init__(self, assembly):
-        # type: (Assembly)
+        # type: (Assembly) -> None
         if assembly is not None:
             self.assembly = assembly.copy()     # type: Assembly
-        self._clamps = {}                       # type: Dict[str, Clamp]
-        self._grippers = {}                     # type: Dict[str, Gripper]
-        self.robot_toolchanger = []                   # type: List[ToolChanger]
-        self.robot_wrist_collision_mesh = []                    # type: List[Mesh]
-        self.actions = []                       # type: List[Action]
-        self.movements = []                     # type: List[Movements]
+        self._clamps = {}                       # type: dict[str, Clamp]
+        self._grippers = {}                     # type: dict[str, Gripper]
+        self.robot_toolchanger = []             # type: list[ToolChanger]
+        self.robot_wrist_collision_mesh = []    # type: list[Mesh]
+        self.actions = []                       # type: list[Action]
+        self.movements = []                     # type: list[Movements]
         self.pickup_station = None              # type: PickupStation
-        self.environment_meshes = []            # type: List[Mesh]
+        self.environment_meshes = []            # type: list[Mesh]
 
     def add_clamp(self, clamp):
         self._clamps[clamp.name] = clamp.copy()
@@ -36,7 +36,7 @@ class RobotClampAssemblyProcess(object):
 
     @ property
     def clamps(self):
-        # type: List[Clamp]
+        # type: () -> list[Clamp]
         return self._clamps.values()
 
     def gripper(self, gripper_id):
@@ -45,7 +45,7 @@ class RobotClampAssemblyProcess(object):
 
     @ property
     def grippers(self):
-        # type: List[Gripper]
+        # type: () -> list[Gripper]
         return self._grippers.values()
 
     def tool(self, tool_id):
