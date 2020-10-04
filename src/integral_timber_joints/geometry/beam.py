@@ -114,6 +114,32 @@ class Beam(object):
 
         return beam
 
+    @classmethod
+    def from_centerline(cls, centerline, guide_vector, width, height):
+        # type(Line, Vector, float, float): -> Beam
+        '''Create a Beam form center line and width , height.
+        The direction of the line is X axis of beam.
+        The beam's y axis aligns to the guide vector.
+        Note that the guide_vecto cannot be parallel to the centerline
+        '''
+
+        # Automatic beam_frame
+        length = centerline.length
+
+        xaxis = Vector.from_start_end(centerline.start, centerline.end)
+        zaxis = xaxis.cross(guide_vector)
+        yaxis = zaxis.cross(xaxis)
+
+        # compute origin point
+        origin_point = (centerline.start
+                    + yaxis.unitized().scaled(height/-2)
+                    + zaxis.unitized().scaled(width/-2)
+                    )
+        beam_frame = Frame(origin_point, xaxis, yaxis)
+
+        beam = cls(beam_frame, length, width, height, None)
+        return beam
+
     # -----------------------
     # Str Repr Copy
     # -----------------------

@@ -37,6 +37,10 @@ class ProcessArtist(object):
 
     def draw_beam_mesh(self, beam_id):
         assembly = self.process.assembly
+        if beam_id not in assembly.beam_ids():
+            raise KeyError("Beam %i not in Assembly" % beam_id)
+        if beam_id not in self.guids:
+            self.guids[beam_id] = []
         assembly.update_beam_mesh_with_joints(beam_id, True)
         beam_mesh = assembly.beam(beam_id).cached_mesh # type: Mesh
         v, f = beam_mesh.to_vertices_and_faces()
@@ -67,6 +71,8 @@ if __name__ == "__main__":
     # load_process()
 
     artist = get_process_artist()
+    artist.clear_all_layers()
     process = get_process()
     for beam_id in process.assembly.beam_ids():
         artist.draw_beam_mesh(beam_id)
+    artist.clear_one_beam('b15')

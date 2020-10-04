@@ -139,7 +139,9 @@ class Assembly(Network):
 
     def add_beam(self, beam):
         # type: (Beam) -> None
-        """Add a beam"""
+        """Add a beam to the assembly
+        Beam also added to the end of the sequence.
+        """
         assert self.has_node(beam.name) == False
         self.add_node(beam.name, {'beam': beam})
         self.sequence.append(beam.name)
@@ -365,6 +367,16 @@ class Assembly(Network):
             if not data['sequence_earlier']:
                 yield joint_id
 
+    def get_new_beam_id(self):
+        # type: () -> str
+        """ Returns the next available beam_id in the format of 'b%i'. 
+        Starting from 'b0' to maximum 'b999', it returns the next unused beam_id
+        If there are holes between the used_id, the hole will be returned. 
+        """
+        for i in range(1000):
+            beam_id = 'b%i'%i
+            if beam_id not in self.nodes(data=False): 
+                return beam_id
     # --------------------------------------------
     # Beam Joints Geometrical Functions
     # --------------------------------------------
