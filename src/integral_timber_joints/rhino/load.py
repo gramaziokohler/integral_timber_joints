@@ -1,7 +1,8 @@
 import Rhino
 from integral_timber_joints.rhino.artist import ProcessArtist
 
-import scriptcontext as rs
+import scriptcontext as sc
+import rhinoscriptsyntax as rs
 import os
 import jsonpickle
 import datetime
@@ -20,15 +21,15 @@ def get_activedoc_process_path():
 
 def get_process():
     # type: () -> RobotClampAssemblyProcess
-    if "itj_process" in rs.sticky:
-        return rs.sticky["itj_process"]
+    if "itj_process" in sc.sticky:
+        return sc.sticky["itj_process"]
     else:
         return None
 
 def get_process_artist():
     # type: () -> ProcessArtist
-    if "itj_process_artist" in rs.sticky:
-        return rs.sticky["itj_process_artist"]
+    if "itj_process_artist" in sc.sticky:
+        return sc.sticky["itj_process_artist"]
     else:
         return None
 
@@ -54,12 +55,12 @@ def load_process():
         f.close()
         # Decode json for Process object
         process = jsonpickle.decode(json_str, keys=True, classes=[RobotClampAssemblyProcess])
-        rs.sticky["itj_process"] = process
+        sc.sticky["itj_process"] = process
         success = True
         # Crate new artist
-        rs.sticky["itj_process_artist"] = ProcessArtist(process)
+        sc.sticky["itj_process_artist"] = ProcessArtist(process)
     else:
-        rs.sticky["itj_process"] = None
+        sc.sticky["itj_process"] = None
         success = False 
     return success
 
@@ -67,7 +68,7 @@ def create_new_process():
     # type: () -> None
     assembly = Assembly()
     process = RobotClampAssemblyProcess(assembly)
-    rs.sticky["itj_process"] = process
+    sc.sticky["itj_process"] = process
 
 ######################
 # Rhino Entry Point
@@ -88,10 +89,10 @@ if __name__ == "__main__":
 
         # Draw beams to canvas
         artist = get_process_artist()
-        artist.clear_all_layers()
+        artist.empty_layers()
         process = get_process()
         for beam_id in process.assembly.beam_ids():
-            artist.draw_beam_mesh(beam_id)
+            artist.redraw_beam(beam_id, force_update=False)
     else:
         # Ask user if create new process file.
         from Rhino.Input.Custom import GetString

@@ -164,6 +164,17 @@ class Assembly(Network):
         self.beam(beam1_id).cached_mesh = None
         self.beam(beam2_id).cached_mesh = None
 
+    def remove_beam(self, beam_id):
+        assert self.has_node(beam_id)
+        assert beam_id in self.sequence
+        for nbr in self.neighbors(beam_id): # This is a hot fix for compas Network.delete_node fail to delete edges.
+            del self.adjacency[nbr][beam_id]
+            del self.adjacency[beam_id][nbr]
+            del self.edge[nbr][beam_id]
+            del self.edge[beam_id][nbr]
+        self.delete_node(beam_id)
+        self.sequence.remove(beam_id)
+
     # ----------------------------------------------
     # Getting / Iterating Beams and Joint attributes
     # ----------------------------------------------
@@ -402,7 +413,7 @@ class Assembly(Network):
         features = joints
         features += [beam_cut_start] if beam_cut_start is not None else []
         features += [beam_cut_end] if beam_cut_end is not None else []
-
+        print (features)
         self.beam(beam_id).update_cached_mesh(features)
 
     def get_beam_transformaion_to(self, beam_id, attribute_name):
