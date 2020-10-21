@@ -304,6 +304,10 @@ class Assembly(Network):
             joint_ids.append((neighbor_beam_id, beam_id))
         return joint_ids
 
+    # --------------------------------------------
+    # Assembly Sequence Functions
+    # --------------------------------------------
+
     def get_beam_sequence(self, beam_id):
         # type: (str) -> Optional[int]
         """ Returns the (0-counting) position of the beam in self.sequence
@@ -313,9 +317,43 @@ class Assembly(Network):
             return None
         return self.sequence.index(beam_id)
 
+    def shift_sequence_by_one(self, beam_id, shift_earlier = True):
+        """Swap the sequence of a beam with the previous or next item.
+        Invalidly swapping [first item earlier, or last item later] will have no effect.
+        
+        Return the pair of affected beam_ids
+        """
+        sequence = self.sequence
+        i = sequence.index(beam_id)
+        # Swap item with previous / next item             
+        if shift_earlier and i > 0:
+            sequence[i-1], sequence[i] = sequence[i], sequence[i-1] 
+            return [sequence[i], sequence[i-1]]
+        if not shift_earlier and i < len(sequence) - 1:
+            sequence[i+1], sequence[i] = sequence[i], sequence[i+1]
+            return [sequence[i], sequence[i+1]]
+
+    def shift_beam_sequence(self, beam_id, shift_amount):
+        """Move the sequence of a beam earlier or later by the shift_amount.
+        Negative shift_amount means moving earlier
+
+        Return all beam_ids in which their sequence number is changed
+        """
+        if shift_amount == 0:
+            return []
+
+        affected_ids = set()
+
+        # Perform as many swaps as needed, before or after
+        for _ in range (abs(shift_amount)):
+            affected_id_pair = self.shift_sequence_by_one(beam_id, shift_earlier = (shift_amount < 0))
+            affected_ids = affected_ids.union(set(affected_id_pair))
+
+        return list(affected_ids)
     # --------------------------------------------
     # Extra Geometrical Features
     # --------------------------------------------
+
     def set_beam_cut_start(self, beam_id, beamcut):
         # type: (str, Beamcut) -> None
         """Set the Beamcut object at the start of beam. None if un-cut."""
@@ -466,9 +504,9 @@ class Assembly(Network):
         this_beam_sequence = self.get_beam_sequence(beam_id)
         return [neighbor_id for neighbor_id in self.neighbors_out(beam_id) if self.get_beam_sequence(neighbor_id) < this_beam_sequence]
 
-    # -----------------------
-    # Advanced Algorithms
-    # -----------------------
+    # -------------------------------------
+    # Computing joints and joint directions
+    # -------------------------------------
 
     def search_for_halflap_joints_with_previous_beams(self,
                                                       beam_id,
@@ -508,6 +546,23 @@ class Assembly(Network):
             else:
                 if verbose:
                     print("Face Pair Intersection Not Found")
+
+    def flip_lap_joint(self, joint_id):
+        """Flip the opening direction of a pair of lap joints
+        This only work for joints that support swap_faceid_to_opposite_face()
+
+        Side Effect
+        -----------
+        beam_attribute 'assembly_wcf_inclamp' is unset
+        """
+        beam_id , neighbour_id = joint_id
+        self.joint((beam_id , neighbour_id)).swap_faceid_to_opposite_face()
+        self.joint((neighbour_id , beam_id)).swap_faceid_to_opposite_face()
+        self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
+
+    # -----------------------
+    # Advanced Algorithms
+    # -----------------------
 
     def compute_all_assembly_direction_from_joints_and_sequence(self, assembly_vector_if_no_joint = None, beam_in_jaw_position_gap_offset = None):
         """Computes the assembly of all beams based on the assembly sequence and the joints the beam
@@ -584,7 +639,7 @@ class Assembly(Network):
             contradict = assembly_direction_contradict(assembly_direction_wcf)
             if contradict:
                 # No Solution Case
-                print("WARNING: Beam (%s) Assembly direction is blocked by joints." % (beam_id))
+                print("WARNING: Beam (%s) Assembly direction is blocked by joints: %s" % (beam_id, assembly_direction_wcf))
                 assembly_vector_wcf = None
             else:
                 # Solution exist Case
