@@ -9,13 +9,12 @@ from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint_halflap import Joint_halflap_from_beam_beam_intersection
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
-
+from integral_timber_joints.rhino.utility import recompute_dependent_solutions
 import rhinoscriptsyntax as rs
 
 def ui_add_beam_from_lines(process):
-    # type(RobotClampAssemblyProcess) -> None
+    # type: (RobotClampAssemblyProcess) -> None
     ''' Ask user for line(s) to create new beams.
-
     '''
     # ask user to pick lines
     # guids = select_lines("Select Lines (no curve or polyline)")
@@ -63,14 +62,23 @@ def ui_add_beam_from_lines(process):
 
     # Draw newly added beams
     artist = get_process_artist()
-    for beam_id in new_beam_ids:
-        artist.redraw_beam(beam_id)
+    # for beam_id in new_beam_ids:
+    #     artist.redraw_beam(beam_id)
 
-    # Draw neighbours affected by new joint
-    for beam_id in set(affected_neighbours)-set(new_beam_ids):
+    # Draw new beams and neighbours affected by new joint
+    for beam_id in set(affected_neighbours + new_beam_ids):
+        # Update drownstream computation
+        recompute_dependent_solutions(process, beam_id)
+        # Redraw
         artist.redraw_beam(beam_id)
+        if assembly.beam_problems(beam_id):
+            artist.change_beam_colour(beam_id, 'warning')
+            print ([beam_id] + assembly.beam_problems(beam_id))
+        else:
+            artist.change_beam_colour(beam_id, 'active')
 
 def get_existing_beams_filter(process):
+    # type: (RobotClampAssemblyProcess) -> None
     # Create beam guids for filtering
     artist = get_process_artist()
     beam_guids = []
@@ -86,7 +94,7 @@ def get_existing_beams_filter(process):
     return existing_beams_filter
 
 def ui_delete_beams(process):
-    # type(RobotClampAssemblyProcess) -> None
+    # type: (RobotClampAssemblyProcess) -> None
     '''Ask User to select beams for deleting.
     Deleting them from Process.Assembly.
     '''
@@ -107,19 +115,24 @@ def ui_delete_beams(process):
 
     # Delete Beams and their joints 
     for beam_id in beam_ids:
-        artist.clear_one_beam(beam_id)
+        artist.delete_one_beam(beam_id)
         assembly.remove_beam(beam_id)
         print ('Beam Removed: %s'% beam_id)
     
     # Redraw neighbour beams since joints maybe gone.
     for beam_id in neighbors:
-        print ('. _.')
-        print('neighbors for %s: %s'% (beam_id, assembly.neighbors_out(beam_id)))
+        # Update drownstream computation
+        recompute_dependent_solutions(process, beam_id)
+        # Redraw
         artist.redraw_beam(beam_id)
+        if assembly.beam_problems(beam_id):
+            artist.change_beam_colour(beam_id, 'warning')
+        else:
+            artist.change_beam_colour(beam_id, 'active')
         print ('Neighbour Beam Affected: %s'% beam_id)
 
 def ui_flip_beams(process):
-    # type(RobotClampAssemblyProcess) -> None
+    # type: (RobotClampAssemblyProcess) -> None
     '''Ask User to select a beam for flipping the joints' direction
     Only joints to earlier beams are flipped.
 
@@ -130,7 +143,7 @@ def ui_flip_beams(process):
     
     while(True):
         # Ask user for input
-        guids = rs.GetObject('Select beams to delete:', custom_filter=get_existing_beams_filter(process))
+        guids = rs.GetObject('Select beams to flip:', custom_filter=get_existing_beams_filter(process))
         if not guids:
             # Quit when user press Enter without selection
             return
@@ -142,9 +155,17 @@ def ui_flip_beams(process):
             assembly.joint((beam_id , neighbour_id)).swap_faceid_to_opposite_face()
             assembly.joint((neighbour_id , beam_id)).swap_faceid_to_opposite_face()
         
-        # Update Flipped beam and neighbors
+        # Update drownstream computation
+        assembly.set_beam_attribute(beam_id, 'assembly_wcf_final', None)
+        recompute_dependent_solutions(process, beam_id)
+
+        # Update visualization of flipped beam and neighbors
         for _beam_id in earlier_neighbors + [beam_id]:
             artist.redraw_beam(_beam_id)
+            if assembly.beam_problems(_beam_id):
+                artist.change_beam_colour(_beam_id, 'warning')
+            else:
+                artist.change_beam_colour(_beam_id, 'active')
 
         print('Beam flipped: %s (Neighbours: %s)'% (beam_id, earlier_neighbors))
 
@@ -152,8 +173,18 @@ def something(process):
     # 
     print ('something')
 
+
 def show_menu(process):
+    # type: (RobotClampAssemblyProcess) -> None
     assembly = process.assembly # type: Assembly
+    artist = get_process_artist()
+
+    # Activate assembly menu colour code:
+    for beam_id in assembly.sequence:
+        if assembly.beam_problems(beam_id):
+            artist.change_beam_colour(beam_id, 'warning')
+        else:
+            artist.change_beam_colour(beam_id, 'active')
 
     while (True):
         # Create Menu
@@ -177,17 +208,21 @@ def show_menu(process):
         # User cancel command by Escape
         if result is None or 'action' not in result:
             print ('Exit Function')
-            return
+            break
         action = result['action']
         # print(action)
         # User click Exit Button
         if action == 'Exit':
             print ('Exit Function')
-            return
+            break
         if action == 'Back':
             continue    
         else:
             action(process)
+    
+    # Deactivate assembly menu colour code:
+    for beam_id in process.assembly.sequence:
+        artist.change_beam_colour(beam_id, 'normal')
 
 ######################
 # Rhino Entry Point

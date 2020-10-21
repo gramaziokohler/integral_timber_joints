@@ -177,7 +177,7 @@ class RobotClampAssemblyProcess(object):
                 yield joint_id
 
     def compute_jawapproach_vector_length(self, beam_id, vector_dir, min_dist=20, max_dist=150):
-        # type: (str, Vector) -> Vector
+        # type: (str, Vector, float, float) -> Vector
         """Return a `assembly_vector_jawapproach` with correct length that will clear the clamp jaws
         Current implementation do not tkae into account of the angle of the clamp.
         Need to be improved when angled lap joints exist.

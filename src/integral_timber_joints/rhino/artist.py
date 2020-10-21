@@ -37,7 +37,13 @@ class ProcessArtist(object):
     """
 
     layers = ['itj::beams_brep', 'itj::beams_mesh', 'itj::beams_seqtag']
-
+    color_meaning = {
+        'normal' : (0,0,0),
+        'warning' : (255, 152, 0),
+        'error' : (244, 67, 54),
+        'active' : (76, 175, 80),
+        'neighbors' : (0, 188, 212),
+    }
     def __init__(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         self.process = process # type: RobotClampAssemblyProcess
@@ -180,6 +186,14 @@ class ProcessArtist(object):
             if _beam_id == beam_id:
                 show = False
 
+    def change_beam_colour(self, beam_id, meaning):
+        """ Chagne the beam brep and mesh color to a given colour string
+        Colour string refer to color_meaning dict
+        """
+        for layer in ['itj::beams_brep', 'itj::beams_mesh']:
+            for guid in self.guids[beam_id][layer]:
+                rs.ObjectColor(guid, self.color_meaning.get(meaning, (0,0,0)))
+                
     # def draw_gripper_block(self, beam_id):
     #     """Draw the components of a gripper as a block in Rhino for fast display and 
     #     """

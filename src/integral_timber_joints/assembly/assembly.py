@@ -6,6 +6,7 @@ from compas.rpc import Proxy
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.beam import Beam
 
+from compas.geometry import Frame, Point, Vector, Translation
 
 class Assembly(Network):
     """A data structure for discrete element assemblies.
@@ -47,7 +48,9 @@ class Assembly(Network):
         # Create default attributes
         self.attributes.update({
             'name': 'Unnamed_Assembly',
-            'sequence': [],                     # List of (beam_id / beam.name / node key)
+            'assembly_vector_if_no_joint': Vector(0, 0, -1),    # Determines the direction of assembly when the element has no neighbouring joint
+            'beam_in_jaw_position_gap_offset' : 10, # Determines the distance from assembly_wcf_inclamp before first engagement.
+            'sequence': [],                         # List of (beam_id / beam.name / node key)
         })
         # Default attributes for beams (node)
         self.update_default_node_attributes({
@@ -506,7 +509,7 @@ class Assembly(Network):
                 if verbose:
                     print("Face Pair Intersection Not Found")
 
-    def compute_assembly_direction_from_joints_and_sequence(self, assembly_vector_if_no_joint, beam_in_jaw_position_gap_offset):
+    def compute_all_assembly_direction_from_joints_and_sequence(self, assembly_vector_if_no_joint = None, beam_in_jaw_position_gap_offset = None):
         """Computes the assembly of all beams based on the assembly sequence and the joints the beam
 
         Based on the assembly sequence of the beams. We can deduce the assembly direction
@@ -522,63 +525,91 @@ class Assembly(Network):
         beam_attribute 'assembly_vector_final' is set (if no contradict)
         beam_attribute 'assembly_wcf_inclamp' is set (if no contradict)
         """
-        from compas.geometry import Vector
-        from compas.geometry import Translation
 
+        for beam_id in self.sequence:
+            self.compute_beam_assembly_direction_from_joints_and_sequence(beam_id, assembly_vector_if_no_joint, beam_in_jaw_position_gap_offset)
+
+    compute_assembly_direction_from_joints_and_sequence = compute_all_assembly_direction_from_joints_and_sequence
+
+    def compute_beam_assembly_direction_from_joints_and_sequence(self, beam_id, assembly_vector_if_no_joint = None, beam_in_jaw_position_gap_offset = None):
+        
+        # Take the default value from assembly attribute of setting values are not given
+        if assembly_vector_if_no_joint is None:
+            assembly_vector_if_no_joint = self.attributes.get('assembly_vector_if_no_joint')
+            if assembly_vector_if_no_joint is None:
+                print ('Default assembly_vector_if_no_joint is not set! using 0,0,-40')
+                assembly_vector_if_no_joint = Vector (0, 0, -40)
+        if beam_in_jaw_position_gap_offset is None:
+            beam_in_jaw_position_gap_offset = self.attributes.get('beam_in_jaw_position_gap_offset')
+            if beam_in_jaw_position_gap_offset is None:
+                print ('Default beam_in_jaw_position_gap_offset is not set! using 10')
+                beam_in_jaw_position_gap_offset = 10         
+
+        # Helper function to quickly determine contradicting direction
         def assembly_direction_contradict(vectors):
             for i, vector_i in enumerate(vectors):
                 for j, vector_j in enumerate(list(vectors)[i+1:]):
-                    if vector_i.dot(vector_j) < 0:
+                    if vector_i.dot(vector_j) < 1e-5:
                         return True
             return False
+       
+        beam = self.beam(beam_id)
+        print("Computing assembly direction for Beam %s:" % beam)
+        # Compute assembly_wcf_final.
+        # It is equal to beam.frame, because the beam is modelled in its final position
+        self.set_beam_attribute(beam_id, 'assembly_wcf_final', beam.frame.copy())
 
-        for beam_id in self.sequence:
+        # Compute assembly_wcf_inclamp
+        # We are going to check all the joint pairs.
+        # Vector is computed from averaging the assembly direction of the joint
+        # Vector length is computed from the combined height of pairs of joint.
+        # The maximum length value is taken if there are multiple joints.
+        assembly_direction_wcf = []
+        assembly_vector_length = 0.0
+        for _, neighbout_beam_id in self.get_joints_of_beam_connected_to_already_built(beam_id):
+            print("neighbout_beam_id: %s" % neighbout_beam_id)
+            joint_on_this_beam = self.joint((beam_id, neighbout_beam_id))
+            joint_on_this_neighbor = self.joint((neighbout_beam_id, beam_id))
 
-            beam = self.beam(beam_id)
-            print("> %s" % beam)
-            # Compute assembly_wcf_final.
-            # It is equal to beam.frame, because the beam is modelled in its final position
-            self.set_beam_attribute(beam_id, 'assembly_wcf_final', beam.frame.copy())
+            assembly_direction_wcf.append(joint_on_this_beam.get_assembly_direction(beam).unitized())
+            assembly_vector_length = max(joint_on_this_neighbor.height + joint_on_this_beam.height, assembly_vector_length)
 
-            # Compute assembly_wcf_inclamp
-            # We are going to check all the joint pairs.
-            # Vector is computed from averaging the assembly direction of the joint
-            # Vector length is computed from the combined height of pairs of joint.
-            # The maximum length value is taken if there are multiple joints.
-            assembly_direction_wcf = []
-            assembly_vector_length = 0.0
-            for _, neighbout_beam_id in self.get_joints_of_beam_connected_to_already_built(beam_id):
-                print("neighbout_beam_id: %s" % neighbout_beam_id)
-                joint_on_this_beam = self.joint((beam_id, neighbout_beam_id))
-                joint_on_this_neighbor = self.joint((neighbout_beam_id, beam_id))
-
-                assembly_direction_wcf.append(joint_on_this_beam.get_assembly_direction(beam).unitized())
-                assembly_vector_length = max(joint_on_this_neighbor.height + joint_on_this_beam.height, assembly_vector_length)
-
-            if len(assembly_direction_wcf) == 0:
-                # No Neighbouring joint case
-                # Handles no_clamp (perhaps) grounded beams v.s. typical clamp installed beams
-                assembly_vector_wcf = assembly_vector_if_no_joint
-                print("Assembly Direction of Beam (%s) using downward movement %s (ref to wcf)." % (beam.name, assembly_direction_wcf))
+        if len(assembly_direction_wcf) == 0:
+            # No Neighbouring joint case
+            # Handles no_clamp (perhaps) grounded beams v.s. typical clamp installed beams
+            assembly_vector_wcf = assembly_vector_if_no_joint
+            print("No Neighbour: Assembly Direction of Beam (%s) using downward movement %s (ref to wcf)." % (beam.name, assembly_direction_wcf))
+        else:
+            # Test if the list of assembly_direction_wcf contradicts eachother
+            contradict = assembly_direction_contradict(assembly_direction_wcf)
+            if contradict:
+                # No Solution Case
+                print("WARNING: Beam (%s) Assembly direction is blocked by joints." % (beam_id))
+                assembly_vector_wcf = None
             else:
-                # Test if the list of assembly_direction_wcf contradicts eachother
-                contradict = assembly_direction_contradict(assembly_direction_wcf)
-                if contradict:
-                    # No Solution Case
-                    print("WARNING: Beam (%s) Assembly direction is blocked by joints." % (beam_id))
-                    assembly_vector_wcf = None
-                else:
-                    # Solution exist Case
-                    assembly_vector_wcf = Vector.sum_vectors(assembly_direction_wcf).unitized().scaled(assembly_vector_length + beam_in_jaw_position_gap_offset)
-                    print("Assembly Direction of Beam (%s) computed from Joints to be %s (ref to wcf)." % (beam_id, assembly_direction_wcf))
+                # Solution exist Case
+                assembly_vector_wcf = Vector.sum_vectors(assembly_direction_wcf).unitized().scaled(assembly_vector_length + beam_in_jaw_position_gap_offset)
+                print("Assembly Direction of Beam (%s) computed (from %s): assembly_vector_wcf = %s (ref to wcf)." % (beam_id, assembly_direction_wcf, assembly_vector_wcf))
 
-            self.set_beam_attribute(beam_id, 'assembly_vector_final', assembly_vector_wcf)
+        self.set_beam_attribute(beam_id, 'assembly_vector_final', assembly_vector_wcf)
 
-            # Compute the assembly_wcf_inclamp by moving back along the assembly_direction_wcf.
-            if assembly_vector_wcf is None:
-                self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
-                print('assembly_wcf_inclamp set to None')
+        # Compute the assembly_wcf_inclamp by moving back along the assembly_direction_wcf.
+        if assembly_vector_wcf is None:
+            self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
+        else:
+            wcf_clamp_transform = Translation.from_vector(assembly_vector_wcf.scaled(-1.0))
+            self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', beam.frame.transformed(wcf_clamp_transform))
 
-            else:
-                wcf_clamp_transform = Translation.from_vector(assembly_vector_wcf.scaled(-1.0))
-                self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', beam.frame.transformed(wcf_clamp_transform))
+    def beam_problems(self, beam_id):
+        # type: (str) -> tuple[bool, list[str]]
+        """ Returns a tuple describing if the beam is valid in the assembly
+        """
+        beam_problems = []
+        if self.get_beam_attribute(beam_id, 'assembly_wcf_final') is None:
+            beam_problems.append('assembly_wcf_final is None, this shouldn not happen.')
+        if self.get_beam_attribute(beam_id, 'assembly_vector_final') is None:
+            beam_problems.append('assembly_vector_final is None, possibly conflicting joints.')
+        
+        return beam_problems
+        
+    
