@@ -197,9 +197,7 @@ def ui_seq_move_before(process):
         return
     beam_id_after = get_object_name(guid)
 
-    org_earlier_neighbors = assembly.get_already_built_neighbors(beam_id_tomove)
-
-    # Change beam id sequence
+    # Compute the amount of shift and shift_beam_sequence
     get_beam_sequence = assembly.get_beam_sequence
     shift_amount = get_beam_sequence(beam_id_after) - get_beam_sequence(beam_id_tomove)
     if shift_amount < 0:
@@ -207,26 +205,8 @@ def ui_seq_move_before(process):
     print("shift_amount %s" % shift_amount)
     member_seq_affected_by_swap = assembly.shift_beam_sequence(beam_id_tomove, shift_amount)
 
-    # Compute which neighbour changed before-after relationship witht he shifted beam.
-    now_earlier_neighbors = assembly.get_already_built_neighbors(beam_id_tomove)
-    neighbour_with_joint_to_flip = set(org_earlier_neighbors).symmetric_difference(set(now_earlier_neighbors))
-    all_affected_neighbours = set(org_earlier_neighbors).union(set(now_earlier_neighbors))
-    print("neighbour_with_joint_to_flip %s" % neighbour_with_joint_to_flip)
-
-    # Flip those joints
-    for nbr in neighbour_with_joint_to_flip:
-        assembly.flip_lap_joint((beam_id_tomove, nbr))
-
-    # Recompute all affected beams assembly directions
-    for beam_id in list(neighbour_with_joint_to_flip) + [beam_id_tomove]:
-        assembly.compute_beam_assembly_direction_from_joints_and_sequence(beam_id)
-        # If assembly direction is not valid, we try aligning its joints again to see.
-        if assembly.beam_problems(beam_id):
-            print('Search for anohte joint config for Beam %s' % beam_id)
-            assembly.search_for_halflap_joints_with_previous_beams(beam_id, assembly.get_beam_attribute(beam_id, 'assembly_vector_final'))
-            assembly.compute_beam_assembly_direction_from_joints_and_sequence(beam_id)
-
-    for beam_id in all_affected_neighbours.union(set(member_seq_affected_by_swap)):
+    # Redraw affected members
+    for beam_id in member_seq_affected_by_swap:
         print('Redrawing: Beam %s' % beam_id)
         artist.redraw_beam(beam_id, force_update=True)
         if assembly.beam_problems(beam_id):

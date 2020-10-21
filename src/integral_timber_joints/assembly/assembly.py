@@ -1,12 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
 from compas.datastructures import Network
+from compas.geometry import Frame, Point, Translation, Vector
 from compas.rpc import Proxy
 
-from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.beam import Beam
+from integral_timber_joints.geometry.joint import Joint
 
-from compas.geometry import Frame, Point, Vector, Translation
 
 class Assembly(Network):
     """A data structure for discrete element assemblies.
@@ -49,7 +49,7 @@ class Assembly(Network):
         self.attributes.update({
             'name': 'Unnamed_Assembly',
             'assembly_vector_if_no_joint': Vector(0, 0, -1),    # Determines the direction of assembly when the element has no neighbouring joint
-            'beam_in_jaw_position_gap_offset' : 10, # Determines the distance from assembly_wcf_inclamp before first engagement.
+            'beam_in_jaw_position_gap_offset': 10,  # Determines the distance from assembly_wcf_inclamp before first engagement.
             'sequence': [],                         # List of (beam_id / beam.name / node key)
         })
         # Default attributes for beams (node)
@@ -170,7 +170,7 @@ class Assembly(Network):
     def remove_beam(self, beam_id):
         assert self.has_node(beam_id)
         assert beam_id in self.sequence
-        for nbr in self.neighbors(beam_id): # This is a hot fix for compas Network.delete_node fail to delete edges.
+        for nbr in self.neighbors(beam_id):  # This is a hot fix for compas Network.delete_node fail to delete edges.
             del self.adjacency[nbr][beam_id]
             del self.adjacency[beam_id][nbr]
             del self.edge[nbr][beam_id]
@@ -317,23 +317,23 @@ class Assembly(Network):
             return None
         return self.sequence.index(beam_id)
 
-    def shift_sequence_by_one(self, beam_id, shift_earlier = True):
+    def shift_sequence_by_one(self, beam_id, shift_earlier=True):
         """Swap the sequence of a beam with the previous or next item.
         Invalidly swapping [first item earlier, or last item later] will have no effect.
-        
+
         Return the pair of affected beam_ids
         """
         sequence = self.sequence
         i = sequence.index(beam_id)
-        # Swap item with previous / next item             
+        # Swap item with previous / next item
         if shift_earlier and i > 0:
-            sequence[i-1], sequence[i] = sequence[i], sequence[i-1] 
+            sequence[i-1], sequence[i] = sequence[i], sequence[i-1]
             return [sequence[i], sequence[i-1]]
         if not shift_earlier and i < len(sequence) - 1:
             sequence[i+1], sequence[i] = sequence[i], sequence[i+1]
             return [sequence[i], sequence[i+1]]
 
-    def shift_beam_sequence(self, beam_id, shift_amount):
+    def shift_beam_sequence(self, beam_id, shift_amount, update_assembly_direction=True, allow_change_joint_direction=True):
         """Move the sequence of a beam earlier or later by the shift_amount.
         Negative shift_amount means moving earlier
 
@@ -343,13 +343,39 @@ class Assembly(Network):
             return []
 
         affected_ids = set()
+        org_earlier_neighbors = self.get_already_built_neighbors(beam_id)
 
         # Perform as many swaps as needed, before or after
-        for _ in range (abs(shift_amount)):
-            affected_id_pair = self.shift_sequence_by_one(beam_id, shift_earlier = (shift_amount < 0))
+        for _ in range(abs(shift_amount)):
+            affected_id_pair = self.shift_sequence_by_one(beam_id, shift_earlier=(shift_amount < 0))
             affected_ids = affected_ids.union(set(affected_id_pair))
 
+        if update_assembly_direction:
+            # Compute which neighbour changed before-after relationship witht he shifted beam.
+            now_earlier_neighbors = self.get_already_built_neighbors(beam_id)
+            neighbour_with_joint_to_flip = set(org_earlier_neighbors).symmetric_difference(set(now_earlier_neighbors))
+            all_affected_earlier_neighbours = set(org_earlier_neighbors).union(set(now_earlier_neighbors))
+            print("neighbour_with_joint_to_flip %s" % neighbour_with_joint_to_flip)
+
+            # Flip those joints
+            for nbr in neighbour_with_joint_to_flip:
+                self.flip_lap_joint((beam_id, nbr))
+
+            # Recompute all affected beams assembly directions
+            for _beam_id in list(neighbour_with_joint_to_flip) + [beam_id]:
+                self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
+                # If assembly direction is not valid, we try aligning its joints again to see.
+                if self.beam_problems(_beam_id):
+                    if allow_change_joint_direction:
+                        print('Search for another joint config for Beam %s' % _beam_id)
+                        self.search_for_halflap_joints_with_previous_beams(_beam_id, self.get_beam_attribute(beam_id, 'assembly_vector_final'))
+                        self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
+
+            # The affected beams include all_affected_earlier_neighbours
+            affected_ids = affected_ids.union(all_affected_earlier_neighbours)
+
         return list(affected_ids)
+
     # --------------------------------------------
     # Extra Geometrical Features
     # --------------------------------------------
@@ -370,7 +396,7 @@ class Assembly(Network):
         return self.get_beam_attribute(beam_id, 'beam_cut_start')
 
     def get_beam_cut_end(self, beam_id):
-        # type: (str) -> Beamcut       
+        # type: (str) -> Beamcut
         """Get the Beamcut object at the end of beam. None if un-cut."""
         return self.get_beam_attribute(beam_id, 'beam_cut_end')
 
@@ -426,8 +452,8 @@ class Assembly(Network):
         If there are holes between the used_id, the hole will be returned. 
         """
         for i in range(1000):
-            beam_id = 'b%i'%i
-            if beam_id not in self.nodes(data=False): 
+            beam_id = 'b%i' % i
+            if beam_id not in self.nodes(data=False):
                 return beam_id
     # --------------------------------------------
     # Beam Joints Geometrical Functions
@@ -454,7 +480,7 @@ class Assembly(Network):
         features = joints
         features += [beam_cut_start] if beam_cut_start is not None else []
         features += [beam_cut_end] if beam_cut_end is not None else []
-        print (features)
+        print(features)
         self.beam(beam_id).update_cached_mesh(features)
 
     def get_beam_transformaion_to(self, beam_id, attribute_name):
@@ -475,7 +501,7 @@ class Assembly(Network):
         sequence_i_of_beam = self.get_beam_sequence(beam_id)
         return [(beam_id, neighbor_id) for neighbor_id in self.get_already_built_neighbors(beam_id)]
 
-    def get_joint_ids_of_beam_clamps(self, beam_id, clamping_this_beam = True):
+    def get_joint_ids_of_beam_clamps(self, beam_id, clamping_this_beam=True):
         # type: (str, bool) -> list[tuple[str,str]]
         """Return the list [joint_id] of clamps related to the beam_id.
         - If clamping_this_beam == True, clamps are clamping the assembly of beam(beam_id)
@@ -555,16 +581,16 @@ class Assembly(Network):
         -----------
         beam_attribute 'assembly_wcf_inclamp' is unset
         """
-        beam_id , neighbour_id = joint_id
-        self.joint((beam_id , neighbour_id)).swap_faceid_to_opposite_face()
-        self.joint((neighbour_id , beam_id)).swap_faceid_to_opposite_face()
+        beam_id, neighbour_id = joint_id
+        self.joint((beam_id, neighbour_id)).swap_faceid_to_opposite_face()
+        self.joint((neighbour_id, beam_id)).swap_faceid_to_opposite_face()
         self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
 
     # -----------------------
     # Advanced Algorithms
     # -----------------------
 
-    def compute_all_assembly_direction_from_joints_and_sequence(self, assembly_vector_if_no_joint = None, beam_in_jaw_position_gap_offset = None):
+    def compute_all_assembly_direction_from_joints_and_sequence(self, assembly_vector_if_no_joint=None, beam_in_jaw_position_gap_offset=None):
         """Computes the assembly of all beams based on the assembly sequence and the joints the beam
 
         Based on the assembly sequence of the beams. We can deduce the assembly direction
@@ -586,19 +612,19 @@ class Assembly(Network):
 
     compute_assembly_direction_from_joints_and_sequence = compute_all_assembly_direction_from_joints_and_sequence
 
-    def compute_beam_assembly_direction_from_joints_and_sequence(self, beam_id, assembly_vector_if_no_joint = None, beam_in_jaw_position_gap_offset = None):
-        
+    def compute_beam_assembly_direction_from_joints_and_sequence(self, beam_id, assembly_vector_if_no_joint=None, beam_in_jaw_position_gap_offset=None):
+
         # Take the default value from assembly attribute of setting values are not given
         if assembly_vector_if_no_joint is None:
             assembly_vector_if_no_joint = self.attributes.get('assembly_vector_if_no_joint')
             if assembly_vector_if_no_joint is None:
-                print ('Default assembly_vector_if_no_joint is not set! using 0,0,-40')
-                assembly_vector_if_no_joint = Vector (0, 0, -40)
+                print('Default assembly_vector_if_no_joint is not set! using 0,0,-40')
+                assembly_vector_if_no_joint = Vector(0, 0, -40)
         if beam_in_jaw_position_gap_offset is None:
             beam_in_jaw_position_gap_offset = self.attributes.get('beam_in_jaw_position_gap_offset')
             if beam_in_jaw_position_gap_offset is None:
-                print ('Default beam_in_jaw_position_gap_offset is not set! using 10')
-                beam_in_jaw_position_gap_offset = 10         
+                print('Default beam_in_jaw_position_gap_offset is not set! using 10')
+                beam_in_jaw_position_gap_offset = 10
 
         # Helper function to quickly determine contradicting direction
         def assembly_direction_contradict(vectors):
@@ -607,7 +633,7 @@ class Assembly(Network):
                     if vector_i.dot(vector_j) < 1e-5:
                         return True
             return False
-       
+
         beam = self.beam(beam_id)
         print("Computing assembly direction for Beam %s:" % beam)
         # Compute assembly_wcf_final.
@@ -664,7 +690,5 @@ class Assembly(Network):
             beam_problems.append('assembly_wcf_final is None, this shouldn not happen.')
         if self.get_beam_attribute(beam_id, 'assembly_vector_final') is None:
             beam_problems.append('assembly_vector_final is None, possibly conflicting joints.')
-        
+
         return beam_problems
-        
-    
