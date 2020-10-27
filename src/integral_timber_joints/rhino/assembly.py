@@ -1,15 +1,15 @@
 import rhinoscriptsyntax as rs
 from compas.geometry import Vector
-from compas_rhino.geometry import RhinoCurve, RhinoLine
+from compas_rhino.geometry import RhinoCurve
 from compas_rhino.ui import CommandMenu
-from compas_rhino.utilities.objects import get_lines, get_object_name, get_object_names, select_lines
+from compas_rhino.utilities.objects import get_object_name, get_object_names
 
-from integral_timber_joints.assembly import Assembly, assembly
+from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint_halflap import Joint_halflap_from_beam_beam_intersection
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
-from integral_timber_joints.rhino.utility import recompute_dependent_solutions
+from integral_timber_joints.rhino.utility import recompute_dependent_solutions, get_existing_beams_filter
 
 
 def ui_add_beam_from_lines(process):
@@ -59,41 +59,10 @@ def ui_add_beam_from_lines(process):
                 assembly.add_joint_pair(j1, j2, beam_id, exist_beam.name)
                 affected_neighbours.append(exist_beam.name)
 
+    # Draw newly added beams and neighbours affected by new joint
+    show_assembly_color(process, set(affected_neighbours + new_beam_ids), redraw=True)
+
     print('%i Beams added to the assembly.' % len(new_beam_ids))
-
-    # Draw newly added beams
-    artist = get_process_artist()
-    # for beam_id in new_beam_ids:
-    #     artist.redraw_beam(beam_id)
-
-    # Draw new beams and neighbours affected by new joint
-    for beam_id in set(affected_neighbours + new_beam_ids):
-        # Update drownstream computation
-        recompute_dependent_solutions(process, beam_id)
-        # Redraw
-        artist.redraw_beam(beam_id)
-        if assembly.beam_problems(beam_id):
-            artist.change_beam_colour(beam_id, 'warning')
-            print([beam_id] + assembly.beam_problems(beam_id))
-        else:
-            artist.change_beam_colour(beam_id, 'active')
-
-
-def get_existing_beams_filter(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    # Create beam guids for filtering
-    artist = get_process_artist()
-    beam_guids = []
-    for beam_id in artist.guids:
-        beam_guids += artist.guids[beam_id]['itj::beams_mesh']
-    print('guids of beams: %s (%i)' % (beam_guids, len(beam_guids)))
-
-    def existing_beams_filter(rhino_object, geometry, component_index):
-        if rhino_object.Attributes.ObjectId in beam_guids:
-            return True
-        return False
-
-    return existing_beams_filter
 
 
 def ui_delete_beams(process):
@@ -123,16 +92,9 @@ def ui_delete_beams(process):
         print('Beam Removed: %s' % beam_id)
 
     # Redraw neighbour beams since joints maybe gone.
-    for beam_id in neighbors:
-        # Update drownstream computation
-        recompute_dependent_solutions(process, beam_id)
-        # Redraw
-        artist.redraw_beam(beam_id)
-        if assembly.beam_problems(beam_id):
-            artist.change_beam_colour(beam_id, 'warning')
-        else:
-            artist.change_beam_colour(beam_id, 'active')
-        print('Neighbour Beam Affected: %s' % beam_id)
+    show_assembly_color(process, neighbors, redraw=True)
+
+    print('Neighbour Beam Affected: %s' % neighbors)
 
 
 def ui_flip_beams(process):
@@ -163,12 +125,7 @@ def ui_flip_beams(process):
         recompute_dependent_solutions(process, beam_id)
 
         # Update visualization of flipped beam and neighbors
-        for _beam_id in earlier_neighbors + [beam_id]:
-            artist.redraw_beam(_beam_id)
-            if assembly.beam_problems(_beam_id):
-                artist.change_beam_colour(_beam_id, 'warning')
-            else:
-                artist.change_beam_colour(_beam_id, 'active')
+        show_assembly_color(process, earlier_neighbors + [beam_id], redraw=True)
 
         print('Beam flipped: %s (Neighbours: %s)' % (beam_id, earlier_neighbors))
 
@@ -206,27 +163,45 @@ def ui_seq_move_before(process):
     member_seq_affected_by_swap = assembly.shift_beam_sequence(beam_id_tomove, shift_amount)
 
     # Redraw affected members
-    for beam_id in member_seq_affected_by_swap:
-        print('Redrawing: Beam %s' % beam_id)
-        artist.redraw_beam(beam_id, force_update=True)
-        if assembly.beam_problems(beam_id):
+    show_assembly_color(process, member_seq_affected_by_swap)
 
+
+def show_assembly_color(process, beam_ids=None, redraw=False):
+    """Activate assembly menu colour code.
+    Problematic beams that cannot be assembled are highlighted
+    """
+    if beam_ids == None:
+        beam_ids = process.assembly.sequence
+    artist = get_process_artist()
+    rs.EnableRedraw(False)
+    for beam_id in beam_ids:
+        if redraw:
+            artist.redraw_beam(beam_id)
+        if process.assembly.beam_problems(beam_id):
             artist.change_beam_colour(beam_id, 'warning')
         else:
             artist.change_beam_colour(beam_id, 'active')
+    rs.EnableRedraw(True)
+
+
+def hide_assembly_color(process, beam_ids=None):
+    """Deactivate assembly menu colour code.
+    """
+    if beam_ids == None:
+        beam_ids = process.assembly.sequence
+    artist = get_process_artist()
+    rs.EnableRedraw(False)
+    for beam_id in beam_ids:
+        artist.change_beam_colour(beam_id, 'normal')
+    rs.EnableRedraw(True)
 
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
     assembly = process.assembly  # type: Assembly
-    artist = get_process_artist()
 
     # Activate assembly menu colour code:
-    for beam_id in assembly.sequence:
-        if assembly.beam_problems(beam_id):
-            artist.change_beam_colour(beam_id, 'warning')
-        else:
-            artist.change_beam_colour(beam_id, 'active')
+    show_assembly_color(process)
 
     while (True):
         # Create Menu
@@ -267,8 +242,7 @@ def show_menu(process):
             action(process)
 
     # Deactivate assembly menu colour code:
-    for beam_id in process.assembly.sequence:
-        artist.change_beam_colour(beam_id, 'normal')
+    hide_assembly_color(process)
 
 ######################
 # Rhino Entry Point
