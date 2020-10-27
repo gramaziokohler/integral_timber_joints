@@ -335,7 +335,11 @@ class Assembly(Network):
 
     def shift_beam_sequence(self, beam_id, shift_amount, update_assembly_direction=True, allow_change_joint_direction=True):
         """Move the sequence of a beam earlier or later by the shift_amount.
-        Negative shift_amount means moving earlier
+        Negative shift_amount means moving earlier.
+
+        Assembly direction is recomputed.
+        However, if no assembly direction is possibble and allow_change_joint_direction, 
+        new joint direction will be computed.
 
         Return all beam_ids in which their sequence number is changed
         """
@@ -544,6 +548,10 @@ class Assembly(Network):
 
         When the joints are found, they are added to the assembly as a new edge.
         This will then enable neighbour queries.
+        
+        Side Effect
+        -----------
+        beam.cached_mesh set to None for both beams.
         '''
         from integral_timber_joints.geometry import Joint_halflap_from_beam_beam_intersection
 
@@ -569,6 +577,8 @@ class Assembly(Network):
                     self.add_joint_pair(option1[0], option1[1], beam_id, bid_neighbor)
                 else:
                     self.add_joint_pair(option2[0], option2[1], beam_id, bid_neighbor)
+                beam1.cached_mesh = None
+                beam2.cached_mesh = None
             else:
                 if verbose:
                     print("Face Pair Intersection Not Found")
@@ -580,11 +590,14 @@ class Assembly(Network):
         Side Effect
         -----------
         beam_attribute 'assembly_wcf_inclamp' is unset
+        beam.cached_mesh set to None for both beams.
         """
         beam_id, neighbour_id = joint_id
         self.joint((beam_id, neighbour_id)).swap_faceid_to_opposite_face()
         self.joint((neighbour_id, beam_id)).swap_faceid_to_opposite_face()
         self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
+        self.beam(beam_id).cached_mesh = None
+        self.beam(neighbour_id).cached_mesh = None
 
     # -----------------------
     # Advanced Algorithms
