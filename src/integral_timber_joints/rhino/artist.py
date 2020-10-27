@@ -42,6 +42,10 @@ class ProcessArtist(object):
         'warning' : (255, 152, 0),
         'error' : (244, 67, 54),
         'active' : (76, 175, 80),
+        'unbuilt' : (200,200,200),
+        'unbuilt_warning': (255,200,200),
+        'built' : (50,50,50),
+        'built_warning': (130,20,20),       
         'neighbors' : (0, 188, 212),
     }
     def __init__(self, process):
