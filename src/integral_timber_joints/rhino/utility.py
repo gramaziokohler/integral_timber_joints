@@ -5,8 +5,8 @@ import compas_bootstrapper
 import compas_fab
 import rhinoscriptsyntax as rs
 
-from integral_timber_joints.geometry import beam
 from integral_timber_joints.process import RobotClampAssemblyProcess
+from integral_timber_joints.rhino.load import get_process_artist
 
 
 def print_package_info():
@@ -41,6 +41,25 @@ def recompute_dependent_solutions(process, beam_id):
         assembly.compute_beam_assembly_direction_from_joints_and_sequence(beam_id)
     if assembly.get_beam_attribute(beam_id, 'assembly_wcf_inclamp') is None:
         assembly.compute_beam_assembly_direction_from_joints_and_sequence(beam_id)
+
+
+def get_existing_beams_filter(process, exclude_beam_ids = []):
+    # type: (RobotClampAssemblyProcess, list[str]) -> None
+    # Create beam guids for filtering
+    artist = get_process_artist()
+    beam_guids = []
+    for beam_id in artist.guids:
+        if beam_id not in exclude_beam_ids:
+            beam_guids += artist.guids[beam_id]['itj::beams_mesh']
+    print('guids of beams: %s (%i)' % (beam_guids, len(beam_guids)))
+
+    def existing_beams_filter(rhino_object, geometry, component_index):
+        if rhino_object.Attributes.ObjectId in beam_guids:
+            return True
+        return False
+
+    return existing_beams_filter
+
 
 
 if __name__ == "__main__":
