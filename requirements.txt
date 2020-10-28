@@ -1,5 +1,8 @@
-compas @ git+https://git@github.com/compas-dev/compas.git@c065d430021deed86fec09abee43ec7a87fa453a#egg=compas-0.16
-compas_fab @ git+https://git@github.com/compas-dev/compas_fab.git@9cfa2164efb23475904154829550fa89a1834c39#egg=compas_fab-0.11.1
+# compas @ git+https://git@github.com/compas-dev/compas.git@c065d430021deed86fec09abee43ec7a87fa453a#egg=compas-0.16
+# compas_fab @ git+https://git@github.com/compas-dev/compas_fab.git@9cfa2164efb23475904154829550fa89a1834c39#egg=compas_fab-0.11.1
+compas>=0.16.9,<0.17
+compas_fab>=0.12.0
+compas_fab_pychoreo>=0.3.0
 jsonpickle
 trimesh
 pycddlib

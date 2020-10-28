@@ -26,50 +26,82 @@ The goal of the python library is to be able to achieve the following high-level
 
 ## Installation (library)
 
-[optional] Create a new environment with python 3.7 and install this package in the new environment
+### Conda environment (optional)
 
-```
+Create a new environment with python 3.7 and install this package in the new environment
+
+```bash
 conda create --name itj python=3.7
 conda activate itj
 ```
 
 One of the dependency from `compas` is planarity, which depends of `cython`. You will need to install this manually:
 
-``` 
+```bash 
 pip install cython --install-option="--no-cython-compile"
 ```
 
 or 
 
-```
+```bash
 conda install cython
 ```
 
-Install this library from source by cloning this repo to local and install from source. Run this code in terminal from the root folder of this repo. Note that there maybe error message from `pip` indicating version incompatibility of `compas` with `compas_fab`, this is fine. 
+### Clone and update submodules
 
+Install this library from source by cloning this repo to local and install from source. 
+
+```bash
+git clone --recursive https://github.com/gramaziokohler/integral_timber_joints.git
+cd integral_timber_joints
 ```
-cd C:\Users\leungp\Documents\GitHub\integral_timber_joints
+
+The `--recursive` flag when cloning above is used for initializing all the git submodules. You can learn more about submodules [here](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
+
+Later in the development, whenever you need to update the submodules, issue the following:
+
+```bash
+git submodule update --init --recursive
+```
+
+### Install libraries
+
+Run this the following in terminal from the root folder of this repo. 
+
+```bash
+pip install -e .\external\pybullet_planning
+pip install -e .\external\compas_fab_pychoreo
 pip install -e .
 ```
 
+The first two lines will first install the two submodule libraries from source, and the last line will install `integral_timber_joints` from source (all in the [editable mode](https://pip.pypa.io/en/stable/reference/pip_install/#install-editable)).
+
+<!-- Note that there maybe error message from `pip` indicating version incompatibility of `compas` with `compas_fab`, this is fine.  -->
+
 Alternatively if development is intended you can install with developer tools:
 
-```
+```bash
+# replace `pip install -e .` above with
 pip install -r requirements-dev.txt
 invoke add-to-rhino
 ```
 
-### Python dependency
+#### Python dependencies, explained
 
-The following python dependency are automatically installed in the above process.
+The following python dependency are installed in the above process. See [requirements.txt](https://github.com/gramaziokohler/integral_timber_joints/blob/master/requirements.txt) for more info on the specific versions pinned.
 
-- compas (Library for geometrical modeling and graph relationship)
-- compas_fab (Library for modelling Tools and Robots, functions to call ROS backend for path planning)
-- jsonpickle (Serialization library for Tools, Assembly, Process)
-- trimesh (Call Openscad in the background to perform Mesh Boolean)
-- pycddlib (Computation of blocking direction analysis)
+The following libraries are installed "automatically" (via pip or conda, learn about their difference [here](https://www.anaconda.com/blog/understanding-conda-and-pip#:~:text=Pip%20installs%20Python%20packages%20whereas,software%20written%20in%20any%20language.&text=Another%20key%20difference%20between%20the,the%20packages%20installed%20in%20them.))
+- `compas` (Library for geometrical modeling and graph relationship)
+- `compas_fab` (Library for modelling Tools and Robots, functions to call ROS backend for path planning)
+- `jsonpickle` (Serialization library for Tools, Assembly, Process)
+- `trimesh` (Call Openscad in the background to perform Mesh Boolean)
+- `pycddlib` (Computation of blocking direction analysis)
 
-## Installation - Software dependency
+The following two libraries are installed manually from git submodules, to better keep track of our development cycles:
+- `pybullet_planning` (Library for planning utilities in pybullet)
+- `compas_fab_pychoreo` (Library for providing `pybullet_planning` functionalities through a `compas_fab`-friendly API)
+
+## Installation (external software dependency)
 
 Install the following software:
 
@@ -94,7 +126,7 @@ See [this file](src/integral_timber_joints/Module_Structure.md)
 Credits
 -------------
 
-This repository was created by Pok Yin Victor Leung <leung@arch.ethz.ch> [@yck011522 ](https://github.com/yck011522) at [@gramaziokohler](https://github.com/gramaziokohler)
+This repository was created by Pok Yin Victor Leung (<leung@arch.ethz.ch>) [@yck011522](https://github.com/yck011522) at [@gramaziokohler](https://github.com/gramaziokohler), with the help of other [contributors](https://github.com/gramaziokohler/integral_timber_joints/blob/master/AUTHORS.rst).
 
 
 

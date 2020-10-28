@@ -10,6 +10,4 @@ pytest
 scp
 isort
 twine
-compas>=0.15
-pycddlib
 -e .
