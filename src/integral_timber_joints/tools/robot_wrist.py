@@ -3,7 +3,7 @@ from compas.datastructures import Mesh
 from integral_timber_joints.tools import Tool
 
 
-class RobotWrist (Tool):
+class RobotWrist (object):
     """ This robot wrist is a list of convex mesh models for sollision detection.
     The meshes should be modeled in the reference frame of the robot flange.
     """

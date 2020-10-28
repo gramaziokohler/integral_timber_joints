@@ -7,7 +7,8 @@ from compas.rpc import Proxy
 from geometric_blocking import blocked
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, Joint
-from integral_timber_joints.process import Action, Movement
+from integral_timber_joints.process.action import Action
+from integral_timber_joints.process.movement import Movement
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, ToolChanger
 
 
