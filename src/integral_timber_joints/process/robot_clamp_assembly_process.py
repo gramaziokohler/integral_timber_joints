@@ -1,12 +1,14 @@
 from copy import deepcopy
 
+from compas.datastructures import Mesh
 from compas.geometry import Frame, Transformation, Translation, Vector
 from compas.rpc import Proxy
-from geometric_blocking import blocked
 
+from geometric_blocking import blocked
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, Joint
-from integral_timber_joints.tools import Clamp, Gripper, PickupStation, ToolChanger
+from integral_timber_joints.process import Action, Movement
+from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, ToolChanger
 
 
 class RobotClampAssemblyProcess(object):
@@ -17,10 +19,10 @@ class RobotClampAssemblyProcess(object):
             self.assembly = assembly.copy()     # type: Assembly
         self._clamps = {}                       # type: dict[str, Clamp]
         self._grippers = {}                     # type: dict[str, Gripper]
-        self.robot_toolchanger = []             # type: list[ToolChanger]
-        self.robot_wrist_collision_mesh = []    # type: list[Mesh]
+        self.robot_toolchanger = None           # type: ToolChanger
+        self.robot_wrist_collision_mesh = None  # type: RobotWrist
         self.actions = []                       # type: list[Action]
-        self.movements = []                     # type: list[Movements]
+        self.movements = []                     # type: list[Movement]
         self.pickup_station = None              # type: PickupStation
         self.environment_meshes = []            # type: list[Mesh]
 
