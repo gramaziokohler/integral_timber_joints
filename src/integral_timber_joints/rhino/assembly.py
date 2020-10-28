@@ -1,3 +1,4 @@
+import Rhino
 import rhinoscriptsyntax as rs
 from compas.geometry import Vector
 from compas_rhino.geometry import RhinoCurve
@@ -9,7 +10,7 @@ from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint_halflap import Joint_halflap_from_beam_beam_intersection
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
-from integral_timber_joints.rhino.utility import recompute_dependent_solutions, get_existing_beams_filter
+from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 
 
 def ui_add_beam_from_lines(process):
@@ -229,13 +230,14 @@ def show_menu(process):
         # User cancel command by Escape
         if result is None or 'action' not in result:
             print('Exit Function')
-            break
+            return Rhino.Commands.Result.Cancel
+
         action = result['action']
         # print(action)
         # User click Exit Button
         if action == 'Exit':
             print('Exit Function')
-            break
+            return Rhino.Commands.Result.Cancel
         if action == 'Back':
             continue
         else:
