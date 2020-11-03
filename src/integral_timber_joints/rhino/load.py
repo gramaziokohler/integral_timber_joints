@@ -65,10 +65,11 @@ def load_process():
     return success
 
 def create_new_process():
-    # type: () -> None
+    # type: () -> RobotClampAssemblyProcess
     assembly = Assembly()
     process = RobotClampAssemblyProcess(assembly)
     sc.sticky["itj_process"] = process
+    return process
 
 ######################
 # Rhino Entry Point
@@ -104,5 +105,7 @@ if __name__ == "__main__":
         result = getOption.Get()
         if result == Rhino.Input.GetResult.String:
             if getOption.StringResult().startswith('y'):
-                create_new_process()
+                process = create_new_process()
                 print ("New Process json Created")
+                # Crate new artist
+                sc.sticky["itj_process_artist"] = ProcessArtist(process)
