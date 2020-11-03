@@ -5,7 +5,7 @@ from compas.geometry import Frame, Point, Translation, Vector
 from compas.rpc import Proxy
 
 from integral_timber_joints.geometry.beam import Beam
-from integral_timber_joints.geometry.joint import Joint
+from integral_timber_joints.geometry import Joint, Beamcut
 
 
 class Assembly(Network):
