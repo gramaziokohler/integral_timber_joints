@@ -17,6 +17,8 @@ from compas.geometry import Point, Line
 from compas.geometry import Transformation, Translation
 from compas.geometry import distance_point_plane, is_point_on_plane
 
+from compas.datastructures import Network
+
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import create_id
 
@@ -33,9 +35,9 @@ from copy import deepcopy
 __all__ = ['Beam']
 
 
-class Beam(object):
+class Beam(Network):
 
-    def __init__(self, frame, length, width, height, name=None):
+    def __init__(self, frame=None, length=1000, width=100, height=100, name=None):
         """
         initialization
         ----------------
@@ -46,23 +48,93 @@ class Beam(object):
             name:       str(optional):  UUID generated from id_generator as name for each mesh
 
         """
+        super(Beam, self).__init__()
         if (frame is None):
             frame = Frame.worldXY()
-        self.frame = frame.copy()       # type: Frame
-        self.length = float(length)     # type: float
-        self.width = float(width)       # type: float
-        self.height = float(height)     # type: float
+        # self.frame = frame.copy()       # type: Frame
+        self.attributes['frame'] = frame.copy()  
+        self.attributes['length'] = float(length)
+        self.attributes['width'] = float(width)
+        self.attributes['height'] = float(height)
+        
+        # self.length = float(length)     # type: float
+        # self.width = float(width)       # type: float
+        # self.height = float(height)     # type: float
+
         if (name == None):
             name = create_id()
-        self.name = name                # type: str
-        self.cached_mesh = None         # type: Mesh
+        self.attributes['name'] = name
+        self.attributes['cached_mesh'] = None 
+        # self.name = name                # type: str
+        # self.cached_mesh = None         # type: Mesh
 
         # Attribute for animation visualization
-        self.is_visible = True  # Decides if the self.draw_visuals() draw or not.
-        self.is_attached = True  # Decides if the self.draw_visuals() draws it differently.
-        self.current_location = frame.copy()  # Not Serialized
-        self.storage_location = frame.copy()  # Not Serialized
-        self.grasp_frame = Frame.worldXY()  # Not Serialized # Local Coords
+        # self.attributes['current_location'] = frame.copy()
+        # self.attributes['storage_location'] = frame.copy()
+
+    # -----------------------
+    # Properity access
+    # -----------------------
+
+    @property
+    def name(self): 
+        # type: () -> str
+        return self.attributes['name'] 
+    @name.setter 
+    def name(self, value):
+        # type: (str) -> None
+        self.attributes['name'] = str(value)
+
+    @property
+    def length(self): 
+        # type: () -> float
+        return self.attributes['length'] 
+    @length.setter 
+    def length(self, value):
+        # type: (float) -> None
+        self.attributes['length'] = float(value)
+
+    @property
+    def width(self):
+        # type: () -> float
+        return self.attributes['width'] 
+    @width.setter 
+    def width(self, value):
+        # type: (float) -> None
+        self.attributes['width'] = float(value)
+
+    @property
+    def height(self):
+        # type: () -> float
+        return self.attributes['height'] 
+    @height.setter 
+    def height(self, value):
+        # type: (float) -> None
+        self.attributes['height'] = float(value)
+
+    @property
+    def frame(self):
+        # type: () -> Frame
+        return self.attributes['frame'] 
+    @frame.setter 
+    def frame(self, value):
+        # type: (Frame) -> None
+        self.attributes['frame'] = value
+
+    @property
+    def cached_mesh(self):
+        # type: () -> Mesh
+        return self.attributes['cached_mesh'] 
+    @cached_mesh.setter 
+    def cached_mesh(self, value):
+        # type: (Mesh) -> None
+        self.attributes['cached_mesh'] = value
+
+        # self.attributes['is_visible'] = True
+        # self.attributes['is_attached'] = True
+        # self.attributes['current_location'] = frame.copy()
+        # self.attributes['storage_location'] = frame.copy()
+        # self.attributes['grasp_frame'] = Frame.worldXY()
 
     # -----------------------
     # Constructors
@@ -132,9 +204,9 @@ class Beam(object):
 
         # compute origin point
         origin_point = (centerline.start
-                    + yaxis.unitized().scaled(height/-2)
-                    + zaxis.unitized().scaled(width/-2)
-                    )
+                        + yaxis.unitized().scaled(height/-2)
+                        + zaxis.unitized().scaled(width/-2)
+                        )
         beam_frame = Frame(origin_point, xaxis, yaxis)
 
         beam = cls(beam_frame, length, width, height, None)
@@ -352,7 +424,7 @@ class Beam(object):
         T = Transformation.from_frame(self.frame)
         return self.reference_side_ocf(side_id).transformed(T)
 
-    def reference_edge_ocf(self, edge_id, wrap_edge_id = True):
+    def reference_edge_ocf(self, edge_id, wrap_edge_id=True):
         """Returns the reference edge as defined in BTLx 1.1.
         For example Reference Edge 1 corrispond to the X axis of Reference Side 1.
         Line is drawn from beam start side to beam end side.
@@ -374,7 +446,7 @@ class Beam(object):
         # In case of wrap_edge_id = False
         raise IndexError("edge_id only accepts (int) 1 - 4 if wrap_edge_id = False")
 
-    def reference_edge_wcf(self, edge_id, wrap_edge_id = True):
+    def reference_edge_wcf(self, edge_id, wrap_edge_id=True):
         """Returns the reference edge as defined in BTLx 1.1.
         For example Reference Edge 1 corrispond to the X axis of Reference Side 1.
         Line is drawn from beam start side to beam end side.
@@ -387,7 +459,6 @@ class Beam(object):
         compas.geometry.Line
         """
         return self.frame.to_world_coordinates(self.reference_edge_ocf(edge_id, wrap_edge_id))
-
 
     # -------------------------------
     # Extended Set of Geo Properities
@@ -458,24 +529,38 @@ class Beam(object):
         features object need to implement the get_feature_mesh(beam)->Mesh function.
         """
 
-        meshes = []
+        negative_meshes = []
         # First mesh in the list is the uncut beam mesh
         self.cached_mesh = self.draw_uncut_mesh()
 
+        # if len(beam_features) > 0:
+        #     # Compute the negative meshes from the features
+        #     for feature in beam_features:
+        #         negative_mesh = feature.get_feature_mesh(self)
+        #         negative_meshes.append(negative_mesh)
+
+        #     # Calls trimesh to perform boolean
+        #     from compas.rpc import Proxy
+        #     boolean_proxy = Proxy(package='compas_cgal.booleans')
+        #     self.cached_mesh.quads_to_triangles()
+        #     for mesh in negative_meshes:
+        #         mesh.quads_to_triangles()
+        #         V, F = boolean_proxy.boolean_difference(self.cached_mesh.to_vertices_and_faces(), mesh.to_vertices_and_faces())
+        #         self.cached_mesh = Mesh.from_vertices_and_faces(V, F)
+
         if len(beam_features) > 0:
-            meshes.append(self.cached_mesh)
+            negative_meshes.append(self.cached_mesh)
 
             # Compute the negative meshes from the features
             for feature in beam_features:
                 negative_mesh = feature.get_feature_mesh(self)
-                meshes.append(negative_mesh)
+                negative_meshes.append(negative_mesh)
 
             # Calls trimesh to perform boolean
             from compas.rpc import Proxy
             trimesh_proxy = Proxy(package='compas_trimesh')
-            # print(meshes)
-            result = trimesh_proxy.trimesh_subtract_multiple(meshes)
-            self.cached_mesh = Mesh.from_data(result['value'])
+            result = trimesh_proxy.trimesh_subtract_multiple(negative_meshes)
+            self.cached_mesh = result
 
         self.cached_mesh.name = self.name + "_mesh"
 
@@ -542,7 +627,7 @@ class Beam(object):
     # Intersection
     # -----------------------
 
-    def get_beam_beam_coplanar_face_ids(self, neighbor_beam, tol = 0.005):
+    def get_beam_beam_coplanar_face_ids(self, neighbor_beam, tol=0.005):
         # type: (Beam, float) -> list[tuple[str,str]]
         """
         Computes the faces that are coplanar between two beams
