@@ -53,13 +53,19 @@ def ui_add_beam_from_lines(process):
         for exist_beam in assembly.beams():
             if beam == exist_beam:
                 continue
+            print('Checking for Joint : %s-%s' % (beam_id, exist_beam.name))
             j1, j2 = Joint_halflap_from_beam_beam_intersection(beam, exist_beam)
             # faces = beam.get_beam_beam_coplanar_face_ids(exist_beam)
             if j1 is not None and j2 is not None:
                 print('New Joint : %s-%s' % (beam_id, exist_beam.name))
                 assembly.add_joint_pair(j1, j2, beam_id, exist_beam.name)
                 affected_neighbours.append(exist_beam.name)
+                print('New Joint added')
 
+    for beam_id in set(affected_neighbours + new_beam_ids):
+        recompute_dependent_solutions(process, beam_id)
+    
+    print('Show Assembly color')
     # Draw newly added beams and neighbours affected by new joint
     show_assembly_color(process, set(affected_neighbours + new_beam_ids), redraw=True)
 
