@@ -3,11 +3,11 @@ from copy import deepcopy
 
 from compas.geometry import Frame, Transformation
 from compas.robots import RobotModel
-from compas_fab.artists import BaseRobotArtist
+from compas.robots.base_artist import BaseRobotModelArtist
 from compas_fab.robots import Configuration
 
 
-class CompasRobotArtist(BaseRobotArtist):
+class CompasRobotArtist(BaseRobotModelArtist):
     def transform(self, compas_mesh, transformation):
         compas_mesh.transform(transformation)
 

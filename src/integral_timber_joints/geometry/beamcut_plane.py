@@ -10,12 +10,12 @@ import math
 import compas
 from compas.datastructures import Mesh
 from compas.geometry import Box, Frame, Plane
-from compas.geometry._primitives.vector import Vector
-from compas.geometry._primitives.point import Point
-from compas.geometry._primitives.line import Line
+from compas.geometry.primitives.vector import Vector
+from compas.geometry.primitives.point import Point
+from compas.geometry.primitives.line import Line
 
 from compas.geometry import distance_point_point, intersection_line_line
-from compas.geometry._core.intersections import intersection_line_plane
+from compas.geometry.intersections import intersection_line_plane
 
 from integral_timber_joints.geometry.beamcut import Beamcut
 from integral_timber_joints.geometry.beam import Beam
