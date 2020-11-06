@@ -202,17 +202,26 @@ def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0, dist_
 
     # Compute intersection distance, Return None if they don't intersect
     def llx_distance(line1, line2):
+        dist_tol = line1.length * 1e-5 
         intersection_result = intersection_segment_segment(line1, line2, dist_tol)
-        if intersection_result is None :
+        if intersection_result[0] is None :
+            print ("Joint Intersection result is none")
             return None
-        return distance_point_point(intersection_result, line1.start)
-
-    beam1_distance = min(llx_distance(beam1_frnt_edge, beam2_frnt_edge), llx_distance(beam1_frnt_edge, beam2_back_edge))
-    beam2_distance = min(llx_distance(beam2_frnt_edge, beam1_frnt_edge), llx_distance(beam2_frnt_edge, beam1_back_edge))
-
+        if distance_point_point(intersection_result[0], intersection_result[1]) > dist_tol:
+            print ("Joint Intersection result %s > tol: %s" % (distance_point_point(intersection_result[0], intersection_result[1]), dist_tol))
+            return None
+        return distance_point_point(intersection_result[0], line1.start)
+    
+    d1f2f = llx_distance(beam1_frnt_edge, beam2_frnt_edge)
+    d1f2b = llx_distance(beam1_frnt_edge, beam2_back_edge)
+    d2f1f = llx_distance(beam2_frnt_edge, beam1_frnt_edge)
+    d2f1b = llx_distance(beam2_frnt_edge, beam1_back_edge)
     # Handles the case where the intersecion fails.
-    if beam1_distance is None or beam2_distance is None:
+    if any(v is None for v in [d1f2f, d1f2b, d2f1f, d2f1b]):
         return (None, None)
+        
+    beam1_distance = min(d1f2f, d1f2b)
+    beam2_distance = min(d2f1f, d2f1b)
 
     # Compute angle
     def llx_llx_angle(line1, line2, angled_line):
