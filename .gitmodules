@@ -1,0 +1,6 @@
+[submodule "external/compas_fab_pychoreo"]
+	path = external/compas_fab_pychoreo
+	url = https://github.com/yijiangh/compas_fab_pychoreo.git
+[submodule "external/pybullet_planning"]
+	path = external/pybullet_planning
+	url = https://github.com/yijiangh/pybullet_planning.git
