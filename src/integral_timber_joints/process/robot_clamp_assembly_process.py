@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from compas.datastructures import Mesh
+from compas.datastructures import Mesh, Network
 from compas.geometry import Frame, Transformation, Translation, Vector
 from compas.rpc import Proxy
 
@@ -12,50 +12,125 @@ from integral_timber_joints.process.movement import Movement
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, ToolChanger
 
 
-class RobotClampAssemblyProcess(object):
+class RobotClampAssemblyProcess(Network):
 
-    def __init__(self, assembly):
+    def __init__(self, assembly = None):
         # type: (Assembly) -> None
+
+        super(RobotClampAssemblyProcess, self).__init__()
+
         if assembly is not None:
-            self.assembly = assembly.copy()     # type: Assembly
-        self._clamps = {}                       # type: dict[str, Clamp]
-        self._grippers = {}                     # type: dict[str, Gripper]
-        self.robot_toolchanger = None           # type: ToolChanger
-        self.robot_wrist_collision_mesh = None  # type: RobotWrist
-        self.actions = []                       # type: list[Action]
-        self.movements = []                     # type: list[Movement]
-        self.pickup_station = None              # type: PickupStation
-        self.environment_meshes = []            # type: list[Mesh]
+            assembly = assembly.copy()     # type: Assembly
+        self.attributes['assembly'] = assembly
+        self.attributes['clamps'] = {}
+        self.attributes['grippers'] = {}
+
+        self.attributes['robot_toolchanger'] = None             # ToolChanger
+        self.attributes['robot_wrist_collision_mesh'] = None    # RobotWrist
+        self.attributes['actions'] = []                         # list[Action]
+        self.attributes['movements'] = []                       # list[Movement]
+        self.attributes['pickup_station'] = None                # PickupStation
+        self.attributes['environment_meshes'] = []              # list[Mesh]
+
+    @ property
+    def robot_toolchanger(self):
+        # type: () -> ToolChanger
+        return self.attributes['robot_toolchanger']
+    
+    @robot_toolchanger.setter
+    def robot_toolchanger(self, value):
+        # type: (RobotWrist) -> None
+        self.attributes['robot_toolchanger'] = value
+
+    @ property
+    def robot_wrist_collision_mesh(self):
+        # type: () -> RobotWrist
+        return self.attributes['robot_wrist_collision_mesh']
+    
+    @robot_wrist_collision_mesh.setter
+    def robot_wrist_collision_mesh(self, value):
+        # type: (RobotWrist) -> None
+        self.attributes['robot_wrist_collision_mesh'] = value
+
+    @ property
+    def actions(self):
+        # type: () -> list[Action]
+        return self.attributes['actions']
+    
+    @actions.setter
+    def actions(self, value):
+        # type: (list[Action]) -> None
+        self.attributes['actions'] = value
+    
+    @ property
+    def movements(self):
+        # type: () -> list[Movement]
+        return self.attributes['movements']
+    
+    @movements.setter
+    def movements(self, value):
+        # type: (list[Movement]) -> None
+        self.attributes['movements'] = value
+    
+    @ property
+    def pickup_station(self):
+        # type: () -> PickupStation
+        return self.attributes['pickup_station']
+    
+    @pickup_station.setter
+    def pickup_station(self, value):
+        # type: (list[PickupStation]) -> None
+        self.attributes['pickup_station'] = value
+    
+    @ property
+    def environment_meshes(self):
+        # type: () -> list[Mesh]
+        return self.attributes['environment_meshes']
+    
+    @environment_meshes.setter
+    def actions(self, value):
+        # type: (list[Mesh]) -> None
+        self.attributes['environment_meshes'] = value
+
+    
+    # -----------------------
+    # Properity access
+    # -----------------------
+
+    @ property
+    def assembly(self):
+        # type: () -> Assembly
+        return self.attributes['assembly']
 
     def add_clamp(self, clamp):
-        self._clamps[clamp.name] = clamp.copy()
+        self.attributes['clamps'][clamp.name] = clamp.copy()
 
     def add_gripper(self, gripper):
-        self._grippers[gripper.name] = gripper.copy()
+        self.attributes['grippers'][gripper.name] = gripper.copy()
 
     def clamp(self, clamp_id):
         # type: (str) -> Clamp
-        return self._clamps[clamp_id]
+        return self.attributes['clamps'][clamp_id]
 
     @ property
     def clamps(self):
         # type: () -> list[Clamp]
-        return self._clamps.values()
+        return self.attributes['clamps'].values()
 
     def gripper(self, gripper_id):
         # type: (str) -> Clamp
-        return self._grippers[gripper_id]
+        return self.attributes['grippers'][gripper_id]
 
     @ property
     def grippers(self):
         # type: () -> list[Gripper]
-        return self._grippers.values()
+        return self.attributes['grippers'].values()
 
     def tool(self, tool_id):
         # type: (str) -> Tool
-        if tool_id in self._grippers:
+        if tool_id in self.attributes['grippers']:
             return self.gripper(tool_id)
-        elif tool_id in self._clamps:
+        elif tool_id in self.attributes['clamps']:
             return self.clamp(tool_id)
         else:
             raise KeyError("tool_id (%s) cannot be found in process.grippers or process.clamps")
