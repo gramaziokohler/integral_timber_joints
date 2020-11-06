@@ -1,4 +1,3 @@
-import datetime
 import json
 import os
 
@@ -23,7 +22,7 @@ def save_process(process):
 
     json_path = get_activedoc_process_path()
     exist = os.path.exists(json_path)
-    # rename old file as backup 
+    # rename old file as backup
     if exist:
         # os.rename(json_path, get_activedoc_process_path())
         # f = open(json_path, 'r')
@@ -34,17 +33,11 @@ def save_process(process):
         # sc.sticky["itj_process"] = process
         # success = True
         pass
-    else:
-        pass
 
-    process_data = json.dumps(process, cls=DataEncoder, indent=4,)
-    print (process_data)
-    
     with open(json_path, 'w') as f:
         json.dump(process, f, cls=DataEncoder, indent=4)
-        
-    return True
 
+    return True
 
 
 ######################
@@ -52,13 +45,11 @@ def save_process(process):
 ######################
 # Below is the functions that get evoked when user press UI Button
 # Put this in the Rhino button ! _-RunPythonScript "integral_timber_joints.rhino.load.py"
-
 if __name__ == "__main__":
-    
+
     # Check if the default json path exist:
     process = get_process()
     if process_is_none(process):
         print("Load json first")
     else:
         save_process(process)
-    

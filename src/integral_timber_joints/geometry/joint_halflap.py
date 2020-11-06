@@ -11,12 +11,13 @@ from compas.geometry import intersection_segment_segment
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.beam import Beam
 
+
 class Joint_halflap(Joint):
     """
     joint class containing varied joints
     """
 
-    def __init__(self, face_id, distance, angle, length, width, height, name=None):
+    def __init__(self, face_id=1, distance=100, angle=90, length=100, width=100, height=100, name=None):
         """
         :param distance:  double
         :param face_id:   int
@@ -32,10 +33,39 @@ class Joint_halflap(Joint):
         self.name = name
         self.mesh = None
 
-        # #Perform initial calculation of the mesh (except when this is an empty object)
-        # if frame is not None:
-        #     self.update_joint_mesh()
+    @property
+    def data(self):
+        data = {
+            'face_id'       : self.face_id,
+            'distance'      : self.distance,
+            'angle'         : self.angle,
+            'length'        : self.length,
+            'width'         : self.width,
+            'height'        : self.height,
+            'thru_x_neg'    : self.thru_x_neg,
+            'thru_x_pos'    : self.thru_x_pos,
+            'name'       : self.name,
+            }
+        return data
 
+    @classmethod
+    def from_data(cls,data):
+        """Construct a Joint object from structured data.
+        This class method must be overridden by an inherited class.
+        """
+        joint = cls()
+        joint.face_id       = data['face_id']
+        joint.distance      = data['distance']
+        joint.angle         = data['angle']
+        joint.length        = data['length']
+        joint.width         = data['width']
+        joint.height        = data['height']
+        joint.thru_x_neg    = data['thru_x_neg']
+        joint.thru_x_pos    = data['thru_x_pos']
+        joint.name          = data['name']
+        return joint
+
+    
     def get_feature_mesh(self, BeamRef):
         # type: (Beam) -> Mesh
         """Compute the negative mesh volume of the joint.
@@ -202,16 +232,16 @@ def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0, dist_
 
     # Compute intersection distance, Return None if they don't intersect
     def llx_distance(line1, line2):
-        dist_tol = line1.length * 1e-5 
+        dist_tol = line1.length * 1e-5
         intersection_result = intersection_segment_segment(line1, line2, dist_tol)
-        if intersection_result[0] is None :
-            print ("Joint Intersection result is none")
+        if intersection_result[0] is None:
+            print("Joint Intersection result is none")
             return None
         if distance_point_point(intersection_result[0], intersection_result[1]) > dist_tol:
-            print ("Joint Intersection result %s > tol: %s" % (distance_point_point(intersection_result[0], intersection_result[1]), dist_tol))
+            print("Joint Intersection result %s > tol: %s" % (distance_point_point(intersection_result[0], intersection_result[1]), dist_tol))
             return None
         return distance_point_point(intersection_result[0], line1.start)
-    
+
     d1f2f = llx_distance(beam1_frnt_edge, beam2_frnt_edge)
     d1f2b = llx_distance(beam1_frnt_edge, beam2_back_edge)
     d2f1f = llx_distance(beam2_frnt_edge, beam1_frnt_edge)
@@ -219,7 +249,7 @@ def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0, dist_
     # Handles the case where the intersecion fails.
     if any(v is None for v in [d1f2f, d1f2b, d2f1f, d2f1b]):
         return (None, None)
-        
+
     beam1_distance = min(d1f2f, d1f2b)
     beam2_distance = min(d2f1f, d2f1b)
 
