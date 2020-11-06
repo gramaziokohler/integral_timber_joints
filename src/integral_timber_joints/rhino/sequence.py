@@ -34,6 +34,9 @@ def show_sequence_color(process, beam_id):
             artist.hide_beam(beam_id)
         else:
             artist.show_beam(beam_id)
+        # print out for debug
+        if problem:
+            print (beam_id, problem)
     rs.EnableRedraw(True)
 
 
@@ -198,7 +201,7 @@ def show_menu(process):
                 go.AddOption("Finish")
             artist.selected_beam_id = beam_id
 
-        print("Current Beam %i of %i" % (assembly.get_beam_sequence(artist.selected_beam_id) + 1, len(assembly.sequence)))
+        print("Currently showing Beam %i of %i" % (assembly.get_beam_sequence(artist.selected_beam_id) + 1, len(assembly.sequence)))
 
 ######################
 # Rhino Entry Point

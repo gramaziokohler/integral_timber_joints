@@ -51,7 +51,7 @@ def get_existing_beams_filter(process, exclude_beam_ids = []):
     for beam_id in artist.guids:
         if beam_id not in exclude_beam_ids:
             beam_guids += artist.guids[beam_id]['itj::beams_mesh']
-    print('guids of beams: %s (%i)' % (beam_guids, len(beam_guids)))
+    # print('guids of beams: %s (%i)' % (beam_guids, len(beam_guids)))
 
     def existing_beams_filter(rhino_object, geometry, component_index):
         if rhino_object.Attributes.ObjectId in beam_guids:
