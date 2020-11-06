@@ -1,8 +1,7 @@
-from abc import abstractmethod
 from copy import deepcopy
 
 from compas.geometry import Frame, Transformation
-from compas.robots import RobotModel
+from compas.robots import RobotModel, ToolModel
 from compas.robots.base_artist import BaseRobotModelArtist
 from compas_fab.robots import Configuration
 
@@ -15,7 +14,7 @@ class CompasRobotArtist(BaseRobotModelArtist):
         return deepcopy(geometry)  # I think a copy would be required, to avoid screwing up stuff from the source model
 
 
-class Tool (RobotModel):
+class Tool (ToolModel):
     """ A tool is a RobotModel describing a robotic tool.
     Typically being attached to a robot or placed on a tool changer.
     A tool in this repo's context is capable of kinematic movements
@@ -40,9 +39,8 @@ class Tool (RobotModel):
                  ):
 
         # RobotModel.__init__(self, name)
-        super(Tool, self).__init__(name)
+        super(Tool, self).__init__(None, tool_coordinate_frame, name=name)
 
-        self.name = name
         self.type_name = type_name
 
         # --------------------------------------------------------
@@ -60,7 +58,7 @@ class Tool (RobotModel):
         """ Tool tip in reference to T0CP.
         This is the offset from the T0CP to the Gripping Pose
         I used to call it placement_frame but now deprecated"""
-        self.tool_coordinate_frame = tool_coordinate_frame  # type: Frame
+        # self.tool_coordinate_frame = tool_coordinate_frame  # type: Frame
 
         """ Tool changer approach frame in reference to T0CP.
         This is the position of the robot before picking up the tool via toolchanger.
@@ -73,6 +71,16 @@ class Tool (RobotModel):
     # --------------------------------------------------------
     # Frame to Frame Transformation function
     # --------------------------------------------------------
+
+    @property
+    def tool_coordinate_frame(self):
+        """ Getting the current frame T0CP directly"""
+        return self._current_frame.copy()
+
+    @tool_coordinate_frame.setter
+    def tool_coordinate_frame(self, frame):
+        """ Setting the current frame T0CP directly"""
+        self._current_frame = frame.copy()
 
     @property
     def current_frame(self):
@@ -120,12 +128,10 @@ class Tool (RobotModel):
     # State Setting Functions
     # --------------------------------------------------------
 
-    @abstractmethod
     def _get_kinematic_state(self):
         """ Get the kinematic state of all the joints as a dictionary."""
         pass
 
-    @abstractmethod
     def _set_kinematic_state(self, state_dict):
         """ Set the kinematic state from a dictionary."""
         pass
