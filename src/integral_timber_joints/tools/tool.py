@@ -41,24 +41,29 @@ class Tool (ToolModel):
         # RobotModel.__init__(self, name)
         super(Tool, self).__init__(None, tool_coordinate_frame, name=name)
 
+        """ attribute dictionary allowing easy storage of custom data.
+        primitive data types and compas data will survive serialization. 
+        """
+        self.attributes = {}
+
+        """ remove the hardcoded attached_tool_link link in the ToolModel
+        """
+        hardcoded_link = self.get_link_by_name('attached_tool_link')
+        if hardcoded_link is not None: self.links.remove(hardcoded_link)
+
         self.type_name = type_name
 
         # --------------------------------------------------------
         # Extrinsic properities of the tool
         # --------------------------------------------------------
 
-        self.is_visible = True  # type: bool                # If the tool is in scene
-        self.is_attached = False  # type: bool               # If the tool is currently attached to the robot
-        self._current_frame = Frame.worldXY()  # type: Frame # Current location of the tool in the WCF
+        self.is_visible = True  # type: bool            # If the tool is in scene
+        self.is_attached = False  # type: bool          # If the tool is currently attached to the robot
+        self.current_frame = Frame.worldXY()            # type: Frame # Current location of the tool in the WCF
 
         # --------------------------------------------------------
         # Intrinsic properities of the tool
         # --------------------------------------------------------
-
-        """ Tool tip in reference to T0CP.
-        This is the offset from the T0CP to the Gripping Pose
-        I used to call it placement_frame but now deprecated"""
-        # self.tool_coordinate_frame = tool_coordinate_frame  # type: Frame
 
         """ Tool changer approach frame in reference to T0CP.
         This is the position of the robot before picking up the tool via toolchanger.
@@ -68,35 +73,132 @@ class Tool (ToolModel):
         """ Storage location in wcf. If no toolchange is intended, can be set to None """
         self.tool_storage_frame = tool_storage_frame  # type: Frame
 
-    # --------------------------------------------------------
-    # Frame to Frame Transformation function
-    # --------------------------------------------------------
+    @property
+    def data(self):
+        """Returns the data dictionary that represents the tool.
+        """
+        data = super(Tool, self)._get_data()
+        # Serialization of the attributes dictionary
+        data['attributes'] = self.attributes
+        return data
+
+    @data.setter
+    def data(self, data):
+    # def _set_data(self, data):
+        super(Tool, self)._set_data(data)
+        # Deserialization of the attributes dictionary
+        self.attributes.update(data.get('attributes') or {})
+
+    # --------------------------------------------------------------
+    # Routing attributes from ToolModel
+    # --------------------------------------------------------------
 
     @property
     def tool_coordinate_frame(self):
-        """ Getting the current frame T0CP directly"""
-        return self._current_frame.copy()
+        """ Getting the current frame T0CP from ToolModel.frame attribute"""
+        return self.frame.copy()
 
     @tool_coordinate_frame.setter
     def tool_coordinate_frame(self, frame):
         """ Setting the current frame T0CP directly"""
-        self._current_frame = frame.copy()
+        self.frame = frame.copy()
+
+    # --------------------------------------------------------------
+    # Functions to get and set attributes from attributes dictionary.
+    # --------------------------------------------------------------
 
     @property
     def current_frame(self):
         """ Getting the current frame T0CP directly"""
-        return self._current_frame.copy()
+        return self.attributes.get('current_frame', Frame.worldXY())
 
     @current_frame.setter
     def current_frame(self, frame):
         """ Setting the current frame T0CP directly"""
-        self._current_frame = frame.copy()
+        self.attributes['current_frame'] = frame.copy()
+        
+    @property
+    def type_name(self):
+        """ Getting the type_name.
+        Different instance of the same clamp should have the same type_name but different name."""
+        return self.attributes.get('type_name', 'UnknownToolType')
+
+    @type_name.setter
+    def type_name(self, value):
+        """ Setting the type_name
+        Different instance of the same clamp should have the same type_name but different name."""
+        self.attributes['type_name'] = value
+        
+
+    @property
+    def is_visible(self):
+        """ Returns if the object should be visible. """
+        return self.attributes.get('is_visible', True)
+
+    @is_visible.setter
+    def is_visible(self, value):
+        """ Set if the object should be visible."""
+        self.attributes['is_visible'] = value
+        
+
+    @property
+    def is_attached(self):
+        """ Returns if the object is attached to the robot """
+        return self.attributes.get('is_attached', True)
+
+    @is_attached.setter
+    def is_attached(self, value):
+        """ Set if the object is attached to the robot """
+        self.attributes['is_attached'] = value
+        
+
+    @property
+    def tool_pick_up_frame(self):
+        """ Get the tool_pick_up_frame frame. In reference to the T0CP
+        This is the position of the robot before picking up the tool via toolchanger."""
+        return self.attributes.get('tool_pick_up_frame', None)
+
+    @tool_pick_up_frame.setter
+    def tool_pick_up_frame(self, frame):
+        """ Set the tool_pick_up_frame frame. In reference to the T0CP
+        This is the position of the robot before picking up the tool via toolchanger."""
+        if frame is None:
+            self.attributes['tool_pick_up_frame'] = None
+        else:
+            self.attributes['tool_pick_up_frame'] = frame.copy()
+        
+
+    @property
+    def tool_storage_frame(self):
+        """ Get the tool_storage_frame frame. In reference to WCF.
+        This is the position where the tool is stored."""
+        return self.attributes.get('tool_storage_frame', None)
+
+    @tool_storage_frame.setter
+    def tool_storage_frame(self, frame):
+        """ Set the tool_storage_frame frame. In reference to WCF.
+        This is the position where the tool is stored."""
+        if frame is None:
+            self.attributes['tool_storage_frame'] = None
+        else:
+            self.attributes['tool_storage_frame'] = frame.copy()
+    @property
+    def current_configuration(self):
+        """Gets the current Configuration of the joints in the underlying RobotModel
+        This can be used to update the artist or update the robot.
+        """
+        # This should be implemented by child class.
+        raise NotImplementedError
 
     @property
     def current_tcf(self):
         """ Getting the current tool coordinate frame (tool tip) in WCF"""
-        T = Transformation.from_frame_to_frame(Frame.worldXY(), self._current_frame)
+        T = Transformation.from_frame_to_frame(Frame.worldXY(), self.current_frame)
         return self.tool_coordinate_frame.transformed(T)
+
+    # --------------------------------------------------------
+    # Frame to Frame Transformation function
+    # --------------------------------------------------------
 
     def set_current_frame_from_tcp(self, tcp_frame):
         # type: (Frame) -> Frame
@@ -138,14 +240,14 @@ class Tool (ToolModel):
 
     def get_state(self):
         state_dict = self._get_kinematic_state()  # type: Dict[str, float]
-        state_dict["current_frame"] = self._current_frame.copy()
+        state_dict["current_frame"] = self.current_frame.copy()
         state_dict['is_visible'] = self.is_visible
         state_dict['is_attached'] = self.is_attached
         return state_dict
 
     def set_state(self, state_dict):
         self._set_kinematic_state(state_dict)
-        self._current_frame = state_dict["current_frame"]
+        self.current_frame = state_dict["current_frame"]
         self.is_visible = state_dict['is_visible']
         self.is_attached = state_dict['is_attached']
 
@@ -153,30 +255,36 @@ class Tool (ToolModel):
     # Visualization Function
     # --------------------------------------------------------
 
-    def draw_visuals(self):
-        # type: () -> List[Mesh]
+    def draw_visual(self, artist = None):
+        # type: (BaseRobotModelArtist) -> list[any[Mesh, RhinoMesh]]
         """ Returns the COMPAS Mesh of the underlying RobotModel
         in the location determined by its internal state.
+
+        If provided with a type of BaseRobotModelArtist, this result will be painted by that artist.
+        Otherwise compas_meshes will be returned.
         """
         # Return empty list if is_visible is False
         if not self.is_visible:
             return []
 
         # Create a new robot artist is necessary
-        artist = CompasRobotArtist(self)
+        if artist is None:
+            artist = CompasRobotArtist(self)
 
+        
         # Grab all joint values and create a Configuration (Artist want it)
-        joint_names = [j.name for j in self.get_configurable_joints()]
-        joint_positions = [j.position for j in self.get_configurable_joints()]
-        robot_configuration = Configuration.from_prismatic_and_revolute_values(joint_positions, [])
+        root_transformation = Transformation.from_frame(self.current_frame)
+        joint_state = self.current_configuration.joint_dict
 
         # Artist performs update of the transformations
-        artist.update(robot_configuration, joint_names)
-        # print (joint_positions)
+        artist._transform_link_geometry(self.root, root_transformation, True)
+        artist._update(self, joint_state, parent_transformation = root_transformation)
 
         # Post-transforming the visualization mesh according to world joint.
-        T = Transformation.from_frame_to_frame(Frame.worldXY(), self.current_frame)
-        visual_meshes = [mesh.transformed(T) for mesh in artist.draw_visual()]
+        # T = Transformation.from_frame_to_frame(Frame.worldXY(), self.current_frame)
+        # visual_meshes = [mesh.transformed(T) for mesh in artist.draw_visual()]
+        visual_meshes = [mesh for mesh in artist.draw_visual()]
+
         return visual_meshes
 
     # --------------------------------------------------------

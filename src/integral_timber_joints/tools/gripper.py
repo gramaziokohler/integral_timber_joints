@@ -21,32 +21,81 @@ class Gripper (Tool):
         # Call Tool init
         if tool_coordinate_frame is None:
             tool_coordinate_frame = Frame.worldXY()
-        # Tool.__init__(self, name, type_name, tool_coordinate_frame)
         super(Gripper, self).__init__(name, type_name, tool_coordinate_frame)
 
         # --------------------------------------------------------
         # Extrinsic properities (Gripper Specific)
         # --------------------------------------------------------
+        self.gripper_jaw_position = gripper_jaw_position_min
 
-        self._gripper_jaw_position = gripper_jaw_position_min  # type: float
         # --------------------------------------------------------
         # Intrinsic properities (Gripper Specific)
         # --------------------------------------------------------
 
         self.approach_vector = approach_vector
+        self.tool_pick_up_frame = tool_pick_up_frame
+        self.tool_storage_frame = tool_storage_frame
         self.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max)  # type: Tuple[float, float]
 
-    # --------------------------------------------------------
-    # State Setting Functions
-    # --------------------------------------------------------
+    # --------------------------------------------------------------
+    # Functions to get and set attributes from attributes dictionary.
+    # --------------------------------------------------------------
 
     @property
     def gripper_jaw_position(self):
-        return self._gripper_jaw_position
+        return self.attributes.get('gripper_jaw_position', 0)
 
     @gripper_jaw_position.setter
-    def gripper_jaw_position(self, position):
-        self._gripper_jaw_position = position
+    def gripper_jaw_position(self, v):
+        self.attributes['gripper_jaw_position'] = v
+
+    @property
+    def gripper_jaw_limits(self):
+        return self.attributes.get('gripper_jaw_limits', (0, 100))
+
+    @gripper_jaw_limits.setter
+    def gripper_jaw_limits(self, v):
+        self.attributes['gripper_jaw_limits'] = v
+
+    @property
+    def approach_vector(self):
+        return self.attributes.get('approach_vector', None)
+
+
+    @approach_vector.setter
+    def approach_vector(self, v):
+        self.attributes['approach_vector'] = v
+
+    @property
+    def tool_pick_up_frame(self):
+        return self.attributes.get('tool_pick_up_frame', None)
+
+
+    @tool_pick_up_frame.setter
+    def tool_pick_up_frame(self, v):
+        self.attributes['tool_pick_up_frame'] = v
+
+    @property
+    def tool_storage_frame(self):
+        return self.attributes.get('tool_storage_frame', None)
+
+    @tool_storage_frame.setter
+    def tool_storage_frame(self, v):
+        self.attributes['tool_storage_frame'] = v
+
+    @property
+    def gripper_drill_lines(self):
+        """ List of Lines where the interface between gripper with the
+        beams require drilling guide holes """
+        return self.attributes.get('gripper_drill_lines', [])
+
+    @gripper_drill_lines.setter
+    def gripper_drill_lines(self, v):
+        self.attributes['gripper_drill_lines'] = v
+
+    # ----------------------------------
+    # Functions for kinematic state
+    # ----------------------------------
 
     def _set_kinematic_state(self, state_dict):
         self.gripper_jaw_position = state_dict['gripper_jaw_position']
@@ -56,13 +105,13 @@ class Gripper (Tool):
 
     @property
     def current_configuration(self):
-        """Gets the current configuration of the tools' RobotModel
+        """Gets the current Configuration of the joints in the underlying RobotModel
         This can be used to update the artist or update the robot.
         """
         values, types, joint_names = [], [], []
         for joint in self.get_configurable_joints():
             if joint.name.startswith('joint_gripper_'):
-                values.append(self._gripper_jaw_position)
+                values.append(self.gripper_jaw_position)
                 types.append(Joint.PRISMATIC)
                 joint_names.append(joint.name)
         return Configuration(values, types, joint_names)
@@ -167,9 +216,9 @@ def MultiFingerParallelGripperFactory(
     # Jaw Joints
     #robot_model.add_joint('world_base_fixed_joint', Joint.FIXED, world_link, base_link)
     for link in gripper_jawlinks_l:
-        robot_model.add_joint('joint_%s' % link.name, Joint.PRISMATIC, gripper_base, link, axis=jaw_vector_l, limit=robot_model.gripper_jaw_limits)
+        robot_model.add_joint('joint_gripper_%s' % link.name, Joint.PRISMATIC, gripper_base, link, axis=jaw_vector_l, limit=robot_model.gripper_jaw_limits)
     for link in gripper_jawlinks_r:
-        robot_model.add_joint('joint_%s' % link.name, Joint.PRISMATIC, gripper_base, link, axis=jaw_vector_r, limit=robot_model.gripper_jaw_limits)
+        robot_model.add_joint('joint_gripper_%s' % link.name, Joint.PRISMATIC, gripper_base, link, axis=jaw_vector_r, limit=robot_model.gripper_jaw_limits)
 
     return robot_model
 

@@ -1,14 +1,14 @@
 from compas.geometry import Frame, Transformation
 
 from integral_timber_joints.tools import Tool
-
+from compas_fab.robots import Configuration
 
 class ToolChanger (Tool):
     def __init__(self,
                  name,
                  tool_coordinate_frame,     #type: Frame # The frame that connects to the tool
-                 collision_mesh,
-                 type_name="ToolChanger"
+                 collision_mesh = None,
+                 type_name = "ToolChanger"
                  ):
 
         # Call Tool init
@@ -16,16 +16,33 @@ class ToolChanger (Tool):
 
         self.collision_mesh = collision_mesh
 
-    def draw_visuals(self):
-        # type: () -> List[Mesh]
-        """ Returns the COMPAS Mesh of the ToolChanger
-        in the location determined by its internal state.
-        """
-        # Return empty list if is_visible is False
-        if not self.is_visible:
-            return []
+    # --------------------------------------------------------------
+    # The collision mesh is stored in a Link object
+    # --------------------------------------------------------------
 
-        # Transform the visualization mesh to current_frame.
-        T = Transformation.from_frame_to_frame(Frame.worldXY(), self.current_frame)
-        visual_meshes = [self.collision_mesh.transformed(T)]
-        return visual_meshes
+    # @property
+    # def root_link_name(self):
+    #     """Name of the Link object in Robot Model"""
+    #     return 'toolchanger_base'
+
+    @property
+    def collision_mesh(self):
+        toolchanger_base = self.get_link_by_name('toolchanger_base')
+        return toolchanger_base
+
+    @collision_mesh.setter
+    def collision_mesh(self, collision_mesh):
+        """This can be either one or a list of meshes"""
+        from compas.robots import Axis, Joint, Link
+        if collision_mesh is not None:
+            gripper_base = self.add_link('toolchanger_base', collision_mesh)
+            self.root = gripper_base
+            self._create(self.root, Transformation())
+
+    # --------------------------------------------------------------
+    # This ToolChanger has no Kinematics
+    # --------------------------------------------------------------
+
+    @property
+    def current_configuration(self):
+        return Configuration([], [], [])
