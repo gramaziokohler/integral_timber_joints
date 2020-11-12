@@ -35,7 +35,7 @@ class Gripper (Tool):
         self.approach_vector = approach_vector
         self.tool_pick_up_frame = tool_pick_up_frame
         self.tool_storage_frame = tool_storage_frame
-        self.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max)  # type: Tuple[float, float]
+        self.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max)  # type: tuple[float, float]
 
     # --------------------------------------------------------------
     # Functions to get and set attributes from attributes dictionary.
@@ -61,7 +61,6 @@ class Gripper (Tool):
     def approach_vector(self):
         return self.attributes.get('approach_vector', None)
 
-
     @approach_vector.setter
     def approach_vector(self, v):
         self.attributes['approach_vector'] = v
@@ -69,7 +68,6 @@ class Gripper (Tool):
     @property
     def tool_pick_up_frame(self):
         return self.attributes.get('tool_pick_up_frame', None)
-
 
     @tool_pick_up_frame.setter
     def tool_pick_up_frame(self, v):
