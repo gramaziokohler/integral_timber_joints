@@ -9,6 +9,12 @@ from integral_timber_joints.tools import Tool
 
 
 class Gripper (Tool):
+    """ Gripper object represents a robotic gripper that has both 
+    gripper jaw. This is a subclass of Tool and Robot Model.
+
+    The object keep track of the RobotModel and the kinematic configuration. 
+    """
+
     def __init__(self, name,
                  type_name="Gripper",
                  tool_coordinate_frame=None,

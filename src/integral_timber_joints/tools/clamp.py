@@ -9,6 +9,11 @@ from integral_timber_joints.tools.gripper import Gripper
 
 
 class Clamp (Gripper):
+    """ Clamp object represents a robotic clamp that has both 
+    gripper jaw and clamp jaw. This is a subclass of Gripper.
+
+    The object keep track of the RobotModel and the kinematic configuration. 
+    """
     def __init__(self, name,
                  type_name="Clamp",
                  tool_coordinate_frame=None,

@@ -262,6 +262,9 @@ class Tool (ToolModel):
 
         If provided with a type of BaseRobotModelArtist, this result will be painted by that artist.
         Otherwise compas_meshes will be returned.
+        
+        If the specific Artist draw_visual() returns geometry,
+        they will be returned.
         """
         # Return empty list if is_visible is False
         if not self.is_visible:
@@ -280,12 +283,9 @@ class Tool (ToolModel):
         artist._transform_link_geometry(self.root, root_transformation, True)
         artist._update(self, joint_state, parent_transformation = root_transformation)
 
-        # Post-transforming the visualization mesh according to world joint.
-        # T = Transformation.from_frame_to_frame(Frame.worldXY(), self.current_frame)
-        # visual_meshes = [mesh.transformed(T) for mesh in artist.draw_visual()]
-        visual_meshes = [mesh for mesh in artist.draw_visual()]
+        result = artist.draw_visual()
 
-        return visual_meshes
+        return result
 
     # --------------------------------------------------------
     # String Representations

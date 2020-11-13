@@ -14,7 +14,7 @@ from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWri
 
 class RobotClampAssemblyProcess(Network):
 
-    def __init__(self, assembly = None):
+    def __init__(self, assembly=None):
         # type: (Assembly) -> None
 
         super(RobotClampAssemblyProcess, self).__init__()
@@ -36,7 +36,7 @@ class RobotClampAssemblyProcess(Network):
     def robot_toolchanger(self):
         # type: () -> ToolChanger
         return self.attributes['robot_toolchanger']
-    
+
     @robot_toolchanger.setter
     def robot_toolchanger(self, value):
         # type: (RobotWrist) -> None
@@ -46,7 +46,7 @@ class RobotClampAssemblyProcess(Network):
     def robot_wrist_collision_mesh(self):
         # type: () -> RobotWrist
         return self.attributes['robot_wrist_collision_mesh']
-    
+
     @robot_wrist_collision_mesh.setter
     def robot_wrist_collision_mesh(self, value):
         # type: (RobotWrist) -> None
@@ -56,43 +56,42 @@ class RobotClampAssemblyProcess(Network):
     def actions(self):
         # type: () -> list[Action]
         return self.attributes['actions']
-    
+
     @actions.setter
     def actions(self, value):
         # type: (list[Action]) -> None
         self.attributes['actions'] = value
-    
+
     @ property
     def movements(self):
         # type: () -> list[Movement]
         return self.attributes['movements']
-    
+
     @movements.setter
     def movements(self, value):
         # type: (list[Movement]) -> None
         self.attributes['movements'] = value
-    
+
     @ property
     def pickup_station(self):
         # type: () -> PickupStation
         return self.attributes['pickup_station']
-    
+
     @pickup_station.setter
     def pickup_station(self, value):
         # type: (list[PickupStation]) -> None
         self.attributes['pickup_station'] = value
-    
+
     @ property
     def environment_meshes(self):
         # type: () -> list[Mesh]
         return self.attributes['environment_meshes']
-    
+
     @environment_meshes.setter
     def actions(self, value):
         # type: (list[Mesh]) -> None
         self.attributes['environment_meshes'] = value
 
-    
     # -----------------------
     # Properity access
     # -----------------------
@@ -447,8 +446,52 @@ class RobotClampAssemblyProcess(Network):
         self.assembly.set_beam_attribute(beam_id, 'gripper_grasp_face', best_face)
         return best_face
 
-    def get_gripper_t0cp_for_beam_at(self, beam_id, attribute_name):
+    def search_grasp_face_from_joint_assembly_direction(self, beam_id):
+        # type: (str) -> Vector
+        """Return the best face number (1-4) for creating `gripper_tcp_in_ocf`
+        where grasp face normal is the opposite direction of the beam's assembly direction. 
 
+        Side Effect
+        -----------
+        beam_attribute 'gripper_grasp_face' will be set.
+        """
+        raise NotImplementedError
+
+    def assign_gripper_to_beam(self, beam_id, verbose=False):
+
+        gripper_type_name = self.grippers[0].type_name
+        self.assembly.set_beam_attribute(beam_id, "gripper_type", gripper_type_name)
+        if verbose:
+            print("Gripper Type: %s assigned to %s" % (gripper_type_name, beam_id))
+        # A better implementation is to go through each gripper.target_beam_length
+        # And see which one fits the beam better.
+
+    def compute_default_gripper_grasp_pose(self, beam_id):
+        """ Computes the default grasp pose in the middle of the beam
+
+        Gripper should be assigned before.
+
+        Side Effect
+        -----------
+        beam_attribute "gripper_grasp_dist_from_start" will be set.
+        beam_attribute "gripper_tcp_in_ocf" will be set.
+        """
+
+        beam = self.assembly.beam(beam_id)
+
+        gripper_grasp_face = self.search_grasp_face_from_guide_vector_dir(beam_id)
+        gripper_grasp_dist_from_start = beam.length / 2.0
+        gripper_tcp_in_ocf = beam.grasp_frame_ocf(gripper_grasp_face, gripper_grasp_dist_from_start)
+
+        self.assembly.set_beam_attribute(beam_id, "gripper_grasp_dist_from_start", gripper_grasp_dist_from_start)
+        self.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
+
+    def get_gripper_t0cp_for_beam_at(self, beam_id, attribute_name):
+        """ Returns the t0cp position of the gripper (in WCF)
+        when the beam is at different key position.
+
+        The result can be used directly for gripper.current_frame = get_gripper_t0cp_for_beam_at()
+        """ 
         # Get Gripper Object
         gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
         gripper = self.get_one_gripper_by_type(gripper_type)
@@ -467,6 +510,27 @@ class RobotClampAssemblyProcess(Network):
         # Find t0cp from tcp
         T = Transformation.from_frame_to_frame(gripper.tool_coordinate_frame, gripper_tcp_in_wcf)
         return Frame.worldXY().transformed(T)
+
+    def get_gripper_of_beam(self, beam_id, beam_position_name='assembly_wcf_final'):
+        # type: (str, bool) -> Gripper
+        """Returns one of the gripper object being set at the specified position.
+        The beam_position_name must be present in the beam attributes.
+
+        If the beam_position_name is not specified, 'assembly_wcf_final' will be used.
+        Refering to the assembled position of the beam.
+
+        Warning: The returned gripper object is not deep-copied.
+        Modifying it will change its definition in the process.
+        """
+        gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
+        gripper = self.get_one_gripper_by_type(gripper_type)
+
+        # Set the 
+        gripper_wcf_final = self.get_gripper_t0cp_for_beam_at(beam_id, beam_position_name)
+        assert gripper_wcf_final is not None
+        gripper.current_frame = gripper_wcf_final
+
+        return gripper
 
     # -----------------------
     # Beam Storage / Pick Up / Retract
@@ -566,7 +630,7 @@ class RobotClampAssemblyProcess(Network):
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', assembly_wcf_storage)
 
     def compute_gripper_approach_vector_wcf_final(self, beam_id, verbose=False):
-        # type: (str, Optional[bool]) -> Vector
+        # type: (str, bool) -> Vector
         """Compute gripper approach_vector (wcf)
         when beam is at final location (beam.frame)
 
@@ -601,25 +665,24 @@ class RobotClampAssemblyProcess(Network):
 
         return approach_vector_wcf_final
 
-    def compute_beam_storageapproach_and_finalretract(self, beam_id):
-        # type: (str) -> None
-        """ Compute gripper approach and retract positions from 'assembly_wcf_storage'.
+    def compute_beam_storageapproach(self, beam_id):
+        """ Compute gripper retract positions from 'assembly_wcf_storage'.
         Approach vector is taken from gripper's approach vector (tcf) -> (beam ocf)
 
         Retract vector (wcf) is taken from beam attribute 'design_guide_vector_storage_pickup',
         this is an optional parameter and if left out will default to Vector(0, 0, 1), lifting upwards by one world unit.
 
+        Gripper, Pickupstation and beam_attribute'assembly_wcf_storage' should be set before hand
+
         Side Effect
         -----------
         beam_attribute 'assembly_wcf_storageapproach' will be set.
-        beam_attribute 'assembly_wcf_finalretract' will be set.
         """
         approach_vector_wcf_final = self.compute_gripper_approach_vector_wcf_final(beam_id)
 
         # Express approach vector in World (wcf) when beam is in 'assembly_wcf_storage'
         T = self.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_storage')
         approach_vector_wcf_storage = approach_vector_wcf_final.transformed(T)
-        print("approach_vector_wcf_storage = %s " % approach_vector_wcf_storage)
 
         # Compute assembly_wcf_storageapproach (wcf)
         T = Translation.from_vector(approach_vector_wcf_storage.scaled(-1))
@@ -628,11 +691,35 @@ class RobotClampAssemblyProcess(Network):
         assembly_wcf_storageapproach = assembly_wcf_storage.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageapproach', assembly_wcf_storageapproach)
 
+    def compute_beam_finalretract(self, beam_id):
+        """ Compute gripper retract positions from 'assembly_wcf_final'.
+        Retraction direction and amount wcf) is taken from gripper attribute 'approach_vector', reversed.
+
+        Gripper shouold be assigned before hand.
+
+        Side Effect
+        -----------
+        beam_attribute 'assembly_wcf_finalretract' will be set.
+        """
+        approach_vector_wcf_final = self.compute_gripper_approach_vector_wcf_final(beam_id)
+
         # Compute assembly_wcf_finalretract (wcf)
         T = Translation.from_vector(approach_vector_wcf_final.scaled(-1))
         assembly_wcf_final = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_final')
         assembly_wcf_finalretract = assembly_wcf_final.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_finalretract', assembly_wcf_finalretract)
+
+    def compute_beam_storageapproach_and_finalretract(self, beam_id):
+        # type: (str) -> None
+        """ 
+        See compute_beam_storageapproach() and compute_beam_finalretract()
+        Side Effect
+        -----------
+        beam_attribute 'assembly_wcf_storageapproach' will be set.
+        beam_attribute 'assembly_wcf_finalretract' will be set.
+        """
+        self.compute_beam_storageapproach(beam_id)
+        self.compute_beam_finalretract(beam_id)
 
     def compute_beam_storageretract(self, beam_id):
         # type: (str) -> None

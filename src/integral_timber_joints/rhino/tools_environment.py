@@ -1,15 +1,17 @@
+import json
+import os
+
 import Rhino
 import rhinoscriptsyntax as rs
-from compas_rhino.utilities.objects import get_object_name
+from compas.utilities import DataDecoder
 from compas_rhino.ui import CommandMenu
+from compas_rhino.utilities.objects import get_object_name
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
-import jsonpickle
-import os
-
+from integral_timber_joints.tools import Clamp, Gripper
 
 def list_tools(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -32,6 +34,52 @@ def list_tools(process):
     for mesh in process.environment_meshes:
         print("  mesh with %i vertices))" % (len(mesh.vertices)))
 
+def get_next_clamp_id(process):
+    # type: (RobotClampAssemblyProcess) -> str
+    clamp_ids = [tool.name for tool in process.clamps]
+    for i in range (1, 100):
+        id = 'c%i'%i
+        if id not in clamp_ids:
+            return id
+
+def get_next_gripper_id(process):
+    gripper_ids = [tool.name for tool in process.grippers]
+    for i in range (1, 100):
+        id = 'g%i'%i
+        if id not in gripper_ids:
+            return id
+
+def add_clamp(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    # Ask user for a json file
+    path = rs.OpenFileName("Open", "Clamp File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            # Deserialize asert correctness and add to Process
+            tool = json.load(f, cls=DataDecoder)
+            assert isinstance(tool, Clamp)
+            # Ask user for a new id 
+            name = rs.GetString("Type in clamp id typically c1,c2, etc..", get_next_clamp_id(process))
+            if name is not None: 
+                tool.name = name
+                process.add_clamp(tool)
+                print("Clamp added: %s " % tool)
+
+def add_gripper(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    # Ask user for a json file
+    path = rs.OpenFileName("Open", "Gripper File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            # Deserialize asert correctness and add to Process
+            tool = json.load(f, cls=DataDecoder)
+            assert isinstance(tool, Gripper)
+            # Ask user for a new id 
+            name = rs.GetString("Type in gripper id typically g1,g2, etc..", get_next_gripper_id(process))
+            if name is not None: 
+                tool.name = name
+                process.add_gripper(tool)
+                print("Clamp added: %s " % tool)
 
 def replace_toolchanger(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -40,10 +88,10 @@ def replace_toolchanger(process):
     if path:
         with open(path, 'r') as f:
             # Deserialize asert correctness and add to Process
-            toolchanger = jsonpickle.decode(f.read(), keys=True)
-            assert type(toolchanger).__name__ == "ToolChanger"
-            process.toolchanger = toolchanger
-            print("Tool Changer replaced with %s" % toolchanger)
+            tool = json.load(f, cls=DataDecoder)
+            assert tool.type_name == "ToolChanger"
+            process.toolchanger = tool
+            print("Tool Changer replaced with %s" % tool)
 
 
 def replace_robot_wrist(process):
@@ -52,11 +100,11 @@ def replace_robot_wrist(process):
     path = rs.OpenFileName("Open", "ToolChanger File (*.json)|*.json|All Files (*.*)|*.*||")
     if path:
         with open(path, 'r') as f:
-            # Deserialize asert correctness and add to Process
-            robot_wrist = jsonpickle.decode(f.read(), keys=True)
-            assert type(robot_wrist).__name__ == "RobotWrist"
-            process.robot_wrist_collision_mesh = robot_wrist
-            print("Robot Wrist Collision Object replaced with %s" % robot_wrist)
+            # robot_wrist asert correctness and add to Process
+            tool = json.load(f, cls=DataDecoder)
+            assert tool.type_name == "RobotWrist"
+            process.robot_wrist_collision_mesh = tool
+            print("Robot Wrist Collision Object replaced with %s" % tool)
 
 
 def something(process):
@@ -80,12 +128,12 @@ def show_menu(process):
                  },
                 {'name': 'Clamps', 'message': 'Process have %i Clamps:' % len(list(process.clamps)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
-                    {'name': 'AddClamp', 'action': something},
+                    {'name': 'AddClamp', 'action': add_clamp},
                     {'name': 'DeleteClamp', 'action': something},
                 ]},
                 {'name': 'Gripper', 'message': 'Process have %i Gripper:' % len(list(process.grippers)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
-                    {'name': 'AddGripper', 'action': something},
+                    {'name': 'AddGripper', 'action': add_gripper},
                     {'name': 'DeleteGripper', 'action': something},
                 ]},
                 {'name': 'RobotToolChanger', 'message': 'Process robot_toolchanger:', 'options': [

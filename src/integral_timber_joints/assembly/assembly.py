@@ -59,7 +59,7 @@ class Assembly(Network):
             'is_placed': False,                     # Parameter used in visualization
             'is_visible': True,                     # Parameter used in visualization
             'is_attached': True,                    # Parameter used in visualization
-            'design_guide_vector_jawapproach': None,
+            'design_guide_vector_jawapproach': Vector(1,1,1),
             'assembly_vector_final': None,
             'assembly_vector_jawapproach': None,
             'assembly_vector_pickup': None,
@@ -75,8 +75,8 @@ class Assembly(Network):
             'gripper_grasp_face': None,             # Grasp pose expressed in relationship to Beam Face
             'gripper_grasp_dist_from_start': None,  # Grasp pose expressed in relationship to Beam Length Parameter
             'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
-            'design_guide_vector_grasp': None,      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
-            'design_guide_vector_storage_pickup': None,  # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
+            'design_guide_vector_grasp': Vector(1,1,1),      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
+            'design_guide_vector_storage_pickup': Vector(0,0,1),  # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
             'beam_cut_start': None,                 # Beamcut object at the start of the beam. Can be None
             'beam_cut_end': None,                   # Beamcut object at the end of the beam. Can be None
         })

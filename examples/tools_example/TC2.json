@@ -2467,7 +2467,7 @@
             "tool_storage_frame": null, 
             "tool_pick_up_frame": null, 
             "is_visible": true, 
-            "type_name": "TC2"
+            "type_name": "ToolChanger"
         }, 
         "materials": []
     }
