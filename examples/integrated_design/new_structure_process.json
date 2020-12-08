@@ -1,7 +1,7 @@
 {
     "dtype": "integral_timber_joints.process/RobotClampAssemblyProcess", 
     "value": {
-        "compas": "0.17.2", 
+        "compas": "0.18.1", 
         "datatype": "integral_timber_joints.process/RobotClampAssemblyProcess", 
         "data": {
             "adjacency": {}, 
@@ -13,6 +13,9 @@
             "node": {}, 
             "max_int_key": -1, 
             "attributes": {
+                "name": "Network", 
+                "environment_meshes": [], 
+                "pickup_station": null, 
                 "clamps": {
                     "c2": {
                         "dtype": "integral_timber_joints.tools/Clamp", 
@@ -167,7 +170,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -2414,7 +2417,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -3227,7 +3230,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -4441,6 +4444,11 @@
                                         76.60444431191236
                                     ]
                                 }, 
+                                "target_beam_length": null, 
+                                "beam_length_limits": [
+                                    500, 
+                                    5000
+                                ], 
                                 "is_attached": false, 
                                 "gripper_jaw_position": 0, 
                                 "clamp_jaw_limits": [
@@ -4716,7 +4724,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -6963,7 +6971,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -7776,7 +7784,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -8990,6 +8998,11 @@
                                         -76.60444431191236
                                     ]
                                 }, 
+                                "target_beam_length": null, 
+                                "beam_length_limits": [
+                                    500, 
+                                    5000
+                                ], 
                                 "is_attached": false, 
                                 "gripper_jaw_position": 0, 
                                 "clamp_jaw_limits": [
@@ -9265,7 +9278,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -11512,7 +11525,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -12325,7 +12338,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -13539,6 +13552,11 @@
                                         -76.60444431191236
                                     ]
                                 }, 
+                                "target_beam_length": null, 
+                                "beam_length_limits": [
+                                    500, 
+                                    5000
+                                ], 
                                 "is_attached": false, 
                                 "gripper_jaw_position": 0, 
                                 "clamp_jaw_limits": [
@@ -13814,7 +13832,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -16061,7 +16079,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -16874,7 +16892,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -18088,6 +18106,11 @@
                                         76.60444431191236
                                     ]
                                 }, 
+                                "target_beam_length": null, 
+                                "beam_length_limits": [
+                                    500, 
+                                    5000
+                                ], 
                                 "is_attached": false, 
                                 "gripper_jaw_position": 0, 
                                 "clamp_jaw_limits": [
@@ -18433,7 +18456,34 @@
                                                     ]
                                                 ]
                                             }, 
-                                            "current_transformation": null, 
+                                            "current_transformation": {
+                                                "matrix": [
+                                                    [
+                                                        4.080291943931631e-15, 
+                                                        5.7004594895826408e-14, 
+                                                        -1.0, 
+                                                        1892.5341382960708
+                                                    ], 
+                                                    [
+                                                        0.24411579571765152, 
+                                                        -0.96974608959311503, 
+                                                        -5.4283919274414112e-14, 
+                                                        4169.7224872037323
+                                                    ], 
+                                                    [
+                                                        -0.96974608959311503, 
+                                                        -0.24411579571765152, 
+                                                        -1.7872569199583029e-14, 
+                                                        2693.0872403839485
+                                                    ], 
+                                                    [
+                                                        0.0, 
+                                                        0.0, 
+                                                        0.0, 
+                                                        1.0
+                                                    ]
+                                                ]
+                                            }, 
                                             "name": "Visual", 
                                             "material": {
                                                 "color": {
@@ -18457,7 +18507,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -19683,7 +19733,34 @@
                                                     ]
                                                 ]
                                             }, 
-                                            "current_transformation": null, 
+                                            "current_transformation": {
+                                                "matrix": [
+                                                    [
+                                                        4.080291943931631e-15, 
+                                                        5.7004594895826408e-14, 
+                                                        -1.0, 
+                                                        1892.5341382960708
+                                                    ], 
+                                                    [
+                                                        0.24411579571765152, 
+                                                        -0.96974608959311503, 
+                                                        -5.4283919274414112e-14, 
+                                                        4169.9177798403061
+                                                    ], 
+                                                    [
+                                                        -0.96974608959311503, 
+                                                        -0.24411579571765152, 
+                                                        -1.7872569199583029e-14, 
+                                                        2692.3114435122739
+                                                    ], 
+                                                    [
+                                                        0.0, 
+                                                        0.0, 
+                                                        0.0, 
+                                                        1.0
+                                                    ]
+                                                ]
+                                            }, 
                                             "name": "Visual", 
                                             "material": {
                                                 "color": {
@@ -19707,7 +19784,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -20227,7 +20304,34 @@
                                                     ]
                                                 ]
                                             }, 
-                                            "current_transformation": null, 
+                                            "current_transformation": {
+                                                "matrix": [
+                                                    [
+                                                        4.080291943931631e-15, 
+                                                        5.7004594895826408e-14, 
+                                                        -1.0, 
+                                                        1892.5341382960708
+                                                    ], 
+                                                    [
+                                                        0.24411579571765152, 
+                                                        -0.96974608959311503, 
+                                                        -5.4283919274414112e-14, 
+                                                        4169.9177798403061
+                                                    ], 
+                                                    [
+                                                        -0.96974608959311503, 
+                                                        -0.24411579571765152, 
+                                                        -1.7872569199583029e-14, 
+                                                        2692.3114435122739
+                                                    ], 
+                                                    [
+                                                        0.0, 
+                                                        0.0, 
+                                                        0.0, 
+                                                        1.0
+                                                    ]
+                                                ]
+                                            }, 
                                             "name": "Visual", 
                                             "material": {
                                                 "color": {
@@ -20251,7 +20355,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -20771,7 +20875,34 @@
                                                     ]
                                                 ]
                                             }, 
-                                            "current_transformation": null, 
+                                            "current_transformation": {
+                                                "matrix": [
+                                                    [
+                                                        4.080291943931631e-15, 
+                                                        5.7004594895826408e-14, 
+                                                        -1.0, 
+                                                        1892.5341382960708
+                                                    ], 
+                                                    [
+                                                        0.24411579571765152, 
+                                                        -0.96974608959311503, 
+                                                        -5.4283919274414112e-14, 
+                                                        4169.5271945671584
+                                                    ], 
+                                                    [
+                                                        -0.96974608959311503, 
+                                                        -0.24411579571765152, 
+                                                        -1.7872569199583029e-14, 
+                                                        2693.8630372556231
+                                                    ], 
+                                                    [
+                                                        0.0, 
+                                                        0.0, 
+                                                        0.0, 
+                                                        1.0
+                                                    ]
+                                                ]
+                                            }, 
                                             "name": "Visual", 
                                             "material": {
                                                 "color": {
@@ -20795,7 +20926,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -21315,7 +21446,34 @@
                                                     ]
                                                 ]
                                             }, 
-                                            "current_transformation": null, 
+                                            "current_transformation": {
+                                                "matrix": [
+                                                    [
+                                                        4.080291943931631e-15, 
+                                                        5.7004594895826408e-14, 
+                                                        -1.0, 
+                                                        1892.5341382960708
+                                                    ], 
+                                                    [
+                                                        0.24411579571765152, 
+                                                        -0.96974608959311503, 
+                                                        -5.4283919274414112e-14, 
+                                                        4169.5271945671584
+                                                    ], 
+                                                    [
+                                                        -0.96974608959311503, 
+                                                        -0.24411579571765152, 
+                                                        -1.7872569199583029e-14, 
+                                                        2693.8630372556231
+                                                    ], 
+                                                    [
+                                                        0.0, 
+                                                        0.0, 
+                                                        0.0, 
+                                                        1.0
+                                                    ]
+                                                ]
+                                            }, 
                                             "name": "Visual", 
                                             "material": {
                                                 "color": {
@@ -21339,7 +21497,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -22034,25 +22192,29 @@
                                     "dtype": "compas.geometry/Frame", 
                                     "value": {
                                         "yaxis": [
-                                            0.0, 
-                                            1.0, 
-                                            0.0
+                                            5.7004594895826408e-14, 
+                                            -0.96974608959311503, 
+                                            -0.24411579571765152
                                         ], 
                                         "xaxis": [
-                                            1.0, 
-                                            0.0, 
-                                            0.0
+                                            4.080291943931631e-15, 
+                                            0.24411579571765152, 
+                                            -0.96974608959311503
                                         ], 
                                         "point": [
-                                            0.0, 
-                                            0.0, 
-                                            0.0
+                                            1892.5341382960708, 
+                                            4169.7224872037323, 
+                                            2693.0872403839485
                                         ]
                                     }
                                 }, 
                                 "gripper_jaw_limits": [
                                     0.80000000000000004, 
                                     10.0
+                                ], 
+                                "beam_length_limits": [
+                                    500, 
+                                    5000
                                 ], 
                                 "is_attached": false, 
                                 "tool_storage_frame": {
@@ -22105,7 +22267,8 @@
                                 }, 
                                 "gripper_jaw_position": 0.80000000000000004, 
                                 "is_visible": true, 
-                                "type_name": "PG500"
+                                "type_name": "PG500", 
+                                "target_beam_length": 1000
                             }, 
                             "materials": []
                         }
@@ -22353,7 +22516,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -23603,7 +23766,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -24147,7 +24310,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -24691,7 +24854,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -25235,7 +25398,7 @@
                                                     ], 
                                                     "type": "mesh", 
                                                     "geometry": {
-                                                        "compas": "0.17.2", 
+                                                        "compas": "0.18.1", 
                                                         "datatype": "compas.datastructures/Mesh", 
                                                         "data": {
                                                             "facedata": {
@@ -25950,6 +26113,10 @@
                                     0.80000000000000004, 
                                     10.0
                                 ], 
+                                "beam_length_limits": [
+                                    500, 
+                                    5000
+                                ], 
                                 "is_attached": false, 
                                 "tool_storage_frame": {
                                     "dtype": "compas.geometry/Frame", 
@@ -26001,18 +26168,258 @@
                                 }, 
                                 "gripper_jaw_position": 0.80000000000000004, 
                                 "is_visible": true, 
-                                "type_name": "PG1000"
+                                "type_name": "PG1000", 
+                                "target_beam_length": 1000
                             }, 
                             "materials": []
                         }
                     }
                 }, 
-                "name": "Network", 
-                "environment_meshes": [], 
+                "dependency": {
+                    "dtype": "integral_timber_joints.process/ComputationalDependency", 
+                    "value": {
+                        "compas": "0.18.1", 
+                        "datatype": "integral_timber_joints.process/ComputationalDependency", 
+                        "data": {
+                            "adjacency": {
+                                "'compute_clamp_attachapproach_attachretract_detachapproach'": {
+                                    "'search_valid_clamp_orientation_with_guiding_vector'": null
+                                }, 
+                                "'assign_clamp_type_to_joints'": {
+                                    "'search_valid_clamp_orientation_with_guiding_vector'": null
+                                }, 
+                                "'compute_beam_storageapproach_and_finalretract'": {
+                                    "'compute_storage_location_at_corner_aligning_pickup_location'": null
+                                }, 
+                                "'compute_clamp_detachretract'": {
+                                    "'search_valid_clamp_orientation_with_guiding_vector'": null
+                                }, 
+                                "'search_valid_clamp_orientation_with_guiding_vector'": {
+                                    "'compute_clamp_attachapproach_attachretract_detachapproach'": null, 
+                                    "'assign_clamp_type_to_joints'": null, 
+                                    "'search_valid_jawapproach_vector_prioritizing_beam_side'": null, 
+                                    "'compute_clamp_detachretract'": null
+                                }, 
+                                "'search_valid_jawapproach_vector_prioritizing_beam_side'": {
+                                    "'search_valid_clamp_orientation_with_guiding_vector'": null
+                                }, 
+                                "'compute_gripper_grasp_pose'": {
+                                    "'assign_gripper_to_beam'": null, 
+                                    "'compute_storage_location_at_corner_aligning_pickup_location'": null
+                                }, 
+                                "'compute_beam_storageretract'": {
+                                    "'compute_storage_location_at_corner_aligning_pickup_location'": null
+                                }, 
+                                "'assign_gripper_to_beam'": {
+                                    "'compute_gripper_grasp_pose'": null
+                                }, 
+                                "'compute_storage_location_at_corner_aligning_pickup_location'": {
+                                    "'compute_beam_storageretract'": null, 
+                                    "'compute_beam_storageapproach_and_finalretract'": null, 
+                                    "'compute_gripper_grasp_pose'": null
+                                }
+                            }, 
+                            "node_attributes": {}, 
+                            "node": {
+                                "'compute_clamp_attachapproach_attachretract_detachapproach'": {
+                                    "b2": 1, 
+                                    "b5": 1, 
+                                    "b8": 1, 
+                                    "b9": 1, 
+                                    "b0": 1, 
+                                    "b3": 1, 
+                                    "b13": 1, 
+                                    "b12": 1, 
+                                    "b11": 1, 
+                                    "b10": 1, 
+                                    "b1": 1, 
+                                    "b6": 1, 
+                                    "b4": 1, 
+                                    "b7": 1
+                                }, 
+                                "'assign_clamp_type_to_joints'": {
+                                    "b2": 1, 
+                                    "b5": 1, 
+                                    "b8": 1, 
+                                    "b9": 1, 
+                                    "b0": 1, 
+                                    "b3": 1, 
+                                    "b13": 1, 
+                                    "b12": 1, 
+                                    "b11": 1, 
+                                    "b10": 1, 
+                                    "b1": 1, 
+                                    "b6": 1, 
+                                    "b4": 1, 
+                                    "b7": 1
+                                }, 
+                                "'compute_beam_storageapproach_and_finalretract'": {
+                                    "b2": 0, 
+                                    "b5": 0, 
+                                    "b8": 0, 
+                                    "b9": 0, 
+                                    "b0": 0, 
+                                    "b3": 0, 
+                                    "b13": 0, 
+                                    "b12": 0, 
+                                    "b11": 0, 
+                                    "b10": 0, 
+                                    "b1": 0, 
+                                    "b6": 0, 
+                                    "b4": 0, 
+                                    "b7": 0
+                                }, 
+                                "'compute_clamp_detachretract'": {
+                                    "b2": 1, 
+                                    "b5": 1, 
+                                    "b8": 1, 
+                                    "b9": 1, 
+                                    "b0": 1, 
+                                    "b3": 1, 
+                                    "b13": 1, 
+                                    "b12": 1, 
+                                    "b11": 1, 
+                                    "b10": 1, 
+                                    "b1": 1, 
+                                    "b6": 1, 
+                                    "b4": 1, 
+                                    "b7": 1
+                                }, 
+                                "'search_valid_clamp_orientation_with_guiding_vector'": {
+                                    "b2": 1, 
+                                    "b5": 1, 
+                                    "b8": 1, 
+                                    "b9": 1, 
+                                    "b0": 1, 
+                                    "b3": 1, 
+                                    "b13": 1, 
+                                    "b12": 1, 
+                                    "b11": 1, 
+                                    "b10": 1, 
+                                    "b1": 1, 
+                                    "b6": 1, 
+                                    "b4": 1, 
+                                    "b7": 1
+                                }, 
+                                "'search_valid_jawapproach_vector_prioritizing_beam_side'": {
+                                    "b2": 1, 
+                                    "b5": 1, 
+                                    "b8": 1, 
+                                    "b9": 1, 
+                                    "b0": 1, 
+                                    "b3": 1, 
+                                    "b13": 1, 
+                                    "b12": 1, 
+                                    "b11": 1, 
+                                    "b10": 1, 
+                                    "b1": 1, 
+                                    "b6": 1, 
+                                    "b4": 1, 
+                                    "b7": 1
+                                }, 
+                                "'compute_gripper_grasp_pose'": {
+                                    "b2": 1, 
+                                    "b5": 1, 
+                                    "b8": 1, 
+                                    "b9": 1, 
+                                    "b0": 1, 
+                                    "b3": 1, 
+                                    "b13": 1, 
+                                    "b12": 1, 
+                                    "b11": 1, 
+                                    "b10": 1, 
+                                    "b1": 1, 
+                                    "b6": 1, 
+                                    "b4": 1, 
+                                    "b7": 1
+                                }, 
+                                "'compute_beam_storageretract'": {
+                                    "b2": 0, 
+                                    "b5": 0, 
+                                    "b8": 0, 
+                                    "b9": 0, 
+                                    "b0": 0, 
+                                    "b3": 0, 
+                                    "b13": 0, 
+                                    "b12": 0, 
+                                    "b11": 0, 
+                                    "b10": 0, 
+                                    "b1": 0, 
+                                    "b6": 0, 
+                                    "b4": 0, 
+                                    "b7": 0
+                                }, 
+                                "'assign_gripper_to_beam'": {
+                                    "b2": 1, 
+                                    "b5": 1, 
+                                    "b8": 1, 
+                                    "b9": 1, 
+                                    "b0": 1, 
+                                    "b3": 1, 
+                                    "b13": 1, 
+                                    "b12": 1, 
+                                    "b11": 1, 
+                                    "b10": 1, 
+                                    "b1": 1, 
+                                    "b6": 1, 
+                                    "b4": 1, 
+                                    "b7": 1
+                                }, 
+                                "'compute_storage_location_at_corner_aligning_pickup_location'": {
+                                    "b2": 0, 
+                                    "b5": 0, 
+                                    "b8": 0, 
+                                    "b9": 0, 
+                                    "b0": 0, 
+                                    "b3": 0, 
+                                    "b13": 0, 
+                                    "b12": 0, 
+                                    "b11": 0, 
+                                    "b10": 0, 
+                                    "b1": 0, 
+                                    "b6": 0, 
+                                    "b4": 0, 
+                                    "b7": 0
+                                }
+                            }, 
+                            "max_int_key": -1, 
+                            "attributes": {
+                                "name": "Graph"
+                            }, 
+                            "edge_attributes": {}, 
+                            "edge": {
+                                "'compute_clamp_attachapproach_attachretract_detachapproach'": {}, 
+                                "'assign_clamp_type_to_joints'": {
+                                    "'search_valid_clamp_orientation_with_guiding_vector'": {}
+                                }, 
+                                "'compute_beam_storageapproach_and_finalretract'": {}, 
+                                "'compute_clamp_detachretract'": {}, 
+                                "'search_valid_clamp_orientation_with_guiding_vector'": {
+                                    "'compute_clamp_attachapproach_attachretract_detachapproach'": {}, 
+                                    "'search_valid_jawapproach_vector_prioritizing_beam_side'": {}, 
+                                    "'compute_clamp_detachretract'": {}
+                                }, 
+                                "'search_valid_jawapproach_vector_prioritizing_beam_side'": {}, 
+                                "'compute_gripper_grasp_pose'": {
+                                    "'compute_storage_location_at_corner_aligning_pickup_location'": {}
+                                }, 
+                                "'compute_beam_storageretract'": {}, 
+                                "'assign_gripper_to_beam'": {
+                                    "'compute_gripper_grasp_pose'": {}
+                                }, 
+                                "'compute_storage_location_at_corner_aligning_pickup_location'": {
+                                    "'compute_beam_storageretract'": {}, 
+                                    "'compute_beam_storageapproach_and_finalretract'": {}
+                                }
+                            }
+                        }
+                    }
+                }, 
+                "robot_toolchanger": null, 
                 "assembly": {
                     "dtype": "integral_timber_joints.assembly/Assembly", 
                     "value": {
-                        "compas": "0.17.2", 
+                        "compas": "0.18.1", 
                         "datatype": "integral_timber_joints.assembly/Assembly", 
                         "data": {
                             "adjacency": {
@@ -26087,7 +26494,14 @@
                                 "beam_cut_start": null, 
                                 "gripper_grasp_dist_from_start": null, 
                                 "assembly_vector_pickup": null, 
-                                "design_guide_vector_storage_pickup": null, 
+                                "design_guide_vector_storage_pickup": {
+                                    "dtype": "compas.geometry/Vector", 
+                                    "value": [
+                                        0.0, 
+                                        0.0, 
+                                        1.0
+                                    ]
+                                }, 
                                 "assembly_wcf_inclamp": null, 
                                 "gripper_type": null, 
                                 "assembly_vector_final": null, 
@@ -26209,7 +26623,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -26227,7 +26641,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -26903,7 +27317,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -26921,7 +27335,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -27387,7 +27801,7 @@
                                             "yaxis": [
                                                 1.0, 
                                                 -7.1754172413399109e-15, 
-                                                -1.20537487749776e-15
+                                                -1.2053748774977602e-15
                                             ], 
                                             "xaxis": [
                                                 7.2759563758052312e-15, 
@@ -27405,9 +27819,9 @@
                                         "dtype": "compas.geometry/Frame", 
                                         "value": {
                                             "yaxis": [
+                                                -0.0, 
                                                 0.0, 
-                                                -1.0, 
-                                                0.0
+                                                1.0
                                             ], 
                                             "xaxis": [
                                                 1.0, 
@@ -27416,12 +27830,12 @@
                                             ], 
                                             "point": [
                                                 1500.0002553021482, 
-                                                50.0, 
-                                                100.0
+                                                100.0, 
+                                                50.0
                                             ]
                                         }
                                     }, 
-                                    "gripper_grasp_face": 4, 
+                                    "gripper_grasp_face": 3, 
                                     "assembly_vector_jawapproach": {
                                         "dtype": "compas.geometry/Vector", 
                                         "value": [
@@ -27461,7 +27875,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -27479,7 +27893,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -28031,7 +28445,7 @@
                                                             "yaxis": [
                                                                 1.0, 
                                                                 -7.1754172413399109e-15, 
-                                                                -1.2053748774977596e-15
+                                                                -1.2053748774977598e-15
                                                             ], 
                                                             "xaxis": [
                                                                 7.2759563758052312e-15, 
@@ -28155,7 +28569,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -28173,7 +28587,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -28821,7 +29235,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -28839,7 +29253,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -29515,7 +29929,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -29533,7 +29947,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -30017,9 +30431,9 @@
                                         "dtype": "compas.geometry/Frame", 
                                         "value": {
                                             "yaxis": [
+                                                -0.0, 
                                                 0.0, 
-                                                -1.0, 
-                                                0.0
+                                                1.0
                                             ], 
                                             "xaxis": [
                                                 1.0, 
@@ -30028,12 +30442,12 @@
                                             ], 
                                             "point": [
                                                 1500.0004081480274, 
-                                                50.0, 
-                                                100.0
+                                                100.0, 
+                                                50.0
                                             ]
                                         }
                                     }, 
-                                    "gripper_grasp_face": 4, 
+                                    "gripper_grasp_face": 3, 
                                     "assembly_vector_jawapproach": {
                                         "dtype": "compas.geometry/Vector", 
                                         "value": [
@@ -30073,7 +30487,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -30091,7 +30505,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -30711,9 +31125,9 @@
                                         "dtype": "compas.geometry/Frame", 
                                         "value": {
                                             "yaxis": [
-                                                0.0, 
                                                 -0.0, 
-                                                -1.0
+                                                0.0, 
+                                                1.0
                                             ], 
                                             "xaxis": [
                                                 1.0, 
@@ -30722,12 +31136,12 @@
                                             ], 
                                             "point": [
                                                 1500.0000000000011, 
-                                                0.0, 
+                                                100.0, 
                                                 50.0
                                             ]
                                         }
                                     }, 
-                                    "gripper_grasp_face": 1, 
+                                    "gripper_grasp_face": 3, 
                                     "assembly_vector_jawapproach": {
                                         "dtype": "compas.geometry/Vector", 
                                         "value": [
@@ -30767,7 +31181,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -30785,7 +31199,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -31433,7 +31847,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -31451,7 +31865,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -32072,8 +32486,8 @@
                                         "value": {
                                             "yaxis": [
                                                 0.0, 
-                                                -0.0, 
-                                                -1.0
+                                                -1.0, 
+                                                0.0
                                             ], 
                                             "xaxis": [
                                                 1.0, 
@@ -32081,13 +32495,13 @@
                                                 0.0
                                             ], 
                                             "point": [
-                                                791.47241025784047, 
-                                                0.0, 
-                                                50.0
+                                                701.47241025784047, 
+                                                50.0, 
+                                                100.0
                                             ]
                                         }
                                     }, 
-                                    "gripper_grasp_face": 1, 
+                                    "gripper_grasp_face": 4, 
                                     "assembly_vector_jawapproach": {
                                         "dtype": "compas.geometry/Vector", 
                                         "value": [
@@ -32127,7 +32541,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -32145,7 +32559,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -32602,7 +33016,7 @@
                                         }
                                     }, 
                                     "gripper_type": "PG500", 
-                                    "gripper_grasp_dist_from_start": 791.47241025784047
+                                    "gripper_grasp_dist_from_start": 701.47241025784047
                                 }, 
                                 "'b10'": {
                                     "assembly_wcf_final": {
@@ -32685,7 +33099,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -32703,7 +33117,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -33187,9 +33601,9 @@
                                         "dtype": "compas.geometry/Frame", 
                                         "value": {
                                             "yaxis": [
+                                                -0.0, 
                                                 0.0, 
-                                                1.0, 
-                                                -0.0
+                                                1.0
                                             ], 
                                             "xaxis": [
                                                 1.0, 
@@ -33197,13 +33611,13 @@
                                                 0.0
                                             ], 
                                             "point": [
-                                                1500.0002439130749, 
-                                                50.0, 
-                                                0.0
+                                                1080.0002439130749, 
+                                                100.0, 
+                                                50.0
                                             ]
                                         }
                                     }, 
-                                    "gripper_grasp_face": 2, 
+                                    "gripper_grasp_face": 3, 
                                     "assembly_vector_jawapproach": {
                                         "dtype": "compas.geometry/Vector", 
                                         "value": [
@@ -33243,7 +33657,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -33261,7 +33675,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -33854,7 +34268,7 @@
                                         }
                                     }, 
                                     "gripper_type": "PG500", 
-                                    "gripper_grasp_dist_from_start": 1500.0002439130749
+                                    "gripper_grasp_dist_from_start": 1080.0002439130749
                                 }, 
                                 "'b9'": {
                                     "assembly_wcf_final": {
@@ -33909,7 +34323,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -33927,7 +34341,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -34547,9 +34961,9 @@
                                         "dtype": "compas.geometry/Frame", 
                                         "value": {
                                             "yaxis": [
+                                                -0.0, 
                                                 0.0, 
-                                                -1.0, 
-                                                0.0
+                                                1.0
                                             ], 
                                             "xaxis": [
                                                 1.0, 
@@ -34558,12 +34972,12 @@
                                             ], 
                                             "point": [
                                                 1500.0002239833921, 
-                                                50.0, 
-                                                100.0
+                                                100.0, 
+                                                50.0
                                             ]
                                         }
                                     }, 
-                                    "gripper_grasp_face": 4, 
+                                    "gripper_grasp_face": 3, 
                                     "assembly_vector_jawapproach": {
                                         "dtype": "compas.geometry/Vector", 
                                         "value": [
@@ -34603,7 +35017,7 @@
                                     "beam": {
                                         "dtype": "integral_timber_joints.geometry/Beam", 
                                         "value": {
-                                            "compas": "0.17.2", 
+                                            "compas": "0.18.1", 
                                             "datatype": "integral_timber_joints.geometry/Beam", 
                                             "data": {
                                                 "adjacency": {}, 
@@ -34621,7 +35035,7 @@
                                                     "cached_mesh": {
                                                         "dtype": "compas.datastructures/Mesh", 
                                                         "value": {
-                                                            "compas": "0.17.2", 
+                                                            "compas": "0.18.1", 
                                                             "datatype": "compas.datastructures/Mesh", 
                                                             "data": {
                                                                 "facedata": {
@@ -38698,7 +39112,7 @@
                                                 ], 
                                                 "type": "mesh", 
                                                 "geometry": {
-                                                    "compas": "0.17.2", 
+                                                    "compas": "0.18.1", 
                                                     "datatype": "compas.datastructures/Mesh", 
                                                     "data": {
                                                         "facedata": {
@@ -42432,9 +42846,7 @@
                         }, 
                         "materials": []
                     }
-                }, 
-                "pickup_station": null, 
-                "robot_toolchanger": null
+                }
             }, 
             "edge_attributes": {}, 
             "edge": {}

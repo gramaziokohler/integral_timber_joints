@@ -13,6 +13,7 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 from compas_rhino.artists import RobotModelArtist
 from integral_timber_joints.rhino.tool_artist import ToolArtist
 
+
 def AddAnnotationText(frame, text, height, layer):
     font = "Arial"
     plane = RhinoPlane.from_geometry(frame).geometry
@@ -27,17 +28,21 @@ def AddAnnotationText(frame, text, height, layer):
         sc.doc.Views.Redraw()
         return guid
 
+
 class ProcessKeyPosition(object):
     def __init__(self, pos_num):
         self.pos_num = 0
-    
+
     @property
     def beam_pos(self):
-        if self.pos_num == 0 : return 'assembly_wcf_storage'
-    
+        if self.pos_num == 0:
+            return 'assembly_wcf_storage'
+
     @property
     def gripper_pos(self):
-        if self.pos_num == 0 : return 'assembly_wcf_storageapproach'
+        if self.pos_num == 0:
+            return 'assembly_wcf_storageapproach'
+
 
 class ProcessArtist(object):
     """ Artist to draw Beams in Rhino
@@ -170,7 +175,7 @@ class ProcessArtist(object):
             yield 'itj::clamp::' + clamp_position
         for beam_position in self.beam_positions:
             yield 'itj::beam::' + beam_position
-            
+
     def empty_layers(self):
         # type:() -> None
         """Clear the default artist layers in Rhino.
@@ -182,7 +187,7 @@ class ProcessArtist(object):
                 rs.AddLayer(layer)
             else:
                 clear_layer(layer)
-        
+
         # Clear Gripper and Clamp layers
         for layer_name in self.all_layer_names:
             if not rs.IsLayer(layer_name):
@@ -214,29 +219,36 @@ class ProcessArtist(object):
         'assembly_wcf_inclamp',
         'assembly_wcf_final',
         'assembly_wcf_finalretract',
-        ]
+    ]
     clamp_positions = [
         'clamp_wcf_attachapproach1',
         'clamp_wcf_attachapproach2',
         'clamp_wcf_final',
         'clamp_wcf_detachretract1',
         'clamp_wcf_detachretract2',
-        ]
+    ]
 
-    def draw_gripper_all_positions(self, beam_id):
-        """ Delete old gripper geometry if they exist.
+    def draw_gripper_all_positions(self, beam_id, delete_old=False):
+        """ Delete old gripper geometry if delete_old is True
         Redraw them in Rhino in different layers.
         The resulting Rhino guids are kept in self.guids[beam_id][layer_name]
 
         This applies to all positions where the attribute is set in beam attributes.
         """
-        self.delete_gripper_all_positions(beam_id)
         for gripper_position in self.gripper_positions:
+            layer_name = 'itj::gripper::' + gripper_position
+            # If not delete_old, and there are already items drawn, we preserve them. 
+            if len(self.guids[beam_id][layer_name]) > 0 and not delete_old:
+                continue
+
+            # Delete old geometry
+            self.delete_gripper_at_position(beam_id, gripper_position)
+            
+            # Skip the rest of code if the position does not exist.
             if self.process.assembly.get_beam_attribute(beam_id, gripper_position) is None:
                 # print ("Skipping gripper position: %s" % (gripper_position))
                 continue
-            print ("Grawing gripper for %s in position: %s" % (beam_id, gripper_position))
-            layer_name = 'itj::gripper::' + gripper_position
+            print("Grawing gripper for %s in position: %s" % (beam_id, gripper_position))
             gripper = self.process.get_gripper_of_beam(beam_id, gripper_position)
             gripper_artist = ToolArtist(gripper, layer_name)
             guid = gripper.draw_visual(gripper_artist)
@@ -247,11 +259,17 @@ class ProcessArtist(object):
         All positions are deleted
         """
         for gripper_position in self.gripper_positions:
-            layer_name = 'itj::gripper::' + gripper_position
-            guids = self.guids[beam_id][layer_name]
-            if len(guids) > 0:
-                delete_objects(guids)
-                self.guids[beam_id][layer_name] = []
+            self.delete_gripper_at_position(beam_id, gripper_position)
+
+    def delete_gripper_at_position(self, beam_id, gripper_position):
+        """Delete all Rhino geometry associated to a a gripper.
+        All positions are deleted
+        """
+        layer_name = 'itj::gripper::' + gripper_position
+        guids = self.guids[beam_id][layer_name]
+        if len(guids) > 0:
+            delete_objects(guids)
+            self.guids[beam_id][layer_name] = []
 
     def show_gripper_at_one_position(self, beam_id, position):
         """ Show Gripper only at the specified position.
@@ -268,13 +286,8 @@ class ProcessArtist(object):
         """ Hide all gripper instances in the specified positions.
         `positions` are defaulted to all position.
         # """
-        
+
         self.show_gripper_at_one_position(beam_id, '')
-        
-
-
-
-
 
     ######################
     # Robot

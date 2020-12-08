@@ -275,7 +275,7 @@ class Assembly(Network):
         return self.node_attribute(key, 'beam')
 
     def joint(self, joint_id):
-        # type: (tuple[str,str]) -> Optional[Joint]
+        # type: (tuple[str,str]) -> Joint
         """Get a joint by its id.
         joint_id is a Tuple """
         return self.edge_attribute(joint_id, 'joint')

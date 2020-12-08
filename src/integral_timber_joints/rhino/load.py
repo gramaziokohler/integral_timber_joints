@@ -8,7 +8,6 @@ import scriptcontext as sc
 from compas.utilities import DataDecoder, DataEncoder
 
 from integral_timber_joints.assembly import Assembly
-# import integral_timber_joints.process as Process
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.process_artist import ProcessArtist
 

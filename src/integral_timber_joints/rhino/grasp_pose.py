@@ -15,7 +15,7 @@ def show_sequence_color(process, selected_beam_id):
     artist = get_process_artist()
     assembly = process.assembly
 
-    # Draw beams up to selected beam.
+    # Loop through selected beams up to selected beam.
     selected_seq_num = assembly.get_beam_sequence(selected_beam_id)
     for seq, beam_id in enumerate(assembly.sequence):
 
@@ -34,16 +34,19 @@ def show_sequence_color(process, selected_beam_id):
         if seq > selected_seq_num and problem:
             artist.change_beam_colour(beam_id, 'unbuilt_warning')
 
-        # Hide unbuilt beams if settings show_unbuilt == False
-        if seq > selected_seq_num and (getattr(artist, "show_unbuilt", True) == False):
+        # Hide unbuilt beams
+        if seq > selected_seq_num:
             artist.hide_beam(beam_id)
         else:
             artist.show_beam(beam_id)
 
-        # print out for debug
+        # Print out for debug
         if problem:
             print(beam_id, problem)
-    
+
+        # Change gripper color based on problems
+        # To be implemented
+
         # Show gripper for the specified position for the seleected beam
         position = 'assembly_wcf_final'
         if beam_id == selected_beam_id:
@@ -76,14 +79,15 @@ def show_menu(process):
     artist.selected_beam_id = None
     artist.show_unbuilt = False
 
-    # Draw all gripper positions, initially hide them.
+    # Draw all gripper positions if they have not been drawn
+    # Initially hide them.
     rs.EnableRedraw(False)
     for beam_id in assembly.sequence:
         artist.draw_gripper_all_positions(beam_id)
         artist.hide_gripper_all_positions(beam_id)
     rs.EnableRedraw(True)
     rs.Redraw()
-        
+
     go = Rhino.Input.Custom.GetObject()
     go.SetCommandPrompt("Select beam")
     go.EnablePreSelect(True, True)
@@ -106,7 +110,57 @@ def show_menu(process):
         show_sequence_color(process, artist.selected_beam_id)
         go.SetDefaultString("Enter again = Previous")
 
+    # def gripper_changetype():
+    #     """ Function invoked by user to move grasp pose.
+    #     """
+    #     beam_id = artist.selected_beam_id
+    #     process.adjust_gripper_pos(beam_id, +30)
+    #     artist.draw_gripper_all_positions(beam_id, delete_old=True)
 
+    #     beam = assembly.beam(artist.selected_beam_id)
+        
+    #     # Change clamp type
+    #     assembly.set_beam_attribute(beam_id, "gripper_type", gripper_type)
+        
+    #     # Recompute best clamp face and update grasp frame
+    #     gripper_grasp_face = process.search_grasp_face_from_guide_vector_dir(beam_id)
+    #     gripper_grasp_dist_from_start = assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
+    #     gripper_tcp_in_ocf = beam.grasp_frame_ocf(gripper_grasp_face, gripper_grasp_dist_from_start)
+    #     assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
+        
+    #     # Recompute Pickup Alignment at Pickup Station
+    #     process.compute_storage_location_at_corner_aligning_pickup_location(beam_id)
+        
+    #     # Recompute approach and retract regarding gripper 
+    #     process.compute_beam_storageapproach_and_finalretract(beam_id)
+    #     process.compute_beam_storageretract(beam_id)
+
+    def gripper_move_pos():
+        """ Function invoked by user to move grasp pose.
+        """
+        beam_id = artist.selected_beam_id
+        process.adjust_gripper_pos(beam_id, +30)
+        process.dependency.compute(beam_id, process.compute_gripper_grasp_pose)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True)
+        show_sequence_color(process, beam_id)
+    
+    def gripper_move_neg():
+        """ Function invoked by user to move grasp pose.
+        """
+        beam_id = artist.selected_beam_id
+        process.adjust_gripper_pos(beam_id, -30)
+        process.dependency.compute(beam_id, process.compute_gripper_grasp_pose)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True)
+        show_sequence_color(process, beam_id)
+
+    def gripper_follow_ass_dir():
+        """ Function invoked by user to change grasp face.
+        """
+        beam_id = artist.selected_beam_id
+        process.search_grasp_face_from_joint_assembly_direction(beam_id)
+        process.dependency.compute(beam_id, process.compute_gripper_grasp_pose)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True)
+        show_sequence_color(process, beam_id)
 
     run_cmd = None  # Variable to remember the last command to allow easy rerun.
     while(True):
@@ -125,6 +179,15 @@ def show_menu(process):
 
             if go.Option().EnglishName == "Previous":
                 run_cmd = select_previous
+
+            if go.Option().EnglishName == "GripperMovePos":
+                run_cmd = gripper_move_pos
+
+            if go.Option().EnglishName == "GripperMoveNeg":
+                run_cmd = gripper_move_neg
+
+            if go.Option().EnglishName == "GripperFollowAsemblyDirection":
+                run_cmd = gripper_follow_ass_dir
 
             # if go.Option().EnglishName == "Autocompute":
             #     run_cmd = auto_compute
@@ -155,17 +218,23 @@ def show_menu(process):
                 go.AddOption("Next")
                 go.AddOption("Previous")
                 go.AddOption("Finish")
+                go.AddOption("GripperMovePos")
+                go.AddOption("GripperMoveNeg")
+                go.AddOption("GripperFollowAsemblyDirection")
+                go.AddOption("GripperType")
+
             artist.selected_beam_id = beam_id
 
         print("Currently showing Beam %i of %i" % (assembly.get_beam_sequence(artist.selected_beam_id) + 1, len(assembly.sequence)))
+        process.dependency.debug_print(artist.selected_beam_id)
 
 
 ######################
 # Test
 ######################
 
-def compute_positions(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def compute_positions(process, verbose=True):
+    # type: (RobotClampAssemblyProcess, bool) -> None
     assembly = process.assembly
 
     from compas.geometry import Vector
@@ -180,35 +249,32 @@ def compute_positions(process):
     ###########################
 
     # Assign clamp to joints
-    process.assign_clamp_type_to_joints()
+    # process.assign_clamp_type_to_joints()
     # Search clamp attachment position
 
     for beam_id in assembly.sequence:
-        # Search clamp attachment position, this sets clamp_wcf_final
-        process.search_valid_clamp_orientation_with_guiding_vector(beam_id)
-        # Compute three key poositions for the clamp
-        process.compute_clamp_attachapproach_attachretract_detachapproach(beam_id, verbose=False)
-        # Compute clamp detach key positions.  
-        process.compute_clamp_detachretract(beam_id)
-        # Compute how the beam slides out. This depended on the clamp orientation.
-        process.search_valid_jawapproach_vector_prioritizing_beam_side(beam_id)
+        # process.dependency.compute(beam_id, process.assign_clamp_type_to_joints)
+        process.dependency.compute(beam_id, process.search_valid_clamp_orientation_with_guiding_vector)
+        process.dependency.compute(beam_id, process.compute_clamp_attachapproach_attachretract_detachapproach)
+        process.dependency.compute(beam_id, process.compute_clamp_detachretract)
+        process.dependency.compute(beam_id, process.search_valid_jawapproach_vector_prioritizing_beam_side)
 
     #############################
     # Gripper related computation
     #############################
 
     for beam_id in assembly.sequence:
-        beam = assembly.beam(beam_id)
-
-        # Assign gripper based on beam length
-        process.assign_gripper_to_beam(beam_id, verbose=True)
+        # beam = assembly.beam(beam_id)
+        # # Assign a gripper
+        # process.dependency.compute(beam_id, process.assign_gripper_to_beam)
         # Compute gripper grasp pose
-        process.compute_default_gripper_grasp_pose(beam_id)
+        process.dependency.compute(beam_id, process.compute_gripper_grasp_pose)
+
 
     #################
     # Pickup location
     #################
-    
+
     if process.pickup_station is not None:
         for beam_id in assembly.sequence:
             # Compute storage location
@@ -225,7 +291,7 @@ def compute_positions(process):
             process.compute_beam_storageapproach(beam_id)
 
     else:
-        print ("Pickup station is not defined, cannot compute pickup poses.")
+        print("Pickup station is not defined, cannot compute pickup poses.")
 
 
 ######################
@@ -240,5 +306,5 @@ if __name__ == '__main__':
     if process_is_none(process):
         print("Load json first")
     else:
-        compute_positions(process)
+        compute_positions(process)  # Todo: make it not recompute everything
         show_menu(process)

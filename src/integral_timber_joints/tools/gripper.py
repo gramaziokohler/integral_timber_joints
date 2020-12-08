@@ -22,6 +22,9 @@ class Gripper (Tool):
                  tool_storage_frame=None,
                  gripper_jaw_position_min=0,
                  gripper_jaw_position_max=100,
+                 target_beam_length=1000,
+                 beam_length_limit_min=500,
+                 beam_length_limit_max=5000,
                  approach_vector=None):
 
         # Call Tool init
@@ -42,7 +45,8 @@ class Gripper (Tool):
         self.tool_pick_up_frame = tool_pick_up_frame
         self.tool_storage_frame = tool_storage_frame
         self.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max)  # type: tuple[float, float]
-
+        self.target_beam_length = target_beam_length
+        self.beam_length_limits = (beam_length_limit_min, beam_length_limit_max)
     # --------------------------------------------------------------
     # Functions to get and set attributes from attributes dictionary.
     # --------------------------------------------------------------
@@ -62,6 +66,25 @@ class Gripper (Tool):
     @gripper_jaw_limits.setter
     def gripper_jaw_limits(self, v):
         self.attributes['gripper_jaw_limits'] = v
+
+    @property
+    def target_beam_length(self):
+        return self.attributes.get('target_beam_length', (1000))
+
+    @target_beam_length.setter
+    def target_beam_length(self, v):
+        self.attributes['target_beam_length'] = v
+
+    @property
+    def beam_length_limits(self):
+        # type: () -> tuple(float, float)
+        """Min max limits of beam lengths this gripper can hold: 
+        (beam_length_limit_min, beam_length_limit_max) """
+        return self.attributes.get('beam_length_limits', (500, 5000))
+
+    @beam_length_limits.setter
+    def beam_length_limits(self, v):
+        self.attributes['beam_length_limits'] = v
 
     @property
     def approach_vector(self):
