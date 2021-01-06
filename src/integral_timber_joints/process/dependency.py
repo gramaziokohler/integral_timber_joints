@@ -127,10 +127,7 @@ class ComputationalDependency(Graph):
             yield getattr(self.process, fx_name)
 
     def get_uptream_fxs(self, fx):
-        """ Get upstream fx(s) immediately above the given fx """
-        # print ("fx.__name__ = %s" % fx.__name__ )
-        # for fx_name in self.neighbors_in(fx.__name__):
-        #     print (" - %s" % fx.__name__ )
+        """ Get upstream fx(s) immediately below the given fx """
         for fx_name in self.neighbors_in(fx.__name__):
             yield getattr(self.process, fx_name)
 
