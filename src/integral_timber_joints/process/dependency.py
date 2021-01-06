@@ -39,7 +39,7 @@ class ComputationalDependency(Graph):
      This will not cause all depedent function to be recomputed when next compute()    is called. 
 
     """
-    def __init__(self, process):
+    def __init__(self, process = None):
         # type: (integral_timber_joints.process.RobotClampAssemblyProcess) -> None
 
         super(ComputationalDependency, self).__init__()
@@ -96,8 +96,8 @@ class ComputationalDependency(Graph):
             'compute_beam_storageretract'
             )
 
-        if self.process.assembly is not None:
-            for beam_id in self.process.assembly.beam_ids:
+        if self.process is not None and self.process.assembly is not None:
+            for beam_id in self.process.assembly.beam_ids():
                 self.update_default_node_attributes({beam_id: ComputationalResult.Invalid})
 
     def set_solution_validity(self, beam_id, fx, state, invalidate_downstream = True):
