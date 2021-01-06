@@ -92,7 +92,7 @@ def show_menu(process):
     def move_later():
         """ Function invoked by user to move the active element's sequence one step later.
         """
-        if assembly.get_beam_sequence(artist.selected_beam_id) == len(assembly.sequence):
+        if assembly.get_beam_sequence(artist.selected_beam_id) == len(assembly.sequence) -1:
             return
         member_seq_affected_by_swap = assembly.shift_beam_sequence(artist.selected_beam_id, +1)
         [artist.redraw_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
