@@ -5,6 +5,8 @@ import Rhino
 import rhinoscriptsyntax as rs
 from compas.utilities import DataDecoder
 from compas_rhino.ui import CommandMenu
+from compas_rhino.geometry import RhinoMesh
+
 from compas_rhino.utilities.objects import get_object_name
 
 from integral_timber_joints.assembly import Assembly
@@ -106,10 +108,129 @@ def replace_robot_wrist(process):
             process.robot_wrist_collision_mesh = tool
             print("Robot Wrist Collision Object replaced with %s" % tool)
 
+def add_env_model(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    # Ask user to pick one or more mesh object
+    guids = rs.GetObjects("Select Environment Mesh(es) (cannot contain convex hull)", filter=rs.filter.mesh)
+    if guids is None:
+        print("No mesh selected.")
+        return
+    # Show all current env mesh
+    # todo
 
-def something(process):
+    # Create compas mesh and add it to process.environment_meshes
+    for guid in guids:
+        rhinomesh = RhinoMesh.from_guid(guid) 
+        mesh = rhinomesh.to_compas()
+        process.environment_meshes.append(mesh)
+        # todo trigger artist to draw that mesh in correct layer
+
+def delete_all_env_model(process):
+    # type: (RobotClampAssemblyProcess) -> None
+
+    # Show all current env mesh
+    # todo
+    
+    # Ask user to reconfirm
+    reconfirm = rs.GetString("Are You Sure?", "Yes", ["Yes", "No"])
+    if reconfirm is None:
+        return
+    if reconfirm.startswith("Y") or reconfirm.startswith("y") :
+        del process.environment_meshes[:]
+        # process.environment_meshes.clear()
+        # todo trigger artist to remove that mesh
+        print ("All EnvMeshes are removed")
+
+def copy_tools(process):
+    # type: (RobotClampAssemblyProcess) -> None
+
+    # If there are existing tools
+    delete_old = False
+    if len(list(process.clamps)) > 0 or len(list(process.grippers)) > 0:
+        reconfirm = rs.GetString("There are %i Clamps, %i Grippers in current file, do you want to delete them?" % (len(list(process.clamps)), len(list(process.grippers))), "Delete", ["Delete", "Keep"])
+        if reconfirm is None:
+            return
+        if reconfirm.startswith("D") or reconfirm.startswith("d") :
+            delete_old = True
+
+    # Ask user for a json file
+    path = rs.OpenFileName("Open another process file to copy from", "Process File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            # robot_wrist asert correctness and add to Process
+            another_process = json.load(f, cls=DataDecoder) # type: RobotClampAssemblyProcess
+        if delete_old:
+            process.attributes['clamps'] = another_process.attributes['clamps']
+            process.attributes['grippers'] = another_process.attributes['grippers']
+            print("Old clamps and Grippers deleted, %i Clamps, %i Grippers imported." % (len(list(process.clamps)), len(list(process.grippers))))
+        else:
+            for id in another_process.attributes['clamps']:
+                process.add_clamp(another_process.clamp(id))
+            for id in another_process.attributes['grippers']:
+                process.add_gripper(another_process.gripper(id))
+            print("%i Clamps, %i Grippers imported. Now total: %i Clamps, %i Grippers" % (len(list(another_process.clamps)), len(list(another_process.grippers)), len(list(process.clamps)), len(list(process.grippers))))
+
+def copy_tool_changer(process):
+    # type: (RobotClampAssemblyProcess) -> None
+
+    # Ask user for a json file
+    path = rs.OpenFileName("Open another process file to copy from", "Process File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            another_process = json.load(f, cls=DataDecoder) # type: RobotClampAssemblyProcess
+            # Asert correctness and add to Process
+            if another_process.robot_toolchanger is None:
+                print("Opened file do not have robot_toolchanger")
+                return
+            process.robot_toolchanger = another_process.robot_toolchanger
+            print("robot_toolchanger replaced by %s. " % process.robot_toolchanger.name)
+
+def copy_rob_wrist(process):
+    # type: (RobotClampAssemblyProcess) -> None
+
+    # Ask user for a json file
+    path = rs.OpenFileName("Open another process file to copy from", "Process File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            another_process = json.load(f, cls=DataDecoder) # type: RobotClampAssemblyProcess
+            # Asert correctness and add to Process
+            if another_process.robot_wrist_collision_mesh is None:
+                print("Opened file do not have robot_wrist_collision_mesh")
+                return
+            process.robot_wrist_collision_mesh = another_process.robot_wrist_collision_mesh
+            print("robot_wrist_collision_mesh replaced by %s. " % process.robot_wrist_collision_mesh.name)
+
+def copy_env_models(process):
+    # type: (RobotClampAssemblyProcess) -> None
+
+    # If there are existing tools
+    delete_old = False
+    if len(list(process.environment_meshes)) > 0 :
+        reconfirm = rs.GetString("There are %i Environment Mesh(es) in current file, do you want to delete them?" % (len(list(process.environment_meshes))), "Delete", ["Delete", "Keep"])
+        if reconfirm is None:
+            return
+        if reconfirm.startswith("D") or reconfirm.startswith("d") :
+            delete_old = True
+
+    # Ask user for a json file
+    path = rs.OpenFileName("Open another process file to copy from", "Process File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            # robot_wrist asert correctness and add to Process
+            another_process = json.load(f, cls=DataDecoder) # type: RobotClampAssemblyProcess
+        if delete_old:
+            process.environment_meshes = another_process.environment_meshes
+            print("Old Environment Mesh(es) deleted, %i Environment Mesh(es) imported." % (len(list(process.environment_meshes))))
+        else:
+            for mesh in another_process.environment_meshes:
+                process.environment_meshes.append(mesh)
+            print("%i Environment Mesh(es) imported. Now total: %i Environment Mesh(es)" % (len(list(another_process.environment_meshes)), len(list(process.environment_meshes))))
+
+
+
+def not_implemented(process):
     #
-    print('something not implemented')
+    print('This function is not implemented')
 
 
 def show_menu(process):
@@ -129,12 +250,12 @@ def show_menu(process):
                 {'name': 'Clamps', 'message': 'Process have %i Clamps:' % len(list(process.clamps)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'AddClamp', 'action': add_clamp},
-                    {'name': 'DeleteClamp', 'action': something},
+                    {'name': 'DeleteClamp', 'action': not_implemented},
                 ]},
                 {'name': 'Gripper', 'message': 'Process have %i Gripper:' % len(list(process.grippers)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'AddGripper', 'action': add_gripper},
-                    {'name': 'DeleteGripper', 'action': something},
+                    {'name': 'DeleteGripper', 'action': not_implemented},
                 ]},
                 {'name': 'RobotToolChanger', 'message': 'Process robot_toolchanger:', 'options': [
                     {'name': 'Back', 'action': 'Back'},
@@ -146,10 +267,18 @@ def show_menu(process):
                 ]},
                 {'name': 'EnvModels', 'message':  'We have %i Env Meshes:' % len(list(process.environment_meshes)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
-                    {'name': 'AddEnvModel', 'action': something},
-                    {'name': 'DeleteEnvModel', 'action': something},
-                    {'name': 'DeleteAllModel', 'action': something},
+                    {'name': 'AddEnvModel', 'action': add_env_model},
+                    {'name': 'DeleteEnvModel', 'action': not_implemented},
+                    {'name': 'DeleteAllModel', 'action': delete_all_env_model},
                 ]},
+                {'name': 'CopyFromAnotherFile', 'message':  'Copy from another file:', 'options': [
+                    {'name': 'Back', 'action': 'Back'},
+                    {'name': 'CopyTools', 'action': copy_tools},
+                    {'name': 'CopyToolChanger', 'action': copy_tool_changer},
+                    {'name': 'CopyRobWrist', 'action': copy_rob_wrist},
+                    {'name': 'CopyEnvModel', 'action': copy_env_models},
+                ]},
+
             ]
 
         }
