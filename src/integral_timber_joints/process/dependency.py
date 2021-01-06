@@ -53,7 +53,7 @@ class ComputationalDependency(Graph):
         self.add_node('search_valid_jawapproach_vector_prioritizing_beam_side')
         # Level 1
         self.add_edge(
-            'assign_clamp_type_to_joints',
+            'assign_clamp_type_to_joints', # Top level
             'search_valid_clamp_orientation_with_guiding_vector'
             )
         # Level 2
@@ -127,7 +127,10 @@ class ComputationalDependency(Graph):
             yield getattr(self.process, fx_name)
 
     def get_uptream_fxs(self, fx):
-        """ Get upstream fx(s) immediately below the given fx """
+        """ Get upstream fx(s) immediately above the given fx """
+        # print ("fx.__name__ = %s" % fx.__name__ )
+        # for fx_name in self.neighbors_in(fx.__name__):
+        #     print (" - %s" % fx.__name__ )
         for fx_name in self.neighbors_in(fx.__name__):
             yield getattr(self.process, fx_name)
 

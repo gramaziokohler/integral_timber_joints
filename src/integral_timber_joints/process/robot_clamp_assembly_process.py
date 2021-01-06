@@ -33,8 +33,19 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['pickup_station'] = None                # PickupStation
         self.attributes['environment_meshes'] = []              # list[Mesh]
 
-        self.attributes['dependency'] = ComputationalDependency(self)   # ComputationalDependency
+        self.attributes['dependency'] = ComputationalDependency(self)   # ComputationalDependency      
 
+
+    @classmethod
+    def from_data(cls, data):
+        """Construct a RobotClampAssemblyProcess from structured data.
+        Overridden the from_data method because we have to assign self to dependency.process
+        """
+        process = cls()
+        process.data = data
+        process.dependency.process = process
+        # print ("Assigned self to dependency")
+        return process
 
     @ property
     def robot_toolchanger(self):
