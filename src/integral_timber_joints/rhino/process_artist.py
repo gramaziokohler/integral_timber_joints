@@ -30,18 +30,50 @@ def AddAnnotationText(frame, text, height, layer):
 
 
 class ProcessKeyPosition(object):
-    def __init__(self, pos_num):
+    def __init__(self, pos_num = 0):
         self.pos_num = 0
+
+    # pos_name, beam_pos, gripper_pos, clamp_pos
+    pos_names = [
+        ('beam_storage_approach',   'assembly_wcf_storage',         'assembly_wcf_storageapproach',     'clamp_wcf_final'),
+        ('beam_storage_pick',       'assembly_wcf_storage',         'assembly_wcf_storage',             'clamp_wcf_final'),
+        ('beam_storage_retract',    'assembly_wcf_storageretract',  'assembly_wcf_storageretract',      'clamp_wcf_final'),
+        ('beam_inclampapproach',    'assembly_wcf_inclampapproach', 'assembly_wcf_inclampapproach',     'clamp_wcf_final'),
+        ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp',             'clamp_wcf_final'),
+        ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final',               'clamp_wcf_final'),
+        ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract',        'clamp_wcf_final'),
+    ]
+
+    def next(self):
+        self.pos_num += 1
+        if self.pos_num >= len(self.pos_names):
+            self.pos_num = 0
+
+    def final(self):
+        self.pos_num = 5
+
+    @property
+    def pos_name(self):
+        return self.pos_names[self.pos_num][0]
 
     @property
     def beam_pos(self):
-        if self.pos_num == 0:
-            return 'assembly_wcf_storage'
+        return self.pos_names[self.pos_num][1]
 
     @property
     def gripper_pos(self):
-        if self.pos_num == 0:
-            return 'assembly_wcf_storageapproach'
+        return self.pos_names[self.pos_num][2]
+
+    @property
+    def clamp_pos(self):
+        return self.pos_names[self.pos_num][3]
+
+    def to_data(self):
+        data = {'pos_num' : self.pos_num}
+
+    @classmethod
+    def from_data(cls, data):
+        return cls(data['pos_num'])
 
 
 class ProcessArtist(object):
@@ -73,6 +105,11 @@ class ProcessArtist(object):
         'neighbors': (0, 188, 212),
     }
 
+    key_positions = [
+        'storage_approach',
+
+    ]
+
     def __init__(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         self.process = process  # type: RobotClampAssemblyProcess
@@ -97,6 +134,10 @@ class ProcessArtist(object):
         # Empty existing layers and create them if not existing.
         # This also creates the guid dictionary
         self.empty_layers()
+
+        self.selected_beam_id = None # type: str
+        self.selected_key_position = ProcessKeyPosition(0)
+
 
     ######################
     # Beam
@@ -145,6 +186,66 @@ class ProcessArtist(object):
             self.draw_beam_mesh(beam_id, force_update)
         if draw_tag:
             self.draw_beam_seqtag(beam_id)
+
+    def draw_beam_all_positions(self, beam_id, delete_old=False):
+        """ Delete old beam geometry if delete_old is True
+        Redraw them in Rhino in different layers.
+        The resulting Rhino guids are kept in self.guids[beam_id][layer_name]
+
+        This applies to all positions where the attribute is set in beam attributes.
+        """
+        for beam_position in self.beam_positions:
+            layer_name = 'itj::beam::' + beam_position
+            # If not delete_old, and there are already items drawn, we preserve them. 
+            if len(self.guids[beam_id][layer_name]) > 0 and not delete_old:
+                continue
+
+            # Delete old geometry
+            self.delete_beam_at_position(beam_id, beam_position)
+            
+            # Skip the rest of code if the position does not exist.
+            if self.process.assembly.get_beam_attribute(beam_id, beam_position) is None:
+                # print ("Skipping gripper position: %s" % (gripper_position))
+                continue
+
+            print("Drawing Beam(%s) in position: %s" % (beam_id, beam_position))
+
+            # Transform the beam_mesh to location and 
+            T = self.process.assembly.get_beam_transformaion_to(beam_id, beam_position)
+            beam_mesh = self.process.assembly.beam(beam_id).cached_mesh.transformed(T) # type: Mesh
+            v, f = beam_mesh.to_vertices_and_faces()
+            guid = draw_mesh(v, f, name=beam_id, layer=layer_name)
+            self.guids[beam_id][layer_name].append(guid)
+    
+    def delete_beam_at_position(self, beam_id, beam_position):
+        """Delete all Rhino geometry associated to a beam at specified position
+        """
+        layer_name = 'itj::beam::' + beam_position
+        guids = self.guids[beam_id][layer_name]
+        if len(guids) > 0:
+            delete_objects(guids)
+            self.guids[beam_id][layer_name] = []
+
+    def show_beam_at_one_position(self, beam_id, position = None):
+        """ Show Beam only at the specified position.
+        Position is the position attribute name, if left None, selected_key_position will be used. 
+        """
+        if position is None:
+            position = self.selected_key_position.beam_pos
+
+        for beam_position in self.beam_positions:
+            layer_name = 'itj::beam::' + beam_position
+            if beam_position == position:
+                rs.ShowObject(self.guids[beam_id][layer_name])
+            else:
+                rs.HideObject(self.guids[beam_id][layer_name])
+
+    def hide_beam_all_positions(self, beam_id):
+        """ Hide all gripper instances in the specified positions.
+        `positions` are defaulted to all position.
+        # """
+
+        self.show_beam_at_one_position(beam_id, '')
 
     def draw_beam_brep(self, process):
         raise NotImplementedError
@@ -248,7 +349,7 @@ class ProcessArtist(object):
             if self.process.assembly.get_beam_attribute(beam_id, gripper_position) is None:
                 # print ("Skipping gripper position: %s" % (gripper_position))
                 continue
-            print("Grawing gripper for %s in position: %s" % (beam_id, gripper_position))
+            print("Drawing Gripper for Beam(%s) in position: %s" % (beam_id, gripper_position))
             gripper = self.process.get_gripper_of_beam(beam_id, gripper_position)
             gripper_artist = ToolArtist(gripper, layer_name)
             guid = gripper.draw_visual(gripper_artist)
@@ -262,8 +363,7 @@ class ProcessArtist(object):
             self.delete_gripper_at_position(beam_id, gripper_position)
 
     def delete_gripper_at_position(self, beam_id, gripper_position):
-        """Delete all Rhino geometry associated to a a gripper.
-        All positions are deleted
+        """Delete all Rhino geometry associated to a gripper at specified position
         """
         layer_name = 'itj::gripper::' + gripper_position
         guids = self.guids[beam_id][layer_name]
@@ -271,10 +371,13 @@ class ProcessArtist(object):
             delete_objects(guids)
             self.guids[beam_id][layer_name] = []
 
-    def show_gripper_at_one_position(self, beam_id, position):
+    def show_gripper_at_one_position(self, beam_id, position = None):
         """ Show Gripper only at the specified position.
-        Position is the position attribute 
+        Position is the position attribute name, if left None, selected_key_position will be used. 
         """
+        if position is None:
+            position = self.selected_key_position.gripper_pos
+
         for gripper_position in self.gripper_positions:
             layer_name = 'itj::gripper::' + gripper_position
             if gripper_position == position:
