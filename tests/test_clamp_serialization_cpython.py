@@ -1,12 +1,15 @@
-import jsonpickle
-import pickle
-jsonpickle.set_preferred_backend('simplejson')
+import json
+from compas.utilities import DataEncoder, DataDecoder
 
-from compas.geometry import Point
+import jsonpickle
+import compas
+
+from compas.geometry import Point, Vector, Frame
+from compas.datastructures import Mesh
 from integral_timber_joints.geometry import Beam, Joint_90lap
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
-from integral_timber_joints.tools import Clamp
+from integral_timber_joints.tools import Lap90ClampFactory
 
 path_output_json = "tests/data/pickle_cpython.json"
 path_output_pickle = "tests/data/pickle_cpython.pickle"
@@ -29,7 +32,7 @@ assembly.add_joint_pair(joint1, joint2, 'b1', 'b2')
 p = RobotClampAssemblyProcess(assembly)
 
 # Load Tools
-with open('C:/Users/leungp/Documents/GitHub/integral_timber_joints/examples/tools_example/PG1.json', 'r') as f:
+with open('../integral_timber_joints/examples/tools_example/PG1.json', 'r') as f:
     gripper = jsonpickle.decode(f.read(), keys=True)
     gripper.name = 'G1'
 # p.add_gripper(gripper)
@@ -38,7 +41,7 @@ for link in gripper.links:
 
 print (" --- ")
 # Load Tools
-with open('C:/Users/leungp/Documents/GitHub/integral_timber_joints/examples/tools_example/CL1.json', 'r') as f:
+with open('../integral_timber_joints/examples/tools_example/CL1.json', 'r') as f:
     clamp = jsonpickle.decode(f.read(), keys=True)
     clamp.name = 'C1'
 # p.add_clamp(clamp) # This break things
@@ -47,33 +50,35 @@ for link in clamp.links:
     print (link)
 # clamp = Clamp('c1', "SpecialClamp")
 
-clamp = Clamp.Lap90ClampFactory(
+clamp = Lap90ClampFactory(
     'c1',
     "SpecialClamp",
     1,
     2,
     3,
     4,
-    tool_coordinate_frame = 5,
-    tool_pick_up_frame = 6,
-    tool_storage_frame = 7,
-    mesh_gripper_base = 8,
-    mesh_gripper_jaw_l = 9,
-    mesh_gripper_jaw_r = 10,
-    mesh_clamp_jaw_l = 11,
-    mesh_clamp_jaw_r = 12,
-    approach_vector = 13,
-    detachretract1_vector = 14,
-    detachretract2_vector = 15,
+    tool_coordinate_frame = Frame(Point(1,2,3), Vector(1,0,0), Vector(0,1,0)),
+    tool_pick_up_frame = Frame(Point(1,2,3), Vector(1,0,0), Vector(0,1,0)),
+    tool_storage_frame = Frame(Point(1,2,3), Vector(1,0,0), Vector(0,1,0)),
+    mesh_gripper_base = Mesh.from_ply(compas.get_bunny()),
+    mesh_gripper_jaw_l = Mesh.from_ply(compas.get_bunny()),
+    mesh_gripper_jaw_r = Mesh.from_ply(compas.get_bunny()),
+    mesh_clamp_jaw_l = Mesh.from_ply(compas.get_bunny()),
+    mesh_clamp_jaw_r = Mesh.from_ply(compas.get_bunny()),
+    approach_vector = Vector(1,0,0),
+    detachretract1_vector = Vector(1,0,0),
+    detachretract2_vector = Vector(1,0,0),
     )
 
 for link in clamp.links:
     print (link)
 
-data = clamp
+clamp
+json_data = json.dumps(clamp, cls=DataEncoder)
+clamp2 = json.loads(json_data, cls=DataDecoder)
+
+print (clamp.data)
+print (clamp2.data)
+
 with open(path_output_json, 'w') as f:
-    f.write(jsonpickle.encode(data))
-
-with open(path_output_pickle, 'wb') as f:
-    pickle.dump(data,f, protocol=2)
-
+    f.write(json.dumps(clamp, cls=DataEncoder))
