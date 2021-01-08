@@ -82,18 +82,49 @@ class ComputationalDependency(Graph):
         # self.add_node('compute_storage_location_at_corner_aligning_pickup_location')
         self.add_edge(
             'compute_gripper_grasp_pose',
-            'compute_storage_location_at_corner_aligning_pickup_location'
+            'compute_storage_frame'
             )
         # Layer 3
-        # self.add_node('compute_beam_storageapproach_and_finalretract')
+        # Things that are based on compute_storage_frame
         self.add_edge(
-            'compute_storage_location_at_corner_aligning_pickup_location',
-            'compute_beam_storageapproach_and_finalretract'
-            )
-        # self.add_node('compute_beam_storageretract')
-        self.add_edge(
-            'compute_storage_location_at_corner_aligning_pickup_location',
+            'compute_storage_frame',
             'compute_beam_storageretract'
+            )
+        self.add_edge(
+            'compute_storage_frame',
+            'compute_beam_storageapproach'
+            )
+        self.add_edge(
+            'compute_storage_frame',
+            'compute_beam_finalretract'
+            )
+
+        # Layer compute_all
+        # - Clamp Computations
+        self.add_edge(
+            'compute_clamp_attachapproach_attachretract_detachapproach',
+            'compute_all'
+            )
+        self.add_edge(
+            'compute_clamp_detachretract',
+            'compute_all'
+            )
+        self.add_edge(
+            'search_valid_jawapproach_vector_prioritizing_beam_side',
+            'compute_all'
+            )
+        # - Gripper Computations
+        self.add_edge(
+            'compute_beam_storageretract',
+            'compute_all'
+            )
+        self.add_edge(
+            'compute_beam_storageapproach',
+            'compute_all'
+            )
+        self.add_edge(
+            'compute_beam_finalretract',
+            'compute_all'
             )
 
         if self.process is not None and self.process.assembly is not None:
@@ -141,7 +172,7 @@ class ComputationalDependency(Graph):
         for dfx in self.get_downstream_fxs(fx):
             self.invalidate(beam_id, dfx)
 
-    def compute(self, beam_id, fx):
+    def compute(self, beam_id, fx, attempt_all_parents_even_failure = False):
         """ Recursively compute all parents of this function and this function.
         Starting from the root of dependency, if a function is not valid, it will be recomputed.
         If any of the computation failed, it will not continue.
@@ -159,8 +190,9 @@ class ComputationalDependency(Graph):
             # If parent solution is not Valid, try compute it.
             if parent_status not in ComputationalResult.ValidResults: 
                 parent_status = self.compute(beam_id, ufx)
-                # If recompute result cannot continue, we stop here
+                # If any parent is invalid despite retry, we stop here
                 if parent_status != ComputationalResult.ValidCanContinue: 
+                    if attempt_all_parents_even_failure : continue # Except if this flag is True
                     return False
 
         # If all partents are okay, compute itself if it is not valid
@@ -168,7 +200,7 @@ class ComputationalDependency(Graph):
         if validity not in ComputationalResult.ValidResults: 
             validity =  fx(beam_id)
             # Invalidate downsteram results.
-            print ("Dependency compute(%s) for %s" % (fx_name, beam_id)) 
+            print ("Beam(%s) Dependency compute(%s) Validity = %s" % (beam_id, fx_name, validity)) 
             self.set_solution_validity(beam_id, fx, validity, invalidate_downstream=True)
         return validity in ComputationalResult.ValidResults
     
