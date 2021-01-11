@@ -1,6 +1,9 @@
 import os  # Save file location
 import tempfile  # Save file location
 
+import json
+from compas.utilities import DataEncoder, DataDecoder
+
 from compas.geometry import Frame
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.assembly.assembly import Assembly
@@ -40,9 +43,12 @@ def test_beam_in_assembly():
     assert a.get_beam_attribute('b1','my_attribute') == 42
 
     # Check serialization
-    import jsonpickle
-    a2 = jsonpickle.decode(jsonpickle.encode(a))
-    print (jsonpickle.encode(a))
+    # import jsonpickle
+    # print (jsonpickle.encode(a))
+    # a2 = jsonpickle.decode(jsonpickle.encode(a))
+    # print (jsonpickle.encode(a))
+    json_data = json.dumps(a, cls=DataEncoder)
+    a2 = json.loads(json_data, cls=DataDecoder)
     assert id(a) != id(a2)
     assert len(a2.sequence) == 2
     assert a2.get_beam_attribute('b1','my_attribute') == 42
