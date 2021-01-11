@@ -1,5 +1,8 @@
 # integral_timber_joints
 
+<a href="https://github.com/compas-dev/compas" rel="compas">![compas](https://img.shields.io/badge/compas-%3E%3D0.17.2%2C%3C0.18-blue)</a>
+<a href="https://github.com/compas-dev/compas_fab" rel="compas_fab">![compas_fab](https://img.shields.io/badge/compas__fab->=0.13.1-ff69b4)</a>
+
 Python library for designing timber structures with integral timber joints.
 
 This repo is part of the [Robotic Assembled Timber Structures with Integral Timber Joints](https://github.com/gramaziokohler/integral_timber_joints) project. 
@@ -122,6 +125,10 @@ python -m compas_rhino.install -p compas compas_fab compas_ghpython roslibpy com
 ## Module Structure
 
 See [this file](src/integral_timber_joints/Module_Structure.md)
+
+## Sequence and Motion Planning
+
+See [this file](./planning_instructions.md) for instructions on running the planning.
 
 Credits
 -------------
