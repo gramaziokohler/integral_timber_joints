@@ -127,6 +127,14 @@ class RobotClampAssemblyProcess(Network):
     def add_gripper(self, gripper):
         self.attributes['grippers'][gripper.name] = gripper.copy()
 
+    def delete_clamp(self, clamp_id):
+        if clamp_id in self.attributes['clamps']:
+            del self.attributes['clamps'][clamp_id]
+
+    def delete_gripper(self, gripper_id):
+        if gripper_id in self.attributes['grippers']:
+            del self.attributes['grippers'][gripper_id]
+        
     def clamp(self, clamp_id):
         # type: (str) -> Clamp
         return self.attributes['clamps'][clamp_id]

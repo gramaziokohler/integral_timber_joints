@@ -13,7 +13,7 @@ from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
-from integral_timber_joints.tools import Clamp, Gripper
+from integral_timber_joints.tools import Clamp, Gripper, ToolChanger, RobotWrist
 
 def list_tools(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -29,8 +29,9 @@ def list_tools(process):
     print("  type: %s (id = %s))" % (process.robot_toolchanger.type_name, process.robot_toolchanger.name))
 
     print("-- Robot Wrist Meshes (collision sim only)--")
-    for mesh in process.robot_wrist_collision_mesh:
-        print("  mesh with %i vertices))" % (len(mesh.vertices)))
+    print("  type: %s (id = %s))" % (process.robot_wrist.type_name, process.robot_wrist.name))
+    for i, mesh in enumerate(process.robot_wrist.collision_mesh):
+        print("  mesh (%i) with %i vertices))" % (i, len(mesh.vertices)))
 
     print("-- Env Meshes --")
     for mesh in process.environment_meshes:
@@ -67,6 +68,25 @@ def add_clamp(process):
                 process.add_clamp(tool)
                 print("Clamp added: %s " % tool)
 
+def delete_clamp(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    if len(process.clamps) == 0:
+        print ("No clamps exist for you to delete.")
+        return
+
+    # List out current clamps for users to choose
+    print ("Current Clamps:")
+    ids = []
+    for clamp in process.clamps:
+        ids.append(clamp.name)
+        print ("- clamp_id: %s, type: %s" %(clamp.name, clamp.type_name))
+    # Ask user which clamp to delete
+    id = rs.GetString("Which clamp to delete?", "Cancel", ["Cancel"] + ids)
+
+    if id in ids:
+        print ("%s is deleted" % (id))
+        process.delete_clamp(id)
+    
 def add_gripper(process):
     # type: (RobotClampAssemblyProcess) -> None
     # Ask user for a json file
@@ -83,6 +103,25 @@ def add_gripper(process):
                 process.add_gripper(tool)
                 print("Clamp added: %s " % tool)
 
+def delete_gripper(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    if len(process.grippers) == 0:
+        print ("No gripper exist for you to delete.")
+        return
+
+    # List out current gripper for users to choose
+    print ("Current Gripper:")
+    ids = []
+    for gripper in process.grippers:
+        ids.append(gripper.name)
+        print ("- %s : %s" %(gripper.name, gripper.type_name))
+    # Ask user which gripper to delete
+    id = rs.GetString("Which gripper to delete?", "Cancel", ["Cancel"] + ids)
+
+    if id in ids:
+        print ("%s is deleted" % (id))
+        process.delete_gripper(id)
+
 def replace_toolchanger(process):
     # type: (RobotClampAssemblyProcess) -> None
     # Ask user for a json file
@@ -91,8 +130,8 @@ def replace_toolchanger(process):
         with open(path, 'r') as f:
             # Deserialize asert correctness and add to Process
             tool = json.load(f, cls=DataDecoder)
-            assert tool.type_name == "ToolChanger"
-            process.toolchanger = tool
+            assert isinstance(tool, ToolChanger)
+            process.robot_toolchanger = tool
             print("Tool Changer replaced with %s" % tool)
 
 
@@ -104,8 +143,8 @@ def replace_robot_wrist(process):
         with open(path, 'r') as f:
             # robot_wrist asert correctness and add to Process
             tool = json.load(f, cls=DataDecoder)
-            assert tool.type_name == "RobotWrist"
-            process.robot_wrist_collision_mesh = tool
+            assert isinstance(tool, RobotWrist)
+            process.robot_wrist = tool
             print("Robot Wrist Collision Object replaced with %s" % tool)
 
 def add_env_model(process):
@@ -250,12 +289,12 @@ def show_menu(process):
                 {'name': 'Clamps', 'message': 'Process have %i Clamps:' % len(list(process.clamps)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'AddClamp', 'action': add_clamp},
-                    {'name': 'DeleteClamp', 'action': not_implemented},
+                    {'name': 'DeleteClamp', 'action': delete_clamp},
                 ]},
                 {'name': 'Gripper', 'message': 'Process have %i Gripper:' % len(list(process.grippers)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'AddGripper', 'action': add_gripper},
-                    {'name': 'DeleteGripper', 'action': not_implemented},
+                    {'name': 'DeleteGripper', 'action': delete_gripper},
                 ]},
                 {'name': 'RobotToolChanger', 'message': 'Process robot_toolchanger:', 'options': [
                     {'name': 'Back', 'action': 'Back'},
