@@ -169,7 +169,12 @@ def ParallelGripperFactory(
     mesh_gripper_base,
     mesh_gripper_jaw_l,
     mesh_gripper_jaw_r,
-    approach_vector
+    target_beam_length,
+    beam_length_limit_min,
+    beam_length_limit_max,
+    approach_vector,
+    jaw_vector_l = None,           # In Ref to T0CF
+    jaw_vector_r = None,           # In Ref to T0CF
 ):
     """ A Parallel gripper will have a base and two gripper jaw.
     Modelling guide
@@ -178,22 +183,31 @@ def ParallelGripperFactory(
     The right jaw opens towards +Y direction.
     The gripper opening should point towards +Z direction
     """
-    robot_model = Gripper(name, type_name,
-                          tool_coordinate_frame,
-                          tool_pick_up_frame,
-                          tool_storage_frame,
-                          gripper_jaw_position_min,
-                          gripper_jaw_position_max,
-                          approach_vector
+    robot_model = Gripper(name,
+                          type_name=type_name,
+                          tool_coordinate_frame=tool_coordinate_frame,
+                          tool_pick_up_frame=tool_pick_up_frame,
+                          tool_storage_frame=tool_storage_frame,
+                          gripper_jaw_position_min=gripper_jaw_position_min,
+                          gripper_jaw_position_max=gripper_jaw_position_max,
+                          target_beam_length=target_beam_length,
+                          beam_length_limit_min=beam_length_limit_min,
+                          beam_length_limit_max=beam_length_limit_max,
+                          approach_vector=approach_vector
                           )
 
-    gripper_base = robot_model.add_link('gripper_base', mesh_gripper_base)
-    gripper_jaw_l = robot_model.add_link('gripper_jaw_l', mesh_gripper_jaw_l)
-    gripper_jaw_r = robot_model.add_link('gripper_jaw_r', mesh_gripper_jaw_r)
+    gripper_base = robot_model.add_link('gripper_base', visual_meshes=mesh_gripper_base, collision_meshes=mesh_gripper_base)
+    gripper_jaw_l = robot_model.add_link('gripper_jaw_l', visual_meshes=mesh_gripper_jaw_l, collision_meshes=mesh_gripper_jaw_l)
+    gripper_jaw_r = robot_model.add_link('gripper_jaw_r', visual_meshes=mesh_gripper_jaw_r, collision_meshes=mesh_gripper_jaw_r)
+
+    if jaw_vector_l is None:
+        jaw_vector_l = [0, -1, 0]
+    if jaw_vector_r is None:
+        jaw_vector_r = [0, 1, 0]
 
     #robot_model.add_joint('world_base_fixed_joint', Joint.FIXED, world_link, base_link)
-    robot_model.add_joint('joint_gripper_jaw_l', Joint.PRISMATIC, gripper_base, gripper_jaw_l, axis=[0, -1, 0], limit=robot_model.gripper_jaw_limits)
-    robot_model.add_joint('joint_gripper_jaw_r', Joint.PRISMATIC, gripper_base, gripper_jaw_r, axis=[0, 1, 0], limit=robot_model.gripper_jaw_limits)
+    robot_model.add_joint('joint_gripper_jaw_l', Joint.PRISMATIC, gripper_base, gripper_jaw_l, axis=jaw_vector_l, limit=robot_model.gripper_jaw_limits)
+    robot_model.add_joint('joint_gripper_jaw_r', Joint.PRISMATIC, gripper_base, gripper_jaw_r, axis=jaw_vector_r, limit=robot_model.gripper_jaw_limits)
 
     return robot_model
 
@@ -211,6 +225,9 @@ def MultiFingerParallelGripperFactory(
     meshes_gripper_jaw_r,    # type: list[Mesh] # Accepts multiple meshes
     jaw_vector_l,           # In Ref to T0CF
     jaw_vector_r,           # In Ref to T0CF
+    target_beam_length,
+    beam_length_limit_min,
+    beam_length_limit_max,
     approach_vector
 ):
     """ A Parallel gripper will have a base and two gripper jaw.
@@ -221,24 +238,27 @@ def MultiFingerParallelGripperFactory(
     The gripper opening should point towards +Z direction
     """
 
-    robot_model = Gripper(name, type_name,
-                          tool_coordinate_frame,
-                          tool_pick_up_frame,
-                          tool_storage_frame,
-                          gripper_jaw_position_min,
-                          gripper_jaw_position_max,
-                          approach_vector
+    robot_model = Gripper(name,
+                          type_name=type_name,
+                          tool_coordinate_frame=tool_coordinate_frame,
+                          tool_pick_up_frame=tool_pick_up_frame,
+                          tool_storage_frame=tool_storage_frame,
+                          gripper_jaw_position_min=gripper_jaw_position_min,
+                          gripper_jaw_position_max=gripper_jaw_position_max,
+                          target_beam_length=target_beam_length,
+                          beam_length_limit_min=beam_length_limit_min,
+                          beam_length_limit_max=beam_length_limit_max,
+                          approach_vector=approach_vector
                           )
-
     # Gripper Base and Jaw Links
     #world_link = robot_model.add_link('world')
     gripper_base = robot_model.add_link('gripper_base', mesh_gripper_base)
     gripper_jawlinks_l = []
     for i, mesh in enumerate(meshes_gripper_jaw_l):
-        gripper_jawlinks_l.append(robot_model.add_link('gripper_jaw_l%i' % i, mesh))
+        gripper_jawlinks_l.append(robot_model.add_link('gripper_jaw_l%i' % i, visual_meshes=[mesh], collision_meshes=[mesh]))
     gripper_jawlinks_r = []
     for i, mesh in enumerate(meshes_gripper_jaw_r):
-        gripper_jawlinks_r.append(robot_model.add_link('gripper_jaw_r%i' % i, mesh))
+        gripper_jawlinks_r.append(robot_model.add_link('gripper_jaw_r%i' % i, visual_meshes=[mesh], collision_meshes=[mesh]))
 
     # Jaw Joints
     #robot_model.add_joint('world_base_fixed_joint', Joint.FIXED, world_link, base_link)

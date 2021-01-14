@@ -27,15 +27,16 @@ class ToolChanger (Tool):
 
     @property
     def collision_mesh(self):
-        toolchanger_base = self.get_link_by_name('toolchanger_base')
-        return toolchanger_base
+        toolchanger_base_link = self.get_link_by_name('toolchanger_base')
+        return toolchanger_base_link.collision.geometry
 
     @collision_mesh.setter
     def collision_mesh(self, collision_mesh):
         """This can be either one or a list of meshes"""
         from compas.robots import Axis, Joint, Link
         if collision_mesh is not None:
-            gripper_base = self.add_link('toolchanger_base', collision_mesh)
+            # Collision mesh stored in both visual and collision objects
+            gripper_base = self.add_link('toolchanger_base', visual_meshes = collision_mesh, collision_meshes = collision_mesh)
             self.root = gripper_base
             self._create(self.root, Transformation())
 
