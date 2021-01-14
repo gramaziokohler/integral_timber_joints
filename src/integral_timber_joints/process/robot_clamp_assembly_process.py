@@ -27,7 +27,7 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['grippers'] = {}
 
         self.attributes['robot_toolchanger'] = None             # ToolChanger
-        self.attributes['robot_wrist_collision_mesh'] = None    # RobotWrist
+        self.attributes['robot_wrist'] = None                   # RobotWrist
         self.attributes['actions'] = []                         # list[Action]
         self.attributes['movements'] = []                       # list[Movement]
         self.attributes['pickup_station'] = None                # PickupStation
@@ -58,14 +58,15 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['robot_toolchanger'] = value
 
     @ property
-    def robot_wrist_collision_mesh(self):
+    def robot_wrist(self):
         # type: () -> RobotWrist
-        return self.attributes['robot_wrist_collision_mesh']
+        return self.attributes['robot_wrist']
 
-    @robot_wrist_collision_mesh.setter
-    def robot_wrist_collision_mesh(self, value):
+    @robot_wrist.setter
+    def robot_wrist(self, value):
         # type: (RobotWrist) -> None
-        self.attributes['robot_wrist_collision_mesh'] = value
+        self.attributes['robot_wrist'] = value
+
 
     @ property
     def actions(self):
