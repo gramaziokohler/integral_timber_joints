@@ -1,7 +1,9 @@
+from compas.datastructures import Mesh
 from compas.geometry import Frame, Transformation
+from compas_fab.robots import Configuration
 
 from integral_timber_joints.tools import Tool
-from compas_fab.robots import Configuration
+
 
 class ToolChanger (Tool):
     def __init__(self,
@@ -27,8 +29,10 @@ class ToolChanger (Tool):
 
     @property
     def collision_mesh(self):
+        # type: () -> list[Mesh]
+        """List of collision meshes"""
         toolchanger_base_link = self.get_link_by_name('toolchanger_base')
-        return toolchanger_base_link.collision.geometry
+        return [collision_object.geometry.geo for collision_object in toolchanger_base_link.collision]
 
     @collision_mesh.setter
     def collision_mesh(self, collision_mesh):
