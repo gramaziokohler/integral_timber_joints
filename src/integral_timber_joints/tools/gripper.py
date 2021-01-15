@@ -69,7 +69,7 @@ class Gripper (Tool):
 
     @property
     def target_beam_length(self):
-        return self.attributes.get('target_beam_length', (1000))
+        return self.attributes.get('target_beam_length', 1000)
 
     @target_beam_length.setter
     def target_beam_length(self, v):
