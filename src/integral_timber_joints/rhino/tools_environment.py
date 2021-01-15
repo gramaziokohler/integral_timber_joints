@@ -19,23 +19,28 @@ def list_tools(process):
     # type: (RobotClampAssemblyProcess) -> None
     print("-- Clamps --")
     for clamp in process.clamps:
-        print("  type: %s (id = %s))" % (clamp.type_name, clamp.name))
+        print("  Clamp (id = %s) type = %s)" % (clamp.name, clamp.type_name))
+        for link in clamp.links:
+            print("  - Link %s with %i meshes" % (link.name, len(link.visual)))
 
     print("-- Gripper --")
     for gripper in process.grippers:
         print("  type: %s (id = %s))" % (gripper.type_name, gripper.name))
-
+        for link in gripper.links:
+            print("  - Link %s with %i meshes" % (link.name, len(link.visual)))
+            
     print("-- Tool Changer --")
     print("  type: %s (id = %s))" % (process.robot_toolchanger.type_name, process.robot_toolchanger.name))
 
     print("-- Robot Wrist Meshes (collision sim only)--")
     print("  type: %s (id = %s))" % (process.robot_wrist.type_name, process.robot_wrist.name))
     for i, mesh in enumerate(process.robot_wrist.collision_mesh):
-        print("  mesh (%i) with %i vertices))" % (i, len(mesh.vertices)))
+        print("  Mesh %i with %i vertices" % (i, mesh.number_of_vertices()))
 
     print("-- Env Meshes --")
-    for mesh in process.environment_meshes:
-        print("  mesh with %i vertices))" % (len(mesh.vertices)))
+    for i, mesh in enumerate(process.environment_meshes):
+        print("  Mesh %i with %i vertices" % (i, mesh.number_of_vertices()))
+
 
 def get_next_clamp_id(process):
     # type: (RobotClampAssemblyProcess) -> str
@@ -145,7 +150,7 @@ def replace_robot_wrist(process):
             tool = json.load(f, cls=DataDecoder)
             assert isinstance(tool, RobotWrist)
             process.robot_wrist = tool
-            print("Robot Wrist Collision Object replaced with %s" % tool)
+            print("Robot Wrist Object replaced with %s" % tool)
 
 def add_env_model(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -300,9 +305,9 @@ def show_menu(process):
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'ReplaceToolChanger', 'action': replace_toolchanger},
                 ]},
-                {'name': 'RobotWristColliMesh', 'message': 'Process robot_wrist_collision_mesh:', 'options': [
+                {'name': 'RobotWrist', 'message': 'Process robot_wrist', 'options': [
                     {'name': 'Back', 'action': 'Back'},
-                    {'name': 'ReplaceRobotWristColliMesh', 'action': replace_robot_wrist},
+                    {'name': 'ReplaceRobotWrist', 'action': replace_robot_wrist},
                 ]},
                 {'name': 'EnvModels', 'message':  'We have %i Env Meshes:' % len(list(process.environment_meshes)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
