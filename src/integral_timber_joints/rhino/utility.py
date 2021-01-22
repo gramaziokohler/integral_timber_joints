@@ -43,14 +43,14 @@ def recompute_dependent_solutions(process, beam_id):
         assembly.compute_beam_assembly_direction_from_joints_and_sequence(beam_id)
 
 
-def get_existing_beams_filter(process, exclude_beam_ids = []):
+def get_existing_beams_filter(process, exclude_beam_ids=[]):
     # type: (RobotClampAssemblyProcess, list[str]) -> None
     # Create beam guids for filtering
     artist = get_process_artist()
     beam_guids = []
-    for beam_id in artist.guids:
+    for beam_id in process.assembly.beam_ids():
         if beam_id not in exclude_beam_ids:
-            beam_guids += artist.guids[beam_id]['itj::beams_mesh']
+            beam_guids.extend(artist.interactive_beam_guid(beam_id))
     # print('guids of beams: %s (%i)' % (beam_guids, len(beam_guids)))
 
     def existing_beams_filter(rhino_object, geometry, component_index):
@@ -59,7 +59,6 @@ def get_existing_beams_filter(process, exclude_beam_ids = []):
         return False
 
     return existing_beams_filter
-
 
 
 if __name__ == "__main__":

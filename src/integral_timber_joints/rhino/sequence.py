@@ -18,22 +18,22 @@ def show_sequence_color(process, beam_id):
         # Change color based on problems
         problem = assembly.beam_problems(beam_id)
         if seq == selected_seq_num and not problem:
-            artist.change_beam_colour(beam_id, 'active')
+            artist.change_interactive_beam_colour(beam_id, 'active')
         if seq == selected_seq_num and problem:
-            artist.change_beam_colour(beam_id, 'error')
+            artist.change_interactive_beam_colour(beam_id, 'error')
         if seq < selected_seq_num and not problem:
-            artist.change_beam_colour(beam_id, 'built')
+            artist.change_interactive_beam_colour(beam_id, 'built')
         if seq < selected_seq_num and problem:
-            artist.change_beam_colour(beam_id, 'built_warning')
+            artist.change_interactive_beam_colour(beam_id, 'built_warning')
         if seq > selected_seq_num and not problem:
-            artist.change_beam_colour(beam_id, 'unbuilt')
+            artist.change_interactive_beam_colour(beam_id, 'unbuilt')
         if seq > selected_seq_num and problem:
-            artist.change_beam_colour(beam_id, 'unbuilt_warning')
+            artist.change_interactive_beam_colour(beam_id, 'unbuilt_warning')
         # Hide unbuilt beams if settings show_unbuilt == False
         if seq > selected_seq_num and (getattr(artist, "show_unbuilt", True) == False):
-            artist.hide_beam(beam_id)
+            artist.hide_interactive_beam(beam_id)
         else:
-            artist.show_beam(beam_id)
+            artist.show_interactive_beam(beam_id)
         # print out for debug
         if problem:
             print (beam_id, problem)
@@ -45,7 +45,7 @@ def show_normal_color_and_unhide(process):
     assembly = process.assembly  # type: Assembly
     rs.EnableRedraw(False)
     for beam_id in assembly.sequence:
-        artist.change_beam_colour(beam_id, 'normal')
+        artist.change_interactive_beam_colour(beam_id, 'normal')
         artist.show_beam(beam_id)
     rs.EnableRedraw(True)
 
@@ -85,7 +85,7 @@ def show_menu(process):
         if assembly.get_beam_sequence(artist.selected_beam_id) == 0:
             return
         member_seq_affected_by_swap = assembly.shift_beam_sequence(artist.selected_beam_id, -1)
-        [artist.redraw_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
+        [artist.redraw_interactive_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
         show_sequence_color(process, artist.selected_beam_id)
         go.SetDefaultString("Enter again = MoveEarlier")
 
@@ -95,7 +95,7 @@ def show_menu(process):
         if assembly.get_beam_sequence(artist.selected_beam_id) == len(assembly.sequence) -1:
             return
         member_seq_affected_by_swap = assembly.shift_beam_sequence(artist.selected_beam_id, +1)
-        [artist.redraw_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
+        [artist.redraw_interactive_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
         show_sequence_color(process, artist.selected_beam_id)
         go.SetDefaultString("Enter again = MoveLater")
 
@@ -119,7 +119,7 @@ def show_menu(process):
                 shift = shift + 1
             member_seq_affected_by_swap = assembly.shift_beam_sequence(beam_id, shift)
             artist.selected_beam_id = beam_id
-            [artist.redraw_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
+            [artist.redraw_interactive_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
             show_sequence_color(process, artist.selected_beam_id)
         go.SetDefaultString("Enter again = ChangeElementAfterThis")
 

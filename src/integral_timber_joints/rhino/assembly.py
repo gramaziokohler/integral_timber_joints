@@ -64,7 +64,7 @@ def ui_add_beam_from_lines(process):
 
     for beam_id in set(affected_neighbours + new_beam_ids):
         recompute_dependent_solutions(process, beam_id)
-    
+
     print('Show Assembly color')
     # Draw newly added beams and neighbours affected by new joint
     show_assembly_color(process, set(affected_neighbours + new_beam_ids), redraw=True)
@@ -94,7 +94,8 @@ def ui_delete_beams(process):
 
     # Delete Beams and their joints
     for beam_id in beam_ids:
-        artist.delete_one_beam(beam_id)
+        artist.delete_interactive_beam_visualization(beam_id)
+        # Maybe need to delete grippers and other things
         assembly.remove_beam(beam_id)
         print('Beam Removed: %s' % beam_id)
 
@@ -183,11 +184,11 @@ def show_assembly_color(process, beam_ids=None, redraw=False):
     rs.EnableRedraw(False)
     for beam_id in beam_ids:
         if redraw:
-            artist.redraw_beam(beam_id)
+            artist.redraw_interactive_beam(beam_id)
         if process.assembly.beam_problems(beam_id):
-            artist.change_beam_colour(beam_id, 'warning')
+            artist.change_interactive_beam_colour(beam_id, 'warning')
         else:
-            artist.change_beam_colour(beam_id, 'active')
+            artist.change_interactive_beam_colour(beam_id, 'active')
     rs.EnableRedraw(True)
 
 
@@ -199,7 +200,7 @@ def hide_assembly_color(process, beam_ids=None):
     artist = get_process_artist()
     rs.EnableRedraw(False)
     for beam_id in beam_ids:
-        artist.change_beam_colour(beam_id, 'normal')
+        artist.change_interactive_beam_colour(beam_id, 'normal')
     rs.EnableRedraw(True)
 
 

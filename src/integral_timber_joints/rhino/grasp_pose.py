@@ -1,6 +1,6 @@
 import Rhino
-from compas_rhino import artists
 import rhinoscriptsyntax as rs
+from compas_rhino import artists
 from compas_rhino.utilities.objects import get_object_name
 
 from integral_timber_joints.assembly import Assembly
@@ -22,23 +22,23 @@ def show_sequence_color(process, selected_beam_id):
         # Change color based on problems
         problem = assembly.beam_problems(beam_id)
         if seq == selected_seq_num and not problem:
-            artist.change_beam_colour(beam_id, 'active')
+            artist.change_interactive_beam_colour(beam_id, 'active')
         if seq == selected_seq_num and problem:
-            artist.change_beam_colour(beam_id, 'error')
+            artist.change_interactive_beam_colour(beam_id, 'error')
         if seq < selected_seq_num and not problem:
-            artist.change_beam_colour(beam_id, 'built')
+            artist.change_interactive_beam_colour(beam_id, 'built')
         if seq < selected_seq_num and problem:
-            artist.change_beam_colour(beam_id, 'built_warning')
+            artist.change_interactive_beam_colour(beam_id, 'built_warning')
         if seq > selected_seq_num and not problem:
-            artist.change_beam_colour(beam_id, 'unbuilt')
+            artist.change_interactive_beam_colour(beam_id, 'unbuilt')
         if seq > selected_seq_num and problem:
-            artist.change_beam_colour(beam_id, 'unbuilt_warning')
+            artist.change_interactive_beam_colour(beam_id, 'unbuilt_warning')
 
         # Hide unbuilt beams
         if seq >= selected_seq_num:
-            artist.hide_beam(beam_id)
+            artist.hide_interactive_beam(beam_id)
         else:
-            artist.show_beam(beam_id)
+            artist.show_interactive_beam(beam_id)
 
         # Print out for debug
         if problem:
@@ -47,27 +47,35 @@ def show_sequence_color(process, selected_beam_id):
         # Change gripper color based on problems
         # To be implemented
 
-        # Show gripper for the specified position for the seleected beam
+        # Show gripper and clamp for the specified position for the seleected beam
         position = 'assembly_wcf_final'
         if beam_id == selected_beam_id:
             artist.show_gripper_at_one_position(beam_id, position)
+            artist.show_clamp_at_one_position(beam_id, position)
         else:
             artist.hide_gripper_all_positions(beam_id)
+            artist.hide_clamp_all_positions(beam_id)
+
     # artist.draw_clamps(beam_id, position)
 
     # artist.draw_gripper_all_positions(selected_beam_id)
 
     rs.EnableRedraw(True)
 
+
 def show_normal_color_and_unhide(process):
     artist = get_process_artist()
     assembly = process.assembly  # type: Assembly
     rs.EnableRedraw(False)
     for beam_id in assembly.sequence:
-        artist.change_beam_colour(beam_id, 'normal')
-        artist.show_beam(beam_id)
+        artist.change_interactive_beam_colour(beam_id, 'normal')
+        artist.hide_beam_all_positions(beam_id)
         artist.hide_gripper_all_positions(beam_id)
+        artist.hide_clamp_all_positions(beam_id)
+
+        artist.show_interactive_beam(beam_id)
     rs.EnableRedraw(True)
+
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -86,6 +94,8 @@ def show_menu(process):
         artist.hide_beam_all_positions(beam_id)
         artist.draw_gripper_all_positions(beam_id)
         artist.hide_gripper_all_positions(beam_id)
+        artist.draw_clamp_all_positions(beam_id)
+        artist.hide_clamp_all_positions(beam_id)
     rs.EnableRedraw(True)
     rs.Redraw()
 
@@ -99,6 +109,7 @@ def show_menu(process):
         # Hide the current beam and grippers
         artist.hide_beam_all_positions(artist.selected_beam_id)
         artist.hide_gripper_all_positions(artist.selected_beam_id)
+        artist.hide_clamp_all_positions(artist.selected_beam_id)
         # Increment the selected id
         selected_seq_num = assembly.get_beam_sequence(artist.selected_beam_id)
         selected_seq_num = min(selected_seq_num + 1,  len(assembly.sequence) - 1)
@@ -112,6 +123,7 @@ def show_menu(process):
         # Hide the current beam and grippers
         artist.hide_beam_all_positions(artist.selected_beam_id)
         artist.hide_gripper_all_positions(artist.selected_beam_id)
+        artist.hide_clamp_all_positions(artist.selected_beam_id)
         # Decrement the selected id
         selected_seq_num = assembly.get_beam_sequence(artist.selected_beam_id)
         selected_seq_num = max(selected_seq_num - 1,  0)
@@ -123,9 +135,9 @@ def show_menu(process):
         artist.selected_key_position.next()
         artist.show_beam_at_one_position(artist.selected_beam_id)
         artist.show_gripper_at_one_position(artist.selected_beam_id)
+        artist.show_clamp_at_one_position(artist.selected_beam_id)
         go.SetDefaultString("Enter again = CycleKeyPosition")
 
-        
     # def gripper_changetype():
     #     """ Function invoked by user to move grasp pose.
     #     """
@@ -134,20 +146,20 @@ def show_menu(process):
     #     artist.draw_gripper_all_positions(beam_id, delete_old=True)
 
     #     beam = assembly.beam(artist.selected_beam_id)
-        
+
     #     # Change clamp type
     #     assembly.set_beam_attribute(beam_id, "gripper_type", gripper_type)
-        
+
     #     # Recompute best clamp face and update grasp frame
     #     gripper_grasp_face = process.search_grasp_face_from_guide_vector_dir(beam_id)
     #     gripper_grasp_dist_from_start = assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
     #     gripper_tcp_in_ocf = beam.grasp_frame_ocf(gripper_grasp_face, gripper_grasp_dist_from_start)
     #     assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
-        
+
     #     # Recompute Pickup Alignment at Pickup Station
     #     process.compute_storage_location_at_corner_aligning_pickup_location(beam_id)
-        
-    #     # Recompute approach and retract regarding gripper 
+
+    #     # Recompute approach and retract regarding gripper
     #     process.compute_beam_storageapproach_and_finalretract(beam_id)
     #     process.compute_beam_storageretract(beam_id)
 
@@ -159,7 +171,7 @@ def show_menu(process):
         process.dependency.compute(beam_id, process.compute_all)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process, beam_id)
-    
+
     def gripper_move_neg():
         """ Function invoked by user to move grasp pose.
         """
@@ -229,7 +241,6 @@ def show_menu(process):
             beam_id = get_object_name(guid)
             show_sequence_color(process, beam_id)
 
-
             # Unselect obejcts, otherwwise the function will loop infiniitely
             rs.UnselectAllObjects()
 
@@ -238,7 +249,7 @@ def show_menu(process):
                 # print("Hiding Beam %s" % artist.selected_beam_id)
                 artist.hide_beam_all_positions(artist.selected_beam_id)
                 artist.hide_gripper_all_positions(artist.selected_beam_id)
-                
+
             # In the first run where user selected an active beam, the optinos are added
             if artist.selected_beam_id is None:
                 go.AddOption("Finish")
@@ -259,11 +270,11 @@ def show_menu(process):
             artist.selected_key_position.pos_name,
             artist.selected_key_position.pos_num + 1,
             len(artist.selected_key_position.pos_names),
-            ))
+        ))
 
         artist.show_beam_at_one_position(artist.selected_beam_id)
         artist.show_gripper_at_one_position(artist.selected_beam_id)
-        
+        artist.show_clamp_at_one_position(artist.selected_beam_id)
 
 
 ######################

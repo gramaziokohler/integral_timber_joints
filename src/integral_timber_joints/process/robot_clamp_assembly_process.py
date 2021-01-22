@@ -8,9 +8,9 @@ from geometric_blocking import blocked
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, Joint
 from integral_timber_joints.process.action import Action
-from integral_timber_joints.process.movement import Movement
-from integral_timber_joints.tools import Clamp, Gripper, PickupStation, StackedPickupStation, RobotWrist, ToolChanger, Tool
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
+from integral_timber_joints.process.movement import Movement
+from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
 
 
 class RobotClampAssemblyProcess(Network):
@@ -33,8 +33,7 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['pickup_station'] = None                # PickupStation
         self.attributes['environment_meshes'] = []              # list[Mesh]
 
-        self.attributes['dependency'] = ComputationalDependency(self)   # ComputationalDependency      
-
+        self.attributes['dependency'] = ComputationalDependency(self)   # ComputationalDependency
 
     @classmethod
     def from_data(cls, data):
@@ -66,7 +65,6 @@ class RobotClampAssemblyProcess(Network):
     def robot_wrist(self, value):
         # type: (RobotWrist) -> None
         self.attributes['robot_wrist'] = value
-
 
     @ property
     def actions(self):
@@ -135,7 +133,7 @@ class RobotClampAssemblyProcess(Network):
     def delete_gripper(self, gripper_id):
         if gripper_id in self.attributes['grippers']:
             del self.attributes['grippers'][gripper_id]
-        
+
     def clamp(self, clamp_id):
         # type: (str) -> Clamp
         return self.attributes['clamps'][clamp_id]
@@ -189,20 +187,24 @@ class RobotClampAssemblyProcess(Network):
         if self.assembly.get_joint_attribute(joint_id, 'is_clamp_attached_side'):
             return self.assembly.get_joint_attribute(joint_id, 'clamp_type')
 
-    def get_clamp_of_joint(self, joint_id, set_position_to_clamp_wcf_final=True):
+    def get_clamp_of_joint(self, joint_id, position_name='clamp_wcf_final'):
         # type: (tuple[str, str], bool) -> Clamp
-        """Returns one of the clamp object being set at the joint.
+        """Returns one of the clamp object being set at the position 
+        specified by 'position_name', default is 'clamp_wcf_final'.
+        Refering to the attached position on the beam.
 
-        Warning: This clamp object is nor deep-copied.
+        If 'position_name' = '', clamp frame will not be modified.
+
+        Warning: This clamp object is not deep-copied.
         Modifying it will change its definition in the process.
         """
         clamp_type = self.get_clamp_type_of_joint(joint_id)
         clamp = self.get_one_clamp_by_type(clamp_type)
-        if set_position_to_clamp_wcf_final:
-            clamp_wcf_final = self.assembly.get_joint_attribute(joint_id, 'clamp_wcf_final')
-            assert clamp_wcf_final is not None  # clamp_wcf_final must be computed beforehand.
-            # clamp.set_current_frame_from_tcp(clamp_wcf_final)
-            clamp.current_frame = clamp_wcf_final
+
+        if position_name != "":
+            clamp_wcf = self.assembly.get_joint_attribute(joint_id, position_name)
+            assert clamp_wcf is not None
+            clamp.current_frame = clamp_wcf
         return clamp
 
     def get_clamp_ids_for_beam(self, beam_id):
@@ -221,7 +223,7 @@ class RobotClampAssemblyProcess(Network):
         # Compute the length of the movement to clear the clamp jaw
         clearance_length = min_dist
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=False)
+            clamp = self.get_clamp_of_joint(joint_id, '')
             clearance_length = max(clearance_length, clamp.jaw_clearance_vectors_in_wcf.length)
         clearance_length = min(max_dist, clearance_length)
 
@@ -237,7 +239,7 @@ class RobotClampAssemblyProcess(Network):
 
         # Check to see if the guide is blocked by any of the clamp jaws
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
+            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
             if blocked(clamp.jaw_blocking_vectors_in_wcf, design_guide_vector_jawapproach.scaled(-1.0)):
                 return None
 
@@ -256,7 +258,7 @@ class RobotClampAssemblyProcess(Network):
         # Collect blocking vectors from attached clamps
         blocking_vectors = []
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
+            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
             blocking_vectors += clamp.jaw_blocking_vectors_in_wcf
         # Fix rounding error for blocking vectors (Some -0.0 causes problems)
         ROUNDING_DIGITS = 10
@@ -287,7 +289,7 @@ class RobotClampAssemblyProcess(Network):
         # Gather blocking vectors from all clamps
         blocking_vectors = []
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
+            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
             blocking_vectors += clamp.jaw_blocking_vectors_in_wcf
 
         # Check if either direction of the vector is free
@@ -430,7 +432,7 @@ class RobotClampAssemblyProcess(Network):
         ------------
         This functions sets the following beam_attribute
         - 'gripper_grasp_face' 
-        
+
         Dependency Trigger
         ------------------
         Invalidate: 'compute_gripper_grasp_pose' and downstream
@@ -451,7 +453,7 @@ class RobotClampAssemblyProcess(Network):
         """Assign a gripper type using available grippers based on the beam's length.
         Beam must fit within gripper `beam_length_limits`, if multiple options allow,
         the gripper with the closest `target_beam_length` will be chosen.
-       
+
         State Change
         ------------
         This functions sets the following beam_attribute
@@ -470,11 +472,11 @@ class RobotClampAssemblyProcess(Network):
             gripper = self.get_one_gripper_by_type(gripper_type)
             # Check if beam length is within limits
             if beam_length >= gripper.beam_length_limits[0] and beam_length <= gripper.beam_length_limits[1]:
-                # Compute beam length vs ideal length and make decision 
+                # Compute beam length vs ideal length and make decision
                 length_to_ideal = abs(beam_length - gripper.target_beam_length)
                 if chosen_gripper_type is None or length_to_ideal < chosen_gripper_ideal:
                     chosen_gripper_type = gripper_type
-                    chosen_gripper_ideal = length_to_ideal 
+                    chosen_gripper_ideal = length_to_ideal
 
         # In cases no suitable gripper is available
         if chosen_gripper_type is None:
@@ -501,7 +503,7 @@ class RobotClampAssemblyProcess(Network):
         - 'gripper_grasp_dist_from_start' (if default)
         - 'gripper_grasp_face' (if default)
         - 'gripper_tcp_in_ocf' 
-        
+
         Return
         ------
         `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
@@ -517,12 +519,12 @@ class RobotClampAssemblyProcess(Network):
         # Use previous values if exist
         gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_face")
         gripper_grasp_dist_from_start = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
-        
+
         # Apply default values if None
-        if gripper_grasp_face is None: # Default method
+        if gripper_grasp_face is None:  # Default method
             gripper_grasp_face = self.search_grasp_face_from_joint_assembly_direction(beam_id)
             self.assembly.set_beam_attribute(beam_id, "gripper_grasp_face", gripper_grasp_face)
-        if gripper_grasp_face is None: # Backup plan
+        if gripper_grasp_face is None:  # Backup plan
             gripper_grasp_face = self.search_grasp_face_from_guide_vector_dir(beam_id)
             self.assembly.set_beam_attribute(beam_id, "gripper_grasp_face", gripper_grasp_face)
         if gripper_grasp_dist_from_start is None:
@@ -539,7 +541,7 @@ class RobotClampAssemblyProcess(Network):
         when the beam is at different key position.
 
         The result can be used directly for gripper.current_frame = get_gripper_t0cp_for_beam_at()
-        """ 
+        """
         # Get Gripper Object
         gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
         gripper = self.get_one_gripper_by_type(gripper_type)
@@ -573,7 +575,7 @@ class RobotClampAssemblyProcess(Network):
         gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
         gripper = self.get_one_gripper_by_type(gripper_type)
 
-        # Set the 
+        # Set the
         gripper_wcf_final = self.get_gripper_t0cp_for_beam_at(beam_id, beam_position_name)
         assert gripper_wcf_final is not None
         gripper.current_frame = gripper_wcf_final
@@ -592,7 +594,7 @@ class RobotClampAssemblyProcess(Network):
         This functions updates the following beam_attribute
         - 'gripper_grasp_dist_from_start' 
         - 'gripper_tcp_in_ocf' 
-        
+
         Return
         ------
         `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
@@ -607,13 +609,13 @@ class RobotClampAssemblyProcess(Network):
             return ComputationalResult.ValidCannotContinue
 
         beam = self.assembly.beam(beam_id)
-        
+
         gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_face")
         gripper_grasp_dist_from_start = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
         gripper_grasp_dist_from_start += amount
         self.assembly.set_beam_attribute(beam_id, "gripper_grasp_dist_from_start", gripper_grasp_dist_from_start)
-        
-        # Recompute beam grasp_frame        
+
+        # Recompute beam grasp_frame
         gripper_tcp_in_ocf = beam.grasp_frame_ocf(gripper_grasp_face, gripper_grasp_dist_from_start)
         self.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
         # Dependency Trigger
@@ -631,7 +633,7 @@ class RobotClampAssemblyProcess(Network):
         ------------
         This functions sets the following beam_attribute
         - 'assembly_wcf_storage'
-        
+
         Return
         ------
         `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
@@ -641,7 +643,7 @@ class RobotClampAssemblyProcess(Network):
         # Check to ensure prerequisite
         if self.pickup_station is None:
             return ComputationalResult.ValidCannotContinue
-        
+
         # Switching computation function depdns on the Pickup station type
         if isinstance(self.pickup_station, StackedPickupStation):
             print("StackedPickupStation not implemented at compute_storage_frame")
@@ -721,9 +723,9 @@ class RobotClampAssemblyProcess(Network):
         # Compute alignment frame origin - self.compute_alignment_corner_from_grasp_face()
         beam = self.assembly.beam(beam_id)  # type: Beam
         alignment_corner = self.compute_alignment_corner_from_grasp_face(
-            beam_id, 
-            self.pickup_station.align_face_X0, 
-            self.pickup_station.align_face_Y0, 
+            beam_id,
+            self.pickup_station.align_face_X0,
+            self.pickup_station.align_face_Y0,
             self.pickup_station.align_face_Z0)
         #print ('alignment_corner = %s' % alignment_corner)
         alignment_corner_ocf = beam.corner_ocf(alignment_corner)
@@ -812,13 +814,13 @@ class RobotClampAssemblyProcess(Network):
         """
         # Check to ensure prerequisite
         if self.pickup_station is None:
-            print ("pickup_station is not set")
+            print("pickup_station is not set")
             return ComputationalResult.ValidCannotContinue
         if self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage') is None:
-            print ("assembly_wcf_storage is not set")
+            print("assembly_wcf_storage is not set")
             return ComputationalResult.ValidCannotContinue
         if self.assembly.get_beam_attribute(beam_id, 'gripper_type') is None:
-            print ("gripper_type is not set")
+            print("gripper_type is not set")
             return ComputationalResult.ValidCannotContinue
 
         approach_vector_wcf_final = self.compute_gripper_approach_vector_wcf_final(beam_id)
@@ -855,7 +857,7 @@ class RobotClampAssemblyProcess(Network):
         """
         # Check to ensure prerequisite
         if self.assembly.get_beam_attribute(beam_id, 'gripper_type') is None:
-            print ("gripper_type is not set")
+            print("gripper_type is not set")
             return ComputationalResult.ValidCannotContinue
 
         approach_vector_wcf_final = self.compute_gripper_approach_vector_wcf_final(beam_id)
@@ -865,7 +867,7 @@ class RobotClampAssemblyProcess(Network):
         assembly_wcf_final = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_final')
         assembly_wcf_finalretract = assembly_wcf_final.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_finalretract', assembly_wcf_finalretract)
-        
+
         return ComputationalResult.ValidCanContinue
 
     def compute_beam_storageapproach_and_finalretract(self, beam_id):
@@ -898,7 +900,7 @@ class RobotClampAssemblyProcess(Network):
         """
         # Check to ensure prerequisite
         if self.pickup_station is None:
-            print ("pickup_station is not set")
+            print("pickup_station is not set")
             return ComputationalResult.ValidCannotContinue
 
         retract_vector = self.pickup_station.pickup_retract_vector
@@ -908,7 +910,7 @@ class RobotClampAssemblyProcess(Network):
         T = Translation.from_vector(retract_vector)
         assembly_wcf_storageretract = assembly_wcf_storage.transformed(T)
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageretract', assembly_wcf_storageretract)
-        
+
         return ComputationalResult.ValidCanContinue
     # -----------------------
     # Clamps Algorithms
@@ -916,7 +918,7 @@ class RobotClampAssemblyProcess(Network):
 
     def assign_clamp_type_to_joints(self, beam_id, verbose=True):
         """Assign clamp_types to joints based on the joint's preference and clamp availability.
-        
+
         State Change
         ------------
         This functions sets the joint attribute `clamp_type`
@@ -933,19 +935,19 @@ class RobotClampAssemblyProcess(Network):
                 # Check if the preferred clamp exist.
                 if clamp_type in self.available_clamp_types:
                     self.assembly.set_joint_attribute(joint_id, "clamp_type", clamp_type)
-            
+
             if self.get_clamp_type_of_joint(joint_id) is None:
-                print ("WARNING: Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, self.assembly.joint(joint_id).clamp_types))
+                print("WARNING: Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, self.assembly.joint(joint_id).clamp_types))
                 something_failed = True
             else:
-                if verbose: print("Joint (%s) assigned clamp_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
-        
+                if verbose:
+                    print("Joint (%s) assigned clamp_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
+
         # Return results
         if something_failed:
             return ComputationalResult.ValidCannotContinue
         else:
             return ComputationalResult.ValidCanContinue
-
 
     def get_clamp_orientation_options(self, beam_id):
         """Each beam assembly may have multiple clamps involved
@@ -1002,7 +1004,7 @@ class RobotClampAssemblyProcess(Network):
             selected_frame = choose_frame_by_guide_vector(attachment_frames, guiding_vector)
 
             # Set clamp tcp to selected_frame using set_current_frame_from_tcp()
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=False)
+            clamp = self.get_clamp_of_joint(joint_id, '')
             clamp.set_current_frame_from_tcp(selected_frame)
 
             # Save clamp.current_frame as 'clamp_wcf_final'
@@ -1027,7 +1029,7 @@ class RobotClampAssemblyProcess(Network):
         - 'clamp_wcf_attachapproach2'
         - 'clamp_wcf_attachretract'
         - 'clamp_wcf_detachapproach'
-        
+
         Return
         ------
         `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
@@ -1043,7 +1045,7 @@ class RobotClampAssemblyProcess(Network):
         for joint_id in joint_ids:
             if verbose:
                 print("|- Clamp at Joint (%s-%s)" % joint_id)
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
+            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
 
             # clamp_wcf_attachapproach is based on moveing clamp_wcf_final backwards along clamp.approach_vector
             # ------------------------------------------------------------
@@ -1077,9 +1079,9 @@ class RobotClampAssemblyProcess(Network):
                 print("|  |- clamp_wcf_final = %s" % clamp.current_frame)
             if verbose:
                 print("|  |- clamp_wcf_attachretract = %s" % clamp_wcf_attachretract)
-                
+
         return ComputationalResult.ValidCanContinue
-        
+
     def compute_clamp_detachretract(self, beam_id, verbose=False):
         """ Compute and set `clamp_wcf_detachretract1` and `clamp_wcf_detachretract2`
         from 'clamp_wcf_final' and clamp intrinsic properties.
@@ -1092,7 +1094,7 @@ class RobotClampAssemblyProcess(Network):
         ------------
         This functions sets the joint attribute `clamp_wcf_detachretract1`,
         `clamp_wcf_detachretract2`
-        
+
         Return
         ------
         `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
@@ -1105,11 +1107,11 @@ class RobotClampAssemblyProcess(Network):
         # Check to ensure prerequisite
         for joint_id in joint_ids:
             if self.assembly.get_joint_attribute(joint_id, 'clamp_wcf_final') is None:
-                return ComputationalResult.ValidCannotContinue           
+                return ComputationalResult.ValidCannotContinue
         for joint_id in joint_ids:
             if verbose:
                 print("|- Clamp at Joint (%s-%s)" % joint_id)
-            clamp = self.get_clamp_of_joint(joint_id, set_position_to_clamp_wcf_final=True)
+            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
 
             # Moving clamp_wcf_final backwards along clamp.detachretract1_vector
             # ------------------------------------------------------------

@@ -53,7 +53,7 @@ def load_process():
     """
     json_path = get_activedoc_process_path()
     exist = os.path.exists(json_path)
-    if exist:     
+    if exist:
         # Decode json for Process object
         # f = open(json_path, 'r')
         # json_str = f.read()
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         artist.empty_layers()
         process = get_process()
         for beam_id in process.assembly.beam_ids():
-            artist.redraw_beam(beam_id, force_update=False)
+            artist.redraw_interactive_beam(beam_id, force_update=False)
     else:
         # Ask user if create new process file.
         from Rhino.Input.Custom import GetString

@@ -49,7 +49,8 @@ class Tool (ToolModel):
         """ remove the hardcoded attached_tool_link link in the ToolModel
         """
         hardcoded_link = self.get_link_by_name('attached_tool_link')
-        if hardcoded_link is not None: self.links.remove(hardcoded_link)
+        if hardcoded_link is not None:
+            self.links.remove(hardcoded_link)
 
         self.type_name = type_name
 
@@ -84,7 +85,7 @@ class Tool (ToolModel):
 
     @data.setter
     def data(self, data):
-    # def _set_data(self, data):
+        # def _set_data(self, data):
         super(Tool, self)._set_data(data)
         # Deserialization of the attributes dictionary
         self.attributes.update(data.get('attributes') or {})
@@ -116,7 +117,7 @@ class Tool (ToolModel):
     def current_frame(self, frame):
         """ Setting the current frame T0CP directly"""
         self.attributes['current_frame'] = frame.copy()
-        
+
     @property
     def type_name(self):
         """ Getting the type_name.
@@ -128,7 +129,6 @@ class Tool (ToolModel):
         """ Setting the type_name
         Different instance of the same clamp should have the same type_name but different name."""
         self.attributes['type_name'] = value
-        
 
     @property
     def is_visible(self):
@@ -139,7 +139,6 @@ class Tool (ToolModel):
     def is_visible(self, value):
         """ Set if the object should be visible."""
         self.attributes['is_visible'] = value
-        
 
     @property
     def is_attached(self):
@@ -150,7 +149,6 @@ class Tool (ToolModel):
     def is_attached(self, value):
         """ Set if the object is attached to the robot """
         self.attributes['is_attached'] = value
-        
 
     @property
     def tool_pick_up_frame(self):
@@ -166,7 +164,6 @@ class Tool (ToolModel):
             self.attributes['tool_pick_up_frame'] = None
         else:
             self.attributes['tool_pick_up_frame'] = frame.copy()
-        
 
     @property
     def tool_storage_frame(self):
@@ -182,6 +179,7 @@ class Tool (ToolModel):
             self.attributes['tool_storage_frame'] = None
         else:
             self.attributes['tool_storage_frame'] = frame.copy()
+
     @property
     def current_configuration(self):
         """Gets the current Configuration of the joints in the underlying RobotModel
@@ -255,14 +253,14 @@ class Tool (ToolModel):
     # Visualization Function
     # --------------------------------------------------------
 
-    def draw_visual(self, artist = None):
+    def draw_visual(self, artist=None):
         # type: (BaseRobotModelArtist) -> list[any[Mesh, RhinoMesh]]
         """ Returns the COMPAS Mesh of the underlying RobotModel
         in the location determined by its internal state.
 
         If provided with a type of BaseRobotModelArtist, this result will be painted by that artist.
         Otherwise compas_meshes will be returned.
-        
+
         If the specific Artist draw_visual() returns geometry,
         they will be returned.
         """
@@ -274,14 +272,13 @@ class Tool (ToolModel):
         if artist is None:
             artist = CompasRobotArtist(self)
 
-        
         # Grab all joint values and create a Configuration (Artist want it)
         root_transformation = Transformation.from_frame(self.current_frame)
         joint_state = self.current_configuration.joint_dict
 
         # Artist performs update of the transformations
         artist._transform_link_geometry(self.root, root_transformation, True)
-        artist._update(self, joint_state, parent_transformation = root_transformation)
+        artist._update(self, joint_state, parent_transformation=root_transformation)
 
         result = artist.draw_visual()
 
