@@ -83,7 +83,7 @@ def show_menu(process):
     artist = get_process_artist()
 
     artist.selected_beam_id = None
-    artist.selected_key_position.final()
+    artist.selected_key_position.final_position()
     artist.show_unbuilt = False
 
     # Draw all gripper positions if they have not been drawn
@@ -114,6 +114,7 @@ def show_menu(process):
         selected_seq_num = assembly.get_beam_sequence(artist.selected_beam_id)
         selected_seq_num = min(selected_seq_num + 1,  len(assembly.sequence) - 1)
         artist.selected_beam_id = assembly.sequence[selected_seq_num]
+        artist.selected_key_position.final_position()
         show_sequence_color(process, artist.selected_beam_id)
         go.SetDefaultString("Enter again = Next")
 
@@ -128,40 +129,62 @@ def show_menu(process):
         selected_seq_num = assembly.get_beam_sequence(artist.selected_beam_id)
         selected_seq_num = max(selected_seq_num - 1,  0)
         artist.selected_beam_id = assembly.sequence[selected_seq_num]
+        artist.selected_key_position.final_position()
         show_sequence_color(process, artist.selected_beam_id)
         go.SetDefaultString("Enter again = Previous")
 
-    def cycle_key_position():
-        artist.selected_key_position.next()
+    def next_key_position():
+        artist.selected_key_position.next_position()
         artist.show_beam_at_one_position(artist.selected_beam_id)
         artist.show_gripper_at_one_position(artist.selected_beam_id)
         artist.show_clamp_at_one_position(artist.selected_beam_id)
-        go.SetDefaultString("Enter again = CycleKeyPosition")
+        go.SetDefaultString("Enter again = NextKeyPosition")
 
-    # def gripper_changetype():
-    #     """ Function invoked by user to move grasp pose.
-    #     """
-    #     beam_id = artist.selected_beam_id
-    #     process.adjust_gripper_pos(beam_id, +30)
-    #     artist.draw_gripper_all_positions(beam_id, delete_old=True)
+    def prev_key_position():
+        artist.selected_key_position.prev_position()
+        artist.show_beam_at_one_position(artist.selected_beam_id)
+        artist.show_gripper_at_one_position(artist.selected_beam_id)
+        artist.show_clamp_at_one_position(artist.selected_beam_id)
+        go.SetDefaultString("Enter again = PrevKeyPosition")
 
-    #     beam = assembly.beam(artist.selected_beam_id)
+    def gripper_changetype():
+        """ Function invoked by user to change gripper type
+        """
+        if len(process.grippers) == 0:
+            print("No gripper exist for you to choose. Very bad. Add some grippers first.")
+            return
 
-    #     # Change clamp type
-    #     assembly.set_beam_attribute(beam_id, "gripper_type", gripper_type)
+        # List out current gripper for users to choose
+        beam_id = artist.selected_beam_id
+        current_gripper_type = process.assembly.get_beam_attribute(beam_id, 'gripper_type')
+        # print("Current Gripper for Beam(%s) is: %s" % (beam_id, current_gripper_type))
 
-    #     # Recompute best clamp face and update grasp frame
-    #     gripper_grasp_face = process.search_grasp_face_from_guide_vector_dir(beam_id)
-    #     gripper_grasp_dist_from_start = assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
-    #     gripper_tcp_in_ocf = beam.grasp_frame_ocf(gripper_grasp_face, gripper_grasp_dist_from_start)
-    #     assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
+        print("Available Grippers:")
+        type_names = []
+        for gripper in process.grippers:
+            print("- %s : %s" % (gripper.name, gripper.type_name))
+            if gripper.type_name not in type_names:
+                type_names.append(gripper.type_name)
 
-    #     # Recompute Pickup Alignment at Pickup Station
-    #     process.compute_storage_location_at_corner_aligning_pickup_location(beam_id)
+        # Ask user which gripper to delete
+        selected_type_name = rs.GetString("Which gripper to use for Beam(%s)? Current gripper type is: %s" % (beam_id, current_gripper_type), current_gripper_type, type_names)
+        # Dont change anything if the selection is the same
+        if selected_type_name  == current_gripper_type:
+            return
+        if selected_type_name in type_names:
+            print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
+            process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
 
-    #     # Recompute approach and retract regarding gripper
-    #     process.compute_beam_storageapproach_and_finalretract(beam_id)
-    #     process.compute_beam_storageretract(beam_id)
+        process.dependency.invalidate(beam_id, process.assign_gripper_to_beam, downstream_only=True)
+        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+
+        # Redraw Visualization
+        artist.draw_beam_all_positions(beam_id, delete_old=True)
+        # artist.hide_beam_all_positions(beam_id)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True)
+        # artist.hide_gripper_all_positions(beam_id)
+        show_sequence_color(process, beam_id)
+
 
     def gripper_move_pos():
         """ Function invoked by user to move grasp pose.
@@ -208,8 +231,11 @@ def show_menu(process):
             if go.Option().EnglishName == "Previous":
                 run_cmd = select_previous
 
-            if go.Option().EnglishName == "CycleKeyPosition":
-                run_cmd = cycle_key_position
+            if go.Option().EnglishName == "cNextKeyPosition":
+                run_cmd = next_key_position
+
+            if go.Option().EnglishName == "vPrevKeyPosition":
+                run_cmd = prev_key_position
 
             if go.Option().EnglishName == "GripperMovePos":
                 run_cmd = gripper_move_pos
@@ -219,6 +245,9 @@ def show_menu(process):
 
             if go.Option().EnglishName == "GripperFollowAsemblyDirection":
                 run_cmd = gripper_follow_ass_dir
+
+            if go.Option().EnglishName == "GripperType":
+                run_cmd = gripper_changetype
 
             # if go.Option().EnglishName == "Autocompute":
             #     run_cmd = auto_compute
@@ -255,7 +284,8 @@ def show_menu(process):
                 go.AddOption("Finish")
                 go.AddOption("Next")
                 go.AddOption("Previous")
-                go.AddOption("CycleKeyPosition")
+                go.AddOption("cNextKeyPosition")
+                go.AddOption("vPrevKeyPosition")
                 go.AddOption("GripperMovePos")
                 go.AddOption("GripperMoveNeg")
                 go.AddOption("GripperFollowAsemblyDirection")
@@ -267,9 +297,9 @@ def show_menu(process):
             artist.selected_beam_id,
             assembly.get_beam_sequence(artist.selected_beam_id) + 1,
             len(assembly.sequence),
-            artist.selected_key_position.pos_name,
-            artist.selected_key_position.pos_num + 1,
-            len(artist.selected_key_position.pos_names),
+            artist.selected_key_position.current_pos_name,
+            artist.selected_key_position.current_pos_num + 1,
+            artist.selected_key_position.total_pos_number,
         ))
 
         artist.show_beam_at_one_position(artist.selected_beam_id)

@@ -29,8 +29,9 @@ def AddAnnotationText(frame, text, height, layer):
 
 
 class ProcessKeyPosition(object):
-    def __init__(self, pos_num=0):
-        self.pos_num = 0
+    def __init__(self, current_pos_num=0):
+        self.current_pos_num = 0
+        self.current_beam_has_clamps = True
 
     # Constant names for beam, gripper and clamp positions.
     # beam_positions and gripper_positions relate directly to Beam Attributes in Assembly
@@ -60,7 +61,7 @@ class ProcessKeyPosition(object):
     ]
 
     # pos_name, beam_pos, gripper_pos, clamp_pos
-    pos_names = [
+    pos_names_for_beam_with_clamps = [
         ('clamp_attachapproach1',   'assembly_wcf_storage',         'assembly_wcf_storageapproach',     'clamp_wcf_attachapproach1'),
         ('clamp_attachapproach2',   'assembly_wcf_storage',         'assembly_wcf_storageapproach',     'clamp_wcf_attachapproach2'),
         ('beam_storage_approach',   'assembly_wcf_storage',         'assembly_wcf_storageapproach',     'clamp_wcf_final'),
@@ -74,36 +75,75 @@ class ProcessKeyPosition(object):
         ('clamp_detachretract2',    'assembly_wcf_final',           'assembly_wcf_finalretract',        'clamp_wcf_detachretract2'),
     ]
 
-    def next(self):
-        self.pos_num += 1
-        if self.pos_num >= len(self.pos_names):
-            self.pos_num = 0
+    pos_names_for_beam_without_clamps = [
+        ('beam_storage_approach',   'assembly_wcf_storage',         'assembly_wcf_storageapproach',     'clamp_wcf_final'),
+        ('beam_storage_pick',       'assembly_wcf_storage',         'assembly_wcf_storage',             'clamp_wcf_final'),
+        ('beam_storage_retract',    'assembly_wcf_storageretract',  'assembly_wcf_storageretract',      'clamp_wcf_final'),
+        ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp',             'clamp_wcf_final'),
+        ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final',               'clamp_wcf_final'),
+        ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract',        'clamp_wcf_final'),
+    ]
 
-    def final(self):
-        self.pos_num = 5
+    def next_position(self):
+        self.current_pos_num += 1
+        if self.current_pos_num >= self.total_pos_number:
+            self.current_pos_num = self.total_pos_number - 1
+
+    def prev_position(self):
+        self.current_pos_num += -1
+        if self.current_pos_num < 0:
+            self.current_pos_num = 0
+
+    def final_position(self):
+        """ Set `self.current_pos_num` to beam_final
+        """
+        if self.current_beam_has_clamps:
+            self.current_pos_num = 7
+        else:
+            self.current_pos_num = 5
 
     @property
-    def pos_name(self):
-        return self.pos_names[self.pos_num][0]
+    def _get_current_pos_names(self):
+        # just in case
+        if self.current_pos_num >= self.total_pos_number:
+            self.final_position()
+
+        # Switching between two sets of key positions depending if it has clamps
+        if self.current_beam_has_clamps:
+            return self.pos_names_for_beam_with_clamps[self.current_pos_num]
+        else:
+            return self.pos_names_for_beam_without_clamps[self.current_pos_num]
 
     @property
-    def beam_pos(self):
-        return self.pos_names[self.pos_num][1]
+    def current_pos_name(self):
+        # type() -> str
+        return self._get_current_pos_names[0]
 
     @property
-    def gripper_pos(self):
-        return self.pos_names[self.pos_num][2]
+    def current_beam_pos(self):
+        return self._get_current_pos_names[1]
 
     @property
-    def clamp_pos(self):
-        return self.pos_names[self.pos_num][3]
+    def current_gripper_pos(self):
+        return self._get_current_pos_names[2]
+
+    @property
+    def current_clamp_pos(self):
+        return self._get_current_pos_names[3]
+
+    @property
+    def total_pos_number(self):
+        if self.current_beam_has_clamps:
+            return len(self.pos_names_for_beam_with_clamps)
+        else:
+            return len(self.pos_names_for_beam_without_clamps)
 
     def to_data(self):
-        data = {'pos_num': self.pos_num}
+        data = {'current_pos_num': self.current_pos_num}
 
     @classmethod
     def from_data(cls, data):
-        return cls(data['pos_num'])
+        return cls(data['current_pos_num'])
 
 
 class ProcessArtist(object):
@@ -173,8 +213,19 @@ class ProcessArtist(object):
         # This also creates the guid dictionary
         self.empty_layers()
 
-        self.selected_beam_id = None  # type: str
+        self._selected_beam_id = None  # type: str
         self.selected_key_position = ProcessKeyPosition(0)
+
+    @property
+    def selected_beam_id(self):
+        return self._selected_beam_id
+
+    @selected_beam_id.setter
+    def selected_beam_id(self, beam_id):
+        self._selected_beam_id = beam_id
+        # update selected_key_position whether current_beam_has_clamps
+        if beam_id is not None:
+            self.selected_key_position.current_beam_has_clamps = len(self.process.assembly.get_joint_ids_of_beam_clamps(beam_id)) > 0
 
     #############################
     # Beam in Interactive Layers
@@ -323,7 +374,7 @@ class ProcessArtist(object):
         Position is the position attribute name, if left None, selected_key_position will be used. 
         """
         if position is None:
-            position = self.selected_key_position.beam_pos
+            position = self.selected_key_position.current_beam_pos
 
         for beam_position in ProcessKeyPosition.beam_positions:
             if beam_position == position:
@@ -452,7 +503,7 @@ class ProcessArtist(object):
         selected_key_position saved in artist will be used.
         """
         if position is None:
-            position = self.selected_key_position.gripper_pos
+            position = self.selected_key_position.current_gripper_pos
 
         for gripper_position in ProcessKeyPosition.gripper_positions:
             if gripper_position == position:
@@ -526,7 +577,7 @@ class ProcessArtist(object):
         selected_key_position saved in artist will be used.
         """
         if position is None:
-            position = self.selected_key_position.clamp_pos
+            position = self.selected_key_position.current_clamp_pos
 
         for joint_id in self.process.assembly.get_joint_ids_of_beam_clamps(beam_id, clamping_this_beam=clamping_this_beam):
             for clamp_position in ProcessKeyPosition.clamp_positions:
