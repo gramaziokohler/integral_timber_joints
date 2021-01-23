@@ -11,11 +11,24 @@ from integral_timber_joints.rhino.utility import get_existing_beams_filter, reco
 
 def show_sequence_color(process, selected_beam_id):
     # type: (RobotClampAssemblyProcess, str) -> None
+    """Function to toggle (show/hide) visualization geometry and apply warning color
+    Based on which beam is selected, we show beam visualization differently. 
+   
+    # Beams
+    - Beams (seq) before the selection = Interactive beam is shown (Warning colors applied)
+    - The selected beam = Beam-in-Position is shown, position is based on current selected_key_position (Warning colors applied)
+    - Beams (seq) after the selection = No visualization.
+
+    # Clamps and Grippers
+    - Gripper shown for the currently selected beam. (Warning colors applied)
+    - Clamp(s) shown for the clamps clamping (assembling) the selected beam. (Warning colors applied)
+
+    """
     rs.EnableRedraw(False)
     artist = get_process_artist()
     assembly = process.assembly
 
-    # Loop through selected beams up to selected beam.
+    # Loop through beams up to selected beam.
     selected_seq_num = assembly.get_beam_sequence(selected_beam_id)
     for seq, beam_id in enumerate(assembly.sequence):
 
@@ -34,11 +47,25 @@ def show_sequence_color(process, selected_beam_id):
         if seq > selected_seq_num and problem:
             artist.change_interactive_beam_colour(beam_id, 'unbuilt_warning')
 
-        # Hide unbuilt beams
-        if seq >= selected_seq_num:
-            artist.hide_interactive_beam(beam_id)
-        else:
+        # Show hide interactive beams
+        if seq < selected_seq_num:
             artist.show_interactive_beam(beam_id)
+        else:
+            artist.hide_interactive_beam(beam_id)
+
+        # Show hide beams in position
+        if seq == selected_seq_num:
+            artist.show_beam_at_one_position(beam_id)
+        else:
+            artist.hide_beam_all_positions(beam_id)
+
+        # Show gripper and clamp 
+        if seq == selected_seq_num:
+            artist.show_gripper_at_one_position(beam_id)
+            artist.show_clamp_at_one_position(beam_id)
+        else:
+            artist.hide_gripper_all_positions(beam_id)
+            artist.hide_clamp_all_positions(beam_id)
 
         # Print out for debug
         if problem:
@@ -46,19 +73,6 @@ def show_sequence_color(process, selected_beam_id):
 
         # Change gripper color based on problems
         # To be implemented
-
-        # Show gripper and clamp for the specified position for the seleected beam
-        position = 'assembly_wcf_final'
-        if beam_id == selected_beam_id:
-            artist.show_gripper_at_one_position(beam_id, position)
-            artist.show_clamp_at_one_position(beam_id, position)
-        else:
-            artist.hide_gripper_all_positions(beam_id)
-            artist.hide_clamp_all_positions(beam_id)
-
-    # artist.draw_clamps(beam_id, position)
-
-    # artist.draw_gripper_all_positions(selected_beam_id)
 
     rs.EnableRedraw(True)
 
@@ -84,9 +98,8 @@ def show_menu(process):
 
     artist.selected_beam_id = None
     artist.selected_key_position.final_position()
-    artist.show_unbuilt = False
 
-    # Draw all gripper positions if they have not been drawn
+    # Make sure beam, gripper and clamps are drawn if they are drawn yet
     # Initially hide them.
     rs.EnableRedraw(False)
     for beam_id in assembly.sequence:
@@ -169,7 +182,7 @@ def show_menu(process):
         # Ask user which gripper to delete
         selected_type_name = rs.GetString("Which gripper to use for Beam(%s)? Current gripper type is: %s" % (beam_id, current_gripper_type), current_gripper_type, type_names)
         # Dont change anything if the selection is the same
-        if selected_type_name  == current_gripper_type:
+        if selected_type_name == current_gripper_type:
             return
         if selected_type_name in type_names:
             print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
@@ -180,10 +193,9 @@ def show_menu(process):
 
         # Redraw Visualization
         artist.draw_beam_all_positions(beam_id, delete_old=True)
-        # artist.hide_beam_all_positions(beam_id)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
-        # artist.hide_gripper_all_positions(beam_id)
         show_sequence_color(process, beam_id)
+        go.SetDefaultString("Enter again = GripperType")
 
 
     def gripper_move_pos():
@@ -194,6 +206,7 @@ def show_menu(process):
         process.dependency.compute(beam_id, process.compute_all)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process, beam_id)
+        go.SetDefaultString("Enter again = GripperMovePos")
 
     def gripper_move_neg():
         """ Function invoked by user to move grasp pose.
@@ -203,15 +216,66 @@ def show_menu(process):
         process.dependency.compute(beam_id, process.compute_all)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process, beam_id)
+        go.SetDefaultString("Enter again = GripperMoveNeg")
 
     def gripper_follow_ass_dir():
         """ Function invoked by user to change grasp face.
+        This triggers search_grasp_face_from_joint_assembly_direction
         """
         beam_id = artist.selected_beam_id
         process.search_grasp_face_from_joint_assembly_direction(beam_id)
         process.dependency.compute(beam_id, process.compute_all)
+
+        # Redraw Visualization
+        artist.draw_beam_all_positions(beam_id, delete_old=True)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process, beam_id)
+
+    def grasp_face():
+        """ Function invoked by user to change grasp face.
+        Uses get to select face 1 to 4.
+
+        This function recursively ask user until cancel is pressed or 
+        """
+        # Get current situation
+        beam_id = artist.selected_beam_id
+
+        for _ in range(10):
+            current_grasp_face = process.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')
+
+            # Ask user which face to grasp
+            options =  ['Back', 'Face1', 'Face2', 'Face3', 'Face4']
+            options_number =  ['Back', '1', '2', '3', '4']
+            selected_grasp_face = rs.GetString("Which face to grasp for Beam(%s)? Current grasp face is: %s" % (beam_id, options[current_grasp_face]), options[current_grasp_face], options)
+            if selected_grasp_face is None:
+                # User press Escape
+                return # Exit loop
+            elif selected_grasp_face in options:
+                # User selected one of the Buttons
+                selected_grasp_face = options.index(selected_grasp_face)
+            elif selected_grasp_face in options_number:
+                # User typed in just a number
+                selected_grasp_face = options_number.index(selected_grasp_face)
+            else:
+                print ("Input not recognized : %s" % selected_grasp_face)
+                continue # Continue loop and try again.
+            if selected_grasp_face == 0 :
+                # User selected Back as option
+                return # Exit loop
+            
+            # Check if new selection is the same as before
+            if selected_grasp_face != current_grasp_face:
+                # Recompute dependency
+                process.override_grasp_face(beam_id,selected_grasp_face)
+                process.dependency.compute(beam_id, process.compute_all)
+
+                # Redraw Visualization
+                artist.draw_beam_all_positions(beam_id, delete_old=True)
+                artist.draw_gripper_all_positions(beam_id, delete_old=True)
+                show_sequence_color(process, beam_id)
+            else:
+                print ("Selection is the same as before, grasp face unchanged.")
+
 
     run_cmd = None  # Variable to remember the last command to allow easy rerun.
     while(True):
@@ -243,7 +307,10 @@ def show_menu(process):
             if go.Option().EnglishName == "GripperMoveNeg":
                 run_cmd = gripper_move_neg
 
-            if go.Option().EnglishName == "GripperFollowAsemblyDirection":
+            if go.Option().EnglishName == "GraspFace":
+                run_cmd = grasp_face
+
+            if go.Option().EnglishName == "GraspFaceFollowAsemblyDirection":
                 run_cmd = gripper_follow_ass_dir
 
             if go.Option().EnglishName == "GripperType":
@@ -288,7 +355,8 @@ def show_menu(process):
                 go.AddOption("vPrevKeyPosition")
                 go.AddOption("GripperMovePos")
                 go.AddOption("GripperMoveNeg")
-                go.AddOption("GripperFollowAsemblyDirection")
+                go.AddOption("GraspFace")
+                go.AddOption("GraspFaceFollowAsemblyDirection")
                 go.AddOption("GripperType")
 
             artist.selected_beam_id = beam_id

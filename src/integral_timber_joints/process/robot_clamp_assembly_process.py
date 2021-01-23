@@ -393,6 +393,26 @@ class RobotClampAssemblyProcess(Network):
                 return gripper
         return None
 
+    def override_grasp_face(self, beam_id, grasp_face):
+        """Manually override `gripper_grasp_face` for a specified beam
+        `grasp_face` can only be within 1 - 4, overrange value will be wrapped 
+
+        State Change
+        ------------
+        This functions sets the following beam_attribute
+        - 'gripper_grasp_face' 
+
+        Dependency Trigger
+        ------------------
+        Invalidate: 'compute_gripper_grasp_pose' and downstream
+
+        """
+        grasp_face = (grasp_face - 1) % 4 + 1
+        self.assembly.set_beam_attribute(beam_id, 'gripper_grasp_face', grasp_face)
+        # Dependency Trigger
+        self.dependency.invalidate(beam_id, self.compute_gripper_grasp_pose)
+        return True
+
     def search_grasp_face_from_guide_vector_dir(self, beam_id):
         # type: (str) -> Vector
         """Return the best face number (1-4) for creating `gripper_tcp_in_ocf`
