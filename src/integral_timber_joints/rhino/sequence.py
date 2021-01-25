@@ -46,7 +46,7 @@ def show_normal_color_and_unhide(process):
     rs.EnableRedraw(False)
     for beam_id in assembly.sequence:
         artist.change_interactive_beam_colour(beam_id, 'normal')
-        artist.show_beam(beam_id)
+        artist.show_interactive_beam(beam_id)
     rs.EnableRedraw(True)
 
 
