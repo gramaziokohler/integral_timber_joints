@@ -14,6 +14,7 @@ from integral_timber_joints.tools import Clamp, Gripper
 
 class Action(object):
     """ Base class for all actions.
+    It contains a list of movements
     """
     def __init__(self):
         self.movements = [] # type: Movement
@@ -23,6 +24,35 @@ class Action(object):
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         raise NotImplementedError("Action.create_movements() is not implemented by child class")
+
+    def to_data(self):
+        """Simpliest way to get this class serialized.
+        """
+        return self.data
+
+    @classmethod
+    def from_data(cls, data):
+        """Construct a Movement from structured data. Subclass must add their properity to
+        the data properity.
+        """
+        movement = cls()
+        movement.data = data
+        return movement
+
+    @property
+    def data(self):
+        data = {
+            'movements' : self.movements,
+            'seq_n' : self.seq_n,
+            'act_n' : self.act_n,
+        }
+        return data
+
+    @data.setter
+    def data(self, data):
+        self.movements = data['movements']
+        self.seq_n = data['seq_n']
+        self.act_n = data['act_n']
 
 class OperatorAction(Action):
     """ Base class for actions performed manually.

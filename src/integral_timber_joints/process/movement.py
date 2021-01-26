@@ -9,6 +9,34 @@ class Movement(object):
         self.operator_stop_before = operator_stop_before # type: bool
         self.operator_stop_after = operator_stop_after # type: bool
 
+    def to_data(self):
+        """Simpliest way to get this class serialized.
+        """
+        return self.data
+
+    @classmethod
+    def from_data(cls, data):
+        """Construct a Movement from structured data. Subclass must add their properity to
+        the data properity.
+        """
+        movement = cls(False, False)
+        movement.data = data
+        return movement
+
+    @property
+    def data(self):
+        data = {
+            'operator_stop_before' : self.operator_stop_before,
+            'operator_stop_after' : self.operator_stop_after,
+        }
+        return data
+
+    @data.setter
+    def data(self, data):
+        self.operator_stop_before = data['operator_stop_before']
+        self.operator_stop_after = data['operator_stop_after']
+
+
 class RoboticMovement(Movement):
     def __init__(self, target_frame, attached_tool_id = None, attached_beam_id = None):
         Movement.__init__(self)
@@ -16,6 +44,27 @@ class RoboticMovement(Movement):
         self.attached_tool_id = attached_tool_id # type: Optional[str]
         self.attached_beam_id = attached_beam_id # type: Optional[str]
         self.trajectory = None # type: Optional[compas_fab.robots.JointTrajectory]
+    
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(RoboticMovement, self).data
+        data['target_frame'] = self.target_frame
+        data['attached_tool_id'] = self.attached_tool_id
+        data['attached_beam_id'] = self.attached_beam_id
+        data['trajectory'] = self.trajectory
+        return data
+    
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(RoboticMovement, self).data = data
+        self.target_frame = data['target_frame']
+        self.attached_tool_id = data['attached_tool_id']    
+        self.attached_beam_id = data['attached_beam_id']    
+        self.trajectory = data['trajectory']
 
 ######################################
 # Movement Classes that can be used

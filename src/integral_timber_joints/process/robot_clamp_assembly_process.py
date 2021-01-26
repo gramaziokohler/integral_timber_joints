@@ -14,14 +14,14 @@ from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWri
 
 
 class RobotClampAssemblyProcess(Network):
-    
+
     from .algorithms import create_actions_from_sequence
     from .algorithms import assign_tools_to_actions
     from .algorithms import optimize_actions_place_pick_gripper
     from .algorithms import optimize_actions_place_pick_clamp
     from .algorithms import create_movements_from_actions
     from .algorithms import debug_print_process_actions_movements
-    
+
     def __init__(self, assembly=None):
         # type: (Assembly) -> None
 
@@ -53,7 +53,7 @@ class RobotClampAssemblyProcess(Network):
         # print ("Assigned self to dependency")
         return process
 
-    @ property
+    @property
     def robot_toolchanger(self):
         # type: () -> ToolChanger
         return self.attributes['robot_toolchanger']
@@ -63,7 +63,7 @@ class RobotClampAssemblyProcess(Network):
         # type: (RobotWrist) -> None
         self.attributes['robot_toolchanger'] = value
 
-    @ property
+    @property
     def robot_wrist(self):
         # type: () -> RobotWrist
         return self.attributes['robot_wrist']
@@ -73,7 +73,7 @@ class RobotClampAssemblyProcess(Network):
         # type: (RobotWrist) -> None
         self.attributes['robot_wrist'] = value
 
-    @ property
+    @property
     def actions(self):
         # type: () -> list[Action]
         return self.attributes['actions']
@@ -83,7 +83,7 @@ class RobotClampAssemblyProcess(Network):
         # type: (list[Action]) -> None
         self.attributes['actions'] = value
 
-    @ property
+    @property
     def movements(self):
         # type: () -> list[Movement]
         return self.attributes['movements']
@@ -93,7 +93,7 @@ class RobotClampAssemblyProcess(Network):
         # type: (list[Movement]) -> None
         self.attributes['movements'] = value
 
-    @ property
+    @property
     def pickup_station(self):
         # type: () -> PickupStation
         return self.attributes['pickup_station']
@@ -103,17 +103,17 @@ class RobotClampAssemblyProcess(Network):
         # type: (list[PickupStation]) -> None
         self.attributes['pickup_station'] = value
 
-    @ property
+    @property
     def environment_meshes(self):
         # type: () -> list[Mesh]
         return self.attributes['environment_meshes']
 
     @environment_meshes.setter
-    def actions(self, value):
+    def environment_meshes(self, value):
         # type: (list[Mesh]) -> None
         self.attributes['environment_meshes'] = value
 
-    @ property
+    @property
     def dependency(self):
         # type: () -> ComputationalDependency
         return self.attributes['dependency']
@@ -122,7 +122,7 @@ class RobotClampAssemblyProcess(Network):
     # Properity access
     # -----------------------
 
-    @ property
+    @property
     def assembly(self):
         # type: () -> Assembly
         return self.attributes['assembly']
@@ -145,7 +145,7 @@ class RobotClampAssemblyProcess(Network):
         # type: (str) -> Clamp
         return self.attributes['clamps'][clamp_id]
 
-    @ property
+    @property
     def clamps(self):
         # type: () -> list[Clamp]
         return self.attributes['clamps'].values()
@@ -154,7 +154,7 @@ class RobotClampAssemblyProcess(Network):
         # type: (str) -> Clamp
         return self.attributes['grippers'][gripper_id]
 
-    @ property
+    @property
     def grippers(self):
         # type: () -> list[Gripper]
         return self.attributes['grippers'].values()
@@ -168,11 +168,11 @@ class RobotClampAssemblyProcess(Network):
         else:
             raise KeyError("tool_id (%s) cannot be found in process.grippers or process.clamps")
 
-    @ property
+    @property
     def available_clamp_types(self):
         return set([clamp.type_name for clamp in self.clamps])
 
-    @ property
+    @property
     def available_gripper_types(self):
         return set([gripper.type_name for gripper in self.grippers])
 
@@ -700,7 +700,7 @@ class RobotClampAssemblyProcess(Network):
         gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')  # type: int
         assert gripper_grasp_face is not None
         print('gripper_grasp_face = %s' % gripper_grasp_face)
-        
+
         corner = 0
         if (not align_face_Z0) and align_face_Y0:
             corner = 1
