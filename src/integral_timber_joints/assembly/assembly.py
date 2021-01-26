@@ -1,7 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
+try:
+    from typing import List, Dict, Tuple, Optional, Iterator
+except:
+    pass
+
 from compas.datastructures import Network
-from compas.geometry import Frame, Point, Translation, Vector
+from compas.geometry import Frame, Point, Translation, Vector, Transformation
 from compas.rpc import Proxy
 
 from integral_timber_joints.geometry.beam import Beam
@@ -409,7 +414,7 @@ class Assembly(Network):
     # --------------------------------------------
 
     def beams(self):
-        # type: () -> Iterator[Beams]
+        # type: () -> Iterator[Beam]
         for key, data in self.nodes(data=True):
             yield data['beam']
 

@@ -10,6 +10,8 @@ from integral_timber_joints.geometry import Beam, Joint
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
+from integral_timber_joints.process.state import ObjectState 
+
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
 
 
@@ -22,6 +24,9 @@ class RobotClampAssemblyProcess(Network):
     from .algorithms import create_movements_from_actions
     from .algorithms import debug_print_process_actions_movements
 
+    from .algorithms import compute_initial_state
+    from .algorithms import compute_intermediate_states
+
     def __init__(self, assembly=None):
         # type: (Assembly) -> None
 
@@ -33,12 +38,16 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['clamps'] = {}
         self.attributes['grippers'] = {}
 
+        self.attributes['robot'] = None                         # RobotModel
         self.attributes['robot_toolchanger'] = None             # ToolChanger
         self.attributes['robot_wrist'] = None                   # RobotWrist
         self.attributes['actions'] = []                         # list[Action]
         self.attributes['movements'] = []                       # list[Movement]
         self.attributes['pickup_station'] = None                # PickupStation
         self.attributes['environment_meshes'] = []              # list[Mesh]
+
+        self.attributes['initial_state'] = {}                   # dict(str, ObjectState)
+        self.attributes['intermediate_states'] = []             # list(dict(str, ObjectState))
 
         self.attributes['dependency'] = ComputationalDependency(self)   # ComputationalDependency
 
@@ -118,6 +127,25 @@ class RobotClampAssemblyProcess(Network):
         # type: () -> ComputationalDependency
         return self.attributes['dependency']
 
+    @property
+    def initial_state(self):
+        # type: () -> dict(str, ObjectState)
+        return self.attributes['initial_state']
+
+    @initial_state.setter
+    def initial_state(self, value):
+        # type: (dict(str, ObjectState)) -> None
+        self.attributes['initial_state'] = value
+
+    @property
+    def intermediate_states(self):
+        # type: () -> list(dict(str, ObjectState))
+        return self.attributes['intermediate_states']
+
+    @intermediate_states.setter
+    def intermediate_states(self, value):
+        # type: (list(dict(str, ObjectState))) -> None
+        self.attributes['intermediate_states'] = value
     # -----------------------
     # Properity access
     # -----------------------

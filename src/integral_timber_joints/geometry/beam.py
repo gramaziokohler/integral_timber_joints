@@ -7,22 +7,22 @@
 #   Beam objects are used to model a linear beam object that
 #   It holds a list of Joint objects
 #
+try:
+    from typing import Dict, List, Optional, Tuple
+
+    from integral_timber_joints.process.state import ObjectState
+except:
+    pass
 
 import math
-from compas.geometry import Box
-from compas.datastructures import Mesh
-from compas.datastructures import mesh_bounding_box
-from compas.geometry import Vector, Frame, Plane
-from compas.geometry import Point, Line
-from compas.geometry import Transformation, Translation
-from compas.geometry import distance_point_plane, is_point_on_plane
 
-from compas.datastructures import Network
+import compas
+from compas.datastructures import Mesh, Network, mesh_bounding_box
+from compas.geometry import Box, Frame, Line, Plane, Point, Transformation, Translation, Vector, distance_point_plane, is_point_on_plane
 
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import create_id
 
-import compas
 if compas.IPY:
     try:
         from compas_ghpython.artists import MeshArtist
@@ -52,11 +52,11 @@ class Beam(Network):
         if (frame is None):
             frame = Frame.worldXY()
         # self.frame = frame.copy()       # type: Frame
-        self.attributes['frame'] = frame.copy()  
+        self.attributes['frame'] = frame.copy()
         self.attributes['length'] = float(length)
         self.attributes['width'] = float(width)
         self.attributes['height'] = float(height)
-        
+
         # self.length = float(length)     # type: float
         # self.width = float(width)       # type: float
         # self.height = float(height)     # type: float
@@ -64,7 +64,7 @@ class Beam(Network):
         if (name == None):
             name = create_id()
         self.attributes['name'] = name
-        self.attributes['cached_mesh'] = None 
+        self.attributes['cached_mesh'] = None
         # self.name = name                # type: str
         # self.cached_mesh = None         # type: Mesh
 
@@ -77,19 +77,21 @@ class Beam(Network):
     # -----------------------
 
     @property
-    def name(self): 
+    def name(self):
         # type: () -> str
-        return self.attributes['name'] 
-    @name.setter 
+        return self.attributes['name']
+
+    @name.setter
     def name(self, value):
         # type: (str) -> None
         self.attributes['name'] = str(value)
 
     @property
-    def length(self): 
+    def length(self):
         # type: () -> float
-        return self.attributes['length'] 
-    @length.setter 
+        return self.attributes['length']
+
+    @length.setter
     def length(self, value):
         # type: (float) -> None
         self.attributes['length'] = float(value)
@@ -97,8 +99,9 @@ class Beam(Network):
     @property
     def width(self):
         # type: () -> float
-        return self.attributes['width'] 
-    @width.setter 
+        return self.attributes['width']
+
+    @width.setter
     def width(self, value):
         # type: (float) -> None
         self.attributes['width'] = float(value)
@@ -106,8 +109,9 @@ class Beam(Network):
     @property
     def height(self):
         # type: () -> float
-        return self.attributes['height'] 
-    @height.setter 
+        return self.attributes['height']
+
+    @height.setter
     def height(self, value):
         # type: (float) -> None
         self.attributes['height'] = float(value)
@@ -115,8 +119,9 @@ class Beam(Network):
     @property
     def frame(self):
         # type: () -> Frame
-        return self.attributes['frame'] 
-    @frame.setter 
+        return self.attributes['frame']
+
+    @frame.setter
     def frame(self, value):
         # type: (Frame) -> None
         self.attributes['frame'] = value
@@ -124,8 +129,9 @@ class Beam(Network):
     @property
     def cached_mesh(self):
         # type: () -> Mesh
-        return self.attributes['cached_mesh'] 
-    @cached_mesh.setter 
+        return self.attributes['cached_mesh']
+
+    @cached_mesh.setter
     def cached_mesh(self, value):
         # type: (Mesh) -> None
         self.attributes['cached_mesh'] = value
@@ -604,6 +610,28 @@ class Beam(Network):
         visuals = [visual]
         return visuals
 
+    def draw_state(self, state, robot_world_transform=None):
+        # type: (ObjectState, Optional[Transformation]) -> List[Mesh]
+        """Returns the collision meshe(s) of the Beam (typically 1) for a given state.
+
+        Two transformation is performed:
+        - `state.current_frame` if not `None` (typically it is None for EnvironmentMesh)
+        - `robot_world_transform` if not `None`
+        """
+
+        if state.current_frame is not None:
+            T = Transformation.from_frame_to_frame(self.frame, state.current_frame)
+        else:
+            T = Transformation()  # Identity Matrix
+
+        transformed_mesh = self.cached_mesh.transformed(T)  # type: Mesh
+
+        if robot_world_transform is not None:
+            assert isinstance(robot_world_transform, Transformation)
+            transformed_mesh = transformed_mesh.transform(robot_world_transform)
+
+        return [transformed_mesh]
+
     def copy(self):
         return deepcopy(self)
 
@@ -646,10 +674,10 @@ class Beam(Network):
 
     @classmethod
     def debug_get_dummy_beam(cls, include_joint=False):
-        from compas.geometry import Frame
-        from compas.geometry import Point
-        from compas.geometry import Vector
+        from compas.geometry import Frame, Point, Vector
+
         from integral_timber_joints.geometry.joint_90lap import Joint_90lap
+
         # Create Beam object
         beam = cls(Frame(Point(0, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)), 1000, 100, 150, "dummy_beam_1")
         # Create Joint object

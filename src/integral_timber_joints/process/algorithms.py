@@ -10,6 +10,8 @@ from integral_timber_joints.process.movement import *
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, Joint
 from integral_timber_joints.tools import Tool, Clamp, Gripper
+from integral_timber_joints.process.state import ObjectState
+import itertools
 
 ###############################################
 # Algorithms that concerns the entire process
@@ -273,6 +275,7 @@ def create_movements_from_actions(process, verbose = True):
             action.create_movements(process)
 
 def debug_print_process_actions_movements(process, file_path = None):
+    f = None
     if file_path is not None:
         f = open(file_path, 'w')
     for i, action in enumerate(process.actions):
@@ -294,6 +297,53 @@ def debug_print_process_actions_movements(process, file_path = None):
             else: print (line)
     if file_path is not None:
         f.close()
+
+def compute_initial_state(process, verbose = True):
+    # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+    """Compute the initial scene state. This is the begining of the assembly process
+    
+    State Change
+    ------------
+    This functions sets the following process attribute:
+    - 'initial_state' dict(str, ObjectState)
+    
+    """
+    process.initial_state = {}
+    assembly = process.assembly
+
+    # Beams are all in their storage position
+    for beam_id in assembly.sequence:
+        state = ObjectState()
+        state.current_frame = assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
+        process.initial_state[beam_id] = state
+    
+    # Tools (Clamps, Grippers) are all in their storage position
+    for tool in itertools.chain(process.clamps, process.grippers):
+        state = ObjectState()
+        state.current_frame = tool.tool_storage_frame
+        process.initial_state[tool.name] = state
+
+    # Robot is in its initial position
+
+    # Environment models are in its own position. They dont move anyways. The State is simply empty.
+    for env_model in process.environment_meshes:
+        state = ObjectState()
+        process.initial_state[env_model.name] = state
+     
+
+def compute_intermediate_states(process, verbose = True):
+    # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+    """Compute the intermediate scenes according to the Movement(s) in `process.action`
+
+    Movements and Actions should be computed before.
+
+    State Change
+    ------------
+    This functions sets the following process attribute:
+    - 'intermediate_states'  list(dict(str, ObjectState))
+
+    """
+    pass
 
 def test_process_prepathplan(json_path_in, json_path_out):
     #########################################################################

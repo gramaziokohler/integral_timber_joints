@@ -62,7 +62,7 @@ class StackedPickupStation (PickupStation):
     
     @data.setter
     def data(self, data):
-        super(StackedPickupStation, self).data = data
+        super(StackedPickupStation, type(self)).data.fset(self, data)
         self.number_of_rows = data.get('number_of_rows', 4)
         self.hori_spacing = data.get('hori_spacing', 100)
         self.vert_spacing = data.get('vert_spacing', 100)
