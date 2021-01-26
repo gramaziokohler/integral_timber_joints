@@ -14,7 +14,14 @@ from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWri
 
 
 class RobotClampAssemblyProcess(Network):
-
+    
+    from .algorithms import create_actions_from_sequence
+    from .algorithms import assign_tools_to_actions
+    from .algorithms import optimize_actions_place_pick_gripper
+    from .algorithms import optimize_actions_place_pick_clamp
+    from .algorithms import create_movements_from_actions
+    from .algorithms import debug_print_process_actions_movements
+    
     def __init__(self, assembly=None):
         # type: (Assembly) -> None
 
@@ -693,15 +700,18 @@ class RobotClampAssemblyProcess(Network):
         gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')  # type: int
         assert gripper_grasp_face is not None
         print('gripper_grasp_face = %s' % gripper_grasp_face)
-
+        
+        corner = 0
         if (not align_face_Z0) and align_face_Y0:
             corner = 1
-        if align_face_Z0 and align_face_Y0:
+        elif align_face_Z0 and align_face_Y0:
             corner = 2
-        if align_face_Z0 and (not align_face_Y0):
+        elif align_face_Z0 and (not align_face_Y0):
             corner = 3
-        if (not align_face_Z0) and (not align_face_Y0):
+        elif (not align_face_Z0) and (not align_face_Y0):
             corner = 4
+        else:
+            raise Exception("Something is really wrong is aligning corners: compute_alignment_corner_from_grasp_face")
 
         # For corners 1 - 4, adding the corner number will suffice because corner 1 to 4 are corresponding to face 1 - 4
         corner = (gripper_grasp_face + corner - 2) % 4 + 1

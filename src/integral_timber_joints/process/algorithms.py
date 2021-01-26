@@ -1,10 +1,11 @@
 try:
     from typing import List, Dict, Tuple, Optional
+    from integral_timber_joints.process import RobotClampAssemblyProcess
+    from integral_timber_joints.process import RFLPathPlanner
 except:
     pass
 
 from integral_timber_joints.process.action import *
-from integral_timber_joints.process import RobotClampAssemblyProcess, RFLPathPlanner
 from integral_timber_joints.process.movement import *
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, Joint
@@ -114,14 +115,14 @@ def assign_tools_to_actions(process, verbose = True):
 
     for action in process.actions:
         if verbose: print(action)
-        if isinstance(action, PickClampFromStorageAction) or isinstance(action, PickGripperFromStorageAction):
+        if isinstance(action, PickToolFromStorageAction):
             if tool_at_robot is not None: # Consistancy check to make sure tool is not already attached.
                 raise Exception("Unable to attach tool becuase %s is already attached to robot" % tool_at_robot)
             tool = PopToolFromStorage(action.tool_type)
             tool_at_robot = tool
             action.tool_id = tool.name
 
-        if isinstance(action, PlaceClampToStorageAction) or isinstance(action, PlaceGripperToStorageAction):
+        if isinstance(action, PlaceToolToStorageAction):
             if tool_at_robot is None: # Consistancy check to make sure some tool is attached.
                 raise Exception("Unable to detach tool becuase No Tool is attached to robot")
             tool = tool_at_robot

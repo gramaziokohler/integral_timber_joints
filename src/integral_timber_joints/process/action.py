@@ -1,4 +1,11 @@
+try:
+    from typing import List, Dict, Tuple, Optional
+    from integral_timber_joints.process import RobotClampAssemblyProcess
+except:
+    pass
+
 from integral_timber_joints.process.movement import *
+from integral_timber_joints.tools import Clamp, Gripper
 
 ##############################
 # Base Classes for all actions
@@ -75,12 +82,12 @@ class DetachBeamAction(object):
         self.gripper_id = None
 
 ##############################
-# Actions Classes
+# Actions for Tool Change
 ##############################
 
 class LoadBeamAction(OperatorAction):
     def __init__(self, seq_n, act_n, beam_id):
-        # type: (str) -> None
+        # type: (str, int, int) -> None
         super(LoadBeamAction, self).__init__()
         # OperatorAction.__init__(self)
         self.seq_n = seq_n
@@ -96,9 +103,9 @@ class LoadBeamAction(OperatorAction):
         grasp_face = process.assembly.get_beam_attribute(self.beam_id, 'gripper_grasp_face')
         self.movements.append(OperatorLoadBeamMovement(self.beam_id, grasp_face))
 
-class PickClampFromStorageAction(RobotAction, AttachToolAction):
+class PickToolFromStorageAction(RobotAction, AttachToolAction):
     def __init__(self, seq_n, act_n, tool_type = None):
-        # type: (str) -> None
+        # type: (str, int , int, str) -> None
         RobotAction.__init__(self)
         AttachToolAction.__init__(self, tool_type)
         self.seq_n = seq_n
@@ -126,9 +133,9 @@ class PickClampFromStorageAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_wcf.copy(), attached_tool_id=self.tool_id)) # Tool Storage Retract
 
-class PlaceClampToStorageAction(RobotAction, DetachToolAction):
+class PlaceToolToStorageAction(RobotAction, DetachToolAction):
     def __init__(self, seq_n, act_n, tool_type = None):
-        # type: (str) -> None
+        # type: (str, int , int, str) -> None
         RobotAction.__init__(self)
         DetachToolAction.__init__(self, tool_type)
         self.seq_n = seq_n
@@ -144,7 +151,7 @@ class PlaceClampToStorageAction(RobotAction, DetachToolAction):
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         """ Movement for placing Clamp (and other tools) to Storage.
-        Modified from PickClampFromStorageAction.create_movements()
+        Modified from PickToolFromStorageAction.create_movements()
         """
         self.movements = []
         tool = process.tool(self.tool_id) # type: Clamp
@@ -157,9 +164,25 @@ class PlaceClampToStorageAction(RobotAction, DetachToolAction):
         self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool))
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_wcf.copy())) # Tool Storage Retract
 
+class PickGripperFromStorageAction(PickToolFromStorageAction):
+    pass
+
+class PlaceGripperToStorageAction(PlaceToolToStorageAction):
+    pass
+
+class PickClampFromStorageAction(PickToolFromStorageAction):
+    pass
+
+class PlaceClampToStorageAction(PlaceToolToStorageAction):
+    pass
+
+############################################
+# Actions for leaving Clamps on Structure
+############################################
+
 class PickClampFromStructureAction(RobotAction, AttachToolAction):
     def __init__(self, seq_n, act_n, joint_id , tool_type = None):
-        # type: (Tuple[str, str], str) -> None
+        # type: (int, int, tuple[str, str], str) -> None
         RobotAction.__init__(self)
         AttachToolAction.__init__(self, tool_type)
         self.seq_n = seq_n
@@ -168,10 +191,10 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
 
     def __str__(self):
         if self.tool_id:
-            object_str = "%s (%s)" % (self.tool_type, self.tool_id)
+            object_str = "%s ('%s')" % (self.tool_type, self.tool_id)
         else:
             object_str = "%s (?)" % (self.tool_type)
-        location_str = "Joint (%s-%s)" % (self.joint_id)
+        location_str = "Joint ('%s-%s')" % (self.joint_id)
         return "Pick %s from %s" % (object_str, location_str)
 
     def create_movements(self, process):
@@ -195,7 +218,7 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
 
 class PlaceClampToStructureAction(RobotAction, DetachToolAction):
     def __init__(self, seq_n, act_n, joint_id , tool_type = None):
-        # type: (Tuple[str, str], str) -> None
+        # type: (int, int, tuple[str, str], str) -> None
         RobotAction.__init__(self)
         DetachToolAction.__init__(self, tool_type)
         self.seq_n = seq_n
@@ -204,10 +227,10 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
 
     def __str__(self):
         if self.tool_id:
-            object_str = "%s (%s)" % (self.tool_type, self.tool_id)
+            object_str = "%s ('%s')" % (self.tool_type, self.tool_id)
         else:
             object_str = "%s (?)" % (self.tool_type)
-        location_str = "Joint (%s-%s)" % (self.joint_id)
+        location_str = "Joint ('%s-%s')" % (self.joint_id)
         return "Place %s to %s" % (object_str, location_str)
 
     def create_movements(self, process):
@@ -230,26 +253,16 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool))
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachretract.copy()))
 
-class PickGripperFromStorageAction(PickClampFromStorageAction):
-    def __init__(self, seq_n, act_n, tool_type):
-        # type: (str) -> None
-        PickClampFromStorageAction.__init__(self, seq_n, act_n, tool_type)
-
-class PlaceGripperToStorageAction(PlaceClampToStorageAction):
-    def __init__(self, seq_n, act_n, tool_type):
-        # type: (str) -> None
-        PlaceClampToStorageAction.__init__(self, seq_n, act_n, tool_type)
-
 class PickBeamFromStorageAction(RobotAction, AttachBeamAction):
     def __init__(self, seq_n, act_n, beam_id):
-        # type: (str, str) -> None
+        # type: (str, int , int, str) -> None
         RobotAction.__init__(self)
         AttachBeamAction.__init__(self, beam_id)
         self.seq_n = seq_n
         self.act_n = act_n
 
     def __str__(self):
-        object_str = "Beam (%s)" % (self.beam_id)
+        object_str = "Beam ('%s')" % (self.beam_id)
         location_str = "Storage"
         return "Pick %s from %s" % (object_str, location_str)
 
@@ -273,14 +286,14 @@ class PickBeamFromStorageAction(RobotAction, AttachBeamAction):
 
 class PlaceBeamWithoutClampsAction(RobotAction, DetachBeamAction):
     def __init__(self, seq_n, act_n, beam_id):
-        # type: (Tuple[str, str]) -> None
+        # type: (int, int, tuple[str, str]) -> None
         RobotAction.__init__(self)
         DetachBeamAction.__init__(self, beam_id)
         self.seq_n = seq_n
         self.act_n = act_n
 
     def __str__(self):
-        object_str = "Beam (%s)" % (self.beam_id)
+        object_str = "Beam ('%s')" % (self.beam_id)
         location_str = "final location without clamps"
         return "Place %s to %s" % (object_str, location_str)
 
@@ -301,23 +314,22 @@ class PlaceBeamWithoutClampsAction(RobotAction, DetachBeamAction):
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id))
 
-
 class PlaceBeamWithClampsAction(RobotAction, DetachBeamAction):
     def __init__(self, seq_n, act_n, beam_id , joint_ids):
-        # type: (str, List[Tuple[str, str]]) -> None
+        # type: (int, int, str, list[tuple[str, str]]) -> None
         RobotAction.__init__(self)
         DetachBeamAction.__init__(self, beam_id)
         self.seq_n = seq_n
         self.act_n = act_n
-        self.joint_ids = joint_ids # type: List[Tuple[str, str]]
-        self.clamp_ids = [None for _ in joint_ids] # type: List[str]
+        self.joint_ids = joint_ids # type: list[tuple[str, str]]
+        self.clamp_ids = [None for _ in joint_ids] # type: list[str]
 
     def __str__(self):
-        object_str = "Beam (%s)" % (self.beam_id)
-        joint_id_str = ["%s-%s"%(joint_id) for joint_id in self.joint_ids]
-        location_str = "final location with clamps at joint %s" % joint_id_str
+        object_str = "Beam ('%s')" % (self.beam_id)
+        joint_str = ["%s-%s" %(joint_id) for joint_id in self.joint_ids]
+        location_str = "final location with clamps at %s" % joint_str
         clamp_id_str = [("?" if clamp_id is None else clamp_id) for clamp_id in self.clamp_ids]
-        return "Place %s to %s using clamp %s" % (object_str, location_str, clamp_id_str)
+        return "Place %s to Joint %s using Clamp %s" % (object_str, location_str, clamp_id_str)
 
 
     def create_movements(self, process):

@@ -11,11 +11,15 @@ from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.process_artist import ProcessArtist
 
+def get_activedoc_path_no_ext():
+    # type: () -> str
+    activeDoc = Rhino.RhinoDoc.ActiveDoc  # type: Rhino.RhinoDoc
+    path = os.path.splitext(activeDoc.Path)[0]
+    return path
 
 def get_activedoc_process_path():
     # type: () -> str
-    activeDoc = Rhino.RhinoDoc.ActiveDoc  # type: Rhino.RhinoDoc
-    json_path = os.path.splitext(activeDoc.Path)[0] + "_process.json"
+    json_path = get_activedoc_path_no_ext() + "_process.json"
     print(json_path)
     return json_path
 

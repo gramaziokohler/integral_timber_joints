@@ -11,7 +11,7 @@ from compas_rhino.utilities.objects import get_object_name
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
-from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
+from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none, get_activedoc_path_no_ext
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, StackedPickupStation
 from integral_timber_joints.process.dependency import ComputationalDependency
@@ -21,6 +21,25 @@ def reset_dependency_graph(process):
     # type: (RobotClampAssemblyProcess) -> None
     process.attributes['dependency'] = ComputationalDependency(process) 
     print ("Dependency graph is reset.")
+
+def compute_action(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """User triggered function to compute Actions from Assembly Sequence
+    """
+    # Make sure everything is computed and nothing is missing
+    for beam_id in process.assembly.sequence:
+        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+    
+    # Call function to create actions
+    process.create_actions_from_sequence()
+    process.assign_tools_to_actions()
+    # process.optimize_actions_place_pick_gripper()
+    # process.optimize_actions_place_pick_clamp()
+    process.create_movements_from_actions()
+
+    # Save result to log file.
+    log_file_path = get_activedoc_path_no_ext() + "_process.log"
+    process.debug_print_process_actions_movements(log_file_path)
 
 def not_implemented(process):
     #
@@ -34,14 +53,8 @@ def show_menu(process):
 
     while (True):
         # Create Menu
-        if process.pickup_station is None:
-            message = "Material Pickup is undefined"
-        elif isinstance(process.pickup_station, StackedPickupStation):
-            message = "Material Pickup is defined from a Stacked Pickup Station"
-        elif isinstance(process.pickup_station, PickupStation):
-            message = "Material Pickup is defined from a Single-position Pickup Station"
-        else:
-            message = "Material Pickup is weird"
+        # Check if it is ready to compute Actions and Movements
+        message = "Compute Actions and Movements:"
 
         config = {
             'message': message,
@@ -49,6 +62,8 @@ def show_menu(process):
                 {'name': 'Finish', 'action': 'Exit'
                  },
                 {'name': 'ResetDependencyGraph', 'action': reset_dependency_graph
+                 },
+                {'name': 'ComputeActions', 'action': compute_action
                  },
 
             ]
