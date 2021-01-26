@@ -41,6 +41,17 @@ def compute_action(process):
     log_file_path = get_activedoc_path_no_ext() + "_process.log"
     process.debug_print_process_actions_movements(log_file_path)
 
+def compute_initial_state(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """User triggered function to compute Actions from Assembly Sequence
+    """
+    
+    # Call function to create actions
+    process.compute_initial_state()
+    for state in process.initial_state:
+        print (state, process.initial_state[state].data)
+
+
 def not_implemented(process):
     #
     print('This function is not implemented')
@@ -64,6 +75,8 @@ def show_menu(process):
                 {'name': 'ResetDependencyGraph', 'action': reset_dependency_graph
                  },
                 {'name': 'ComputeActions', 'action': compute_action
+                 },
+                {'name': 'ComputeInitialState', 'action': compute_initial_state
                  },
 
             ]

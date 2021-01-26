@@ -1,9 +1,18 @@
 from copy import deepcopy
 
 from compas.geometry import Frame, Transformation
+from compas.datastructures import Mesh
+
 from compas.robots import RobotModel, ToolModel
 from compas.robots.base_artist import BaseRobotModelArtist
 from compas_fab.robots import Configuration
+
+try:
+    from typing import Dict, List, Optional, Tuple
+
+    from integral_timber_joints.process.state import ObjectState
+except:
+    pass
 
 
 class CompasRobotArtist(BaseRobotModelArtist):
@@ -284,6 +293,31 @@ class Tool (ToolModel):
 
         return result
 
+    def draw_state(self, state, robot_world_transform=None):
+        # type: (ObjectState, Optional[Transformation]) -> List[Mesh]
+        """Returns the collision meshe(s) of the Tool for a given state.
+
+        Two transformation is performed:
+        - `state.current_frame` if not `None` (typically it is None for EnvironmentMesh)
+        - `robot_world_transform` if not `None`
+        """
+        # Save previous frame for reverting changes
+        previous_frame = self.current_frame
+
+        # Change self.current_frame
+        assert state.current_frame is not None
+        self.current_frame = state.current_frame
+
+        # Draw meshes at the frame and revert the change to self.current_frame
+        transformed_meshes = self.draw_visual() # type: List[Mesh]
+        self.current_frame = previous_frame
+
+        # Finalize transformation to robot world
+        if robot_world_transform is not None:
+            assert isinstance(robot_world_transform, Transformation)
+            [mesh.transform(robot_world_transform) for mesh in transformed_meshes]
+
+        return transformed_meshes
     # --------------------------------------------------------
     # String Representations
     # --------------------------------------------------------
