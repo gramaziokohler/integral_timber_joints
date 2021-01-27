@@ -371,7 +371,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachretract.copy()))
 
 
-class PickBeamFromStorageAction(RobotAction, AttachBeamAction):
+class BeamPickupAction(RobotAction, AttachBeamAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None):
         # type: (str, int , int, str) -> None
         RobotAction.__init__(self)
@@ -391,20 +391,20 @@ class PickBeamFromStorageAction(RobotAction, AttachBeamAction):
         self.movements = []
         tool = process.tool(self.gripper_id)  # type: Clamp
 
-        assembly_wcf_storageapproach = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_storageapproach')
-        assembly_wcf_storage = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_storage')
-        assembly_wcf_storageretract = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_storageretract')
-        assert assembly_wcf_storageapproach is not None and assembly_wcf_storage is not None and assembly_wcf_storageretract is not None
+        assembly_wcf_pickupapproach = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_pickupapproach')
+        assembly_wcf_pickup = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_pickup')
+        assembly_wcf_pickupretract = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_pickupretract')
+        assert assembly_wcf_pickupapproach is not None and assembly_wcf_pickup is not None and assembly_wcf_pickupretract is not None
 
-        self.movements.append(RoboticFreeMovement(assembly_wcf_storageapproach.copy(), attached_tool_id=self.gripper_id))  # Tool Approach Frame where tool is at structure
+        self.movements.append(RoboticFreeMovement(assembly_wcf_pickupapproach.copy(), attached_tool_id=self.gripper_id))  # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
-        self.movements.append(RoboticLinearMovement(assembly_wcf_storage.copy(), attached_tool_id=self.gripper_id))  # Tool Final Frame at structure
+        self.movements.append(RoboticLinearMovement(assembly_wcf_pickup.copy(), attached_tool_id=self.gripper_id))  # Tool Final Frame at structure
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper))
-        self.movements.append(RoboticLinearMovement(assembly_wcf_storageretract.copy(), attached_tool_id=self.gripper_id,
+        self.movements.append(RoboticLinearMovement(assembly_wcf_pickupretract.copy(), attached_tool_id=self.gripper_id,
                                                     attached_beam_id=self.beam_id))  # Tool Retract (current implementation is = clamp_wcf_attachapproach)
 
 
-class PlaceBeamWithoutClampsAction(RobotAction, DetachBeamAction):
+class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None):
         # type: (int, int, tuple[str, str]) -> None
         RobotAction.__init__(self)
@@ -435,7 +435,7 @@ class PlaceBeamWithoutClampsAction(RobotAction, DetachBeamAction):
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id))
 
 
-class PlaceBeamWithClampsAction(RobotAction, DetachBeamAction):
+class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[]):
         # type: (int, int, str, list[tuple[str, str]]) -> None
         RobotAction.__init__(self)

@@ -19,7 +19,7 @@
         </text>
         <tool_bar_id>31c43b10-774f-4f68-b2f1-8f742d6de8c3</tool_bar_id>
       </tool_bar_group_item>
-      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59474" mru_width="32767" point_pos="0,308" float_point="564,446" rect_mru_dock_pos="0,308,1305,346" dock_location_u="59419" dock_location="top" float_size="768,62" />
+      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59474" mru_width="868" point_pos="0,281" float_point="564,446" rect_mru_dock_pos="0,281,1920,319" dock_location_u="59419" dock_location="top" float_size="768,62" />
     </tool_bar_group>
   </tool_bar_groups>
   <tool_bars>
@@ -73,7 +73,7 @@
         <left_macro_id>6df8ff35-2843-4afd-ae3c-048f231abc3d</left_macro_id>
         <right_macro_id>c269102b-59e4-47a4-a70e-e0c7d7466462</right_macro_id>
       </tool_bar_item>
-      <tool_bar_item guid="297786ba-0c2c-4036-9f31-a07436ba9435" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="80d77287-69c6-4349-b5c1-2cc0aa1738e6" button_display_mode="text_only" display_style_from_parent="False">
+      <tool_bar_item guid="297786ba-0c2c-4036-9f31-a07436ba9435" button_display_mode="text_only" display_style_from_parent="False">
         <text>
           <locale_1033>Toolbar item 06</locale_1033>
         </text>
@@ -244,28 +244,31 @@
       <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
 -RunPythonScript "integral_timber_joints.rhino.grasp_pose.py"</script>
     </macro_item>
-    <macro_item guid="9c5f0d6c-7887-43b4-959c-1e1ba0f20d5d" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="e30da31c-e7eb-4397-9d62-523546d7fab8" bitmap_id="a599ee4c-5716-4407-b513-8b3f9a5643ad">
+    <macro_item guid="9c5f0d6c-7887-43b4-959c-1e1ba0f20d5d" bitmap_id="a599ee4c-5716-4407-b513-8b3f9a5643ad">
       <text>
         <locale_1033>Macro 15</locale_1033>
       </text>
       <tooltip>
-        <locale_1033>Computation</locale_1033>
+        <locale_1033>Actions</locale_1033>
       </tooltip>
       <help_text>
         <locale_1033>Macro 04</locale_1033>
       </help_text>
       <button_text>
-        <locale_1033>Computation</locale_1033>
+        <locale_1033>Actions</locale_1033>
       </button_text>
       <menu_text>
         <locale_1033>Macro 04</locale_1033>
       </menu_text>
       <script>! _-RunPythonScript "integral_timber_joints.rhino.computation.py"</script>
     </macro_item>
-    <macro_item guid="8818c20f-855d-4114-972b-f8f95b27e3e6" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="d202dc8b-3662-4b2e-a602-1095e91b8f8d" bitmap_id="63b21d28-a61a-40c4-bb06-75e6b6529697">
+    <macro_item guid="8818c20f-855d-4114-972b-f8f95b27e3e6" bitmap_id="63b21d28-a61a-40c4-bb06-75e6b6529697">
       <text>
         <locale_1033>Macro 13 - Copy</locale_1033>
       </text>
+      <tooltip>
+        <locale_1033>Actions (Reset)</locale_1033>
+      </tooltip>
       <help_text>
         <locale_1033>Macro 13</locale_1033>
       </help_text>
@@ -275,6 +278,8 @@
       <menu_text>
         <locale_1033>Macro 13</locale_1033>
       </menu_text>
+      <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
+-RunPythonScript "integral_timber_joints.rhino.computation.py"</script>
     </macro_item>
     <macro_item guid="54158ea1-b0f6-4f6b-9802-1760d1e21c1a" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="cf56689b-870e-45d5-ace8-7ffb17b47bd5" bitmap_id="6e811e87-614c-44d9-936c-abb9a7753d77">
       <text>
@@ -375,7 +380,7 @@
       <bitmap_item guid="227af366-992c-4765-b00b-57c2ba4cf3f0" index="16" />
       <bitmap_item guid="36ecf28f-6043-44f2-8c95-30d2fadcfce6" index="17" />
       <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAAEgCAYAAAC9/vN4AAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAApSURBVHhe7cExAQAAAMKg9U9tDQ8gAAAAAAAA
+jwv8YQUAAAAJcEhZcwAADrwAAA68AZW8ckkAAAApSURBVHhe7cExAQAAAMKg9U9tDQ8gAAAAAAAA
 AAAAAAAAAAAAAACAKzVJIAABUHVPXwAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
@@ -400,7 +405,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="227af366-992c-4765-b00b-57c2ba4cf3f0" index="16" />
       <bitmap_item guid="36ecf28f-6043-44f2-8c95-30d2fadcfce6" index="17" />
       <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAAGwCAYAAACzT6XPAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABASURBVHhe7cExAQAAAMKg9U9tCy8gAAAAAAAA
+jwv8YQUAAAAJcEhZcwAADrwAAA68AZW8ckkAAABASURBVHhe7cExAQAAAMKg9U9tCy8gAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALipAaOwAAEZUM2BAAAAAElFTkSuQmCC
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
@@ -425,7 +430,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="227af366-992c-4765-b00b-57c2ba4cf3f0" index="16" />
       <bitmap_item guid="36ecf28f-6043-44f2-8c95-30d2fadcfce6" index="17" />
       <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAAJACAYAAADsEWSHAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABeSURBVHhe7cEBAQAAAIIg/69uSEAAAAAAAAAA
+jwv8YQUAAAAJcEhZcwAADrwAAA68AZW8ckkAAABeSURBVHhe7cEBAQAAAIIg/69uSEAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAMC5GiJPAAGELKnAAAAAAElFTkSuQmCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>

@@ -68,9 +68,9 @@ class Assembly(Network):
             'assembly_vector_final': None,
             'assembly_vector_jawapproach': None,
             'assembly_vector_pickup': None,
-            'assembly_wcf_storageapproach': None,   # Beam gripper position (modeled as beam frame) before approaching pickup point
-            'assembly_wcf_storage': None,           # Beam position at pick-up point
-            'assembly_wcf_storageretract': None,    # Beam position after lifting off from pick-up point
+            'assembly_wcf_pickupapproach': None,   # Beam gripper position (modeled as beam frame) before approaching pickup point
+            'assembly_wcf_pickup': None,           # Beam position at pick-up point
+            'assembly_wcf_pickupretract': None,    # Beam position after lifting off from pick-up point
             'assembly_wcf_inclampapproach': None,   # Beam position before being placed inside clamp jaw
             'assembly_wcf_inclamp': None,           # Beam position inside the clamp, ready for final clamping move
             'assembly_wcf_final': None,             # Beam position in final modeled position, same as beam.frame
@@ -81,7 +81,6 @@ class Assembly(Network):
             'gripper_grasp_dist_from_start': None,  # Grasp pose expressed in relationship to Beam Length Parameter
             'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
             'design_guide_vector_grasp': Vector(1,1,1),      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
-            'design_guide_vector_storage_pickup': Vector(0,0,1),  # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
             'beam_cut_start': None,                 # Beamcut object at the start of the beam. Can be None
             'beam_cut_end': None,                   # Beamcut object at the end of the beam. Can be None
         })

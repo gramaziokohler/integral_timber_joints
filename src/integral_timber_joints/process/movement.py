@@ -20,7 +20,6 @@ class Movement(object):
         the data properity.
         """
         movement = cls()
-        print (data)
         movement.data = data
         return movement
 

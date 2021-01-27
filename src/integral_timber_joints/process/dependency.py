@@ -79,23 +79,23 @@ class ComputationalDependency(Graph):
             'compute_gripper_grasp_pose'
             )
         # Layer 2
-        # self.add_node('compute_storage_location_at_corner_aligning_pickup_location')
+        # self.add_node('compute_pickup_location_at_corner_aligning_pickup_location')
         self.add_edge(
             'compute_gripper_grasp_pose',
-            'compute_storage_frame'
+            'compute_pickup_frame'
             )
         # Layer 3
-        # Things that are based on compute_storage_frame
+        # Things that are based on compute_pickup_frame
         self.add_edge(
-            'compute_storage_frame',
-            'compute_beam_storageretract'
+            'compute_pickup_frame',
+            'compute_beam_pickupretract'
             )
         self.add_edge(
-            'compute_storage_frame',
-            'compute_beam_storageapproach'
+            'compute_pickup_frame',
+            'compute_beam_pickupapproach'
             )
         self.add_edge(
-            'compute_storage_frame',
+            'compute_pickup_frame',
             'compute_beam_finalretract'
             )
 
@@ -115,11 +115,11 @@ class ComputationalDependency(Graph):
             )
         # - Gripper Computations
         self.add_edge(
-            'compute_beam_storageretract',
+            'compute_beam_pickupretract',
             'compute_all'
             )
         self.add_edge(
-            'compute_beam_storageapproach',
+            'compute_beam_pickupapproach',
             'compute_all'
             )
         self.add_edge(
