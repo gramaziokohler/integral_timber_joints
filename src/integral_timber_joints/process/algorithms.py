@@ -62,15 +62,15 @@ def create_actions_from_sequence(process, verbose = True):
         if verbose: print ('|- ' + actions[-1].__str__())
 
         # pick place beam
-        actions.append(PickBeamFromStorageAction(seq_n, act_n(), beam_id))
+        actions.append(BeamPickupAction(seq_n, act_n(), beam_id))
         if verbose: print ('|- ' + actions[-1].__str__())
 
         #Syncronized clamp and move beam action
         if len(joint_id_of_clamps) > 0:
-            actions.append(PlaceBeamWithClampsAction(seq_n, act_n(), beam_id, joint_id_of_clamps))
+            actions.append(BeamPlacementWithClampsAction(seq_n, act_n(), beam_id, joint_id_of_clamps))
             if verbose: print ('|- ' + actions[-1].__str__())
         else:
-            actions.append(PlaceBeamWithoutClampsAction(seq_n, act_n(), beam_id))
+            actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n(), beam_id))
             if verbose: print ('|- ' + actions[-1].__str__())
 
         # return gripper
@@ -157,7 +157,7 @@ def assign_tools_to_actions(process, verbose = True):
                 raise Exception("Unable to load new beam (%s) becuase beam (%s) is still occupying pick-up station" % (action.beam_id, beam_id_on_pickup_station))
             beam_id_on_pickup_station = action.beam_id
 
-        if isinstance(action, PickBeamFromStorageAction):
+        if isinstance(action, BeamPickupAction):
             if tool_at_robot is None:
                 raise Exception("Unable to pick beam becuase No Tool is attached to robot")
             if beam_id_on_pickup_station != action.beam_id:
@@ -168,7 +168,7 @@ def assign_tools_to_actions(process, verbose = True):
             action.gripper_id = gripper_id
             process.assembly.set_beam_attribute(action.beam_id, 'gripper_id', gripper_id)
 
-        if isinstance(action, PlaceBeamWithoutClampsAction):
+        if isinstance(action, BeamPlacementWithoutClampsAction):
             if tool_at_robot is None:
                 raise Exception("Unable to place beam becuase No Tool is attached to robot")
             if beam_id_at_robot is None:
@@ -178,7 +178,7 @@ def assign_tools_to_actions(process, verbose = True):
             beam_id_at_robot = None
             action.gripper_id = tool_at_robot.name
 
-        if isinstance(action, PlaceBeamWithClampsAction):
+        if isinstance(action, BeamPlacementWithClampsAction):
             if tool_at_robot is None:
                 raise Exception("Unable to place beam becuase No Tool is attached to robot")
             if beam_id_at_robot is None:

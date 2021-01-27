@@ -37,16 +37,16 @@ class ProcessKeyPosition(object):
     # beam_positions and gripper_positions relate directly to Beam Attributes in Assembly
     # clamp_positions  relate directly to Joint Attributes in Assembly
     beam_positions = [
-        'assembly_wcf_storage',
-        'assembly_wcf_storageretract',
+        'assembly_wcf_pickup',
+        'assembly_wcf_pickupretract',
         'assembly_wcf_inclampapproach',
         'assembly_wcf_inclamp',
         'assembly_wcf_final',
     ]
     gripper_positions = [
-        'assembly_wcf_storageapproach',
-        'assembly_wcf_storage',
-        'assembly_wcf_storageretract',
+        'assembly_wcf_pickupapproach',
+        'assembly_wcf_pickup',
+        'assembly_wcf_pickupretract',
         'assembly_wcf_inclampapproach',
         'assembly_wcf_inclamp',
         'assembly_wcf_final',
@@ -62,11 +62,11 @@ class ProcessKeyPosition(object):
 
     # pos_name, beam_pos, gripper_pos, clamp_pos
     pos_names_for_beam_with_clamps = [
-        ('clamp_attachapproach1',   'assembly_wcf_storage',         'assembly_wcf_storageapproach',     'clamp_wcf_attachapproach1'),
-        ('clamp_attachapproach2',   'assembly_wcf_storage',         'assembly_wcf_storageapproach',     'clamp_wcf_attachapproach2'),
-        ('beam_storage_approach',   'assembly_wcf_storage',         'assembly_wcf_storageapproach',     'clamp_wcf_final'),
-        ('beam_storage_pick',       'assembly_wcf_storage',         'assembly_wcf_storage',             'clamp_wcf_final'),
-        ('beam_storage_retract',    'assembly_wcf_storageretract',  'assembly_wcf_storageretract',      'clamp_wcf_final'),
+        ('clamp_attachapproach1',   'assembly_wcf_pickup',         'assembly_wcf_pickupapproach',     'clamp_wcf_attachapproach1'),
+        ('clamp_attachapproach2',   'assembly_wcf_pickup',         'assembly_wcf_pickupapproach',     'clamp_wcf_attachapproach2'),
+        ('beam_pickup_approach',   'assembly_wcf_pickup',         'assembly_wcf_pickupapproach',     'clamp_wcf_final'),
+        ('beam_pickup_pick',       'assembly_wcf_pickup',         'assembly_wcf_pickup',             'clamp_wcf_final'),
+        ('beam_pickup_retract',    'assembly_wcf_pickupretract',  'assembly_wcf_pickupretract',      'clamp_wcf_final'),
         ('beam_inclampapproach',    'assembly_wcf_inclampapproach', 'assembly_wcf_inclampapproach',     'clamp_wcf_final'),
         ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp',             'clamp_wcf_final'),
         ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final',               'clamp_wcf_final'),
@@ -76,9 +76,9 @@ class ProcessKeyPosition(object):
     ]
 
     pos_names_for_beam_without_clamps = [
-        ('beam_storage_approach',   'assembly_wcf_storage',         'assembly_wcf_storageapproach',     'clamp_wcf_final'),
-        ('beam_storage_pick',       'assembly_wcf_storage',         'assembly_wcf_storage',             'clamp_wcf_final'),
-        ('beam_storage_retract',    'assembly_wcf_storageretract',  'assembly_wcf_storageretract',      'clamp_wcf_final'),
+        ('beam_pickup_approach',   'assembly_wcf_pickup',         'assembly_wcf_pickupapproach',     'clamp_wcf_final'),
+        ('beam_pickup_pick',       'assembly_wcf_pickup',         'assembly_wcf_pickup',             'clamp_wcf_final'),
+        ('beam_pickup_retract',    'assembly_wcf_pickupretract',  'assembly_wcf_pickupretract',      'clamp_wcf_final'),
         ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp',             'clamp_wcf_final'),
         ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final',               'clamp_wcf_final'),
         ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract',        'clamp_wcf_final'),

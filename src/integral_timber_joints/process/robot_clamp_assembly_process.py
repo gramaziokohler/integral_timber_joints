@@ -680,14 +680,14 @@ class RobotClampAssemblyProcess(Network):
     # -----------------------------------------------
     # Beam Storage / Pick Up / Retract Algorithms
     # -----------------------------------------------
-    def compute_storage_frame(self, beam_id):
-        """ Compute the storage frame of a beam
+    def compute_pickup_frame(self, beam_id):
+        """ Compute the pickup frame of a beam
         Beam assembly direcion must be valid. Grasp face and PickupStation and must be assigned before.
 
         State Change
         ------------
         This functions sets the following beam_attribute
-        - 'assembly_wcf_storage'
+        - 'assembly_wcf_pickup'
 
         Return
         ------
@@ -701,12 +701,12 @@ class RobotClampAssemblyProcess(Network):
 
         # Switching computation function depdns on the Pickup station type
         if isinstance(self.pickup_station, StackedPickupStation):
-            print("StackedPickupStation not implemented at compute_storage_frame")
+            print("StackedPickupStation not implemented at compute_pickup_frame")
             return ComputationalResult.ValidCannotContinue
         elif isinstance(self.pickup_station, PickupStation):
-            return self.compute_storage_location_at_corner_aligning_pickup_location(beam_id)
+            return self.compute_pickup_location_at_corner_aligning_pickup_location(beam_id)
         else:
-            print("Unknown Pickupstation type for compute_storage_frame")
+            print("Unknown Pickupstation type for compute_pickup_frame")
             return ComputationalResult.ValidCannotContinue
 
     def compute_alignment_corner_from_grasp_face(self, beam_id, align_face_X0=True, align_face_Y0=True, align_face_Z0=True):
@@ -750,9 +750,9 @@ class RobotClampAssemblyProcess(Network):
 
         return corner
 
-    def compute_storage_location_at_corner_aligning_pickup_location(self, beam_id):
+    def compute_pickup_location_at_corner_aligning_pickup_location(self, beam_id):
         # type: (str, PickupStation) -> None
-        """ Compute 'assembly_wcf_storage' alignment frame
+        """ Compute 'assembly_wcf_pickup' alignment frame
         by aligning a choosen corner relative to the 'gripper_grasp_face'
         to the given storage_station_frame.
 
@@ -762,7 +762,7 @@ class RobotClampAssemblyProcess(Network):
 
         Side Effect
         -----------
-        beam_attribute 'assembly_wcf_storage' will be set.
+        beam_attribute 'assembly_wcf_pickup' will be set.
 
         Example
         -------
@@ -806,11 +806,11 @@ class RobotClampAssemblyProcess(Network):
         alignment_frame_wcf = alignment_frame_ocf.transformed(T)
         T = Transformation.from_frame_to_frame(alignment_frame_wcf, storage_station_frame)
 
-        # Compute the beam ocf in the storage position, save result 'assembly_wcf_storage'
-        assembly_wcf_storage = beam.frame.transformed(T)
-        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', assembly_wcf_storage)
+        # Compute the beam ocf in the storage position, save result 'assembly_wcf_pickup'
+        assembly_wcf_pickup = beam.frame.transformed(T)
+        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickup', assembly_wcf_pickup)
 
-        print("compute_storage_location_at_corner_aligning_pickup_location computed")
+        print("compute_pickup_location_at_corner_aligning_pickup_location computed")
         return ComputationalResult.ValidCanContinue
 
     def compute_gripper_approach_vector_wcf_final(self, beam_id, verbose=False):
@@ -849,20 +849,20 @@ class RobotClampAssemblyProcess(Network):
 
         return approach_vector_wcf_final
 
-    def compute_beam_storageapproach(self, beam_id):
-        """ Compute gripper retract positions from 'assembly_wcf_storage'.
+    def compute_beam_pickupapproach(self, beam_id):
+        """ Compute gripper retract positions from 'assembly_wcf_pickup'.
         Approach vector is taken from gripper's approach vector (tcf) -> (beam ocf)
 
         Retract vector (wcf) is taken from beam attribute 'design_guide_vector_storage_pickup',
         this is an optional parameter and if left out will default to Vector(0, 0, 1), lifting upwards by one world unit.
 
-        Gripper, Pickupstation and beam_attribute'assembly_wcf_storage' should be set before hand
+        Gripper, Pickupstation and beam_attribute'assembly_wcf_pickup' should be set before hand
 
 
         State Change
         ------------
         This functions sets the following beam_attribute
-        - 'assembly_wcf_storageapproach'
+        - 'assembly_wcf_pickupapproach'
 
         Return
         ------
@@ -874,8 +874,8 @@ class RobotClampAssemblyProcess(Network):
         if self.pickup_station is None:
             print("pickup_station is not set")
             return ComputationalResult.ValidCannotContinue
-        if self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage') is None:
-            print("assembly_wcf_storage is not set")
+        if self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup') is None:
+            print("assembly_wcf_pickup is not set")
             return ComputationalResult.ValidCannotContinue
         if self.assembly.get_beam_attribute(beam_id, 'gripper_type') is None:
             print("gripper_type is not set")
@@ -883,16 +883,16 @@ class RobotClampAssemblyProcess(Network):
 
         approach_vector_wcf_final = self.compute_gripper_approach_vector_wcf_final(beam_id)
 
-        # Express approach vector in World (wcf) when beam is in 'assembly_wcf_storage'
-        T = self.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_storage')
+        # Express approach vector in World (wcf) when beam is in 'assembly_wcf_pickup'
+        T = self.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_pickup')
         approach_vector_wcf_storage = approach_vector_wcf_final.transformed(T)
 
-        # Compute assembly_wcf_storageapproach (wcf)
+        # Compute assembly_wcf_pickupapproach (wcf)
         T = Translation.from_vector(approach_vector_wcf_storage.scaled(-1))
-        assembly_wcf_storage = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
-        assert assembly_wcf_storage is not None
-        assembly_wcf_storageapproach = assembly_wcf_storage.transformed(T)
-        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageapproach', assembly_wcf_storageapproach)
+        assembly_wcf_pickup = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup')
+        assert assembly_wcf_pickup is not None
+        assembly_wcf_pickupapproach = assembly_wcf_pickup.transformed(T)
+        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupapproach', assembly_wcf_pickupapproach)
 
         return ComputationalResult.ValidCanContinue
 
@@ -928,27 +928,15 @@ class RobotClampAssemblyProcess(Network):
 
         return ComputationalResult.ValidCanContinue
 
-    def compute_beam_storageapproach_and_finalretract(self, beam_id):
+    def compute_beam_pickupretract(self, beam_id):
         # type: (str) -> None
-        """ 
-        See compute_beam_storageapproach() and compute_beam_finalretract()
-        Side Effect
-        -----------
-        beam_attribute 'assembly_wcf_storageapproach' will be set.
-        beam_attribute 'assembly_wcf_finalretract' will be set.
-        """
-        self.compute_beam_storageapproach(beam_id)
-        self.compute_beam_finalretract(beam_id)
-
-    def compute_beam_storageretract(self, beam_id):
-        # type: (str) -> None
-        """Compute 'assembly_wcf_storageretract' from beam attributes:
-        by transforming 'assembly_wcf_storage' along 'PickupStation.pickup_retract_vector'.
+        """Compute 'assembly_wcf_pickupretract' from beam attributes:
+        by transforming 'assembly_wcf_pickup' along 'PickupStation.pickup_retract_vector'.
 
         State Change
         ------------
         This functions sets the following beam_attribute
-        - 'assembly_wcf_storageretract'
+        - 'assembly_wcf_pickupretract'
 
         Return
         ------
@@ -963,11 +951,11 @@ class RobotClampAssemblyProcess(Network):
 
         retract_vector = self.pickup_station.pickup_retract_vector
 
-        # Compute assembly_wcf_storageretract
-        assembly_wcf_storage = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
+        # Compute assembly_wcf_pickupretract
+        assembly_wcf_pickup = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup')
         T = Translation.from_vector(retract_vector)
-        assembly_wcf_storageretract = assembly_wcf_storage.transformed(T)
-        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storageretract', assembly_wcf_storageretract)
+        assembly_wcf_pickupretract = assembly_wcf_pickup.transformed(T)
+        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupretract', assembly_wcf_pickupretract)
 
         return ComputationalResult.ValidCanContinue
     # -----------------------

@@ -68,9 +68,9 @@ class Assembly(Network):
             'assembly_vector_final': None,
             'assembly_vector_jawapproach': None,
             'assembly_vector_pickup': None,
-            'assembly_wcf_storageapproach': None,   # Beam gripper position (modeled as beam frame) before approaching pickup point
-            'assembly_wcf_storage': None,           # Beam position at pick-up point
-            'assembly_wcf_storageretract': None,    # Beam position after lifting off from pick-up point
+            'assembly_wcf_pickupapproach': None,   # Beam gripper position (modeled as beam frame) before approaching pickup point
+            'assembly_wcf_pickup': None,           # Beam position at pick-up point
+            'assembly_wcf_pickupretract': None,    # Beam position after lifting off from pick-up point
             'assembly_wcf_inclampapproach': None,   # Beam position before being placed inside clamp jaw
             'assembly_wcf_inclamp': None,           # Beam position inside the clamp, ready for final clamping move
             'assembly_wcf_final': None,             # Beam position in final modeled position, same as beam.frame
