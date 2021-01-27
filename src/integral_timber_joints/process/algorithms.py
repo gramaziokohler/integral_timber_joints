@@ -326,9 +326,9 @@ def compute_initial_state(process, verbose = True):
     # Robot is in its initial position
 
     # Environment models are in its own position. They dont move anyways. The State is simply empty.
-    for env_model in process.environment_meshes:
+    for env_id, env_model in process.environment_models.items():
         state = ObjectState()
-        process.initial_state[env_model.name] = state
+        process.initial_state[env_id] = state
      
 
 def compute_intermediate_states(process, verbose = True):

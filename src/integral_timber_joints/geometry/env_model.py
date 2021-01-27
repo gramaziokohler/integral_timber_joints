@@ -14,7 +14,7 @@ class EnvironmentModel(Mesh):
     draw_state(ObjectState, global_transform) function can draw
     """
     def __init__(self, name = None):
-        super(EnvironmentModel, self). __init__(self)
+        super(EnvironmentModel, self). __init__()
         self.name = name # type: Frame
     
     @property

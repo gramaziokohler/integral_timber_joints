@@ -6,7 +6,7 @@ from compas.rpc import Proxy
 
 from geometric_blocking import blocked
 from integral_timber_joints.assembly import Assembly
-from integral_timber_joints.geometry import Beam, Joint
+from integral_timber_joints.geometry import Beam, Joint, EnvironmentModel
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
@@ -44,7 +44,7 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['actions'] = []                         # list[Action]
         self.attributes['movements'] = []                       # list[Movement]
         self.attributes['pickup_station'] = None                # PickupStation
-        self.attributes['environment_meshes'] = []              # list[Mesh]
+        self.attributes['environment_models'] = {}              # dict[str, Mesh]
 
         self.attributes['initial_state'] = {}                   # dict(str, ObjectState)
         self.attributes['intermediate_states'] = []             # list(dict(str, ObjectState))
@@ -113,14 +113,14 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['pickup_station'] = value
 
     @property
-    def environment_meshes(self):
-        # type: () -> list[Mesh]
-        return self.attributes['environment_meshes']
+    def environment_models(self):
+        # type: () -> dict[str, Mesh]
+        return self.attributes['environment_models']
 
-    @environment_meshes.setter
-    def environment_meshes(self, value):
-        # type: (list[Mesh]) -> None
-        self.attributes['environment_meshes'] = value
+    @environment_models.setter
+    def environment_models(self, value):
+        # type: (dict[str, Mesh]) -> None
+        self.attributes['environment_models'] = value
 
     @property
     def dependency(self):
@@ -195,6 +195,10 @@ class RobotClampAssemblyProcess(Network):
             return self.clamp(tool_id)
         else:
             raise KeyError("tool_id (%s) cannot be found in process.grippers or process.clamps")
+
+    def environment_model(self, env_id):
+        # type: (str) -> EnvironmentModel
+        return self.environment_models[env_id]
 
     @property
     def available_clamp_types(self):
@@ -680,6 +684,7 @@ class RobotClampAssemblyProcess(Network):
     # -----------------------------------------------
     # Beam Storage / Pick Up / Retract Algorithms
     # -----------------------------------------------
+
     def compute_pickup_frame(self, beam_id):
         """ Compute the pickup frame of a beam
         Beam assembly direcion must be valid. Grasp face and PickupStation and must be assigned before.
@@ -954,6 +959,7 @@ class RobotClampAssemblyProcess(Network):
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupretract', assembly_wcf_pickupretract)
 
         return ComputationalResult.ValidCanContinue
+
     # -----------------------
     # Clamps Algorithms
     # -----------------------
@@ -1174,8 +1180,42 @@ class RobotClampAssemblyProcess(Network):
                 print("|  |- clamp_wcf_detachretract2 = %s" % clamp_wcf_detachretract2)
         return ComputationalResult.ValidCanContinue
 
+    # -----------------------
+    # Dependency Computation
+    # -----------------------
+
     def compute_all(self, beam_id):
         return ComputationalResult.ValidCanContinue
 
     def copy(self):
         return deepcopy(self)
+
+    # -----------------------
+    # Environment Model
+    # -----------------------
+
+    def get_new_environment_model_id(self):
+        # type: () -> str
+        """ Returns the next available env_id in the format of 'e%i'. 
+        Starting from 'e0' to maximum 'e999', it returns the next unused env_id
+        If there are holes between the used_id, the hole will be returned. 
+        """
+        for i in range(1000):
+            env_id = 'e%i' % i
+            if env_id not in self.environment_models:
+                return env_id
+
+    def add_environment_model(self, env_model, env_id = None):
+        # type: (EnvironmentModel, str) -> str
+        """ Adds an environment model to the process
+        env_id is automatically assigned if left None.
+
+        env_id is returned.
+        """
+        if env_id is None:
+            env_id = self.get_new_environment_model_id()
+        # Assign id as name. Save it to dictionary.
+        env_model.name = env_id
+        self.environment_models[env_id] = env_model
+        return env_id
+

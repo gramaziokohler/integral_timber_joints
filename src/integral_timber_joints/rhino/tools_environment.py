@@ -9,6 +9,7 @@ from compas_rhino.geometry import RhinoMesh
 
 from compas_rhino.utilities.objects import get_object_name
 
+from integral_timber_joints.geometry.env_model import EnvironmentModel
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
@@ -38,8 +39,8 @@ def list_tools(process):
         print("  Mesh %i with %i vertices" % (i, mesh.number_of_vertices()))
 
     print("-- Env Meshes --")
-    for i, mesh in enumerate(process.environment_meshes):
-        print("  Mesh %i with %i vertices" % (i, mesh.number_of_vertices()))
+    for env_id, env_model in process.environment_models.items():
+        print("  EnvModel %s with %i vertices" % (env_id, env_model.number_of_vertices()))
 
 
 def get_next_clamp_id(process):
@@ -155,18 +156,18 @@ def replace_robot_wrist(process):
 def add_env_model(process):
     # type: (RobotClampAssemblyProcess) -> None
     # Ask user to pick one or more mesh object
-    guids = rs.GetObjects("Select Environment Mesh(es) (cannot contain convex hull)", filter=rs.filter.mesh)
+    guids = rs.GetObjects("Select Mesh(es) for Environment Model (cannot contain convex hull)", filter=rs.filter.mesh)
     if guids is None:
         print("No mesh selected.")
         return
     # Show all current env mesh
     # todo
 
-    # Create compas mesh and add it to process.environment_meshes
+    # Create compas mesh and add it to process.environment_models
     for guid in guids:
         rhinomesh = RhinoMesh.from_guid(guid) 
-        mesh = rhinomesh.to_compas()
-        process.environment_meshes.append(mesh)
+        environment_model = rhinomesh.to_compas(EnvironmentModel) # type: EnvironmentModel
+        process.add_environment_model(environment_model)
         # todo trigger artist to draw that mesh in correct layer
 
 def delete_all_env_model(process):
@@ -180,8 +181,8 @@ def delete_all_env_model(process):
     if reconfirm is None:
         return
     if reconfirm.startswith("Y") or reconfirm.startswith("y") :
-        del process.environment_meshes[:]
-        # process.environment_meshes.clear()
+        del process.environment_models[:]
+        # process.environment_models.clear()
         # todo trigger artist to remove that mesh
         print ("All EnvMeshes are removed")
 
@@ -249,8 +250,8 @@ def copy_env_models(process):
 
     # If there are existing tools
     delete_old = False
-    if len(list(process.environment_meshes)) > 0 :
-        reconfirm = rs.GetString("There are %i Environment Mesh(es) in current file, do you want to delete them?" % (len(list(process.environment_meshes))), "Delete", ["Delete", "Keep"])
+    if len(process.environment_models) > 0 :
+        reconfirm = rs.GetString("There are %i Environment Model(es) in current file, do you want to delete them?" % (len(process.environment_models)), "Delete", ["Delete", "Keep"])
         if reconfirm is None:
             return
         if reconfirm.startswith("D") or reconfirm.startswith("d") :
@@ -263,12 +264,12 @@ def copy_env_models(process):
             # robot_wrist asert correctness and add to Process
             another_process = json.load(f, cls=DataDecoder) # type: RobotClampAssemblyProcess
         if delete_old:
-            process.environment_meshes = another_process.environment_meshes
-            print("Old Environment Mesh(es) deleted, %i Environment Mesh(es) imported." % (len(list(process.environment_meshes))))
+            process.environment_models = another_process.environment_models
+            print("Old Environment Model(es) deleted, %i Environment Model(es) imported." % (len(process.environment_models)))
         else:
-            for mesh in another_process.environment_meshes:
-                process.environment_meshes.append(mesh)
-            print("%i Environment Mesh(es) imported. Now total: %i Environment Mesh(es)" % (len(list(another_process.environment_meshes)), len(list(process.environment_meshes))))
+            for env_id, env_model in process.environment_models.items():
+                process.environment_models[env_id] = env_model
+            print("%i Environment Model(es) imported. Now total: %i Environment Model(es)" % (len(another_process.environment_models), len(process.environment_models)))
 
 
 
@@ -285,7 +286,7 @@ def show_menu(process):
     while (True):
         # Create Menu
         config = {
-            'message': 'Assembly contains %i Clamps, %i Grippers, %i EnvMeshs:' % (len(list(process.clamps)), len(list(process.grippers)), len(list(process.environment_meshes))),
+            'message': 'Assembly contains %i Clamps, %i Grippers, %i EnvMeshs:' % (len(list(process.clamps)), len(list(process.grippers)), len(process.environment_models)),
             'options': [
                 {'name': 'Finish', 'action': 'Exit'
                  },
@@ -309,7 +310,7 @@ def show_menu(process):
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'ReplaceRobotWrist', 'action': replace_robot_wrist},
                 ]},
-                {'name': 'EnvModels', 'message':  'We have %i Env Meshes:' % len(list(process.environment_meshes)), 'options': [
+                {'name': 'EnvModels', 'message':  'We have %i Env Meshes:' % len(process.environment_models), 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'AddEnvModel', 'action': add_env_model},
                     {'name': 'DeleteEnvModel', 'action': not_implemented},
