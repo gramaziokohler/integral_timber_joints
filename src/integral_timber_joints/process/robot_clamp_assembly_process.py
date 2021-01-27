@@ -754,7 +754,7 @@ class RobotClampAssemblyProcess(Network):
         # type: (str, PickupStation) -> None
         """ Compute 'assembly_wcf_pickup' alignment frame
         by aligning a choosen corner relative to the 'gripper_grasp_face'
-        to the given storage_station_frame.
+        to the given pickup_station_frame.
 
         Note
         ----
@@ -773,7 +773,7 @@ class RobotClampAssemblyProcess(Network):
         if self.pickup_station is None:
             return ComputationalResult.ValidCannotContinue
 
-        storage_station_frame = self.pickup_station.alignment_frame
+        pickup_station_frame = self.pickup_station.alignment_frame
         align_face_X0 = self.pickup_station.align_face_X0
         align_face_Y0 = self.pickup_station.align_face_Y0
         align_face_Z0 = self.pickup_station.align_face_Z0
@@ -804,7 +804,7 @@ class RobotClampAssemblyProcess(Network):
         # Compute the Transformation needed to bring beam OCF to meet with storage
         T = Transformation.from_frame(beam.frame)
         alignment_frame_wcf = alignment_frame_ocf.transformed(T)
-        T = Transformation.from_frame_to_frame(alignment_frame_wcf, storage_station_frame)
+        T = Transformation.from_frame_to_frame(alignment_frame_wcf, pickup_station_frame)
 
         # Compute the beam ocf in the storage position, save result 'assembly_wcf_pickup'
         assembly_wcf_pickup = beam.frame.transformed(T)
@@ -853,11 +853,7 @@ class RobotClampAssemblyProcess(Network):
         """ Compute gripper retract positions from 'assembly_wcf_pickup'.
         Approach vector is taken from gripper's approach vector (tcf) -> (beam ocf)
 
-        Retract vector (wcf) is taken from beam attribute 'design_guide_vector_storage_pickup',
-        this is an optional parameter and if left out will default to Vector(0, 0, 1), lifting upwards by one world unit.
-
         Gripper, Pickupstation and beam_attribute'assembly_wcf_pickup' should be set before hand
-
 
         State Change
         ------------

@@ -57,20 +57,10 @@ class Beam(Network):
         self.attributes['width'] = float(width)
         self.attributes['height'] = float(height)
 
-        # self.length = float(length)     # type: float
-        # self.width = float(width)       # type: float
-        # self.height = float(height)     # type: float
-
         if (name == None):
             name = create_id()
         self.attributes['name'] = name
         self.attributes['cached_mesh'] = None
-        # self.name = name                # type: str
-        # self.cached_mesh = None         # type: Mesh
-
-        # Attribute for animation visualization
-        # self.attributes['current_location'] = frame.copy()
-        # self.attributes['storage_location'] = frame.copy()
 
     # -----------------------
     # Properity access
