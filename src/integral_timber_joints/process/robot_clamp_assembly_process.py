@@ -10,7 +10,7 @@ from integral_timber_joints.geometry import Beam, Joint, EnvironmentModel
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
-from integral_timber_joints.process.state import ObjectState 
+from integral_timber_joints.process.state import ObjectState
 
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
 
@@ -595,17 +595,22 @@ class RobotClampAssemblyProcess(Network):
         self.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
         return ComputationalResult.ValidCanContinue
 
-    def get_gripper_t0cp_for_beam_at(self, beam_id, attribute_name):
-        """ Returns the t0cp position of the gripper (in WCF)
+    def get_gripper_baseframe_for_beam_at(self, beam_id, attribute_name):
+        """ Returns the base frame (base frame) of the gripper (in WCF)
         when the beam is at different key position.
 
-        The result can be used directly for gripper.current_frame = get_gripper_t0cp_for_beam_at()
+        beam_attribute `gripper_type` and the various `assembly_wcf_*` must be set before calling this function.
+
+        Note
+        ----
+        - This is not the robot flange, we still have the toolchanger
+        - The result can be used directly for gripper.current_frame = get_gripper_baseframe_for_beam_at()
         """
         # Get Gripper Object
         gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
         gripper = self.get_one_gripper_by_type(gripper_type)
 
-        # Get the TCP Frame at the beam's final-frame (gripper_tcp_in_wcf)
+        # Get the Gripper Tip Frame (TCP) at the beam's final-frame (gripper_tcp_in_wcf)
         gripper_tcp_in_ocf = self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf")
         beam_frame_wcf = self.assembly.beam(beam_id).frame
         gripper_tcp_in_wcf = gripper_tcp_in_ocf.transformed(Transformation.from_frame(beam_frame_wcf))
@@ -616,9 +621,29 @@ class RobotClampAssemblyProcess(Network):
             return None
         gripper_tcp_in_wcf = gripper_tcp_in_wcf.transformed(T)
 
-        # Find t0cp from tcp
+        # Find Gripper Base Frame from Gripper Tip Frame (TCP)
         T = Transformation.from_frame_to_frame(gripper.tool_coordinate_frame, gripper_tcp_in_wcf)
         return Frame.worldXY().transformed(T)
+
+    def get_gripper_t0cp_for_beam_at(self, beam_id, attribute_name):
+        """ Returns the t0cp (flange frame) of the robot (in WCF)
+        when the beam is attached to a gripper at the specified key position.
+        Taking into account of the tool changer.
+
+        Actually it should be called T0CF (Tool0 coordinate frame). Tool0 means no tool.
+
+        process.robot_toolchanger, gripper must be set before calling this.
+
+        Note
+        ----
+        - This is the robot flange.
+        - The result can be used directly for path planning.
+        """
+        gripper_frame_in_wcf = self.get_gripper_baseframe_for_beam_at(beam_id, attribute_name)
+        tool_changer = self.robot_toolchanger
+        tool_changer.set_current_frame_from_tcp(gripper_frame_in_wcf)
+
+        return tool_changer.current_frame.copy()
 
     def get_gripper_of_beam(self, beam_id, beam_position_name='assembly_wcf_final'):
         # type: (str, bool) -> Gripper
@@ -635,7 +660,7 @@ class RobotClampAssemblyProcess(Network):
         gripper = self.get_one_gripper_by_type(gripper_type)
 
         # Set the
-        gripper_wcf_final = self.get_gripper_t0cp_for_beam_at(beam_id, beam_position_name)
+        gripper_wcf_final = self.get_gripper_baseframe_for_beam_at(beam_id, beam_position_name)
         assert gripper_wcf_final is not None
         gripper.current_frame = gripper_wcf_final
 
@@ -1205,7 +1230,7 @@ class RobotClampAssemblyProcess(Network):
             if env_id not in self.environment_models:
                 return env_id
 
-    def add_environment_model(self, env_model, env_id = None):
+    def add_environment_model(self, env_model, env_id=None):
         # type: (EnvironmentModel, str) -> str
         """ Adds an environment model to the process
         env_id is automatically assigned if left None.
@@ -1218,4 +1243,3 @@ class RobotClampAssemblyProcess(Network):
         env_model.name = env_id
         self.environment_models[env_id] = env_model
         return env_id
-
