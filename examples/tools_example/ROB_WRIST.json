@@ -37,7 +37,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -60,7 +60,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -2740,7 +2740,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -2763,7 +2763,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -3852,7 +3852,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -3863,7 +3863,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -6543,7 +6543,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -6554,7 +6554,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {

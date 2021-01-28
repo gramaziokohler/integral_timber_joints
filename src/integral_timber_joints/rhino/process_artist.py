@@ -475,11 +475,28 @@ class ProcessArtist(object):
             if self.process.assembly.get_beam_attribute(beam_id, gripper_position) is None:
                 print("Skipping Gripper on Beam(%s) at position: %s" % (beam_id, gripper_position))
                 continue
+
+            # Draw Gripper
             print("Drawing Gripper for Beam(%s) in position: %s" % (beam_id, gripper_position))
             gripper = self.process.get_gripper_of_beam(beam_id, gripper_position)
             artist = ToolArtist(gripper, layer_name)
-            guid = gripper.draw_visual(artist)
-            self.gripper_guids[beam_id][gripper_position].extend(guid)
+            new_guids = gripper.draw_visual(artist)
+            self.gripper_guids[beam_id][gripper_position].extend(new_guids)
+
+            # Draw ToolChanger
+            tool_changer = self.process.robot_toolchanger
+            tool_changer.set_current_frame_from_tcp(gripper.current_frame)
+            new_guids = tool_changer.draw_visual(ToolArtist(tool_changer, layer_name))
+            self.gripper_guids[beam_id][gripper_position].extend(new_guids)
+
+            # Draw Robot Wrist
+            robot_wrist = self.process.robot_wrist
+            robot_wrist.current_frame = tool_changer.current_frame
+            print ("robot_wrist.current_frame ", robot_wrist.current_frame )
+            new_guids = robot_wrist.draw_visual(ToolArtist(robot_wrist, layer_name))
+            self.gripper_guids[beam_id][gripper_position].extend(new_guids)
+
+            
 
     def delete_gripper_all_positions(self, beam_id):
         """Delete all Rhino geometry associated to a a gripper.
