@@ -19,7 +19,7 @@
         </text>
         <tool_bar_id>31c43b10-774f-4f68-b2f1-8f742d6de8c3</tool_bar_id>
       </tool_bar_group_item>
-      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59474" mru_width="868" point_pos="0,281" float_point="564,446" rect_mru_dock_pos="0,281,1920,319" dock_location_u="59419" dock_location="top" float_size="768,62" />
+      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59474" mru_width="868" point_pos="0,56" float_point="564,446" rect_mru_dock_pos="0,56,1920,94" dock_location_u="59419" dock_location="top" float_size="768,62" />
     </tool_bar_group>
   </tool_bar_groups>
   <tool_bars>
@@ -260,7 +260,7 @@
       <menu_text>
         <locale_1033>Macro 04</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.computation.py"</script>
+      <script>! _-RunPythonScript "integral_timber_joints.rhino.actions_movements.py"</script>
     </macro_item>
     <macro_item guid="8818c20f-855d-4114-972b-f8f95b27e3e6" bitmap_id="63b21d28-a61a-40c4-bb06-75e6b6529697">
       <text>
@@ -273,13 +273,13 @@
         <locale_1033>Macro 13</locale_1033>
       </help_text>
       <button_text>
-        <locale_1033>Computation</locale_1033>
+        <locale_1033>Actions</locale_1033>
       </button_text>
       <menu_text>
         <locale_1033>Macro 13</locale_1033>
       </menu_text>
       <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
--RunPythonScript "integral_timber_joints.rhino.computation.py"</script>
+-RunPythonScript "integral_timber_joints.rhino.actions_movements.py"</script>
     </macro_item>
     <macro_item guid="54158ea1-b0f6-4f6b-9802-1760d1e21c1a" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="cf56689b-870e-45d5-ace8-7ffb17b47bd5" bitmap_id="6e811e87-614c-44d9-936c-abb9a7753d77">
       <text>
