@@ -564,13 +564,27 @@ class ProcessArtist(object):
                 if self.process.assembly.get_joint_attribute(joint_id, clamp_position) is None:
                     print("Skipping clamp(%s) at position: %s" % (joint_id, clamp_position))
                     continue
+                
+                # Draw Clamp
                 print("Drawing Clamp(%s) for Beam(%s) in position: %s" % (joint_id, beam_id, clamp_position))
                 clamp = self.process.get_clamp_of_joint(joint_id, clamp_position)
                 artist = ToolArtist(clamp, layer_name)
                 guid = clamp.draw_visual(artist)
-                # print ('new clamp_guids: ' , guid)
                 self.clamp_guids[joint_id][clamp_position].extend(guid)
-                # print ('saved clamp_guids' , self.clamp_guids[joint_id][clamp_position])
+
+                # Draw ToolChanger
+                tool_changer = self.process.robot_toolchanger
+                tool_changer.set_current_frame_from_tcp(clamp.current_frame)
+                new_guids = tool_changer.draw_visual(ToolArtist(tool_changer, layer_name))
+                self.clamp_guids[joint_id][clamp_position].extend(new_guids)
+
+                # Draw Robot Wrist
+                robot_wrist = self.process.robot_wrist
+                robot_wrist.current_frame = tool_changer.current_frame
+                print ("robot_wrist.current_frame ", robot_wrist.current_frame )
+                new_guids = robot_wrist.draw_visual(ToolArtist(robot_wrist, layer_name))
+                self.clamp_guids[joint_id][clamp_position].extend(new_guids)
+
 
     def delete_clamp_all_positions(self, joint_id):
         """Delete all Rhino geometry associated to a a gripper.
