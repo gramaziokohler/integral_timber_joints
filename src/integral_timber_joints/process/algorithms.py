@@ -12,6 +12,7 @@ from integral_timber_joints.geometry import Beam, Joint
 from integral_timber_joints.tools import Tool, Clamp, Gripper
 from integral_timber_joints.process.state import ObjectState
 import itertools
+from copy import deepcopy
 
 ###############################################
 # Algorithms that concerns the entire process
@@ -322,14 +323,25 @@ def compute_initial_state(process, verbose = True):
         state = ObjectState()
         state.current_frame = tool.tool_storage_frame
         process.initial_state[tool.name] = state
-
-    # Robot is in its initial position
-
+    
     # Environment models are in its own position. They dont move anyways. The State is simply empty.
     for env_id, env_model in process.environment_models.items():
         state = ObjectState()
         process.initial_state[env_id] = state
      
+    # Robot configuration should be take from an initial robot state.
+    # TODO
+
+    # Robot is in its initial position
+    robot_state = ObjectState()
+    process.initial_state['robot'] = robot_state
+
+    # Tool Chagner is attached to the robot
+    tool_changer_state = ObjectState()
+    tool_changer_state.attached_to_robot = True
+    tool_changer_state.current_frame = None # shouold be robot's frame
+    process.initial_state['tool_changer'] = tool_changer_state
+    
 
 def compute_intermediate_states(process, verbose = True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
@@ -343,7 +355,77 @@ def compute_intermediate_states(process, verbose = True):
     - 'intermediate_states'  list(dict(str, ObjectState))
 
     """
-    pass
+    current_state = deepcopy(process.initial_state)
+    for action in process.actions:
+        for movement in action.movements:
+            # Make a copy of the previous state
+            current_state = deepcopy(current_state)
+            if verbose: print ("Processing Seq %i Action %i Movement: %s" % (action.seq_n, action.act_n, movement))
+            
+            # Make changes to objects according to movements
+            if isinstance(movement, OperatorLoadBeamMovement):
+                # Change beam location
+                beam_id = movement.beam_id
+                beam_state = current_state[beam_id]
+                beam_state.current_frame = movement.target_frame
+
+            if isinstance(movement, RoboticMovement): # This include RoboticFreeMovement and RoboticLinearMovement
+                # Change robot flange frame
+                current_state['robot'].current_frame = movement.target_frame
+
+                # Change ToolChanger location, it is always attached to robot
+                current_state['tool_changer'].current_frame = movement.target_frame
+                process.robot_toolchanger.current_frame = movement.target_frame
+                
+                # Change attached tool location
+                if movement.attached_tool_id is not None:
+                    # Tool Sits on Toolchanger
+                    tool_base_frame = process.robot_toolchanger.current_tcf
+                    current_state[movement.attached_tool_id].attached_to_robot = True
+                    current_state[movement.attached_tool_id].current_frame = tool_base_frame
+                    
+                    # Change beam location
+                    if movement.attached_beam_id is not None:
+                        # Beam is attached to gripper
+                        # Find out `gripper tcp` and beam attribute `gripper_tcp_in_ocf`
+                        tool = process.tool(movement.attached_tool_id)
+                        tool.current_frame = tool_base_frame
+                        
+                        beam_frame = process.get_beam_frame_from_gripper(movement.attached_beam_id, tool)
+
+                        current_state[movement.attached_beam_id].attached_to_robot = True
+                        current_state[movement.attached_beam_id].current_frame = beam_frame
+
+            if isinstance(movement, RoboticDigitalOutput): # This include RoboticFreeMovement and RoboticLinearMovement
+                if movement.digital_output == DigitalOutput.LockTool:
+                        current_state[movement.tool_id].attached_to_robot = True
+                if movement.digital_output == DigitalOutput.UnlockTool:
+                        current_state[movement.tool_id].attached_to_robot = False
+
+                # OpenGripper and CloseGripper type affects the tool and the beam
+                if movement.digital_output == DigitalOutput.OpenGripper:
+                        gripper = process.tool(movement.tool_id) # type: Gripper
+                        gripper.open_gripper()
+                        current_state[movement.tool_id].attached_to_robot = True
+                        current_state[movement.tool_id].kinematic_config = gripper._get_kinematic_state()
+                        if movement.beam_id is not None:
+                            current_state[movement.beam_id].attached_to_robot = False
+
+                if movement.digital_output == DigitalOutput.CloseGripper:
+                        gripper = process.tool(movement.tool_id) # type: Gripper
+                        gripper.close_gripper()
+                        current_state[movement.tool_id].attached_to_robot = True
+                        current_state[movement.tool_id].kinematic_config = gripper._get_kinematic_state()
+                        if movement.beam_id is not None:
+                            current_state[movement.beam_id].attached_to_robot = True
+
+
+            # Add the modified state to the current movement as end_state.
+            movement.end_state = current_state
+
+            
+
+
 
 def test_process_prepathplan(json_path_in, json_path_out):
     #########################################################################

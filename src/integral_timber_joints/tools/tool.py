@@ -3,7 +3,12 @@ from copy import deepcopy
 from compas.geometry import Frame, Transformation
 from compas.datastructures import Mesh
 
-from compas.robots import RobotModel, ToolModel
+try:
+    from compas.robots.model.robot import RobotModel
+    from compas.robots.model.tool import ToolModel
+except:
+    from compas.robots import RobotModel, ToolModel
+
 from compas.robots.base_artist import BaseRobotModelArtist
 from compas_fab.robots import Configuration
 
@@ -238,10 +243,12 @@ class Tool (ToolModel):
     # --------------------------------------------------------
 
     def _get_kinematic_state(self):
+        # type: () -> dict[str, float]
         """ Get the kinematic state of all the joints as a dictionary."""
         pass
 
     def _set_kinematic_state(self, state_dict):
+        # type: (dict[str, float]) -> None
         """ Set the kinematic state from a dictionary."""
         pass
 
@@ -303,14 +310,21 @@ class Tool (ToolModel):
         """
         # Save previous frame for reverting changes
         previous_frame = self.current_frame
+        previous_kinematic_state = self._get_kinematic_state()
 
-        # Change self.current_frame
+        # Apply changes to current_frame and kinematic_state
         assert state.current_frame is not None
         self.current_frame = state.current_frame
+        
+        if state.kinematic_config is not None:
+            self._set_kinematic_state(state.kinematic_config) 
 
         # Draw meshes at the frame and revert the change to self.current_frame
         transformed_meshes = self.draw_visual() # type: List[Mesh]
+
+        # Return the tool to previous state
         self.current_frame = previous_frame
+        self._set_kinematic_state(previous_kinematic_state)
 
         # Finalize transformation to robot world
         if robot_world_transform is not None:

@@ -1,13 +1,18 @@
+from integral_timber_joints.process.state import ObjectState
+
 ##################################
 # Base Classes for all Movement
 # Do not use them directly
 ##################################
 
+
 class Movement(object):
     """ Base class of all movements """
-    def __init__(self, operator_stop_before = False, operator_stop_after = False):
-        self.operator_stop_before = operator_stop_before # type: bool
-        self.operator_stop_after = operator_stop_after # type: bool
+
+    def __init__(self, operator_stop_before=False, operator_stop_after=False):
+        self.operator_stop_before = operator_stop_before  # type: bool
+        self.operator_stop_after = operator_stop_after  # type: bool
+        self.end_state = {}  # type: dict[str, ObjectState]
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -26,24 +31,27 @@ class Movement(object):
     @property
     def data(self):
         data = {
-            'operator_stop_before' : self.operator_stop_before,
-            'operator_stop_after' : self.operator_stop_after,
+            'operator_stop_before': self.operator_stop_before,
+            'operator_stop_after': self.operator_stop_after,
+            'end_state': self.end_state,
         }
         return data
 
     @data.setter
     def data(self, data):
-        self.operator_stop_before = data['operator_stop_before']
-        self.operator_stop_after = data['operator_stop_after']
+        self.operator_stop_before = data.get('operator_stop_before', False)
+        self.operator_stop_after = data.get('operator_stop_after', False)
+        self.end_state = data.get('end_state', {})
+
 
 class RoboticMovement(Movement):
-    def __init__(self, target_frame = None, attached_tool_id = None, attached_beam_id = None):
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None):
         Movement.__init__(self)
-        self.target_frame = target_frame # type: Frame
-        self.attached_tool_id = attached_tool_id # type: Optional[str]
-        self.attached_beam_id = attached_beam_id # type: Optional[str]
-        self.trajectory = None # type: Optional[compas_fab.robots.JointTrajectory]
-    
+        self.target_frame = target_frame  # type: Frame
+        self.attached_tool_id = attached_tool_id  # type: Optional[str]
+        self.attached_beam_id = attached_beam_id  # type: Optional[str]
+        self.trajectory = None  # type: Optional[compas_fab.robots.JointTrajectory]
+
     @property
     def data(self):
         """ Sub class specific data added to the dictionary of the parent class
@@ -54,33 +62,36 @@ class RoboticMovement(Movement):
         data['attached_beam_id'] = self.attached_beam_id
         data['trajectory'] = self.trajectory
         return data
-    
+
     @data.setter
     def data(self, data):
         """ Sub class specific data loaded
         """
         super(RoboticMovement, type(self)).data.fset(self, data)
         self.target_frame = data['target_frame']
-        self.attached_tool_id = data['attached_tool_id']    
-        self.attached_beam_id = data['attached_beam_id']    
+        self.attached_tool_id = data['attached_tool_id']
+        self.attached_beam_id = data['attached_beam_id']
         self.trajectory = data['trajectory']
 
 ######################################
 # Movement Classes that can be used
 ######################################
 
+
 class OperatorLoadBeamMovement(Movement):
     """ Manual movement to place beam on Pickup Station
     Default: operator_stop_after = True
     """
-    def __init__(self, beam_id =None, grasp_face=None):
-        Movement.__init__(self, operator_stop_after = True)
+
+    def __init__(self, beam_id=None, grasp_face=None, target_frame=None):
+        Movement.__init__(self, operator_stop_after=True)
         self.beam_id = beam_id
         self.grasp_face = grasp_face
+        self.target_frame = target_frame  # type: Frame
 
     def __str__(self):
-        return "Load Beam (%s) to pickup station. Side %s face-upwards" % (self.beam_id, self.grasp_face)
-   
+        return "Load Beam ('%s') for pickup at %s (Side %s face up)." % (self.beam_id, self.target_frame, self.grasp_face)
+
     @property
     def data(self):
         """ Sub class specific data added to the dictionary of the parent class
@@ -88,30 +99,45 @@ class OperatorLoadBeamMovement(Movement):
         data = super(OperatorLoadBeamMovement, self).data
         data['beam_id'] = self.beam_id
         data['grasp_face'] = self.grasp_face
+        data['target_frame'] = self.target_frame
         return data
-    
+
     @data.setter
     def data(self, data):
         """ Sub class specific data loaded
         """
         super(OperatorLoadBeamMovement, type(self)).data.fset(self, data)
-        self.beam_id = data['beam_id']
-        self.grasp_face = data['grasp_face']    
+        self.beam_id = data.get('beam_id', None)
+        self.grasp_face = data.get('grasp_face', None)
+        self.target_frame = data.get('target_frame', None)
+
+
 class RoboticFreeMovement(RoboticMovement):
 
     def __str__(self):
         return "Free Move to %s" % (self.target_frame)
+
 
 class RoboticLinearMovement(RoboticMovement):
 
     def __str__(self):
         return "Linear Move to %s" % (self.target_frame)
 
+
 class RoboticDigitalOutput(Movement):
-    def __init__(self, digital_output=None):
-        # type: (DigitalOutput) -> None
+    def __init__(self, digital_output=None, tool_id=None, beam_id=None):
+        # type: (DigitalOutput, str, str) -> None
+        """ `tool_id` relates to the tool that is being operated.
+        `beam_id` should be filled in for Open or Close Gripper movements that
+        involved letting go or picking up a beam. This helps the state manage to figure
+        out which beam is picked up and attached or no longer attached. 
+
+        For Clamp Closing Gripper to attach to a fixed beam, `beam_id` should be left None. 
+        """
         Movement.__init__(self)
         self.digital_output = digital_output
+        self.tool_id = tool_id
+        self.beam_id = beam_id
 
     def __str__(self):
         if self.digital_output == DigitalOutput.LockTool:
@@ -130,14 +156,19 @@ class RoboticDigitalOutput(Movement):
         """
         data = super(RoboticDigitalOutput, self).data
         data['digital_output'] = self.digital_output
+        data['tool_id'] = self.tool_id
+        data['beam_id'] = self.beam_id
         return data
-    
+
     @data.setter
     def data(self, data):
         """ Sub class specific data loaded
         """
         super(RoboticDigitalOutput, type(self)).data.fset(self, data)
         self.digital_output = data['digital_output']
+        self.tool_id = data.get('tool_id', None)
+        self.beam_id = data.get('beam_id', None)
+
 
 class DigitalOutput(object):
     LockTool = 1

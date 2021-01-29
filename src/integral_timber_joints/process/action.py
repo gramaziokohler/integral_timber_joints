@@ -204,13 +204,15 @@ class LoadBeamAction(OperatorAction):
         self.beam_id = data['beam_id']
 
     def __str__(self):
-        return "Operator load Beam (%s) to pickup station" % (self.beam_id)
+        return "Operator load Beam ('%s') for pickup" % (self.beam_id)
 
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         self.movements = []
         grasp_face = process.assembly.get_beam_attribute(self.beam_id, 'gripper_grasp_face')
-        self.movements.append(OperatorLoadBeamMovement(self.beam_id, grasp_face))
+        beam_pickup_frame_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_pickup')
+
+        self.movements.append(OperatorLoadBeamMovement(self.beam_id, grasp_face, beam_pickup_frame_wcf))
 
 
 class PickToolFromStorageAction(RobotAction, AttachToolAction):
@@ -239,8 +241,8 @@ class PickToolFromStorageAction(RobotAction, AttachToolAction):
 
         self.movements.append(RoboticFreeMovement(tool_pick_up_frame_wcf.copy()))  # Tool Storage Approach
         self.movements.append(RoboticLinearMovement(tool_storage_frame_wcf.copy()))  # Tool Storage Final
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id))
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_wcf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Retract
 
 
@@ -271,8 +273,8 @@ class PlaceToolToStorageAction(RobotAction, DetachToolAction):
 
         self.movements.append(RoboticFreeMovement(tool_pick_up_frame_wcf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Approach
         self.movements.append(RoboticLinearMovement(tool_storage_frame_wcf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Final
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id))
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_wcf.copy()))  # Tool Storage Retract
 
 
@@ -327,8 +329,8 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
 
         self.movements.append(RoboticFreeMovement(clamp_wcf_detachapproach))
         self.movements.append(RoboticLinearMovement(clamp_wcf_final.copy()))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id))
         self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract1.copy(), attached_tool_id=self.tool_id))  # Tool Retract Frame at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract2.copy(), attached_tool_id=self.tool_id))  # Tool Retract Frame at structure
 
@@ -366,8 +368,8 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.movements.append(RoboticFreeMovement(clamp_wcf_attachapproach1.copy(), attached_tool_id=self.tool_id))  # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachapproach2.copy(), attached_tool_id=self.tool_id))  # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_final.copy(), attached_tool_id=self.tool_id))  # Tool Final Frame at structure
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id))
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachretract.copy()))
 
 
@@ -397,9 +399,9 @@ class BeamPickupAction(RobotAction, AttachBeamAction):
         assert assembly_wcf_pickupapproach is not None and assembly_wcf_pickup is not None and assembly_wcf_pickupretract is not None
 
         self.movements.append(RoboticFreeMovement(assembly_wcf_pickupapproach.copy(), attached_tool_id=self.gripper_id))  # Tool Approach Frame where tool is at structure
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickup.copy(), attached_tool_id=self.gripper_id))  # Tool Final Frame at structure
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.gripper_id, self.beam_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickupretract.copy(), attached_tool_id=self.gripper_id,
                                                     attached_beam_id=self.beam_id))  # Tool Retract (current implementation is = clamp_wcf_attachapproach)
 
@@ -431,7 +433,7 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
 
         self.movements.append(RoboticFreeMovement(assembly_wcf_inclamp.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_final.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id, self.beam_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id))
 
 
@@ -469,5 +471,5 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
         self.movements.append(RoboticLinearMovement(assembly_wcf_inclamp.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id))
         # TODO, This should be a Robot Clamp Sync move
         self.movements.append(RoboticLinearMovement(assembly_wcf_final.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id, self.beam_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id))

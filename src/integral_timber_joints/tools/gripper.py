@@ -125,9 +125,11 @@ class Gripper (Tool):
     # ----------------------------------
 
     def _set_kinematic_state(self, state_dict):
+        # type: (dict[str, float]) -> None
         self.gripper_jaw_position = state_dict['gripper_jaw_position']
 
     def _get_kinematic_state(self):
+        # type: () -> dict[str, float]
         return {'gripper_jaw_position': self.gripper_jaw_position}
 
     @property

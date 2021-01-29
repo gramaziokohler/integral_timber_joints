@@ -24,8 +24,7 @@ class RobotClampAssemblyProcess(Network):
     from .algorithms import create_movements_from_actions
     from .algorithms import debug_print_process_actions_movements
 
-    from .algorithms import compute_initial_state
-    from .algorithms import compute_intermediate_states
+
 
     def __init__(self, assembly=None):
         # type: (Assembly) -> None
@@ -42,12 +41,11 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['robot_toolchanger'] = None             # ToolChanger
         self.attributes['robot_wrist'] = None                   # RobotWrist
         self.attributes['actions'] = []                         # list[Action]
-        self.attributes['movements'] = []                       # list[Movement]
         self.attributes['pickup_station'] = None                # PickupStation
         self.attributes['environment_models'] = {}              # dict[str, Mesh]
 
         self.attributes['initial_state'] = {}                   # dict(str, ObjectState)
-        self.attributes['intermediate_states'] = []             # list(dict(str, ObjectState))
+        # self.attributes['intermediate_states'] = []             # list(dict(str, ObjectState))
 
         self.attributes['dependency'] = ComputationalDependency(self)   # ComputationalDependency
 
@@ -95,12 +93,12 @@ class RobotClampAssemblyProcess(Network):
     @property
     def movements(self):
         # type: () -> list[Movement]
-        return self.attributes['movements']
+        all_movements = []
+        for action in self.actions:
+            for movement in action.movements:
+                    all_movements.append(movement)
+        return all_movements
 
-    @movements.setter
-    def movements(self, value):
-        # type: (list[Movement]) -> None
-        self.attributes['movements'] = value
 
     @property
     def pickup_station(self):
@@ -129,7 +127,7 @@ class RobotClampAssemblyProcess(Network):
 
     @property
     def initial_state(self):
-        # type: () -> dict(str, ObjectState)
+        # type: () -> dict[str, ObjectState]
         return self.attributes['initial_state']
 
     @initial_state.setter
@@ -139,13 +137,13 @@ class RobotClampAssemblyProcess(Network):
 
     @property
     def intermediate_states(self):
-        # type: () -> list(dict(str, ObjectState))
-        return self.attributes['intermediate_states']
+        # type: () -> list[dict[str, ObjectState]]
+        return [movement.end_state for movement in self.movements]
 
-    @intermediate_states.setter
-    def intermediate_states(self, value):
-        # type: (list(dict(str, ObjectState))) -> None
-        self.attributes['intermediate_states'] = value
+    # @intermediate_states.setter
+    # def intermediate_states(self, value):
+    #     # type: (list(dict(str, ObjectState))) -> None
+    #     self.attributes['intermediate_states'] = value
     # -----------------------
     # Properity access
     # -----------------------
@@ -644,6 +642,33 @@ class RobotClampAssemblyProcess(Network):
         tool_changer.set_current_frame_from_tcp(gripper_frame_in_wcf)
 
         return tool_changer.current_frame.copy()
+
+    def get_beam_frame_from_gripper(self, beam_id, gripper):
+        """ Returns the beam frame (in WCF) from the position of a gripper.
+        This is effectively the final step of the forward kinematics
+
+        The grasp is retrived from beam attribute `gripper_tcp_in_ocf`
+        The gripper.current_frame should be set to the intended location
+        
+        ### Credits: 
+        YiJiang contributed this rather clear way of expressing everytihing in Transformation.
+        If one day we have time, we should all switch to this notation to be consistent with
+        robotics code community.
+        
+        x_from_y, means Y expressed in the X's coordinate system
+        """ 
+        # Gripper TCP expressed in world's coordinate
+        world_from_gripper_tcp = Transformation.from_frame(gripper.current_tcf)
+
+        # Grasp
+        beam_ocf_from_gripper_tcp = Transformation.from_frame(self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf"))
+        
+        # gripper_inverse
+        gripper_tcp_from_beam_ocf = beam_ocf_from_gripper_tcp.inverse()
+
+        # Beam frame expressed in the world's coordinate
+        world_from_beam = world_from_gripper_tcp * gripper_tcp_from_beam_ocf
+        return Frame.from_transformation(world_from_beam)
 
     def get_gripper_of_beam(self, beam_id, beam_position_name='assembly_wcf_final'):
         # type: (str, bool) -> Gripper
@@ -1243,3 +1268,35 @@ class RobotClampAssemblyProcess(Network):
         env_model.name = env_id
         self.environment_models[env_id] = env_model
         return env_id
+
+    # -----------------------
+    # Action and Movements
+    # -----------------------
+    
+    from .algorithms import compute_initial_state
+    from .algorithms import compute_intermediate_states
+    
+    def get_action_by_beam_id(self, beam_id):
+        # type: (str) -> list[Action]
+        """ Get an ordered list of Action related to a beam"""
+        return [action for action in self.actions if self.assembly.sequence[action.seq_n] == beam_id]
+    
+    def get_movement_by_beam_id(self, beam_id):
+        # type: (str) -> list[Movement]
+        """ Get an ordered list of Movements related to a beam"""
+        return [movement for action in self.get_action_by_beam_id(beam_id) for movement in action]
+
+    def get_movement_start_state(self, movement):
+        # type: (Movement) -> dict[str, ObjectState]
+        """ return the start state before the movment """
+        start_state = self.initial_state
+        for _movement in self.movements:
+            if _movement is movement:
+                return start_state
+            start_state = _movement.end_state
+        raise Exception("Given Movement object does not exist in self.movements.")
+
+    def get_movement_end_state(self, movement):
+        # type: (Movement) -> dict[str, ObjectState]
+        """ return the end state after the movment """
+        return movement.end_state

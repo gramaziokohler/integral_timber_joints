@@ -48,8 +48,25 @@ def compute_initial_state(process):
     
     # Call function to create actions
     process.compute_initial_state()
-    for state in process.initial_state:
-        print (state, process.initial_state[state].data)
+    for object_id in process.initial_state:
+        print (object_id, process.initial_state[object_id].data)
+    print ("Initial State computed for %i objects." % len(process.initial_state))
+
+def compute_intermediate_states(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """User triggered function to compute Actions from Assembly Sequence
+    """
+    
+    # Call function to create actions
+    process.compute_intermediate_states(verbose=True)
+    full_state_count = 0
+    for state in process.intermediate_states:
+        if len(state) > 0: 
+            full_state_count +=1
+    print ("Total: %i of %i intermediate states computed. for %i objects." % (full_state_count, len(process.intermediate_states), len(process.initial_state)))
+
+    # for i, state in enumerate(process.intermediate_states):
+        # print (i, state.data)
 
 
 def not_implemented(process):
@@ -77,6 +94,8 @@ def show_menu(process):
                 {'name': 'ComputeActions', 'action': compute_action
                  },
                 {'name': 'ComputeInitialState', 'action': compute_initial_state
+                 },
+                {'name': 'ComputeIntermediateStates', 'action': compute_intermediate_states
                  },
 
             ]
