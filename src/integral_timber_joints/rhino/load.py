@@ -5,6 +5,8 @@ import os
 import Rhino
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
+import compas
+import compas_fab
 from compas.utilities import DataDecoder, DataEncoder
 
 from integral_timber_joints.assembly import Assembly
@@ -98,6 +100,8 @@ if __name__ == "__main__":
     exist = os.path.exists(json_path)
 
     if exist:
+        print("Compas Version: %s installed in: %s" %(compas.__version__, compas.__file__))
+        print("Compas Fab Version: %s installed in: %s" %(compas_fab.__version__, compas_fab.__file__))
         load_process()
         c_time = datetime.datetime.fromtimestamp(os.path.getmtime(json_path))
         print("Process loaded from: %s (%i Beams). File last modified on %s." % (os.path.basename(json_path), len(list(get_process().assembly.beams())), c_time))
