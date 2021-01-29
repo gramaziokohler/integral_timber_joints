@@ -143,37 +143,6 @@ def something(process):
     print('something')
 
 
-def ui_seq_move_before(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    assembly = process.assembly  # type: Assembly
-    artist = get_process_artist()
-
-    # Ask user to pick a beam to move
-    guid = rs.GetObject('Select beams to change sequence:', custom_filter=get_existing_beams_filter(process))
-    if not guid:
-        # Quit when user press Enter without selection
-        return
-    beam_id_tomove = get_object_name(guid)
-
-    # Ask user to pick a target beam to insert before it
-    guid = rs.GetObject('Select beams to place after:', custom_filter=get_existing_beams_filter(process))
-    if not guid:
-        # Quit when user press Enter without selection
-        return
-    beam_id_after = get_object_name(guid)
-
-    # Compute the amount of shift and shift_beam_sequence
-    get_beam_sequence = assembly.get_beam_sequence
-    shift_amount = get_beam_sequence(beam_id_after) - get_beam_sequence(beam_id_tomove)
-    if shift_amount < 0:
-        shift_amount += 1
-    print("shift_amount %s" % shift_amount)
-    member_seq_affected_by_swap = assembly.shift_beam_sequence(beam_id_tomove, shift_amount)
-
-    # Redraw affected members
-    show_assembly_color(process, member_seq_affected_by_swap)
-
-
 def show_assembly_color(process, beam_ids=None, redraw=False):
     """Activate assembly menu colour code.
     Problematic beams that cannot be assembled are highlighted
@@ -225,10 +194,6 @@ def show_menu(process):
                 ]},
                 {'name': 'DeleteBeam', 'action': ui_delete_beams},
                 {'name': 'FlipBeamAssemblyDirection', 'action': ui_flip_beams},
-                {'name': 'Sequence', 'message': 'Add Beams ...', 'options': [
-                    {'name': 'Back', 'action': 'Back'},
-                    {'name': 'Shift', 'action': ui_seq_move_before},
-                ]},
             ]
 
         }
