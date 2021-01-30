@@ -271,6 +271,34 @@ def copy_env_models(process):
                 process.environment_models[env_id] = env_model
             print("%i Environment Model(es) imported. Now total: %i Environment Model(es)" % (len(another_process.environment_models), len(process.environment_models)))
 
+def copy_all(process):
+    reconfirm = rs.GetString("There are %i Clamps, %i Grippers, ToolChanger, RobotWrist, %i Environment Model(es) in current file, do you want to delete them and replace by new ones?" % (
+        len(process.environment_models),
+        len(list(process.clamps)),
+        len(list(process.grippers))),
+        "Delete", ["DeleteAndContinue", "Cancel"])
+    if reconfirm is None:
+        return
+    if reconfirm.startswith("C") or not reconfirm.startswith("D") :
+        return
+
+    # Ask user for a json file
+    path = rs.OpenFileName("Open another process file to copy from", "Process File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            # robot_wrist asert correctness and add to Process
+            another_process = json.load(f, cls=DataDecoder) # type: RobotClampAssemblyProcess
+        
+        process.attributes['clamps'] = another_process.attributes['clamps']
+        process.attributes['grippers'] = another_process.attributes['grippers']
+        print("Old clamps and Grippers deleted, %i Clamps, %i Grippers imported." % (len(list(process.clamps)), len(list(process.grippers))))
+        
+        process.robot_toolchanger = another_process.robot_toolchanger
+        process.robot_wrist = another_process.robot_wrist
+        print("Toolchanger is replaced by %s, RobotWrist is replaced by %s." %(process.robot_toolchanger.type_name, process.robot_wrist.type_name))
+        
+        process.environment_models = another_process.environment_models
+        print("Old Environment Model(es) deleted, %i Environment Model(es) imported." % (len(process.environment_models)))
 
 
 def not_implemented(process):
@@ -322,6 +350,7 @@ def show_menu(process):
                     {'name': 'CopyToolChanger', 'action': copy_tool_changer},
                     {'name': 'CopyRobWrist', 'action': copy_rob_wrist},
                     {'name': 'CopyEnvModel', 'action': copy_env_models},
+                    {'name': 'CopyAll', 'action': copy_all},
                 ]},
 
             ]
