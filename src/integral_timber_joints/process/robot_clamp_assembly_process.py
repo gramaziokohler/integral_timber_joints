@@ -244,6 +244,27 @@ class RobotClampAssemblyProcess(Network):
             clamp.current_frame = clamp_wcf
         return clamp
 
+    def get_clamp_t0cf_at(self, joint_id, position_name):
+        # type: (tuple[str, str], bool) -> Clamp
+        """ Returns the t0cf (flange frame) of the robot (in WCF)
+        when the clamp is at the specified key position.
+        Taking into account of the tool changer.
+
+        Actually it should be called T0CF (Tool0 coordinate frame). Tool0 means no tool.
+
+        process.robot_toolchanger, gripper must be set before calling this.
+
+        Note
+        ----
+        - This is the robot flange.
+        - The result can be used directly for path planning.
+        """
+        world_from_clampbase = self.assembly.get_joint_attribute(joint_id, position_name)
+        tool_changer = self.robot_toolchanger
+        tool_changer.set_current_frame_from_tcp(world_from_clampbase)
+
+        return tool_changer.current_frame.copy()
+
     def get_clamp_ids_for_beam(self, beam_id):
         # type: (str) -> tuple[str, str]
         for neighbour_id in self.assembly.get_already_built_neighbors(beam_id):

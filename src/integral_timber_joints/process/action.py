@@ -322,10 +322,10 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         self.movements = []
         tool = process.tool(self.tool_id)  # type: Clamp
 
-        clamp_wcf_detachapproach = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_detachapproach')
-        clamp_wcf_final = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_final')
-        clamp_wcf_detachretract1 = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_detachretract1')
-        clamp_wcf_detachretract2 = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_detachretract2')
+        clamp_wcf_detachapproach = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_detachapproach')
+        clamp_wcf_final = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_final')
+        clamp_wcf_detachretract1 = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_detachretract1')
+        clamp_wcf_detachretract2 = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_detachretract2')
 
         self.movements.append(RoboticFreeMovement(clamp_wcf_detachapproach))
         self.movements.append(RoboticLinearMovement(clamp_wcf_final.copy()))
@@ -359,11 +359,10 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.movements = []
         tool = process.tool(self.tool_id)  # type: Clamp
 
-        # clamp_wcf_attachapproach = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_attachapproach')
-        clamp_wcf_attachapproach1 = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_attachapproach1')
-        clamp_wcf_attachapproach2 = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_attachapproach2')
-        clamp_wcf_final = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_final')
-        clamp_wcf_attachretract = process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_attachretract')
+        clamp_wcf_attachapproach1 = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_attachapproach1')
+        clamp_wcf_attachapproach2 = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_attachapproach2')
+        clamp_wcf_final = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_final')
+        clamp_wcf_attachretract = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_attachretract')
 
         self.movements.append(RoboticFreeMovement(clamp_wcf_attachapproach1.copy(), attached_tool_id=self.tool_id))  # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachapproach2.copy(), attached_tool_id=self.tool_id))  # Tool Approach Frame where tool is at structure
