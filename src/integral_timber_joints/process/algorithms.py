@@ -4,6 +4,7 @@ try:
     from integral_timber_joints.process import RFLPathPlanner
 except:
     pass
+from compas.geometry import Frame
 
 from integral_timber_joints.process.action import *
 from integral_timber_joints.process.movement import *
@@ -19,74 +20,90 @@ from copy import deepcopy
 # Many of which require sequential parsing
 # #############################################
 
-def create_actions_from_sequence(process, verbose = True):
+
+def create_actions_from_sequence(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
     """ Creating Action objects (process.actions) from process.sequence
     This is specific to the general action framework for a clamp and gripper assembly streategy.
     This is specific to a single robot / multiple clamp and gripper scenario.
     """
 
-    assembly = process.assembly # type: Assembly
+    assembly = process.assembly  # type: Assembly
     process.actions = []
-    actions = process.actions # type: List[Action]
+    actions = process.actions  # type: List[Action]
 
     for seq_n, beam_id in enumerate(assembly.sequence):
         # Fuction to keep count of act_n
 
-        def act_n(reset = False):
-            if reset: act_n.counter = 0
-            else: act_n.counter += 1
+        def act_n(reset=False):
+            if reset:
+                act_n.counter = 0
+            else:
+                act_n.counter += 1
             return act_n.counter
 
-        beam = assembly.beam(beam_id) # type: Beam
-        if verbose: print ("Beam %s" % beam_id)
+        beam = assembly.beam(beam_id)  # type: Beam
+        if verbose:
+            print("Beam %s" % beam_id)
         actions.append(LoadBeamAction(seq_n, act_n(True), beam_id))
-        if verbose: print ('|- ' + actions[-1].__str__())
+        if verbose:
+            print('|- ' + actions[-1].__str__())
 
         # move clamps from storage to structure
         # joint_id_of_clamps = assembly.get_joints_of_beam_connected_to_already_built(beam_id)
 
-        joint_id_of_clamps = [(neighbour_id, beam_id) for neighbour_id in assembly.get_already_built_neighbors(beam_id) if assembly.get_joint_attribute((neighbour_id, beam_id), "is_clamp_attached_side")]
+        joint_id_of_clamps = [(neighbour_id, beam_id) for neighbour_id in assembly.get_already_built_neighbors(beam_id)
+                              if assembly.get_joint_attribute((neighbour_id, beam_id), "is_clamp_attached_side")]
 
         for joint_id in joint_id_of_clamps:
             clamp_type = assembly.get_joint_attribute(joint_id, "clamp_type")
             actions.append(PickClampFromStorageAction(seq_n, act_n(), clamp_type))
-            if verbose: print ('|- ' + actions[-1].__str__())
+            if verbose:
+                print('|- ' + actions[-1].__str__())
             actions.append(PlaceClampToStructureAction(seq_n, act_n(), joint_id, clamp_type))
-            if verbose: print ('|- ' + actions[-1].__str__())
+            if verbose:
+                print('|- ' + actions[-1].__str__())
 
             #if verbose: print ("|- Detatch Clamp at Joint %s-%s" % clamp)
 
         # attach gripper
         gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
         actions.append(PickGripperFromStorageAction(seq_n, act_n(), gripper_type))
-        if verbose: print ('|- ' + actions[-1].__str__())
+        if verbose:
+            print('|- ' + actions[-1].__str__())
 
         # pick place beam
         actions.append(BeamPickupAction(seq_n, act_n(), beam_id))
-        if verbose: print ('|- ' + actions[-1].__str__())
+        if verbose:
+            print('|- ' + actions[-1].__str__())
 
-        #Syncronized clamp and move beam action
+        # Syncronized clamp and move beam action
         if len(joint_id_of_clamps) > 0:
             actions.append(BeamPlacementWithClampsAction(seq_n, act_n(), beam_id, joint_id_of_clamps))
-            if verbose: print ('|- ' + actions[-1].__str__())
+            if verbose:
+                print('|- ' + actions[-1].__str__())
         else:
             actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n(), beam_id))
-            if verbose: print ('|- ' + actions[-1].__str__())
+            if verbose:
+                print('|- ' + actions[-1].__str__())
 
         # return gripper
         actions.append(PlaceGripperToStorageAction(seq_n, act_n(), gripper_type))
-        if verbose: print ('|- ' + actions[-1].__str__())
+        if verbose:
+            print('|- ' + actions[-1].__str__())
 
         # remove clamps from structure to storage
         for joint_id in joint_id_of_clamps:
             clamp_type = assembly.get_joint_attribute(joint_id, "clamp_type")
             actions.append(PickClampFromStructureAction(seq_n, act_n(), joint_id, clamp_type))
-            if verbose: print ('|- ' + actions[-1].__str__())
+            if verbose:
+                print('|- ' + actions[-1].__str__())
             actions.append(PlaceClampToStorageAction(seq_n, act_n(), clamp_type))
-            if verbose: print ('|- ' + actions[-1].__str__())
+            if verbose:
+                print('|- ' + actions[-1].__str__())
 
-def assign_tools_to_actions(process, verbose = True):
+
+def assign_tools_to_actions(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
     """ Assign Clamp and Gripper instances to actions
     based on the gripper_type and tool_type attributes.
@@ -101,12 +118,12 @@ def assign_tools_to_actions(process, verbose = True):
     """
     # Variables for a procedural simulation to ensure process consistancy
     tools_in_storage = [c for c in process.clamps] + [g for g in process.grippers]
-    beam_id_on_pickup_station = None # type: Optional[str]
+    beam_id_on_pickup_station = None  # type: Optional[str]
 
-    tool_at_robot = None # type: Optional[Tool]
-    beam_id_at_robot = None # type: Optional[str]
+    tool_at_robot = None  # type: Optional[Tool]
+    beam_id_at_robot = None  # type: Optional[str]
 
-    clamps_on_structure = {} # type: Dict[Tuple[str, str], Tool]
+    clamps_on_structure = {}  # type: Dict[Tuple[str, str], Tool]
 
     def PopToolFromStorage(tool_type):
         # type: (str) -> Tool
@@ -114,19 +131,20 @@ def assign_tools_to_actions(process, verbose = True):
             if (tool.type_name == tool_type):
                 tools_in_storage.remove(tool)
                 return tool
-        raise Exception("Tool Not Found in Storage Error: tool_type = %s"% tool_type)
+        raise Exception("Tool Not Found in Storage Error: tool_type = %s" % tool_type)
 
     for action in process.actions:
-        if verbose: print(action)
+        if verbose:
+            print(action)
         if isinstance(action, PickToolFromStorageAction):
-            if tool_at_robot is not None: # Consistancy check to make sure tool is not already attached.
+            if tool_at_robot is not None:  # Consistancy check to make sure tool is not already attached.
                 raise Exception("Unable to attach tool becuase %s is already attached to robot" % tool_at_robot)
             tool = PopToolFromStorage(action.tool_type)
             tool_at_robot = tool
             action.tool_id = tool.name
 
         if isinstance(action, PlaceToolToStorageAction):
-            if tool_at_robot is None: # Consistancy check to make sure some tool is attached.
+            if tool_at_robot is None:  # Consistancy check to make sure some tool is attached.
                 raise Exception("Unable to detach tool becuase No Tool is attached to robot")
             tool = tool_at_robot
             if (action.tool_type != tool_at_robot.type_name):
@@ -136,14 +154,14 @@ def assign_tools_to_actions(process, verbose = True):
             tool_at_robot = None
 
         if isinstance(action, PickClampFromStructureAction):
-            if tool_at_robot is not None: # Consistancy check to make sure tool is not already attached.
+            if tool_at_robot is not None:  # Consistancy check to make sure tool is not already attached.
                 raise Exception("Unable to attach tool becuase %s is already attached to robot" % tool_at_robot)
             tool = clamps_on_structure[action.joint_id]
             tool_at_robot = tool
             action.tool_id = tool.name
 
         if isinstance(action, PlaceClampToStructureAction):
-            if tool_at_robot is None: # Consistancy check to make sure some tool is attached.
+            if tool_at_robot is None:  # Consistancy check to make sure some tool is attached.
                 raise Exception("Unable to detach tool becuase No Tool is attached to robot")
             tool = tool_at_robot
             if (action.tool_type != tool_at_robot.type_name):
@@ -193,7 +211,8 @@ def assign_tools_to_actions(process, verbose = True):
                     raise Exception("Joint (%s) require a clamp that was not placed" % joint_id)
             action.clamp_ids = [clamps_on_structure[joint_id].name for joint_id in action.joint_ids]
 
-def optimize_actions_place_pick_gripper(process, verbose = True):
+
+def optimize_actions_place_pick_gripper(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
     """
     If PlaceGripperToStorageAction and followed by PickGripperFromStorageAction.
@@ -201,11 +220,12 @@ def optimize_actions_place_pick_gripper(process, verbose = True):
     - They have the same action.tool_type
     - There are no actions in between of type AttachToolAction
     """
-    to_be_removed = [] # type: List[int]
-    found_PlaceGripperToStorageAction = None # type: Optional[int]
+    to_be_removed = []  # type: List[int]
+    found_PlaceGripperToStorageAction = None  # type: Optional[int]
 
     for i, action in enumerate(process.actions):
-        if verbose: print ("Action %s : %s" % (i, action))
+        if verbose:
+            print("Action %s : %s" % (i, action))
 
         # Looking for PlaceGripperToStorageAction
         if isinstance(action, PlaceGripperToStorageAction):
@@ -219,17 +239,20 @@ def optimize_actions_place_pick_gripper(process, verbose = True):
                 if process.actions[found_PlaceGripperToStorageAction].tool_type == action.tool_type:
                     to_be_removed.append(found_PlaceGripperToStorageAction)
                     to_be_removed.append(i)
-                    if verbose: print("- - Action (%s) and (%s) will be removed." % (found_PlaceGripperToStorageAction, i))
-                found_PlaceGripperToStorageAction = None # Reset
+                    if verbose:
+                        print("- - Action (%s) and (%s) will be removed." % (found_PlaceGripperToStorageAction, i))
+                found_PlaceGripperToStorageAction = None  # Reset
             # Cancel current search if AttachToolAction is encountered
             if isinstance(action, AttachToolAction):
-                found_PlaceGripperToStorageAction = None # Reset
+                found_PlaceGripperToStorageAction = None  # Reset
             continue
-    if verbose: print ("Actions removed: %s" % to_be_removed)
+    if verbose:
+        print("Actions removed: %s" % to_be_removed)
     to_be_removed = set(to_be_removed)
     process.actions = [action for i, action in enumerate(process.actions) if i not in to_be_removed]
 
-def optimize_actions_place_pick_clamp(process, verbose = True):
+
+def optimize_actions_place_pick_clamp(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
     """
     If PlaceClampToStorageAction is followed by PickClampFromStorageAction.
@@ -237,11 +260,12 @@ def optimize_actions_place_pick_clamp(process, verbose = True):
     - They have the same action.tool_id
     - There are no actions in between of type AttachToolAction
     """
-    to_be_removed = [] # type: List[int]
-    found_PlaceClampToStorageAction = None # type: Optional[int]
+    to_be_removed = []  # type: List[int]
+    found_PlaceClampToStorageAction = None  # type: Optional[int]
 
     for i, action in enumerate(process.actions):
-        if verbose: print ("Action %s : %s" % (i, action))
+        if verbose:
+            print("Action %s : %s" % (i, action))
 
         # Looking for PlaceGripperToStorageAction
         if isinstance(action, PlaceClampToStorageAction):
@@ -255,27 +279,31 @@ def optimize_actions_place_pick_clamp(process, verbose = True):
                 if process.actions[found_PlaceClampToStorageAction].tool_id == action.tool_id:
                     to_be_removed.append(found_PlaceClampToStorageAction)
                     to_be_removed.append(i)
-                    if verbose: print("- - Action (%s) and (%s) will be removed." % (found_PlaceClampToStorageAction, i))
-                found_PlaceClampToStorageAction = None # Reset
+                    if verbose:
+                        print("- - Action (%s) and (%s) will be removed." % (found_PlaceClampToStorageAction, i))
+                found_PlaceClampToStorageAction = None  # Reset
             # Cancel current search if AttachToolAction is encountered
             if isinstance(action, AttachToolAction):
-                found_PlaceClampToStorageAction = None # Reset
+                found_PlaceClampToStorageAction = None  # Reset
             continue
-    if verbose: print ("Actions removed: %s" % to_be_removed)
+    if verbose:
+        print("Actions removed: %s" % to_be_removed)
     to_be_removed = set(to_be_removed)
     process.actions = [action for i, action in enumerate(process.actions) if i not in to_be_removed]
 
-def create_movements_from_actions(process, verbose = True):
+
+def create_movements_from_actions(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
 
-    assembly = process.assembly # type: Assembly
-    actions = process.actions # type: List[Action]
+    assembly = process.assembly  # type: Assembly
+    actions = process.actions  # type: List[Action]
 
     # The functions to create_movements are located within each of the Action class.
     for action in actions:
-            action.create_movements(process)
+        action.create_movements(process)
 
-def debug_print_process_actions_movements(process, file_path = None):
+
+def debug_print_process_actions_movements(process, file_path=None):
     f = None
     if file_path is not None:
         f = open(file_path, 'w')
@@ -283,31 +311,38 @@ def debug_print_process_actions_movements(process, file_path = None):
         # Print the separator between each beam
         if isinstance(action, LoadBeamAction):
             line = "\nBeam %s assembly\n" % action.beam_id
-            if file_path is not None: f.write(line)
-            else: print (line)
+            if file_path is not None:
+                f.write(line)
+            else:
+                print(line)
 
         # Print Action Name
         line = "|- Action %s (%s): %s\n" % (i, action.__class__.__name__, action)
-        if file_path is not None: f.write(line)
-        else: print (line)
+        if file_path is not None:
+            f.write(line)
+        else:
+            print(line)
 
         # Print Movement Name
         for j, movement in enumerate(action.movements):
             line = "|  |- Movement %s (%s): %s\n" % (j, movement.__class__.__name__, movement)
-            if file_path is not None: f.write(line)
-            else: print (line)
+            if file_path is not None:
+                f.write(line)
+            else:
+                print(line)
     if file_path is not None:
         f.close()
 
-def compute_initial_state(process, verbose = True):
+
+def compute_initial_state(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
     """Compute the initial scene state. This is the begining of the assembly process
-    
+
     State Change
     ------------
     This functions sets the following process attribute:
     - 'initial_state' dict(str, ObjectState)
-    
+
     """
     process.initial_state = {}
     assembly = process.assembly
@@ -317,18 +352,18 @@ def compute_initial_state(process, verbose = True):
         state = ObjectState()
         state.current_frame = assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
         process.initial_state[beam_id] = state
-    
+
     # Tools (Clamps, Grippers) are all in their storage position
     for tool in itertools.chain(process.clamps, process.grippers):
         state = ObjectState()
         state.current_frame = tool.tool_storage_frame
         process.initial_state[tool.name] = state
-    
+
     # Environment models are in its own position. They dont move anyways. The State is simply empty.
     for env_id, env_model in process.environment_models.items():
         state = ObjectState()
         process.initial_state[env_id] = state
-     
+
     # Robot configuration should be take from an initial robot state.
     # TODO
 
@@ -339,11 +374,11 @@ def compute_initial_state(process, verbose = True):
     # Tool Chagner is attached to the robot
     tool_changer_state = ObjectState()
     tool_changer_state.attached_to_robot = True
-    tool_changer_state.current_frame = None # shouold be robot's frame
+    tool_changer_state.current_frame = Frame((0, 0, 0), (1, 0, 0), (0, 1, 0))  # shouold be robot's frame
     process.initial_state['tool_changer'] = tool_changer_state
-    
 
-def compute_intermediate_states(process, verbose = True):
+
+def compute_intermediate_states(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
     """Compute the intermediate scenes according to the Movement(s) in `process.action`
 
@@ -360,8 +395,9 @@ def compute_intermediate_states(process, verbose = True):
         for movement in action.movements:
             # Make a copy of the previous state
             current_state = deepcopy(current_state)
-            if verbose: print ("Processing Seq %i Action %i Movement: %s" % (action.seq_n, action.act_n, movement))
-            
+            if verbose:
+                print("Processing Seq %i Action %i Movement: %s" % (action.seq_n, action.act_n, movement))
+
             # Make changes to objects according to movements
             if isinstance(movement, OperatorLoadBeamMovement):
                 # Change beam location
@@ -369,62 +405,58 @@ def compute_intermediate_states(process, verbose = True):
                 beam_state = current_state[beam_id]
                 beam_state.current_frame = movement.target_frame
 
-            if isinstance(movement, RoboticMovement): # This include RoboticFreeMovement and RoboticLinearMovement
+            if isinstance(movement, RoboticMovement):  # This include RoboticFreeMovement and RoboticLinearMovement
                 # Change robot flange frame
                 current_state['robot'].current_frame = movement.target_frame
 
                 # Change ToolChanger location, it is always attached to robot
                 current_state['tool_changer'].current_frame = movement.target_frame
                 process.robot_toolchanger.current_frame = movement.target_frame
-                
+
                 # Change attached tool location
                 if movement.attached_tool_id is not None:
                     # Tool Sits on Toolchanger
                     tool_base_frame = process.robot_toolchanger.current_tcf
                     current_state[movement.attached_tool_id].attached_to_robot = True
                     current_state[movement.attached_tool_id].current_frame = tool_base_frame
-                    
+
                     # Change beam location
                     if movement.attached_beam_id is not None:
                         # Beam is attached to gripper
                         # Find out `gripper tcp` and beam attribute `gripper_tcp_in_ocf`
                         tool = process.tool(movement.attached_tool_id)
                         tool.current_frame = tool_base_frame
-                        
+
                         beam_frame = process.get_beam_frame_from_gripper(movement.attached_beam_id, tool)
 
                         current_state[movement.attached_beam_id].attached_to_robot = True
                         current_state[movement.attached_beam_id].current_frame = beam_frame
 
-            if isinstance(movement, RoboticDigitalOutput): # This include RoboticFreeMovement and RoboticLinearMovement
+            if isinstance(movement, RoboticDigitalOutput):  # This include RoboticFreeMovement and RoboticLinearMovement
                 if movement.digital_output == DigitalOutput.LockTool:
-                        current_state[movement.tool_id].attached_to_robot = True
+                    current_state[movement.tool_id].attached_to_robot = True
                 if movement.digital_output == DigitalOutput.UnlockTool:
-                        current_state[movement.tool_id].attached_to_robot = False
+                    current_state[movement.tool_id].attached_to_robot = False
 
                 # OpenGripper and CloseGripper type affects the tool and the beam
                 if movement.digital_output == DigitalOutput.OpenGripper:
-                        gripper = process.tool(movement.tool_id) # type: Gripper
-                        gripper.open_gripper()
-                        current_state[movement.tool_id].attached_to_robot = True
-                        current_state[movement.tool_id].kinematic_config = gripper._get_kinematic_state()
-                        if movement.beam_id is not None:
-                            current_state[movement.beam_id].attached_to_robot = False
+                    gripper = process.tool(movement.tool_id)  # type: Gripper
+                    gripper.open_gripper()
+                    current_state[movement.tool_id].attached_to_robot = True
+                    current_state[movement.tool_id].kinematic_config = gripper._get_kinematic_state()
+                    if movement.beam_id is not None:
+                        current_state[movement.beam_id].attached_to_robot = False
 
                 if movement.digital_output == DigitalOutput.CloseGripper:
-                        gripper = process.tool(movement.tool_id) # type: Gripper
-                        gripper.close_gripper()
-                        current_state[movement.tool_id].attached_to_robot = True
-                        current_state[movement.tool_id].kinematic_config = gripper._get_kinematic_state()
-                        if movement.beam_id is not None:
-                            current_state[movement.beam_id].attached_to_robot = True
-
+                    gripper = process.tool(movement.tool_id)  # type: Gripper
+                    gripper.close_gripper()
+                    current_state[movement.tool_id].attached_to_robot = True
+                    current_state[movement.tool_id].kinematic_config = gripper._get_kinematic_state()
+                    if movement.beam_id is not None:
+                        current_state[movement.beam_id].attached_to_robot = True
 
             # Add the modified state to the current movement as end_state.
             movement.end_state = current_state
-
-            
-
 
 
 def test_process_prepathplan(json_path_in, json_path_out):
@@ -435,7 +467,7 @@ def test_process_prepathplan(json_path_in, json_path_out):
     import jsonpickle
     f = open(json_path_in, 'r')
     json_str = f.read()
-    process = jsonpickle.decode(json_str, keys=True) # type: RobotClampAssemblyProcess
+    process = jsonpickle.decode(json_str, keys=True)  # type: RobotClampAssemblyProcess
     f.close()
 
     #########################################################################
@@ -464,7 +496,7 @@ def test_process_prepathplan(json_path_in, json_path_out):
     #########################################################################
 
     print("\n> > > create_movements_from_actions(process)\n")
-    create_movements_from_actions (process)
+    create_movements_from_actions(process)
 
     #########################################################################
     # List out actions and movements
@@ -482,6 +514,7 @@ def test_process_prepathplan(json_path_in, json_path_out):
     f.write(jsonpickle.encode(process, keys=True))
     f.close()
 
+
 def test_process_pathPlan(json_path_in, json_path_out):
     #########################################################################
     # Load process
@@ -490,7 +523,7 @@ def test_process_pathPlan(json_path_in, json_path_out):
     import jsonpickle
     f = open(json_path_in, 'r')
     json_str = f.read()
-    process = jsonpickle.decode(json_str, keys=True) # type: RobotClampAssemblyProcess
+    process = jsonpickle.decode(json_str, keys=True)  # type: RobotClampAssemblyProcess
     f.close()
 
     #########################################################################
@@ -499,11 +532,10 @@ def test_process_pathPlan(json_path_in, json_path_out):
 
     pp = RFLPathPlanner(None)
     pp.connect_to_ros_planner("192.168.183.129")
-    robot = pp.robot # type: compas_fab.robots.Robot
+    robot = pp.robot  # type: compas_fab.robots.Robot
 
     # Add static collision mesh to planning scene
     # TODO: FLoor and other meshes
-
 
     current_configuration = pp.rfl_timber_start_configuration()
     print(current_configuration)
@@ -511,11 +543,10 @@ def test_process_pathPlan(json_path_in, json_path_out):
     # Sequential path planning
     #########################################################################
 
-
     # Action 8 to 19 is realted to beam b2
     action = process.actions[9]
     for i, movement in enumerate(action.movements):
-        print ("Movement (%s) - %s" % (i, movement))
+        print("Movement (%s) - %s" % (i, movement))
         if isinstance(movement, RoboticFreeMovement):
             # Add already built beams to planning scene
 
@@ -537,17 +568,18 @@ def test_process_pathPlan(json_path_in, json_path_out):
     f.write(jsonpickle.encode(process, keys=True))
     f.close()
 
+
 if __name__ == "__main__":
 
     test_process_prepathplan(
         "examples/process_design_example/frame_ortho_lap_joints_no_rfl_process.json",
         "examples/process_design_example/frame_ortho_lap_joints_no_rfl_pathplan.json",
-        )
+    )
 
     test_process_pathPlan(
         "examples/process_design_example/frame_ortho_lap_joints_no_rfl_process.json",
         "examples/process_design_example/frame_ortho_lap_joints_no_rfl_pathplan.json",
-        )
+    )
     # Result Goal 1: Visualize action, movement, trajectory by visualizing scene objects and robots.
 
     # Result Goal 2: Execute movements
