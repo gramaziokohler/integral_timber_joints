@@ -111,7 +111,10 @@ if __name__ == "__main__":
         artist.empty_layers()
         process = get_process()
         for beam_id in process.assembly.beam_ids():
-            artist.redraw_interactive_beam(beam_id, force_update=False)
+            artist.redraw_interactive_beam(beam_id, force_update=False, redraw = False)
+        # Enable Redraw
+        rs.EnableRedraw(True)
+        
     else:
         # Ask user if create new process file.
         from Rhino.Input.Custom import GetString

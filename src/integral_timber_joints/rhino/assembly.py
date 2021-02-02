@@ -1,4 +1,4 @@
-import Rhino
+import Rhino # type: ignore
 import rhinoscriptsyntax as rs
 from compas.geometry import Vector
 from compas_rhino.geometry import RhinoCurve
@@ -153,7 +153,7 @@ def show_assembly_color(process, beam_ids=None, redraw=False):
     rs.EnableRedraw(False)
     for beam_id in beam_ids:
         if redraw:
-            artist.redraw_interactive_beam(beam_id)
+            artist.redraw_interactive_beam(beam_id, redraw = False)
         if process.assembly.beam_problems(beam_id):
             artist.change_interactive_beam_colour(beam_id, 'warning')
         else:

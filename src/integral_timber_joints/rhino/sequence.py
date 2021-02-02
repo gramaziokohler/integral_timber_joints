@@ -85,8 +85,9 @@ def show_menu(process):
         if assembly.get_beam_sequence(artist.selected_beam_id) == 0:
             return
         member_seq_affected_by_swap = assembly.shift_beam_sequence(artist.selected_beam_id, -1)
-        [artist.redraw_interactive_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
+        [artist.redraw_interactive_beam(beam_id, force_update=True, redraw = False) for beam_id in member_seq_affected_by_swap]
         show_sequence_color(process, artist.selected_beam_id)
+        rs.EnableRedraw(True)
         go.SetDefaultString("Enter again = MoveEarlier")
 
     def move_later():
@@ -95,8 +96,9 @@ def show_menu(process):
         if assembly.get_beam_sequence(artist.selected_beam_id) == len(assembly.sequence) -1:
             return
         member_seq_affected_by_swap = assembly.shift_beam_sequence(artist.selected_beam_id, +1)
-        [artist.redraw_interactive_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
+        [artist.redraw_interactive_beam(beam_id, force_update=True, redraw = False) for beam_id in member_seq_affected_by_swap]
         show_sequence_color(process, artist.selected_beam_id)
+        rs.EnableRedraw(True)
         go.SetDefaultString("Enter again = MoveLater")
 
     def change_next_element():
@@ -119,8 +121,9 @@ def show_menu(process):
                 shift = shift + 1
             member_seq_affected_by_swap = assembly.shift_beam_sequence(beam_id, shift)
             artist.selected_beam_id = beam_id
-            [artist.redraw_interactive_beam(beam_id, force_update=True) for beam_id in member_seq_affected_by_swap]
+            [artist.redraw_interactive_beam(beam_id, force_update=True, redraw = False) for beam_id in member_seq_affected_by_swap]
             show_sequence_color(process, artist.selected_beam_id)
+            rs.EnableRedraw(True)
         go.SetDefaultString("Enter again = ChangeElementAfterThis")
 
     def display_show_unbuilt():
