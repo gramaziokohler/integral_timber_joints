@@ -1,7 +1,7 @@
 import json
 import os
 
-import Rhino
+import Rhino # type: ignore
 import rhinoscriptsyntax as rs
 from compas.utilities import DataDecoder
 from compas_rhino.ui import CommandMenu
@@ -19,8 +19,9 @@ from integral_timber_joints.process.dependency import ComputationalDependency
 
 def reset_dependency_graph(process):
     # type: (RobotClampAssemblyProcess) -> None
-    process.attributes['dependency'] = ComputationalDependency(process) 
-    print ("Dependency graph is reset.")
+    process.attributes['dependency'] = ComputationalDependency(process)
+    print("Dependency graph is reset.")
+
 
 def compute_action(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -29,7 +30,7 @@ def compute_action(process):
     # Make sure everything is computed and nothing is missing
     for beam_id in process.assembly.sequence:
         process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
-    
+
     # Call function to create actions
     process.create_actions_from_sequence()
     process.assign_tools_to_actions()
@@ -41,32 +42,22 @@ def compute_action(process):
     log_file_path = get_activedoc_path_no_ext() + "_process.log"
     process.debug_print_process_actions_movements(log_file_path)
 
-def compute_initial_state(process):
+
+def compute_states(process):
     # type: (RobotClampAssemblyProcess) -> None
     """User triggered function to compute Actions from Assembly Sequence
     """
-    
+
     # Call function to create actions
     process.compute_initial_state()
-    for object_id in process.initial_state:
-        print (object_id, process.initial_state[object_id].data)
-    print ("Initial State computed for %i objects." % len(process.initial_state))
-
-def compute_intermediate_states(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    """User triggered function to compute Actions from Assembly Sequence
-    """
-    
-    # Call function to create actions
     process.compute_intermediate_states(verbose=True)
+
+    # Print out some information to user
     full_state_count = 0
     for state in process.intermediate_states:
-        if len(state) > 0: 
-            full_state_count +=1
-    print ("Total: %i of %i intermediate states computed. for %i objects." % (full_state_count, len(process.intermediate_states), len(process.initial_state)))
-
-    # for i, state in enumerate(process.intermediate_states):
-        # print (i, state.data)
+        if len(state) > 0:
+            full_state_count += 1
+    print("Total: %i of %i intermediate states computed. for %i objects." % (full_state_count, len(process.intermediate_states), len(process.initial_state)))
 
 
 def not_implemented(process):
@@ -93,11 +84,8 @@ def show_menu(process):
                  },
                 {'name': 'ComputeActions', 'action': compute_action
                  },
-                {'name': 'ComputeInitialState', 'action': compute_initial_state
+                {'name': 'ComputeStates', 'action': compute_states
                  },
-                {'name': 'ComputeIntermediateStates', 'action': compute_intermediate_states
-                 },
-
             ]
 
         }
