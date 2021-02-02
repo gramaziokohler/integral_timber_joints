@@ -1,6 +1,7 @@
 import json
 import os
 
+import rhinoscriptsyntax as rs
 from compas.utilities import DataDecoder, DataEncoder
 
 from integral_timber_joints.assembly import Assembly
@@ -18,20 +19,22 @@ def save_process(process):
 
     json_path = get_activedoc_process_path()
     exist = os.path.exists(json_path)
-    # rename old file as backup
-    if exist:
-        # os.rename(json_path, get_activedoc_process_path())
-        # f = open(json_path, 'r')
-        # json_str = f.read()
-        # f.close()
-        # # Decode json for Process object
-        # process = jsonpickle.decode(json_str, keys=True, classes=[RobotClampAssemblyProcess])
-        # sc.sticky["itj_process"] = process
-        # success = True
-        pass
+
+    # Ask user what indent to use
+    indent = rs.GetString("What json indent to Use?", "Four", ["None", "Two", "Four"])
+    if indent == "None":
+        indent = None
+    elif indent == "Two":
+        indent = 2
+    elif indent == "Four":
+        indent = 4
+    else:
+        print("Error: Please select between: None / Two / Four")
+        print("File Not Saved")
+        return
 
     with open(json_path, 'w') as f:
-        json.dump(process, f, cls=DataEncoder, indent=4)
+        json.dump(process, f, cls=DataEncoder, indent=indent)
 
     return True
 
@@ -41,6 +44,7 @@ def save_process(process):
 ######################
 # Below is the functions that get evoked when user press UI Button
 # Put this in the Rhino button ! _-RunPythonScript "integral_timber_joints.rhino.load.py"
+
 if __name__ == "__main__":
 
     # Check if the default json path exist:
