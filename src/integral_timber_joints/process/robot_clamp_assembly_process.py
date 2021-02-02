@@ -99,6 +99,15 @@ class RobotClampAssemblyProcess(Network):
                     all_movements.append(movement)
         return all_movements
 
+    @property
+    def states(self):
+        # type: () -> list[dict[str, ObjectState]]
+        all_states = [self.initial_state]
+        for action in self.actions:
+            for movement in action.movements:
+                    all_states.append(movement.end_state)
+        return all_states
+
 
     @property
     def pickup_station(self):
@@ -1302,10 +1311,10 @@ class RobotClampAssemblyProcess(Network):
         """ Get an ordered list of Action related to a beam"""
         return [action for action in self.actions if self.assembly.sequence[action.seq_n] == beam_id]
     
-    def get_movement_by_beam_id(self, beam_id):
+    def get_movements_by_beam_id(self, beam_id):
         # type: (str) -> list[Movement]
         """ Get an ordered list of Movements related to a beam"""
-        return [movement for action in self.get_action_by_beam_id(beam_id) for movement in action]
+        return [movement for action in self.get_action_by_beam_id(beam_id) for movement in action.movements]
 
     def get_movement_start_state(self, movement):
         # type: (Movement) -> dict[str, ObjectState]
@@ -1321,3 +1330,4 @@ class RobotClampAssemblyProcess(Network):
         # type: (Movement) -> dict[str, ObjectState]
         """ return the end state after the movment """
         return movement.end_state
+

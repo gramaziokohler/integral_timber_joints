@@ -19,7 +19,7 @@ class Action(object):
     """
 
     def __init__(self):
-        self.movements = []  # type: Movement
+        self.movements = []  # type: list[Movement]
         self.seq_n = 0  # type: int
         self.act_n = 0  # type: int
 

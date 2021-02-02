@@ -164,6 +164,8 @@ class ProcessArtist(object):
         'itj::interactive::clamps_at_final',
     ]
 
+    state_visualization_layer = 'itj::state_visualization'
+
     color_meaning = {
         'normal': (0, 0, 0),
         'warning': (255, 152, 0),
@@ -190,6 +192,7 @@ class ProcessArtist(object):
         self.gripper_guids = {}  # type: dict[str, dict[str, list[str]]]
         self.interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
         self.clamp_guids = {}  # type: dict[str, dict[str, list[str]]]
+        self.state_visualization_guids = {}  # type: dict[str, list[str]]
 
         for beam_id in process.assembly.beam_ids():
             self.beam_guids[beam_id] = {}
@@ -215,6 +218,7 @@ class ProcessArtist(object):
         self.empty_layers()
 
         self._selected_beam_id = None  # type: str
+        self.selected_state_id = 0  # type: str # State Id = Start State of Movement with the same ID"""
         self.selected_key_position = ProcessKeyPosition(0)
 
     @property
@@ -430,20 +434,15 @@ class ProcessArtist(object):
             yield 'itj::clamp::' + clamp_position
         for beam_position in ProcessKeyPosition.beam_positions:
             yield 'itj::beam::' + beam_position
-
+        yield self.state_visualization_layer
+    
     def empty_layers(self):
         # type:() -> None
         """Clear the default artist layers in Rhino.
         Create those layers if doesnt exist
         Gguid dictionary is reset to all empty lists.
         """
-        for layer in self.interactive_layers:
-            if not rs.IsLayer(layer):
-                rs.AddLayer(layer)
-            else:
-                clear_layer(layer)
-
-        # Clear Gripper and Clamp layers
+        # Clear Interactive, Gripper, Clamp, BeamPos, State Visualization layers
         for layer_name in self.all_layer_names:
             if not rs.IsLayer(layer_name):
                 rs.AddLayer(layer_name)
@@ -461,7 +460,7 @@ class ProcessArtist(object):
             for joint_id in self.process.assembly.get_joint_ids_of_beam(beam_id):
                 for position in ProcessKeyPosition.clamp_positions:
                     self.clamp_guids[joint_id][position] = []
-
+        self.state_visualization_guids = {}
     ######################
     # Drawing Gripper
     ######################
