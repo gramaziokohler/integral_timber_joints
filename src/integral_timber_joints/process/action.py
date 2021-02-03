@@ -236,14 +236,18 @@ class PickToolFromStorageAction(RobotAction, AttachToolAction):
         """
         self.movements = []
         tool = process.tool(self.tool_id)  # type: Clamp
+        toolchanger = process.robot_toolchanger
         tool_storage_frame_wcf = tool.tool_storage_frame
-        tool_pick_up_frame_wcf = tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
+        tool_storage_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_storage_frame_wcf)
 
-        self.movements.append(RoboticFreeMovement(tool_pick_up_frame_wcf.copy()))  # Tool Storage Approach
-        self.movements.append(RoboticLinearMovement(tool_storage_frame_wcf.copy()))  # Tool Storage Final
+        tool_pick_up_frame_wcf = tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
+        tool_pick_up_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_frame_wcf)
+
+        self.movements.append(RoboticFreeMovement(tool_pick_up_frame_t0cf.copy()))  # Tool Storage Approach
+        self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy()))  # Tool Storage Final
         self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id)) # Open Gripper to release it from the tool storage rack
-        self.movements.append(RoboticLinearMovement(tool_pick_up_frame_wcf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Retract
+        self.movements.append(RoboticLinearMovement(tool_pick_up_frame_t0cf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Retract
 
 
 class PlaceToolToStorageAction(RobotAction, DetachToolAction):
@@ -268,14 +272,18 @@ class PlaceToolToStorageAction(RobotAction, DetachToolAction):
         """
         self.movements = []
         tool = process.tool(self.tool_id)  # type: Clamp
+        toolchanger = process.robot_toolchanger
         tool_storage_frame_wcf = tool.tool_storage_frame
-        tool_pick_up_frame_wcf = tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
+        tool_storage_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_storage_frame_wcf)
 
-        self.movements.append(RoboticFreeMovement(tool_pick_up_frame_wcf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Approach
-        self.movements.append(RoboticLinearMovement(tool_storage_frame_wcf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Final
+        tool_pick_up_frame_wcf = tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
+        tool_pick_up_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_frame_wcf)
+
+        self.movements.append(RoboticFreeMovement(tool_pick_up_frame_t0cf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Approach
+        self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Final
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id))
-        self.movements.append(RoboticLinearMovement(tool_pick_up_frame_wcf.copy()))  # Tool Storage Retract
+        self.movements.append(RoboticLinearMovement(tool_pick_up_frame_t0cf.copy()))  # Tool Storage Retract
 
 
 class PickGripperFromStorageAction(PickToolFromStorageAction):
