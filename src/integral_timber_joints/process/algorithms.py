@@ -455,6 +455,11 @@ def compute_intermediate_states(process, verbose=True):
                     if movement.beam_id is not None:
                         current_state[movement.beam_id].attached_to_robot = True
 
+            if isinstance(movement, ClampsJawMovement):
+                for i in range(len(movement.clamp_ids)):
+                    clamp = process.tool(movement.clamp_ids[i])  # type: Clamp
+                    clamp.clamp_jaw_position = movement.jaw_positions[i]
+                    current_state[movement.clamp_ids[i]].kinematic_config = clamp._get_kinematic_state()
             # Add the modified state to the current movement as end_state.
             movement.end_state = current_state
 

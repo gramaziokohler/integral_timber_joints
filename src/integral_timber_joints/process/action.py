@@ -242,7 +242,7 @@ class PickToolFromStorageAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticFreeMovement(tool_pick_up_frame_wcf.copy()))  # Tool Storage Approach
         self.movements.append(RoboticLinearMovement(tool_storage_frame_wcf.copy()))  # Tool Storage Final
         self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id)) # Open Gripper to release it from the tool storage rack
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_wcf.copy(), attached_tool_id=self.tool_id))  # Tool Storage Retract
 
 
@@ -364,6 +364,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         clamp_wcf_final = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_final')
         clamp_wcf_attachretract = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_attachretract')
 
+        self.movements.append(ClampsJawMovement([process.clamp_appraoch_position], [self.tool_id]))  # Extend the clamp arm
         self.movements.append(RoboticFreeMovement(clamp_wcf_attachapproach1.copy(), attached_tool_id=self.tool_id))  # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachapproach2.copy(), attached_tool_id=self.tool_id))  # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_final.copy(), attached_tool_id=self.tool_id))  # Tool Final Frame at structure
@@ -468,7 +469,11 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
 
         self.movements.append(RoboticFreeMovement(assembly_wcf_inclampapproach.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_inclamp.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id))
+        self.movements.append(ClampsJawMovement([process.clamp_inclamp_position] * len(self.clamp_ids) , self.clamp_ids))  # Extend the clamp arm
+
         # TODO, This should be a Robot Clamp Sync move
         self.movements.append(RoboticLinearMovement(assembly_wcf_final.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id))
+        self.movements.append(ClampsJawMovement([process.clamp_final_position] * len(self.clamp_ids) , self.clamp_ids))  # Extend the clamp arm
+
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id, self.beam_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id))

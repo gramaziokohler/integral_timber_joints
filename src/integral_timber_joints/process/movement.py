@@ -175,3 +175,34 @@ class DigitalOutput(object):
     UnlockTool = 2
     OpenGripper = 3
     CloseGripper = 4
+
+
+class ClampsJawMovement(Movement):
+    def __init__(self, jaw_positions=[], clamp_ids=[], joint_ids=[]):
+        Movement.__init__(self)
+        self.jaw_positions = jaw_positions  # type: list[float]
+        self.clamp_ids = clamp_ids  # type: list[str]
+        self.joint_ids = joint_ids  # type: list[tuple[str, str]]
+
+    def __str__(self):
+        return "Clamps %s Jaw Move to %s" % (self.clamp_ids, self.jaw_positions)
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(ClampsJawMovement, self).data
+        data['jaw_positions'] = self.jaw_positions
+        data['clamp_ids'] = self.clamp_ids
+        data['joint_ids'] = self.joint_ids
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(ClampsJawMovement, type(self)).data.fset(self, data)
+        self.jaw_positions = data.get('jaw_positions', [])
+        self.clamp_ids = data.get('clamp_ids', [])
+        self.joint_ids = data.get('joint_ids', [])
+

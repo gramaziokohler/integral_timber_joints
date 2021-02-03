@@ -24,6 +24,10 @@ class RobotClampAssemblyProcess(Network):
     from .algorithms import create_movements_from_actions
     from .algorithms import debug_print_process_actions_movements
 
+    # Constants for clamp jaw positions at different key positions.
+    clamp_appraoch_position = 220
+    clamp_inclamp_position = 210
+    clamp_final_position = 100
 
 
     def __init__(self, assembly=None):
