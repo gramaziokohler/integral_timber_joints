@@ -131,6 +131,7 @@ class Tool (ToolModel):
     def current_frame(self, frame):
         """ Setting the current frame T0CP directly"""
         self.attributes['current_frame'] = frame.copy()
+        self.rcf = frame.copy()
 
     @property
     def type_name(self):
@@ -288,16 +289,13 @@ class Tool (ToolModel):
         if artist is None:
             artist = CompasRobotArtist(self)
 
-        # Grab all joint values and create a Configuration (Artist want it)
-        root_transformation = Transformation.from_frame(self.current_frame)
+        # Grab all joint values and create a Configuration 
+        # Note that we must use the artist to update the robot's kinematic configuration
         joint_state = self.current_configuration.joint_dict
+        artist.update(joint_state)
 
-        # Artist performs update of the transformations
-        artist._transform_link_geometry(self.root, root_transformation, True)
-        artist._update(self, joint_state, parent_transformation=root_transformation)
-
+        # The artist draws the visual.
         result = artist.draw_visual()
-
         return result
 
     def draw_state(self, state, robot_world_transform=None):
