@@ -3,6 +3,8 @@ import os
 
 import Rhino
 import rhinoscriptsyntax as rs
+import scriptcontext as sc # type: ignore
+
 from compas.utilities import DataDecoder
 from compas_rhino.geometry import RhinoMesh
 from compas_rhino.ui import CommandMenu
@@ -85,59 +87,69 @@ def show_menu(process):
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
 
+    # First ask user which beam to view.
+    goto_state_by_beam_seq(process)
+
     # Hide interactive beams and beams in positions
+    rs.EnableRedraw(False)
     for seq, beam_id in enumerate(assembly.sequence):
         artist.hide_interactive_beam(beam_id)
         artist.hide_beam_all_positions(beam_id)
         artist.hide_gripper_all_positions(beam_id)
         artist.hide_clamp_all_positions(beam_id)
+    rs.EnableRedraw(True)
+    
+    def show_interactive_beams_delete_state_vis():
+        artist.delete_state(redraw=False)
+        [artist.show_interactive_beam(beam_id) for beam_id in assembly.sequence]
+        rs.EnableRedraw(True)
+        sc.doc.Views.Redraw()
 
-    # First ask user which beam to view.
-    goto_state_by_beam_seq(process)
+
+
+    # Menu for user
+    config = {
+        'message': "Visualize Actions and Movements:",
+        'options': [
+            {'name': 'Finish', 'action': 'Exit'
+                },
+            {'name': 'NextStep', 'action': next_step
+                },
+            {'name': 'PrevStep', 'action': prev_step
+                },
+            {'name': 'GoToBeam', 'action': goto_state_by_beam_seq
+                },
+        ]
+
+    }
 
     command_to_run = None
     while (True):
-        # Create Menu
-        # Check if it is ready to compute Actions and Movements
-        message = "Visualize Actions and Movements:"
 
-        config = {
-            'message': message,
-            'options': [
-                {'name': 'Finish', 'action': 'Exit'
-                 },
-                {'name': 'NextStep', 'action': next_step
-                 },
-                {'name': 'PrevStep', 'action': prev_step
-                 },
-                {'name': 'GoToBeam', 'action': goto_state_by_beam_seq
-                 },
-            ]
-
-        }
-        
+        # Create Menu      
         result = CommandMenu(config).select_action()
+
         # User cancel command by Escape
         if result is None or 'action' not in result:
             print('Exit Function')
+            show_interactive_beams_delete_state_vis()
             return Rhino.Commands.Result.Cancel
 
         # User click Exit Button
         if result['action'] == 'Exit':
             print('Exit Function')
+            show_interactive_beams_delete_state_vis()
             return Rhino.Commands.Result.Cancel
 
         # Add the repeat options after the first loop
         if command_to_run is None: config['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
-        
+
         # Set command-to-run according to selection, else repeat previous command.
-        if command_to_run != 'Repeat':
+        if result['action'] != 'Repeat':
             command_to_run = result['action']
 
         # Run the selected command
         command_to_run(process)
-
-
 
 
 ######################
