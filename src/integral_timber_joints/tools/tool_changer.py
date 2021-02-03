@@ -9,7 +9,7 @@ class ToolChanger (Tool):
     def __init__(self,
                  name,
                  tool_coordinate_frame,     #type: Frame # The frame that connects to the tool
-                 collision_mesh = None,
+                 collision_mesh = None,     #type: list[Mesh]
                  type_name = "ToolChanger"
                  ):
 

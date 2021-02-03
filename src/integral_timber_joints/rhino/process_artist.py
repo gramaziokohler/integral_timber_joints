@@ -13,6 +13,8 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.process.state import ObjectState
 from integral_timber_joints.rhino.tool_artist import ToolArtist
 
+from System.Drawing import Color # type: ignore
+from Rhino.DocObjects.ObjectColorSource import ColorFromObject # type: ignore
 
 def AddAnnotationText(frame, text, height, layer, redraw = True):
     font = "Arial"
@@ -694,11 +696,14 @@ class ProcessArtist(object):
             if object_id.startswith('t') :
                 tool = self.process.robot_toolchanger
                 meshes = tool.draw_state(object_state)
-
+                
             # Shared functions to draw meshes and add guids to tracking dict
             if meshes is not None:
                 guids = self.draw_meshes_get_guids(meshes, object_id, redraw=False)
                 self.state_visualization_guids[object_id] = guids
+                # Add a color to the objects that are attached-to-robot
+                if object_state.attached_to_robot:
+                    meshes_apply_color(guids, (0.7,1,1,1))
 
         # Enable Redraw
         if redraw:
@@ -726,6 +731,15 @@ except AttributeError:
     purge_object = None
 
 find_object = sc.doc.Objects.Find
+
+def meshes_apply_color(guids, color):
+    for guid in guids:
+        obj = sc.doc.Objects.Find(guid)
+        r, g, b, a = [i * 255 for i in color]
+        attr = obj.Attributes
+        attr.ObjectColor = Color.FromArgb(a, r, g, b)
+        attr.ColorSource = ColorFromObject
+        obj.CommitChanges()
 
 def purge_objects(guids, redraw = True):
     """Purge objects from memory.
