@@ -18,7 +18,7 @@
                             "xaxis": [
                                 1.0, 
                                 0.0, 
-                                0.0
+                                -0.0
                             ], 
                             "point": [
                                 0.0, 
@@ -63,7 +63,7 @@
                             "xaxis": [
                                 1.0, 
                                 0.0, 
-                                0.0
+                                -0.0
                             ], 
                             "point": [
                                 0.0, 
@@ -83,8 +83,8 @@
                         }, 
                         "name": "joint_gripper_jaw_r", 
                         "axis": {
-                            "z": 0.0, 
-                            "y": 0.0, 
+                            "z": -0.0, 
+                            "y": -0.0, 
                             "x": -1.0, 
                             "attr": {}
                         }, 
@@ -128,7 +128,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -151,7 +151,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -383,7 +383,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -406,7 +406,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -638,7 +638,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -661,7 +661,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -893,7 +893,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -916,7 +916,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -1148,7 +1148,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -1171,7 +1171,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -1403,7 +1403,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -1426,7 +1426,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -1658,7 +1658,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -1681,7 +1681,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -1913,7 +1913,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -1936,7 +1936,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -2168,7 +2168,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -2191,7 +2191,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -2413,7 +2413,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -2436,7 +2436,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -2658,7 +2658,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -2681,7 +2681,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -2905,7 +2905,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -2916,7 +2916,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -3148,7 +3148,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -3159,7 +3159,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -3391,7 +3391,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -3402,7 +3402,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -3634,7 +3634,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -3645,7 +3645,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -3877,7 +3877,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -3888,7 +3888,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -4120,7 +4120,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -4131,7 +4131,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -4363,7 +4363,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -4374,7 +4374,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -4606,7 +4606,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -4617,7 +4617,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -4849,7 +4849,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -4860,7 +4860,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -5082,7 +5082,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -5093,7 +5093,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -5315,7 +5315,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -5326,7 +5326,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -5557,7 +5557,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -5580,7 +5580,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -5802,7 +5802,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -5825,7 +5825,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -6047,7 +6047,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -6070,7 +6070,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -6292,7 +6292,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -6315,7 +6315,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -6537,7 +6537,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -6560,7 +6560,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -6782,7 +6782,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -6805,7 +6805,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -7029,7 +7029,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -7040,7 +7040,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -7262,7 +7262,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -7273,7 +7273,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -7495,7 +7495,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -7506,7 +7506,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -7728,7 +7728,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -7739,7 +7739,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -7961,7 +7961,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -7972,7 +7972,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -8194,7 +8194,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -8205,7 +8205,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -8436,7 +8436,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -8459,7 +8459,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -8681,7 +8681,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -8704,7 +8704,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -8926,7 +8926,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -8949,7 +8949,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -9171,7 +9171,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -9194,7 +9194,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -9416,7 +9416,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -9439,7 +9439,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -9661,7 +9661,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Visual", 
+                        "name": null, 
                         "material": {
                             "color": {
                                 "rgba": [
@@ -9684,7 +9684,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -9908,7 +9908,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -9919,7 +9919,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -10141,7 +10141,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -10152,7 +10152,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -10374,7 +10374,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -10385,7 +10385,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -10607,7 +10607,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -10618,7 +10618,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -10840,7 +10840,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -10851,7 +10851,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -11073,7 +11073,7 @@
                             ]
                         }, 
                         "current_transformation": null, 
-                        "name": "Collision", 
+                        "name": null, 
                         "geometry": {
                             "shape": {
                                 "filename": "", 
@@ -11084,7 +11084,7 @@
                                 ], 
                                 "type": "mesh", 
                                 "geometry": {
-                                    "compas": "0.17.3", 
+                                    "compas": "1.0.0", 
                                     "datatype": "compas.datastructures/Mesh", 
                                     "data": {
                                         "facedata": {
@@ -11295,7 +11295,7 @@
                     "xaxis": [
                         1.0, 
                         0.0, 
-                        0.0
+                        -0.0
                     ], 
                     "point": [
                         0.0, 
@@ -11340,7 +11340,7 @@
                     "xaxis": [
                         1.0, 
                         0.0, 
-                        0.0
+                        -0.0
                     ], 
                     "point": [
                         0.0, 
@@ -11360,8 +11360,8 @@
                 }, 
                 "name": "joint_gripper_jaw_r", 
                 "axis": {
-                    "z": 0.0, 
-                    "y": 0.0, 
+                    "z": -0.0, 
+                    "y": -0.0, 
                     "x": -1.0, 
                     "attr": {}
                 }, 
