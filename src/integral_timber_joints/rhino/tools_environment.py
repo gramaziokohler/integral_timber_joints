@@ -32,6 +32,8 @@ def list_tools(process):
             
     print("-- Tool Changer --")
     print("  type: %s (id = %s))" % (process.robot_toolchanger.type_name, process.robot_toolchanger.name))
+    for i, mesh in enumerate(process.robot_toolchanger.collision_mesh):
+        print("  Mesh %i with %i vertices" % (i, mesh.number_of_vertices()))
 
     print("-- Robot Wrist Meshes (collision sim only)--")
     print("  type: %s (id = %s))" % (process.robot_wrist.type_name, process.robot_wrist.name))
@@ -181,8 +183,8 @@ def delete_all_env_model(process):
     if reconfirm is None:
         return
     if reconfirm.startswith("Y") or reconfirm.startswith("y") :
-        del process.environment_models[:]
-        # process.environment_models.clear()
+        process.environment_models = {}
+
         # todo trigger artist to remove that mesh
         print ("All EnvMeshes are removed")
 
