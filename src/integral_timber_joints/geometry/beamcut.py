@@ -28,5 +28,28 @@ class Beamcut(object):
         """
         raise NotImplementedError
 
+    def to_data(self):
+        """Simpliest way to get this class serialized.
+        """
+        return self.data
+
+    @classmethod
+    def from_data(cls, data):
+        """Construct a Movement from structured data. Subclass must add their properity to
+        the data properity.
+        """
+        beamcut = cls()
+        beamcut.data = data
+        return beamcut
+
+    @property
+    def data(self):
+        raise NotImplementedError
+
+    @data.setter
+    def data(self, data):
+        raise NotImplementedError
+
+
 if __name__ == "__main__":
     pass

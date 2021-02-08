@@ -22,10 +22,24 @@ from integral_timber_joints.geometry.beam import Beam
 
 class Beamcut_plane(Beamcut):
 
-    def __init__(self, plane_ocf):
+    def __init__(self, plane_ocf = None):
         # type: (bool, Plane) -> None
         self.plane_ocf = plane_ocf          # type: (Plane) # Plane with normal pointing to the off cut. Ref to beam local coordinate frame.
         self.mesh = None
+
+    @property
+    def data(self):
+        data = {
+            'plane_ocf': self.plane_ocf,
+            'mesh': self.mesh,
+        }
+        return data
+
+    @data.setter
+    def data(self, data):
+        self.plane_ocf = data['plane_ocf']
+        self.mesh = data['mesh']
+
 
     def is_start (self):
         normal = self.plane_ocf.normal

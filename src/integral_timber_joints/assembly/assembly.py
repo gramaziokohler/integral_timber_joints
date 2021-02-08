@@ -7,6 +7,8 @@ except:
 
 from compas.datastructures import Network
 from compas.geometry import Frame, Point, Translation, Vector, Transformation
+from compas.geometry.primitives.plane import Plane
+from compas.geometry.transformations.transformation import Transformation
 from compas.rpc import Proxy
 
 from integral_timber_joints.geometry.beam import Beam
@@ -81,8 +83,7 @@ class Assembly(Network):
             'gripper_grasp_dist_from_start': None,  # Grasp pose expressed in relationship to Beam Length Parameter
             'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
             'design_guide_vector_grasp': Vector(1,1,1),      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
-            'beam_cut_start': None,                 # Beamcut object at the start of the beam. Can be None
-            'beam_cut_end': None,                   # Beamcut object at the end of the beam. Can be None
+            'beam_cuts': [],                         # Beamcut objects at the start or end or anywhere on the beam. Can be empty
         })
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
@@ -385,28 +386,35 @@ class Assembly(Network):
         return list(affected_ids)
 
     # --------------------------------------------
-    # Extra Geometrical Features
+    # Beam cuts
     # --------------------------------------------
+    def beam_cuts(self, beam_id):
+        # type: (str) -> list[Beamcut]
+        return self.get_beam_attribute(beam_id, 'beam_cuts')
 
-    def set_beam_cut_start(self, beam_id, beamcut):
-        # type: (str, Beamcut) -> None
-        """Set the Beamcut object at the start of beam. None if un-cut."""
-        self.set_beam_attribute(beam_id, 'beam_cut_start', beamcut)
+    def add_ocf_beam_cut_from_wcf_plane(self, beam_id, wcf_plane):
+        # type: (str, Plane) -> None
+        """Add a OCF type Beamcut object to a beam.
+        The Beam cut is defined from a plane that is in OCF.
 
-    def set_beam_cut_end(self, beam_id, beamcut):
+        The plane input to this function is in WCF, 
+        the function will convert it to OCF. 
+
+        Note: beam(beam_id).cached_mesh will be reset to None
+        """
+        from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
+        beam = self.beam(beam_id)
+        beam_from_world = Transformation.from_frame(beam.frame).inverse()
+
+        ocf_plane = wcf_plane.transformed(beam_from_world)
+        beam_cut = Beamcut_plane(ocf_plane)
+        self.beam_cuts(beam_id).append(beam_cut)
+        self.beam(beam_id).cached_mesh = None
+
+    def remove_all_beam_cuts(self, beam_id):
         # type: (str, Beamcut) -> None
         """Set the Beamcut object at the end of beam. None if un-cut."""
-        self.set_beam_attribute(beam_id, 'beam_cut_end', beamcut)
-
-    def get_beam_cut_start(self, beam_id):
-        # type: (str) -> Beamcut
-        """Get the Beamcut object at the start of beam. None if un-cut."""
-        return self.get_beam_attribute(beam_id, 'beam_cut_start')
-
-    def get_beam_cut_end(self, beam_id):
-        # type: (str) -> Beamcut
-        """Get the Beamcut object at the end of beam. None if un-cut."""
-        return self.get_beam_attribute(beam_id, 'beam_cut_end')
+        del self.beam_cuts(beam_id)[:]
 
     # --------------------------------------------
     # Iterating through all Beams and Joints
@@ -482,12 +490,11 @@ class Assembly(Network):
 
         # Collect all the features
         joints = self.get_joints_of_beam(beam_id)
-        beam_cut_start = self.get_beam_cut_start(beam_id)
-        beam_cut_end = self.get_beam_cut_end(beam_id)
+        beam_cuts = self.beam_cuts(beam_id)
 
         features = joints
-        features += [beam_cut_start] if beam_cut_start is not None else []
-        features += [beam_cut_end] if beam_cut_end is not None else []
+        features += beam_cuts
+
         print(features)
         self.beam(beam_id).update_cached_mesh(features)
 
