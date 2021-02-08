@@ -1,18 +1,19 @@
 from __future__ import absolute_import, division, print_function
 
 try:
-    from typing import List, Dict, Tuple, Optional, Iterator
+    from typing import Dict, Iterator, List, Optional, Tuple
 except:
     pass
 
 from compas.datastructures import Network
-from compas.geometry import Frame, Point, Translation, Vector, Transformation
+from compas.geometry import Frame, Point, Transformation, Translation, Vector
 from compas.geometry.primitives.plane import Plane
 from compas.geometry.transformations.transformation import Transformation
 from compas.rpc import Proxy
 
+from integral_timber_joints.geometry import Beamcut, Joint
 from integral_timber_joints.geometry.beam import Beam
-from integral_timber_joints.geometry import Joint, Beamcut
+from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
 
 
 class Assembly(Network):
@@ -66,7 +67,7 @@ class Assembly(Network):
             'is_placed': False,                     # Parameter used in visualization
             'is_visible': True,                     # Parameter used in visualization
             'is_attached': True,                    # Parameter used in visualization
-            'design_guide_vector_jawapproach': Vector(1,1,1),
+            'design_guide_vector_jawapproach': Vector(1, 1, 1),
             'assembly_vector_final': None,
             'assembly_vector_jawapproach': None,
             'assembly_vector_pickup': None,
@@ -82,8 +83,8 @@ class Assembly(Network):
             'gripper_grasp_face': None,             # Grasp pose expressed in relationship to Beam Face
             'gripper_grasp_dist_from_start': None,  # Grasp pose expressed in relationship to Beam Length Parameter
             'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
-            'design_guide_vector_grasp': Vector(1,1,1),      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
-            'beam_cuts': [],                         # Beamcut objects at the start or end or anywhere on the beam. Can be empty
+            'design_guide_vector_grasp': Vector(1, 1, 1),      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
+            'beam_cuts': None,                         # Beamcut objects at the start or end or anywhere on the beam. Can be empty
         })
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
@@ -390,6 +391,9 @@ class Assembly(Network):
     # --------------------------------------------
     def beam_cuts(self, beam_id):
         # type: (str) -> list[Beamcut]
+        # Creating the beam attribute if the attribute is None as default
+        if self.get_beam_attribute(beam_id, 'beam_cuts') is None:
+            self.set_beam_attribute(beam_id, 'beam_cuts', [])
         return self.get_beam_attribute(beam_id, 'beam_cuts')
 
     def add_ocf_beam_cut_from_wcf_plane(self, beam_id, wcf_plane):
@@ -402,7 +406,7 @@ class Assembly(Network):
 
         Note: beam(beam_id).cached_mesh will be reset to None
         """
-        from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
+
         beam = self.beam(beam_id)
         beam_from_world = Transformation.from_frame(beam.frame).inverse()
 
@@ -559,7 +563,7 @@ class Assembly(Network):
 
         When the joints are found, they are added to the assembly as a new edge.
         This will then enable neighbour queries.
-        
+
         Side Effect
         -----------
         beam.cached_mesh set to None for both beams.
