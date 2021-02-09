@@ -11420,8 +11420,8 @@
                 10.0
             ], 
             "beam_length_limits": [
-                1000.0, 
-                5000.0
+                500.0, 
+                4000.0
             ], 
             "is_attached": false, 
             "tool_storage_frame": {
@@ -11475,7 +11475,7 @@
             "gripper_jaw_position": 0.80000000000000004, 
             "is_visible": true, 
             "type_name": "PG500", 
-            "target_beam_length": 2000.0
+            "target_beam_length": 1000.0
         }, 
         "materials": []
     }
