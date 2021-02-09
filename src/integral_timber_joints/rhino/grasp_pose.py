@@ -281,6 +281,27 @@ def show_menu(process):
             else:
                 print ("Selection is the same as before, grasp face unchanged.")
 
+    ###################################
+    # Changing Clamp Definitions
+    ###################################
+
+    def flip_clamp():
+        beam_id = artist.selected_beam_id
+        print("get_clamp_orientation_options:")
+        print (process.get_clamp_orientation_options(beam_id))
+
+        # Call fnction to change direction
+        process.flip_clamp_guide_vector(beam_id)
+        # Recompute Dependency
+        process.dependency.invalidate(beam_id, process.search_valid_clamp_orientation_with_guiding_vector)
+        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+        # Refresh Display
+        artist.draw_beam_all_positions(beam_id, delete_old=True)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True)
+        artist.draw_clamp_all_positions(beam_id, delete_old=True)
+        show_sequence_color(process, beam_id)
+
+
 
     run_cmd = None  # Variable to remember the last command to allow easy rerun.
     while(True):
@@ -323,8 +344,8 @@ def show_menu(process):
             if go.Option().EnglishName == "GripperType":
                 run_cmd = gripper_changetype
 
-            # if go.Option().EnglishName == "Autocompute":
-            #     run_cmd = auto_compute
+            if go.Option().EnglishName == "FlipClampAttachPosition":
+                run_cmd = flip_clamp
 
             run_cmd()
 
@@ -366,6 +387,7 @@ def show_menu(process):
                 go.AddOption("GripperType")
                 go.AddOption("GraspFace")
                 go.AddOption("GraspFaceFollowAsemblyDirection")
+                go.AddOption("FlipClampAttachPosition")
                 # Reminder that Enter key can repeat
                 go.SetDefaultString("Press Enter to repeat.")
             artist.selected_beam_id = beam_id

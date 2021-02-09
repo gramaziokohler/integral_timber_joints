@@ -1,7 +1,8 @@
 from copy import deepcopy
 
 from compas.datastructures import Mesh, Network
-from compas.geometry import Frame, Transformation, Translation, Vector
+from compas.geometry import Frame, Transformation, Translation
+from compas.geometry.primitives.vector import Vector
 from compas.rpc import Proxy
 
 from geometric_blocking import blocked
@@ -11,7 +12,7 @@ from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
 from integral_timber_joints.process.state import ObjectState
-
+from compas.geometry._core._algebra import dot_vectors
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
 
 
@@ -1095,8 +1096,8 @@ class RobotClampAssemblyProcess(Network):
         returns {'joint_id' : [attachment_frame])}]
 
         """
-        joints_with_clamps_id = [(neighbour_id, beam_id) for neighbour_id in self.assembly.get_already_built_neighbors(beam_id)]
-
+        joints_with_clamps_id = self.get_clamp_ids_for_beam(beam_id)
+        
         results = {}
         for joint_id in joints_with_clamps_id:
             joint = self.assembly.joint(joint_id)                   # type: Joint
@@ -1104,6 +1105,27 @@ class RobotClampAssemblyProcess(Network):
             clamp_attachment_frames = joint.get_clamp_frames(neighbour_beam)  # type: Frame
             results[joint_id] = clamp_attachment_frames
         return results
+    
+    def flip_clamp_guide_vector(self, beam_id):
+        """ Flip the direction of design_guide_vector_jawapproach.
+
+        The resulting design_guide_vector_jawapproach is either 
+        the +ve or -ve of beam(beam_id).frame.xaxis
+
+        Using assembly.beam(beam_id).frame.xaxis is not perfect, future 
+        TODO should change this to align with Beam Face Y Axis.
+        """
+        
+        guide_vector = self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach') # type: Vector
+        print ("Previous guide_vector: ", guide_vector)
+        #  Check if the current guide vector is pointing to the same way as the beam X
+        beam_xaxis = self.assembly.beam(beam_id).frame.xaxis
+        if dot_vectors(guide_vector, beam_xaxis) >= 0:
+            self.assembly.set_beam_attribute(beam_id, 'design_guide_vector_jawapproach', beam_xaxis.scaled(-1))
+        else:
+            self.assembly.set_beam_attribute(beam_id, 'design_guide_vector_jawapproach', beam_xaxis.scaled(1))
+        print ("New guide_vector: ", self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach'))
+
 
     def search_valid_clamp_orientation_with_guiding_vector(self, beam_id):
         """ Search and choose clamp attachment frame based on guide vector alignment
@@ -1112,7 +1134,7 @@ class RobotClampAssemblyProcess(Network):
         where joint(neighbour_id, beam_id)
 
         Joint attribute 'design_guide_vector_jawapproach' should be set before hand.
-        The -X Axis Vector of the clamp will attempt to align with this vector.
+        The -Y Axis Vector of the clamp will attempt to align with this vector.
         The vector that is used to place a beam into the jaw.
 
         State Change
@@ -1129,10 +1151,9 @@ class RobotClampAssemblyProcess(Network):
         # A Helper function to select best frame.
         def choose_frame_by_guide_vector(frames, guide_vector):
             """ Finds the frame that has the best aligned X axis to the given guide_vector """
-            from compas.geometry import dot_vectors
             results = []
             for frame in frames:
-                results.append((dot_vectors(guiding_vector, frame.xaxis.scaled(-1.0)), frame))
+                results.append((dot_vectors(guiding_vector, frame.yaxis.scaled(-1.0)), frame))
             guide_score, best_frame = sorted(results, key=lambda x: x[0])[-1]  # Lst item of the sorted list has the best
             return best_frame
 
