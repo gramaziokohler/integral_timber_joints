@@ -1,6 +1,6 @@
 import Rhino # type: ignore
 import rhinoscriptsyntax as rs
-from compas.geometry import Vector
+from compas.geometry.primitives.vector import Vector
 from compas_rhino.geometry import RhinoCurve
 from compas_rhino.ui import CommandMenu
 from compas_rhino.utilities.objects import get_object_name, get_object_names
@@ -138,6 +138,36 @@ def ui_flip_beams(process):
         print('Beam flipped: %s (Neighbours: %s)' % (beam_id, earlier_neighbors))
 
 
+def ui_change_assembly_vector(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    '''Ask User to select beams for redefining the beam's assembly vector.
+    This only works for beams with no clamps'''
+    artist = get_process_artist()
+    # Ask user for input
+    beams_to_exclude = [beam_id for beam_id in process.assembly.sequence if len(process.assembly.get_joint_ids_of_beam_clamps(beam_id)) > 0]
+    guids = rs.GetObjects('Select beams (with no clamps) for changing assembly vector:', custom_filter=get_existing_beams_filter(process, beams_to_exclude))
+    if guids is None:
+        # Quit when user press Enter without selection
+        print ("No Beam selected.")
+        return
+    beam_ids = get_object_names(guids)
+    
+    # Ask user for two points for the assembly vector.
+    start = rs.GetPoint("Pick 2 points to define assembly vector. Start Point (vector.start)")
+    end = rs.GetPoint("Pick 2 points to define assembly vector. End Point (vector.end)")
+    if start is None or end is None:
+        print ("No Point selected.")
+        return       
+    vector = Vector.from_start_end(start, end)
+    
+    for beam_id in beam_ids:
+        process.assembly.compute_beam_assembly_direction_from_joints_and_sequence(beam_id, vector)
+        process.dependency.invalidate(beam_id, process.compute_gripper_grasp_pose)
+        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+        artist.delete_beam_all_positions(beam_id)
+        artist.delete_clamp_all_positions(beam_id)
+        artist.delete_gripper_all_positions(beam_id)
+        
 def something(process):
     #
     print('something')
@@ -194,6 +224,7 @@ def show_menu(process):
                 ]},
                 {'name': 'DeleteBeam', 'action': ui_delete_beams},
                 {'name': 'FlipBeamAssemblyDirection', 'action': ui_flip_beams},
+                {'name': 'RedefineAssemblyVector', 'action': ui_change_assembly_vector},
             ]
 
         }

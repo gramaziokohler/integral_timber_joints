@@ -378,13 +378,26 @@ class ProcessArtist(object):
             guid = draw_mesh(v, f, name=beam_id, layer=layer_name)
             self.beam_guids[beam_id][beam_position].append(guid)
 
+
+    def delete_beam_all_positions(self, beam_id):
+        """Delete all Rhino geometry associated to a beam at all position.
+        """
+        for beam_position in ProcessKeyPosition.beam_positions:
+            self.delete_beam_at_position(beam_id, beam_position)
+
+
     def delete_beam_at_position(self, beam_id, beam_position):
         """Delete all Rhino geometry associated to a beam at specified position
+        
+        No change will be made if the beam_id or beam_position do not exist in the guid dictionary.
         """
+        if beam_id not in self.beam_guids: return
+        if beam_position not in self.beam_guids[beam_id]: return
         guids = self.beam_guids[beam_id][beam_position]
         if len(guids) > 0:
             delete_objects(guids)
             self.beam_guids[beam_id][beam_position] = []
+
 
     def show_beam_at_one_position(self, beam_id, position=None):
         """ Show Beam only at the specified position.
@@ -517,7 +530,11 @@ class ProcessArtist(object):
 
     def delete_gripper_at_position(self, beam_id, gripper_position):
         """Delete all Rhino geometry associated to a gripper at specified position
+
+        No change will be made if the beam_id or gripper_position do not exist in the guid dictionary.
         """
+        if beam_id not in self.gripper_guids: return
+        if gripper_position not in self.gripper_guids[beam_id]: return
         guids = self.gripper_guids[beam_id][gripper_position]
         if len(guids) > 0:
             delete_objects(guids)
@@ -604,7 +621,11 @@ class ProcessArtist(object):
 
     def delete_clamp_at_position(self, joint_id, clamp_position):
         """Delete all Rhino geometry associated to a gripper at specified position
+
+        No change will be made if the joint_id or clamp_position do not exist in the guid dictionary.
         """
+        if joint_id not in self.clamp_guids: return
+        if clamp_position not in self.clamp_guids[joint_id]: return
         guids = self.clamp_guids[joint_id][clamp_position]
         if len(guids) > 0:
             delete_objects(guids)
