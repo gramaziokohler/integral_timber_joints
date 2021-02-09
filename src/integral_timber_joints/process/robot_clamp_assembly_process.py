@@ -608,22 +608,28 @@ class RobotClampAssemblyProcess(Network):
         beam = self.assembly.beam(beam_id)
 
         # Use previous values if exist
-        gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_face")
+        def grasp_face(beam_id):
+            return self.assembly.get_beam_attribute(beam_id, "gripper_grasp_face") 
+
         gripper_grasp_dist_from_start = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
 
         # Apply default values if None
-        if gripper_grasp_face is None:  # Default method
+        if grasp_face(beam_id) not in [1,2,3,4]:  # Default method
             gripper_grasp_face = self.search_grasp_face_from_joint_assembly_direction(beam_id)
-            self.assembly.set_beam_attribute(beam_id, "gripper_grasp_face", gripper_grasp_face)
-        if gripper_grasp_face is None:  # Backup plan
+
+        if grasp_face(beam_id) not in [1,2,3,4]:  # Backup plan
             gripper_grasp_face = self.search_grasp_face_from_guide_vector_dir(beam_id)
-            self.assembly.set_beam_attribute(beam_id, "gripper_grasp_face", gripper_grasp_face)
+
+        if grasp_face(beam_id) not in [1,2,3,4]:  # Default plan
+            self.assembly.set_beam_attribute(beam_id, "gripper_grasp_face", 1)
+            print ("Someting wrong, gripper_grasp_face is not in [1,2,3,4] after search. Grasp face defaulted to ", 1)
+
         if gripper_grasp_dist_from_start is None:
             gripper_grasp_dist_from_start = beam.length / 2.0
             self.assembly.set_beam_attribute(beam_id, "gripper_grasp_dist_from_start", gripper_grasp_dist_from_start)
 
         # Compute gripper_tcp_in_ocf
-        gripper_tcp_in_ocf = beam.grasp_frame_ocf(gripper_grasp_face, gripper_grasp_dist_from_start)
+        gripper_tcp_in_ocf = beam.grasp_frame_ocf(grasp_face(beam_id), gripper_grasp_dist_from_start)
         self.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
         return ComputationalResult.ValidCanContinue
 
