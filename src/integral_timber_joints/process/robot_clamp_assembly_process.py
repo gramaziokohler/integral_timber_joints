@@ -234,8 +234,7 @@ class RobotClampAssemblyProcess(Network):
     def get_clamp_type_of_joint(self, joint_id):
         # type: (tuple[str, str]) -> str
         """Returns the clamp_type used at the joint. None, if the joint do not need a clamp"""
-        if self.assembly.get_joint_attribute(joint_id, 'is_clamp_attached_side'):
-            return self.assembly.get_joint_attribute(joint_id, 'clamp_type')
+        return self.assembly.get_joint_attribute(joint_id, 'clamp_type')
 
     def get_clamp_of_joint(self, joint_id, position_name='clamp_wcf_final'):
         # type: (tuple[str, str], bool) -> Clamp
@@ -282,8 +281,7 @@ class RobotClampAssemblyProcess(Network):
         # type: (str) -> tuple[str, str]
         for neighbour_id in self.assembly.get_already_built_neighbors(beam_id):
             joint_id = (neighbour_id, beam_id)
-            if self.assembly.get_joint_attribute(joint_id, 'is_clamp_attached_side') == True:
-                yield joint_id
+            yield joint_id
 
     def compute_jawapproach_vector_length(self, beam_id, vector_dir, min_dist=20, max_dist=150):
         # type: (str, Vector, float, float) -> Vector
@@ -1069,6 +1067,7 @@ class RobotClampAssemblyProcess(Network):
         # Loop through all the beams and look at their previous_built neighbour.
         something_failed = False
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
+
             for clamp_type in self.assembly.joint(joint_id).clamp_types:
                 # Check if the preferred clamp exist.
                 if clamp_type in self.available_clamp_types:
@@ -1140,12 +1139,15 @@ class RobotClampAssemblyProcess(Network):
         # chosen_frames = []
         for joint_id, attachment_frames in self.get_clamp_orientation_options(beam_id).items():
             selected_frame = choose_frame_by_guide_vector(attachment_frames, guiding_vector)
+            print(selected_frame)
+            print(self.get_clamp_type_of_joint(joint_id))
 
             # Set clamp tcp to selected_frame using set_current_frame_from_tcp()
             clamp = self.get_clamp_of_joint(joint_id, '')
             clamp.set_current_frame_from_tcp(selected_frame)
 
             # Save clamp.current_frame as 'clamp_wcf_final'
+            print(clamp.current_frame)
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_final', clamp.current_frame)
             # chosen_frames.append(selected_frame.copy())
             #print ("Beam (%s) Joint (%s), we need clamp type (%s) at %s" % (beam_id, joint_id, self.get_clamp_type_of_joint(joint_id), selected_frame))
