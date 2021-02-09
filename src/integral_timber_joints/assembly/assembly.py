@@ -56,7 +56,7 @@ class Assembly(Network):
         # Create default attributes
         self.attributes.update({
             'name': 'Unnamed_Assembly',
-            'assembly_vector_if_no_joint': Vector(0, 0, -1),    # Determines the direction of assembly when the element has no neighbouring joint
+            'assembly_vector_if_no_joint': Vector(0, 0, -50),    # Determines the direction of assembly when the element has no neighbouring joint
             'beam_in_jaw_position_gap_offset': 10,  # Determines the distance from assembly_wcf_inclamp before first engagement.
             'sequence': [],                         # List of (beam_id / beam.name / node key)
         })
@@ -695,7 +695,7 @@ class Assembly(Network):
             # No Neighbouring joint case
             # Handles no_clamp (perhaps) grounded beams v.s. typical clamp installed beams
             assembly_vector_wcf = assembly_vector_if_no_joint
-            print("No Neighbour: Assembly Direction of Beam (%s) using downward movement %s (ref to wcf)." % (beam.name, assembly_direction_wcf))
+            print("No Neighbour: Assembly Direction of Beam (%s) using downward movement %s (ref to wcf)." % (beam.name, assembly_vector_wcf))
         else:
             # Test if the list of assembly_direction_wcf contradicts eachother
             contradict = assembly_direction_contradict(assembly_direction_wcf)
