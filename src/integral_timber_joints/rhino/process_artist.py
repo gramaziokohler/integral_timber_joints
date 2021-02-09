@@ -97,6 +97,11 @@ class ProcessKeyPosition(object):
         if self.current_pos_num < 0:
             self.current_pos_num = 0
 
+    def first_position(self):
+        """ Set `self.current_pos_num` to beam_final
+        """
+        self.current_pos_num = 0
+
     def final_position(self):
         """ Set `self.current_pos_num` to beam_final
         """
@@ -233,7 +238,22 @@ class ProcessArtist(object):
         # update selected_key_position whether current_beam_has_clamps
         if beam_id is not None:
             self.selected_key_position.current_beam_has_clamps = len(self.process.assembly.get_joint_ids_of_beam_clamps(beam_id)) > 0
-
+        
+    def select_next_beam(self):
+        # type: () -> str
+        """ Increment self.selected_beam_id based on its seq_num """
+        assembly = self.process.assembly
+        seq_num = assembly.get_beam_sequence(self.selected_beam_id) + 1
+        seq_num = min(seq_num,  len(assembly.sequence) - 1) # seq_num not more than len(assembly.sequence) - 1
+        self.selected_beam_id = assembly.sequence[seq_num]
+   
+    def select_previous_beam(self):
+        # type: () -> str
+        """ Increment self.selected_beam_id based on its seq_num """
+        assembly = self.process.assembly
+        seq_num = assembly.get_beam_sequence(self.selected_beam_id) - 1
+        seq_num = max(seq_num,  0) # seq_num not less than 0
+        self.selected_beam_id = assembly.sequence[seq_num]     
     #############################
     # Beam in Interactive Layers
     #############################

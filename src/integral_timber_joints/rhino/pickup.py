@@ -1,7 +1,7 @@
 import json
 import os
 
-import Rhino
+import Rhino # type: ignore
 import rhinoscriptsyntax as rs
 from compas.utilities import DataDecoder
 from compas_rhino.ui import CommandMenu

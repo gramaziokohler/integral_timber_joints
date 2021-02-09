@@ -1,4 +1,4 @@
-import Rhino
+import Rhino # type: ignore
 import rhinoscriptsyntax as rs
 from compas_rhino import artists
 from compas_rhino.utilities.objects import get_object_name
@@ -116,7 +116,11 @@ def show_menu(process):
     go.SetCommandPrompt("Select beam")
     go.EnablePreSelect(True, True)
 
-    def select_next():
+    ###################################
+    # Showing Different Beam
+    ###################################
+
+    def select_next_beam():
         """ Function invoked by user to change active element to the next one.
         """
         # Hide the current beam and grippers
@@ -124,14 +128,11 @@ def show_menu(process):
         artist.hide_gripper_all_positions(artist.selected_beam_id)
         artist.hide_clamp_all_positions(artist.selected_beam_id)
         # Increment the selected id
-        selected_seq_num = assembly.get_beam_sequence(artist.selected_beam_id)
-        selected_seq_num = min(selected_seq_num + 1,  len(assembly.sequence) - 1)
-        artist.selected_beam_id = assembly.sequence[selected_seq_num]
+        artist.select_next_beam()
         artist.selected_key_position.final_position()
         show_sequence_color(process, artist.selected_beam_id)
-        go.SetDefaultString("Enter again = Next")
 
-    def select_previous():
+    def select_previous_beam():
         """ Function invoked by user to change active element to the previous one.
         """
         # Hide the current beam and grippers
@@ -139,26 +140,34 @@ def show_menu(process):
         artist.hide_gripper_all_positions(artist.selected_beam_id)
         artist.hide_clamp_all_positions(artist.selected_beam_id)
         # Decrement the selected id
-        selected_seq_num = assembly.get_beam_sequence(artist.selected_beam_id)
-        selected_seq_num = max(selected_seq_num - 1,  0)
-        artist.selected_beam_id = assembly.sequence[selected_seq_num]
+        artist.select_previous_beam()
         artist.selected_key_position.final_position()
         show_sequence_color(process, artist.selected_beam_id)
-        go.SetDefaultString("Enter again = Previous")
 
+    ###################################
+    # Showing Different Key Position
+    ###################################
+    
     def next_key_position():
         artist.selected_key_position.next_position()
-        artist.show_beam_at_one_position(artist.selected_beam_id)
-        artist.show_gripper_at_one_position(artist.selected_beam_id)
-        artist.show_clamp_at_one_position(artist.selected_beam_id)
-        go.SetDefaultString("Enter again = NextKeyPosition")
+        _show_key_position_beam_gripper_clamp()
 
     def prev_key_position():
         artist.selected_key_position.prev_position()
+        _show_key_position_beam_gripper_clamp()
+    
+    def first_key_position():
+        artist.selected_key_position.first_position()
+        _show_key_position_beam_gripper_clamp()
+
+    def _show_key_position_beam_gripper_clamp():
         artist.show_beam_at_one_position(artist.selected_beam_id)
         artist.show_gripper_at_one_position(artist.selected_beam_id)
         artist.show_clamp_at_one_position(artist.selected_beam_id)
-        go.SetDefaultString("Enter again = PrevKeyPosition")
+
+    ###################################
+    # Changing Gripper Definitions
+    ###################################
 
     def gripper_changetype():
         """ Function invoked by user to change gripper type
@@ -195,8 +204,6 @@ def show_menu(process):
         artist.draw_beam_all_positions(beam_id, delete_old=True)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process, beam_id)
-        go.SetDefaultString("Enter again = GripperType")
-
 
     def gripper_move_pos():
         """ Function invoked by user to move grasp pose.
@@ -206,7 +213,6 @@ def show_menu(process):
         process.dependency.compute(beam_id, process.compute_all)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process, beam_id)
-        go.SetDefaultString("Enter again = GripperMovePos")
 
     def gripper_move_neg():
         """ Function invoked by user to move grasp pose.
@@ -216,7 +222,6 @@ def show_menu(process):
         process.dependency.compute(beam_id, process.compute_all)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process, beam_id)
-        go.SetDefaultString("Enter again = GripperMoveNeg")
 
     def gripper_follow_ass_dir():
         """ Function invoked by user to change grasp face.
@@ -282,23 +287,25 @@ def show_menu(process):
         go.SetCustomGeometryFilter(get_existing_beams_filter(process))
         result = go.Get()
         # print (result)
-
         # Performs function on the previously selected beam
         if result == Rhino.Input.GetResult.Option:
             if go.Option().EnglishName == "Finish":
                 show_normal_color_and_unhide(process)
                 return Rhino.Commands.Result.Cancel
 
-            if go.Option().EnglishName == "Next":
-                run_cmd = select_next
+            if go.Option().EnglishName == "NextBeam":
+                run_cmd = select_next_beam
 
-            if go.Option().EnglishName == "Previous":
-                run_cmd = select_previous
+            if go.Option().EnglishName == "PreviousBeam":
+                run_cmd = select_previous_beam
 
-            if go.Option().EnglishName == "cNextKeyPosition":
+            if go.Option().EnglishName == "vShowNextKeyPosition":
                 run_cmd = next_key_position
 
-            if go.Option().EnglishName == "vPrevKeyPosition":
+            if go.Option().EnglishName == "cShowFirstKeyPosition":
+                run_cmd = first_key_position
+
+            if go.Option().EnglishName == "xShowPrevKeyPosition":
                 run_cmd = prev_key_position
 
             if go.Option().EnglishName == "GripperMovePos":
@@ -349,16 +356,18 @@ def show_menu(process):
             # In the first run where user selected an active beam, the optinos are added
             if artist.selected_beam_id is None:
                 go.AddOption("Finish")
-                go.AddOption("Next")
-                go.AddOption("Previous")
-                go.AddOption("cNextKeyPosition")
-                go.AddOption("vPrevKeyPosition")
+                go.AddOption("NextBeam")
+                go.AddOption("PreviousBeam")
+                go.AddOption("vShowNextKeyPosition")
+                go.AddOption("cShowFirstKeyPosition")
+                go.AddOption("xShowPrevKeyPosition")
                 go.AddOption("GripperMovePos")
                 go.AddOption("GripperMoveNeg")
+                go.AddOption("GripperType")
                 go.AddOption("GraspFace")
                 go.AddOption("GraspFaceFollowAsemblyDirection")
-                go.AddOption("GripperType")
-
+                # Reminder that Enter key can repeat
+                go.SetDefaultString("Press Enter to repeat.")
             artist.selected_beam_id = beam_id
 
         print("Showing Beam(%s) (%i of %i) at Position(%s) (%i of %i)" % (
