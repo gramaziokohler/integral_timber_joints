@@ -1067,7 +1067,6 @@ class RobotClampAssemblyProcess(Network):
         # Loop through all the beams and look at their previous_built neighbour.
         something_failed = False
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
-
             for clamp_type in self.assembly.joint(joint_id).clamp_types:
                 # Check if the preferred clamp exist.
                 if clamp_type in self.available_clamp_types:
