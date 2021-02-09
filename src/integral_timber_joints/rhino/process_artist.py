@@ -388,7 +388,7 @@ class ProcessArtist(object):
 
             # Skip the rest of code if the position does not exist.
             if self.process.assembly.get_beam_attribute(beam_id, beam_position) is None:
-                # print ("Skipping gripper position: %s" % (gripper_position))
+                if verbose: print ("Skipping Beam (%s) position: %s" % (beam_id, beam_position))
                 continue
 
             if verbose: print("Drawing Beam(%s) in position: %s" % (beam_id, beam_position))
@@ -519,7 +519,7 @@ class ProcessArtist(object):
 
             # Skip the rest of code if the position does not exist.
             if self.process.assembly.get_beam_attribute(beam_id, gripper_position) is None:
-                print("Skipping Gripper on Beam(%s) at position: %s" % (beam_id, gripper_position))
+                if verbose: print("Skipping Gripper on Beam(%s) at position: %s" % (beam_id, gripper_position))
                 continue
 
             # Draw Gripper
@@ -612,7 +612,7 @@ class ProcessArtist(object):
 
                 # Skip the rest of code if the position does not exist.
                 if self.process.assembly.get_joint_attribute(joint_id, clamp_position) is None:
-                    print("Skipping clamp(%s) at position: %s" % (joint_id, clamp_position))
+                    if verbose: print("Skipping clamp(%s) at position: %s" % (joint_id, clamp_position))
                     continue
 
                 # Draw Clamp
