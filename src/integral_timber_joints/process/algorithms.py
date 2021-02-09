@@ -51,9 +51,7 @@ def create_actions_from_sequence(process, verbose=True):
 
         # move clamps from storage to structure
         # joint_id_of_clamps = assembly.get_joints_of_beam_connected_to_already_built(beam_id)
-
-        joint_id_of_clamps = [(neighbour_id, beam_id) for neighbour_id in assembly.get_already_built_neighbors(beam_id)
-                              if assembly.get_joint_attribute((neighbour_id, beam_id), "is_clamp_attached_side")]
+        joint_id_of_clamps = assembly.get_joint_ids_of_beam(beam_id)
 
         for joint_id in joint_id_of_clamps:
             clamp_type = assembly.get_joint_attribute(joint_id, "clamp_type")

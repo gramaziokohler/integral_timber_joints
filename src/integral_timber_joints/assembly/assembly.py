@@ -89,7 +89,7 @@ class Assembly(Network):
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
             'sequence_earlier': False,
-            'is_clamp_attached_side': True,
+            'clamp_used': True,
             'clamp_wcf_attachapproach1': None,      # Clamp position beforing approaching attachment point (1 happens before 2)
             'clamp_wcf_attachapproach2': None,      # Clamp position beforing approaching attachment point
             'clamp_wcf_final': None,                # Clamp position at attachment point "clamp_frame_wcf"
@@ -294,6 +294,7 @@ class Assembly(Network):
         return joints
 
     def get_joint_ids_of_beam(self, beam_id):
+        # type: (str) -> list[tuple[str,str]]
         """Get all the ids of joints (beam_id, neighbor_beam_id) that are attached to a beam
         """
         joint_ids = []
@@ -523,18 +524,19 @@ class Assembly(Network):
     def get_joint_ids_of_beam_clamps(self, beam_id, clamping_this_beam=True):
         # type: (str, bool) -> list[tuple[str,str]]
         """Return the list [joint_id] of clamps related to the beam_id.
-        - If clamping_this_beam == True, clamps are clamping the assembly of beam(beam_id)
+        - If clamping_this_beam == True, clamps attached to already built neighbours, that will clamp the selected beam(beam_id)
         - If clamping_this_beam == False, clamps are attached to beam(beam_id) for the assembly of later beams
 
         Note
         ----
-        The returned joint_id has get_joint_attribute(joint_id, 'is_clamp_attached_side') == True
+        The returned joint_id has get_joint_attribute(joint_id, 'clamp_used') == True
         """
-        # The if statement checkes if the joint attribute 'is_clamp_attached_side' == True
+        # The if statement checkes if the joint attribute 'clamp_used' == True
         if clamping_this_beam:
-            return [joint_id for joint_id in self.get_reverse_joint_ids_of_beam(beam_id) if self.get_joint_attribute(joint_id, 'is_clamp_attached_side') == True]
+            return [(neighbour_id, beam_id) for neighbour_id in self.get_already_built_neighbors(beam_id) if self.get_joint_attribute((neighbour_id, beam_id), 'clamp_used') == True]
+            # return [joint_id for joint_id in self.get_reverse_joint_ids_of_beam(beam_id) if self.get_joint_attribute(joint_id, 'clamp_used') == True]
         else:
-            return [joint_id for joint_id in self.get_joint_ids_of_beam(beam_id) if self.get_joint_attribute(joint_id, 'is_clamp_attached_side') == True]
+            return [(beam_id, neighbour_id) for neighbour_id in self.get_unbuilt_neighbors(beam_id) if self.get_joint_attribute((beam_id, neighbour_id), 'clamp_used') == True]
 
     def get_already_built_beams(self, beam_id):
         # type: (str) -> list[str]
@@ -549,6 +551,12 @@ class Assembly(Network):
         this_beam_sequence = self.get_beam_sequence(beam_id)
         return [neighbor_id for neighbor_id in self.neighbors_out(beam_id) if self.get_beam_sequence(neighbor_id) < this_beam_sequence]
 
+    def get_unbuilt_neighbors(self, beam_id):
+        # type: (str) -> list[str]
+        "Return the beam ids of neighbours that are connected to the selected beams, but not yet built."
+        # The if statement checkes if the joint attribute 'sequence_earlier' == False
+        this_beam_sequence = self.get_beam_sequence(beam_id)
+        return [neighbor_id for neighbor_id in self.neighbors_out(beam_id) if self.get_beam_sequence(neighbor_id) > this_beam_sequence]
     # -------------------------------------
     # Computing joints and joint directions
     # -------------------------------------

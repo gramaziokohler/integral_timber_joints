@@ -29,7 +29,6 @@ class RobotClampAssemblyProcess(Network):
     clamp_inclamp_position = 210
     clamp_final_position = 100
 
-
     def __init__(self, assembly=None):
         # type: (Assembly) -> None
 
@@ -100,7 +99,7 @@ class RobotClampAssemblyProcess(Network):
         all_movements = []
         for action in self.actions:
             for movement in action.movements:
-                    all_movements.append(movement)
+                all_movements.append(movement)
         return all_movements
 
     @property
@@ -109,9 +108,8 @@ class RobotClampAssemblyProcess(Network):
         all_states = [self.initial_state]
         for action in self.actions:
             for movement in action.movements:
-                    all_states.append(movement.end_state)
+                all_states.append(movement.end_state)
         return all_states
-
 
     @property
     def pickup_station(self):
@@ -234,7 +232,10 @@ class RobotClampAssemblyProcess(Network):
     def get_clamp_type_of_joint(self, joint_id):
         # type: (tuple[str, str]) -> str
         """Returns the clamp_type used at the joint. None, if the joint do not need a clamp"""
-        return self.assembly.get_joint_attribute(joint_id, 'clamp_type')
+        if self.assembly.get_joint_attribute(joint_id, 'clamp_used'):
+            return self.assembly.get_joint_attribute(joint_id, 'clamp_type')
+        else:
+            return None
 
     def get_clamp_of_joint(self, joint_id, position_name='clamp_wcf_final'):
         # type: (tuple[str, str], bool) -> Clamp
@@ -281,7 +282,8 @@ class RobotClampAssemblyProcess(Network):
         # type: (str) -> tuple[str, str]
         for neighbour_id in self.assembly.get_already_built_neighbors(beam_id):
             joint_id = (neighbour_id, beam_id)
-            yield joint_id
+            if self.assembly.get_joint_attribute(joint_id, 'clamp_used'):
+                yield joint_id
 
     def compute_jawapproach_vector_length(self, beam_id, vector_dir, min_dist=20, max_dist=150):
         # type: (str, Vector, float, float) -> Vector
@@ -607,20 +609,20 @@ class RobotClampAssemblyProcess(Network):
 
         # Use previous values if exist
         def grasp_face(beam_id):
-            return self.assembly.get_beam_attribute(beam_id, "gripper_grasp_face") 
+            return self.assembly.get_beam_attribute(beam_id, "gripper_grasp_face")
 
         gripper_grasp_dist_from_start = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
 
         # Apply default values if None
-        if grasp_face(beam_id) not in [1,2,3,4]:  # Default method
+        if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Default method
             gripper_grasp_face = self.search_grasp_face_from_joint_assembly_direction(beam_id)
 
-        if grasp_face(beam_id) not in [1,2,3,4]:  # Backup plan
+        if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Backup plan
             gripper_grasp_face = self.search_grasp_face_from_guide_vector_dir(beam_id)
 
-        if grasp_face(beam_id) not in [1,2,3,4]:  # Default plan
+        if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Default plan
             self.assembly.set_beam_attribute(beam_id, "gripper_grasp_face", 1)
-            print ("Someting wrong, gripper_grasp_face is not in [1,2,3,4] after search. Grasp face defaulted to ", 1)
+            print("Someting wrong, gripper_grasp_face is not in [1,2,3,4] after search. Grasp face defaulted to ", 1)
 
         if gripper_grasp_dist_from_start is None:
             gripper_grasp_dist_from_start = beam.length / 2.0
@@ -687,20 +689,20 @@ class RobotClampAssemblyProcess(Network):
 
         The grasp is retrived from beam attribute `gripper_tcp_in_ocf`
         The gripper.current_frame should be set to the intended location
-        
+
         ### Credits: 
         YiJiang contributed this rather clear way of expressing everytihing in Transformation.
         If one day we have time, we should all switch to this notation to be consistent with
         robotics code community.
-        
+
         x_from_y, means Y expressed in the X's coordinate system
-        """ 
+        """
         # Gripper TCP expressed in world's coordinate
         world_from_gripper_tcp = Transformation.from_frame(gripper.current_tcf)
 
         # Grasp
         beam_ocf_from_gripper_tcp = Transformation.from_frame(self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf"))
-        
+
         # gripper_inverse
         gripper_tcp_from_beam_ocf = beam_ocf_from_gripper_tcp.inverse()
 
@@ -1138,15 +1140,13 @@ class RobotClampAssemblyProcess(Network):
         # chosen_frames = []
         for joint_id, attachment_frames in self.get_clamp_orientation_options(beam_id).items():
             selected_frame = choose_frame_by_guide_vector(attachment_frames, guiding_vector)
-            print(selected_frame)
-            print(self.get_clamp_type_of_joint(joint_id))
 
             # Set clamp tcp to selected_frame using set_current_frame_from_tcp()
             clamp = self.get_clamp_of_joint(joint_id, '')
+            if clamp is None: continue
             clamp.set_current_frame_from_tcp(selected_frame)
 
             # Save clamp.current_frame as 'clamp_wcf_final'
-            print(clamp.current_frame)
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_final', clamp.current_frame)
             # chosen_frames.append(selected_frame.copy())
             #print ("Beam (%s) Joint (%s), we need clamp type (%s) at %s" % (beam_id, joint_id, self.get_clamp_type_of_joint(joint_id), selected_frame))
@@ -1313,15 +1313,15 @@ class RobotClampAssemblyProcess(Network):
     # -----------------------
     # Action and Movements
     # -----------------------
-    
+
     from .algorithms import compute_initial_state
     from .algorithms import compute_intermediate_states
-    
+
     def get_action_by_beam_id(self, beam_id):
         # type: (str) -> list[Action]
         """ Get an ordered list of Action related to a beam"""
         return [action for action in self.actions if self.assembly.sequence[action.seq_n] == beam_id]
-    
+
     def get_movements_by_beam_id(self, beam_id):
         # type: (str) -> list[Movement]
         """ Get an ordered list of Movements related to a beam"""
@@ -1341,4 +1341,3 @@ class RobotClampAssemblyProcess(Network):
         # type: (Movement) -> dict[str, ObjectState]
         """ return the end state after the movment """
         return movement.end_state
-
