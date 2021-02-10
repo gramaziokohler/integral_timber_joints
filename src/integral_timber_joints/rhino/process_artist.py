@@ -304,8 +304,6 @@ class ProcessArtist(object):
         # Redraw
         if redraw:
             rs.EnableRedraw(True)
-        # v, f = beam_mesh.to_vertices_and_faces()
-        # guid = draw_mesh(v, f, name=beam_id, layer=layer)
 
     def redraw_interactive_beam(self, beam_id, force_update=True, draw_mesh=True, draw_tag=True, redraw=True):
         ''' Redraw beam visualizations.
@@ -400,9 +398,8 @@ class ProcessArtist(object):
             # Transform the beam_mesh to location and
             T = self.process.assembly.get_beam_transformaion_to(beam_id, beam_position)
             beam_mesh = self.process.assembly.beam(beam_id).cached_mesh.transformed(T)  # type: Mesh
-            v, f = beam_mesh.to_vertices_and_faces()
-            guid = draw_mesh(v, f, name=beam_id, layer=layer_name)
-            self.beam_guids[beam_id][beam_position].append(guid)
+            guids = self.draw_meshes_get_guids([beam_mesh], beam_id)
+            self.beam_guids[beam_id][beam_position].extend(guids)
 
     def delete_beam_all_positions(self, beam_id):
         """Delete all Rhino geometry associated to a beam at all position.
@@ -519,7 +516,7 @@ class ProcessArtist(object):
                 continue
 
             # Check if the position string contains a dot notation for states , such as open gripper
-            tool_states = [] # tool_states are function names that chagen state of the tool 
+            tool_states = []  # tool_states are function names that chagen state of the tool
             attribute_name = gripper_position
             if '.' in gripper_position:
                 attribute_name = gripper_position.split('.')[0]
@@ -539,7 +536,7 @@ class ProcessArtist(object):
             if verbose:
                 print("Drawing Gripper for Beam(%s) in position: %s" % (beam_id, attribute_name))
             gripper = self.process.get_gripper_of_beam(beam_id, attribute_name)
-            
+
             # Set Tool State (better visualization)
             for state in tool_states:
                 getattr(gripper, state)()
@@ -548,7 +545,7 @@ class ProcessArtist(object):
             new_guids = gripper.draw_visual(artist)
             self.gripper_guids[beam_id][gripper_position].extend(new_guids)
 
-            # Draw ToolChanger and Robot Wrist          
+            # Draw ToolChanger and Robot Wrist
             new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, gripper.current_frame, layer_name, )
             self.gripper_guids[beam_id][gripper_position].extend(new_guids)
 
@@ -560,7 +557,7 @@ class ProcessArtist(object):
         tool_changer = self.process.robot_toolchanger
         tool_changer.set_current_frame_from_tcp(tcp_frame)
         new_guids.extend(tool_changer.draw_visual(ToolArtist(tool_changer, layer_name)))
-        # Draw rob_wrist at tool_changer.current_frame 
+        # Draw rob_wrist at tool_changer.current_frame
         robot_wrist = self.process.robot_wrist
         robot_wrist.current_frame = tool_changer.current_frame
         new_guids.extend(robot_wrist.draw_visual(ToolArtist(robot_wrist, layer_name)))
@@ -630,9 +627,9 @@ class ProcessArtist(object):
                 # If not delete_old, and there are already items drawn, we preserve them.
                 if len(self.clamp_guids[joint_id][clamp_position]) > 0 and not delete_old:
                     continue
-                
+
                 # Check if the position string contains a dot notation for states , such as open gripper
-                tool_states = [] # tool_states are function names that chagen state of the tool 
+                tool_states = []  # tool_states are function names that chagen state of the tool
                 attribute_name = clamp_position
                 if '.' in clamp_position:
                     attribute_name = clamp_position.split('.')[0]
@@ -661,7 +658,7 @@ class ProcessArtist(object):
                 new_guids = clamp.draw_visual(artist)
                 self.clamp_guids[joint_id][clamp_position].extend(new_guids)
 
-                # Draw ToolChanger and Robot Wrist          
+                # Draw ToolChanger and Robot Wrist
                 new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, clamp.current_frame, layer_name, )
                 self.clamp_guids[joint_id][clamp_position].extend(new_guids)
 
