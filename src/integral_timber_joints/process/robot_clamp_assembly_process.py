@@ -1,19 +1,21 @@
 from copy import deepcopy
 
 from compas.datastructures import Mesh, Network
-from compas.geometry import Frame, Transformation, Translation
+from compas.geometry.primitives.frame import Frame
+from compas.geometry import Transformation, Translation
+from compas.geometry._core._algebra import dot_vectors
 from compas.geometry.primitives.vector import Vector
 from compas.rpc import Proxy
 
 from geometric_blocking import blocked
 from integral_timber_joints.assembly import Assembly
-from integral_timber_joints.geometry import Beam, Joint, EnvironmentModel
+from integral_timber_joints.geometry import Beam, EnvironmentModel, Joint
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
 from integral_timber_joints.process.state import ObjectState
-from compas.geometry._core._algebra import dot_vectors
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
+from integral_timber_joints.tools.beam_storage import BeamStorage
 
 
 class RobotClampAssemblyProcess(Network):
@@ -42,6 +44,7 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['robot_wrist'] = None                   # RobotWrist
         self.attributes['actions'] = []                         # list[Action]
         self.attributes['pickup_station'] = None                # PickupStation
+        self.attributes['beam_storage'] = None                  # BeamStorage
         self.attributes['environment_models'] = {}              # dict[str, Mesh]
 
         self.attributes['initial_state'] = {}                   # dict(str, ObjectState)
@@ -115,8 +118,18 @@ class RobotClampAssemblyProcess(Network):
 
     @pickup_station.setter
     def pickup_station(self, value):
-        # type: (list[PickupStation]) -> None
+        # type: (PickupStation) -> None
         self.attributes['pickup_station'] = value
+
+    @property
+    def beam_storage(self):
+        # type: () -> BeamStorage
+        return self.attributes['beam_storage']
+
+    @beam_storage.setter
+    def beam_storage(self, value):
+        # type: (BeamStorage) -> None
+        self.attributes['beam_storage'] = value
 
     @property
     def environment_models(self):
@@ -780,6 +793,26 @@ class RobotClampAssemblyProcess(Network):
     # -----------------------------------------------
     # Beam Storage / Pick Up / Retract Algorithms
     # -----------------------------------------------
+
+    def compute_storeage_frame(self, beam_id):
+        # type(int) -> None
+        """Compute the storage frame.
+        This can be performed right after assigning sequence.
+        Or TODO optionally after changing grasp face.
+
+
+        State Change
+        ------------
+        This functions sets the following beam_attribute
+        - 'assembly_wcf_storage'
+        """
+        # Use the origin as storage frame if there is no beam_storage object
+        if self.beam is None:
+            self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', Frame.worldXY())
+
+        beam = self.assembly.beam(beam_id)
+        storage_frame = self.beam_storage.get_storage_frame(self.assembly.sequence.index(beam_id))
+        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', storage_frame)
 
     def compute_pickup_frame(self, beam_id):
         """ Compute the pickup frame of a beam
