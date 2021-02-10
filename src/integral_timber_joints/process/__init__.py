@@ -4,7 +4,7 @@ from .action import AttachToolAction, DetachToolAction, AttachBeamAction, Detach
 from .action import LoadBeamAction, PickToolFromStorageAction, PlaceToolToStorageAction, PickGripperFromStorageAction, PlaceGripperToStorageAction, PickClampFromStorageAction, PlaceClampToStorageAction
 from .action import PickClampFromStructureAction, PlaceClampToStructureAction, BeamPickupAction, BeamPlacementWithoutClampsAction, BeamPlacementWithClampsAction
 from .movement import Movement, RoboticMovement, OperatorLoadBeamMovement
-from .movement import RoboticDigitalOutput, RoboticFreeMovement, RoboticLinearMovement, DigitalOutput, ClampsJawMovement
+from .movement import RoboticDigitalOutput, RoboticFreeMovement, RoboticLinearMovement, DigitalOutput, ClampsJawMovement, RoboticClampSyncLinearMovement
 from .path_planner import PathPlanner, RFLPathPlanner
 from .dependency import ComputationalResult, ComputationalDependency
 from .state import ObjectState
