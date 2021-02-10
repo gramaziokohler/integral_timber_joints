@@ -546,6 +546,8 @@ class RobotClampAssemblyProcess(Network):
         Beam must fit within gripper `beam_length_limits`, if multiple options allow,
         the gripper with the closest `target_beam_length` will be chosen.
 
+        If the attribute `gripper_type` is already assigned, this function will not chage it.
+
         State Change
         ------------
         This functions sets the following beam_attribute
@@ -559,7 +561,13 @@ class RobotClampAssemblyProcess(Network):
         beam_length = self.assembly.beam(beam_id).length
         chosen_gripper_type = None
         chosen_gripper_ideal = None
-        self.available_clamp_types
+        
+        # Do not change anything if gripper_type is already set
+        if self.assembly.get_beam_attribute(beam_id, "gripper_type") is not None:
+            if verbose:
+                print("Joint (%s) clamp_type (%s) has already been set. No change made by assign_gripper_to_beam()." % (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
+            return ComputationalResult.ValidNoChange
+ 
         for gripper_type in self.available_gripper_types:
             gripper = self.get_one_gripper_by_type(gripper_type)
             # Check if beam length is within limits
@@ -1058,6 +1066,8 @@ class RobotClampAssemblyProcess(Network):
     def assign_clamp_type_to_joints(self, beam_id, verbose=True):
         """Assign clamp_types to joints based on the joint's preference and clamp availability.
 
+        If the attribute `clamp_type` is already assigned, this function will not chage it.
+
         State Change
         ------------
         This functions sets the joint attribute `clamp_type`
@@ -1069,11 +1079,20 @@ class RobotClampAssemblyProcess(Network):
         """
         # Loop through all the beams and look at their previous_built neighbour.
         something_failed = False
+        something_changed = False
         for joint_id in self.get_clamp_ids_for_beam(beam_id):
+            # Do not change anything if clamp_type is already set
+            if self.assembly.get_joint_attribute(joint_id, "clamp_type") is not None:
+                if verbose:
+                    print("Joint (%s) clamp_type (%s) has already been set. No change made by assign_clamp_type_to_joints()." % (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
+                continue
+
+            # Loop through the list of clamp types requested by the joint.
             for clamp_type in self.assembly.joint(joint_id).clamp_types:
                 # Check if the preferred clamp exist.
                 if clamp_type in self.available_clamp_types:
                     self.assembly.set_joint_attribute(joint_id, "clamp_type", clamp_type)
+                    something_changed = True
 
             if self.get_clamp_type_of_joint(joint_id) is None:
                 print("WARNING: Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, self.assembly.joint(joint_id).clamp_types))
@@ -1086,7 +1105,10 @@ class RobotClampAssemblyProcess(Network):
         if something_failed:
             return ComputationalResult.ValidCannotContinue
         else:
-            return ComputationalResult.ValidCanContinue
+            if something_changed:
+                return ComputationalResult.ValidCanContinue
+            else:
+                return ComputationalResult.ValidNoChange
 
     def get_clamp_orientation_options(self, beam_id):
         """Each beam assembly may have multiple clamps involved
@@ -1125,7 +1147,6 @@ class RobotClampAssemblyProcess(Network):
         else:
             self.assembly.set_beam_attribute(beam_id, 'design_guide_vector_jawapproach', beam_xaxis.scaled(1))
         print ("New guide_vector: ", self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach'))
-
 
     def search_valid_clamp_orientation_with_guiding_vector(self, beam_id):
         """ Search and choose clamp attachment frame based on guide vector alignment
