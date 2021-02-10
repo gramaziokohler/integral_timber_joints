@@ -50,44 +50,45 @@ class ProcessKeyPosition(object):
         'assembly_wcf_final',
     ]
     gripper_positions = [
-        'assembly_wcf_pickupapproach',
-        'assembly_wcf_pickup',
-        'assembly_wcf_pickupretract',
-        'assembly_wcf_inclampapproach',
-        'assembly_wcf_inclamp',
-        'assembly_wcf_final',
-        'assembly_wcf_finalretract',
+        'assembly_wcf_pickupapproach.open_gripper',
+        'assembly_wcf_pickup.close_gripper',
+        'assembly_wcf_pickupretract.close_gripper',
+        'assembly_wcf_inclampapproach.close_gripper',
+        'assembly_wcf_inclamp.close_gripper',
+        'assembly_wcf_final.close_gripper',
+        'assembly_wcf_finalretract.open_gripper',
     ]
     clamp_positions = [
-        'clamp_wcf_attachapproach1',
-        'clamp_wcf_attachapproach2',
-        'clamp_wcf_final',
-        'clamp_wcf_detachretract1',
-        'clamp_wcf_detachretract2',
+        'clamp_wcf_attachapproach1.open_clamp.open_gripper',
+        'clamp_wcf_attachapproach2.open_clamp.open_gripper',
+        'clamp_wcf_final.open_clamp.close_gripper',
+        'clamp_wcf_final.close_clamp.close_gripper',
+        'clamp_wcf_detachretract1.open_clamp.open_gripper',
+        'clamp_wcf_detachretract2.open_clamp.open_gripper',
     ]
 
     # pos_name, beam_pos, gripper_pos, clamp_pos
     pos_names_for_beam_with_clamps = [
-        ('clamp_attachapproach1',   'assembly_wcf_storage',         'assembly_wcf_pickupapproach',     'clamp_wcf_attachapproach1'),
-        ('clamp_attachapproach2',   'assembly_wcf_storage',         'assembly_wcf_pickupapproach',     'clamp_wcf_attachapproach2'),
-        ('beam_pickup_approach',   'assembly_wcf_pickup',         'assembly_wcf_pickupapproach',     'clamp_wcf_final'),
-        ('beam_pickup_pick',       'assembly_wcf_pickup',         'assembly_wcf_pickup',             'clamp_wcf_final'),
-        ('beam_pickup_retract',    'assembly_wcf_pickupretract',  'assembly_wcf_pickupretract',      'clamp_wcf_final'),
-        ('beam_inclampapproach',    'assembly_wcf_inclampapproach', 'assembly_wcf_inclampapproach',     'clamp_wcf_final'),
-        ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp',             'clamp_wcf_final'),
-        ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final',               'clamp_wcf_final'),
-        ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract',        'clamp_wcf_final'),
-        ('clamp_detachretract1',    'assembly_wcf_final',           'assembly_wcf_finalretract',        'clamp_wcf_detachretract1'),
-        ('clamp_detachretract2',    'assembly_wcf_final',           'assembly_wcf_finalretract',        'clamp_wcf_detachretract2'),
+        ('clamp_attachapproach1',   'assembly_wcf_storage',         None,                                               'clamp_wcf_attachapproach1.open_clamp.open_gripper'),
+        ('clamp_attachapproach2',   'assembly_wcf_storage',         None,                                               'clamp_wcf_attachapproach2.open_clamp.open_gripper'),
+        ('beam_pickup_approach',    'assembly_wcf_pickup',          'assembly_wcf_pickupapproach.open_gripper',         'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_pickup_pick',        'assembly_wcf_pickup',          'assembly_wcf_pickup.close_gripper',                'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_pickup_retract',     'assembly_wcf_pickupretract',   'assembly_wcf_pickupretract.close_gripper',         'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_inclampapproach',    'assembly_wcf_inclampapproach', 'assembly_wcf_inclampapproach.close_gripper',       'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp.close_gripper',               'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final.close_gripper',                 'clamp_wcf_final.close_clamp.close_gripper'),
+        ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract.open_gripper',           'clamp_wcf_final.close_clamp.close_gripper'),
+        ('clamp_detachretract1',    'assembly_wcf_final',           None,                                               'clamp_wcf_detachretract1.open_clamp.open_gripper'),
+        ('clamp_detachretract2',    'assembly_wcf_final',           None,                                               'clamp_wcf_detachretract2.open_clamp.open_gripper'),
     ]
 
     pos_names_for_beam_without_clamps = [
-        ('beam_pickup_approach',   'assembly_wcf_pickup',         'assembly_wcf_pickupapproach',     'clamp_wcf_final'),
-        ('beam_pickup_pick',       'assembly_wcf_pickup',         'assembly_wcf_pickup',             'clamp_wcf_final'),
-        ('beam_pickup_retract',    'assembly_wcf_pickupretract',  'assembly_wcf_pickupretract',      'clamp_wcf_final'),
-        ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp',             'clamp_wcf_final'),
-        ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final',               'clamp_wcf_final'),
-        ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract',        'clamp_wcf_final'),
+        ('beam_pickup_approach',    'assembly_wcf_pickup',          'assembly_wcf_pickupapproach.open_gripper',    None),
+        ('beam_pickup_pick',        'assembly_wcf_pickup',          'assembly_wcf_pickup.close_gripper',           None),
+        ('beam_pickup_retract',     'assembly_wcf_pickupretract',   'assembly_wcf_pickupretract.close_gripper',    None),
+        ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp.close_gripper',          None),
+        ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final.close_gripper',            None),
+        ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract.open_gripper',      None),
     ]
 
     def next_position(self):
@@ -389,10 +390,12 @@ class ProcessArtist(object):
 
             # Skip the rest of code if the position does not exist.
             if self.process.assembly.get_beam_attribute(beam_id, beam_position) is None:
-                if verbose: print ("Skipping Beam (%s) position: %s" % (beam_id, beam_position))
+                if verbose:
+                    print("Skipping Beam (%s) position: %s" % (beam_id, beam_position))
                 continue
 
-            if verbose: print("Drawing Beam(%s) in position: %s" % (beam_id, beam_position))
+            if verbose:
+                print("Drawing Beam(%s) in position: %s" % (beam_id, beam_position))
 
             # Transform the beam_mesh to location and
             T = self.process.assembly.get_beam_transformaion_to(beam_id, beam_position)
@@ -515,33 +518,54 @@ class ProcessArtist(object):
             if len(self.gripper_guids[beam_id][gripper_position]) > 0 and not delete_old:
                 continue
 
+            # Check if the position string contains a dot notation for states , such as open gripper
+            tool_states = [] # tool_states are function names that chagen state of the tool 
+            attribute_name = gripper_position
+            if '.' in gripper_position:
+                attribute_name = gripper_position.split('.')[0]
+                tool_states = gripper_position.split('.')[1:]
+            layer_name = 'itj::clamp::' + gripper_position
+
             # Delete old geometry
             self.delete_gripper_at_position(beam_id, gripper_position)
 
             # Skip the rest of code if the position does not exist.
-            if self.process.assembly.get_beam_attribute(beam_id, gripper_position) is None:
-                if verbose: print("Skipping Gripper on Beam(%s) at position: %s" % (beam_id, gripper_position))
+            if self.process.assembly.get_beam_attribute(beam_id, attribute_name) is None:
+                if verbose:
+                    print("Skipping Gripper on Beam(%s) at position: %s" % (beam_id, attribute_name))
                 continue
 
             # Draw Gripper
-            if verbose: print("Drawing Gripper for Beam(%s) in position: %s" % (beam_id, gripper_position))
-            gripper = self.process.get_gripper_of_beam(beam_id, gripper_position)
+            if verbose:
+                print("Drawing Gripper for Beam(%s) in position: %s" % (beam_id, attribute_name))
+            gripper = self.process.get_gripper_of_beam(beam_id, attribute_name)
+            
+            # Set Tool State (better visualization)
+            for state in tool_states:
+                getattr(gripper, state)()
+
             artist = ToolArtist(gripper, layer_name)
             new_guids = gripper.draw_visual(artist)
             self.gripper_guids[beam_id][gripper_position].extend(new_guids)
 
-            # Draw ToolChanger
-            tool_changer = self.process.robot_toolchanger
-            tool_changer.set_current_frame_from_tcp(gripper.current_frame)
-            new_guids = tool_changer.draw_visual(ToolArtist(tool_changer, layer_name))
+            # Draw ToolChanger and Robot Wrist          
+            new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, gripper.current_frame, layer_name, )
             self.gripper_guids[beam_id][gripper_position].extend(new_guids)
 
-            # Draw Robot Wrist
-            robot_wrist = self.process.robot_wrist
-            robot_wrist.current_frame = tool_changer.current_frame
-            #print("robot_wrist.current_frame ", robot_wrist.current_frame)
-            new_guids = robot_wrist.draw_visual(ToolArtist(robot_wrist, layer_name))
-            self.gripper_guids[beam_id][gripper_position].extend(new_guids)
+    def draw_toolchanger_and_robot_wrist(self, beam_id, tcp_frame, layer_name):
+        # type: (str, Frame, str) -> list(str)
+        new_guids = []
+
+        # Draw Tool Changer with TCP at tcp_frame
+        tool_changer = self.process.robot_toolchanger
+        tool_changer.set_current_frame_from_tcp(tcp_frame)
+        new_guids.extend(tool_changer.draw_visual(ToolArtist(tool_changer, layer_name)))
+        # Draw rob_wrist at tool_changer.current_frame 
+        robot_wrist = self.process.robot_wrist
+        robot_wrist.current_frame = tool_changer.current_frame
+        new_guids.extend(robot_wrist.draw_visual(ToolArtist(robot_wrist, layer_name)))
+
+        return new_guids
 
     def delete_gripper_all_positions(self, beam_id):
         """Delete all Rhino geometry associated to a a gripper.
@@ -603,37 +627,42 @@ class ProcessArtist(object):
         for joint_id in self.process.assembly.get_joint_ids_of_beam_clamps(beam_id, clamping_this_beam=True):
             # Loop through each position
             for clamp_position in ProcessKeyPosition.clamp_positions:
-                layer_name = 'itj::clamp::' + clamp_position
                 # If not delete_old, and there are already items drawn, we preserve them.
                 if len(self.clamp_guids[joint_id][clamp_position]) > 0 and not delete_old:
                     continue
+                
+                # Check if the position string contains a dot notation for states , such as open gripper
+                tool_states = [] # tool_states are function names that chagen state of the tool 
+                attribute_name = clamp_position
+                if '.' in clamp_position:
+                    attribute_name = clamp_position.split('.')[0]
+                    tool_states = clamp_position.split('.')[1:]
+                layer_name = 'itj::clamp::' + clamp_position
 
                 # Delete old geometry
                 self.delete_clamp_at_position(joint_id, clamp_position)
 
                 # Skip the rest of code if the position does not exist.
-                if self.process.assembly.get_joint_attribute(joint_id, clamp_position) is None:
-                    if verbose: print("Skipping clamp(%s) at position: %s" % (joint_id, clamp_position))
+                if self.process.assembly.get_joint_attribute(joint_id, attribute_name) is None:
+                    if verbose:
+                        print("Skipping clamp(%s) at position: %s" % (joint_id, attribute_name))
                     continue
 
                 # Draw Clamp
-                if verbose: print("Drawing Clamp(%s) for Beam(%s) in position: %s" % (joint_id, beam_id, clamp_position))
-                clamp = self.process.get_clamp_of_joint(joint_id, clamp_position)
-                artist = ToolArtist(clamp, layer_name)
-                guid = clamp.draw_visual(artist)
-                self.clamp_guids[joint_id][clamp_position].extend(guid)
+                if verbose:
+                    print("Drawing Clamp(%s) for Beam(%s) in position: %s" % (joint_id, beam_id, clamp_position))
+                clamp = self.process.get_clamp_of_joint(joint_id, attribute_name)
 
-                # Draw ToolChanger
-                tool_changer = self.process.robot_toolchanger
-                tool_changer.set_current_frame_from_tcp(clamp.current_frame)
-                new_guids = tool_changer.draw_visual(ToolArtist(tool_changer, layer_name))
+                # Set Tool State (better visualization)
+                for state in tool_states:
+                    getattr(clamp, state)()
+
+                artist = ToolArtist(clamp, layer_name)
+                new_guids = clamp.draw_visual(artist)
                 self.clamp_guids[joint_id][clamp_position].extend(new_guids)
 
-                # Draw Robot Wrist
-                robot_wrist = self.process.robot_wrist
-                robot_wrist.current_frame = tool_changer.current_frame
-                print("robot_wrist.current_frame ", robot_wrist.current_frame)
-                new_guids = robot_wrist.draw_visual(ToolArtist(robot_wrist, layer_name))
+                # Draw ToolChanger and Robot Wrist          
+                new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, clamp.current_frame, layer_name, )
                 self.clamp_guids[joint_id][clamp_position].extend(new_guids)
 
     def delete_clamp_all_positions(self, joint_id):
