@@ -52,6 +52,8 @@ def create_pickup_station(process):
     # Save station to process
     process.pickup_station = station
 
+    # Invalidate process 
+    [process.dependency.invalidate(beam_id, process.compute_pickup_frame) for beam_id in process.assembly.sequence]
 
 def create_stacked_pickup_station(process):
     pass
