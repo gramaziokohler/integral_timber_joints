@@ -5,6 +5,8 @@ from compas.geometry import Transformation, Translation
 from compas.geometry._core._algebra import dot_vectors
 from compas.geometry.primitives.frame import Frame
 from compas.geometry.primitives.vector import Vector
+from compas.robots.model.robot import RobotModel
+
 from compas.rpc import Proxy
 
 from geometric_blocking import blocked
@@ -39,7 +41,7 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['clamps'] = {}
         self.attributes['grippers'] = {}
 
-        self.attributes['robot'] = None                         # RobotModel
+        self.attributes['robot_model'] = None                         # RobotModel
         self.attributes['robot_toolchanger'] = None             # ToolChanger
         self.attributes['robot_wrist'] = None                   # RobotWrist
         self.attributes['actions'] = []                         # list[Action]
@@ -62,6 +64,16 @@ class RobotClampAssemblyProcess(Network):
         process.dependency.process = process
         # print ("Assigned self to dependency")
         return process
+
+    @property
+    def robot_model(self):
+        # type: () -> RobotModel
+        return self.attributes['robot_model']
+
+    @robot_model.setter
+    def robot_model(self, value):
+        # type: (RobotModel) -> None
+        self.attributes['robot_model'] = value
 
     @property
     def robot_toolchanger(self):
