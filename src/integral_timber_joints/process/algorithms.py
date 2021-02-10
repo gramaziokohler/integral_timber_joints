@@ -1,19 +1,20 @@
 try:
-    from typing import List, Dict, Tuple, Optional
-    from integral_timber_joints.process import RobotClampAssemblyProcess
-    from integral_timber_joints.process import RFLPathPlanner
+    from typing import Dict, List, Optional, Tuple
+
+    from integral_timber_joints.process import RFLPathPlanner, RobotClampAssemblyProcess
 except:
     pass
-from compas.geometry import Frame
-
-from integral_timber_joints.process.action import *
-from integral_timber_joints.process.movement import *
-from integral_timber_joints.assembly import Assembly
-from integral_timber_joints.geometry import Beam, Joint
-from integral_timber_joints.tools import Tool, Clamp, Gripper
-from integral_timber_joints.process.state import ObjectState
 import itertools
 from copy import deepcopy
+
+from compas.geometry import Frame
+
+from integral_timber_joints.assembly import Assembly
+from integral_timber_joints.geometry import Beam, Joint
+from integral_timber_joints.process.action import *
+from integral_timber_joints.process.movement import *
+from integral_timber_joints.process.state import ObjectState
+from integral_timber_joints.tools import Clamp, Gripper, Tool
 
 ###############################################
 # Algorithms that concerns the entire process

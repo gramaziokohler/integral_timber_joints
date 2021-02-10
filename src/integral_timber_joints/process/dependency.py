@@ -1,4 +1,5 @@
 from compas.datastructures.network.core.graph import Graph
+
 import integral_timber_joints
 from integral_timber_joints.assembly import Assembly
 
@@ -8,7 +9,8 @@ class ComputationalResult(object):
     ValidCanContinue = 1
     ValidCannotContinue = 2
     ValidNoChange = 3
-    ValidResults = [1,2,3]
+    ValidResults = [1, 2, 3]
+
 
 class ComputationalDependency(Graph):
     """This dependency graph keeps the parent-child relationships between different
@@ -39,7 +41,8 @@ class ComputationalDependency(Graph):
      This will not cause all depedent function to be recomputed when next compute()    is called. 
 
     """
-    def __init__(self, process = None):
+
+    def __init__(self, process=None):
         # type: (integral_timber_joints.process.RobotClampAssemblyProcess) -> None
 
         super(ComputationalDependency, self).__init__()
@@ -53,22 +56,22 @@ class ComputationalDependency(Graph):
         self.add_node('search_valid_jawapproach_vector_prioritizing_beam_side')
         # Level 1
         self.add_edge(
-            'assign_clamp_type_to_joints', # Top level
+            'assign_clamp_type_to_joints',  # Top level
             'search_valid_clamp_orientation_with_guiding_vector'
-            )
+        )
         # Level 2
         self.add_edge(
             'search_valid_clamp_orientation_with_guiding_vector',
             'compute_clamp_attachapproach_attachretract_detachapproach'
-            )
+        )
         self.add_edge(
             'search_valid_clamp_orientation_with_guiding_vector',
             'compute_clamp_detachretract'
-            )
+        )
         self.add_edge(
             'search_valid_clamp_orientation_with_guiding_vector',
             'search_valid_jawapproach_vector_prioritizing_beam_side'
-            )
+        )
 
         # Gripper Related Computation
         # self.add_node('assign_gripper_to_beam')
@@ -77,79 +80,79 @@ class ComputationalDependency(Graph):
         self.add_edge(
             'assign_gripper_to_beam',
             'compute_gripper_grasp_pose'
-            )
+        )
         # Layer 2
         # self.add_node('compute_pickup_location_at_corner_aligning_pickup_location')
         self.add_edge(
             'compute_gripper_grasp_pose',
             'compute_pickup_frame'
-            )
+        )
         # Layer 3
         # Things that are based on compute_pickup_frame
         self.add_edge(
             'compute_pickup_frame',
             'compute_beam_pickupretract'
-            )
+        )
         self.add_edge(
             'compute_pickup_frame',
             'compute_beam_pickupapproach'
-            )
+        )
         self.add_edge(
             'compute_pickup_frame',
             'compute_beam_finalretract'
-            )
+        )
 
         # Layer compute_all
         # - Clamp Computations
         self.add_edge(
             'compute_clamp_attachapproach_attachretract_detachapproach',
             'compute_all'
-            )
+        )
         self.add_edge(
             'compute_clamp_detachretract',
             'compute_all'
-            )
+        )
         self.add_edge(
             'search_valid_jawapproach_vector_prioritizing_beam_side',
             'compute_all'
-            )
+        )
         # - Gripper Computations
         self.add_edge(
             'compute_beam_pickupretract',
             'compute_all'
-            )
+        )
         self.add_edge(
             'compute_beam_pickupapproach',
             'compute_all'
-            )
+        )
         self.add_edge(
             'compute_beam_finalretract',
             'compute_all'
-            )
+        )
 
         if self.process is not None and self.process.assembly is not None:
             for beam_id in self.process.assembly.beam_ids():
                 self.update_default_node_attributes({beam_id: ComputationalResult.Invalid})
 
-    def set_solution_validity(self, beam_id, fx, state, invalidate_downstream = True):
+    def set_solution_validity(self, beam_id, fx, state, invalidate_downstream=True):
         # type: (str, function, int, bool) -> None
         """ Sets the solution's validity to a given value.
         If invalidate_downstream == True (default), all downstream computation will be invalidated.
-        """ 
+        """
         fx_name = fx.__name__
         self.node_attribute(fx_name, beam_id, state)
         if invalidate_downstream:
-            self.invalidate(beam_id, fx, downstream_only = True)
+            self.invalidate(beam_id, fx, downstream_only=True)
 
     def get_solution_validity(self, beam_id, fx):
         # type: (str, function) -> int
         """Checks the given computation if it is valid 
         Invalid means a recompute is needed.
         Does not perform recursive check upstream.
-        """ 
+        """
         fx_name = fx.__name__
         # Check self
-        self_status = self.node_attribute(fx_name, beam_id) 
+        self_status = self.node_attribute(fx_name, beam_id)
         return self_status
 
     def get_downstream_fxs(self, fx):
@@ -162,7 +165,7 @@ class ComputationalDependency(Graph):
         for fx_name in self.neighbors_in(fx.__name__):
             yield getattr(self.process, fx_name)
 
-    def invalidate(self, beam_id, fx, downstream_only = False):
+    def invalidate(self, beam_id, fx, downstream_only=False):
         """ Recursive function to invalidate the given the function and
         all downstream functions.
         If `downstream_only` == True, only downstream are invalidated.
@@ -172,7 +175,7 @@ class ComputationalDependency(Graph):
         for dfx in self.get_downstream_fxs(fx):
             self.invalidate(beam_id, dfx)
 
-    def compute(self, beam_id, fx, attempt_all_parents_even_failure = False):
+    def compute(self, beam_id, fx, attempt_all_parents_even_failure=False):
         """ Recursively compute all parents of this function and this function.
         Starting from the root of dependency, if a function is not valid, it will be recomputed.
         If any of the computation failed, it will not continue.
@@ -182,28 +185,29 @@ class ComputationalDependency(Graph):
         ------- 
         True if all the computations upstream and the specified functions are completed.
         """
-        fx_name= fx.__name__
+        fx_name = fx.__name__
         # Depth first to compute parent solutions first
         for ufx in self.get_uptream_fxs(fx):
-            parent_status = self.get_solution_validity(beam_id, ufx) 
+            parent_status = self.get_solution_validity(beam_id, ufx)
 
             # If parent solution is not Valid, try compute it.
-            if parent_status not in ComputationalResult.ValidResults: 
+            if parent_status not in ComputationalResult.ValidResults:
                 parent_status = self.compute(beam_id, ufx)
                 # If any parent is invalid despite retry, we stop here
-                if parent_status != ComputationalResult.ValidCanContinue: 
-                    if attempt_all_parents_even_failure : continue # Except if this flag is True
+                if parent_status != ComputationalResult.ValidCanContinue:
+                    if attempt_all_parents_even_failure:
+                        continue  # Except if this flag is True
                     return False
 
         # If all partents are okay, compute itself if it is not valid
-        validity = self.get_solution_validity(beam_id, fx) 
-        if validity not in ComputationalResult.ValidResults: 
-            validity =  fx(beam_id)
+        validity = self.get_solution_validity(beam_id, fx)
+        if validity not in ComputationalResult.ValidResults:
+            validity = fx(beam_id)
             # Invalidate downsteram results.
-            print ("Beam(%s) Dependency compute(%s) Validity = %s" % (beam_id, fx_name, validity)) 
+            print("Beam(%s) Dependency compute(%s) Validity = %s" % (beam_id, fx_name, validity))
             self.set_solution_validity(beam_id, fx, validity, invalidate_downstream=True)
         return validity in ComputationalResult.ValidResults
-    
+
     def debug_print(self, beam_id):
         for key, data in self.nodes(data=True):
-            print ("%s: %s = %s" % (beam_id, key, data[beam_id]))            
+            print("%s: %s = %s" % (beam_id, key, data[beam_id]))

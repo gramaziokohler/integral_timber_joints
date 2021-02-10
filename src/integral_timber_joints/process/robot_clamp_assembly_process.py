@@ -1,9 +1,9 @@
 from copy import deepcopy
 
 from compas.datastructures import Mesh, Network
-from compas.geometry.primitives.frame import Frame
 from compas.geometry import Transformation, Translation
 from compas.geometry._core._algebra import dot_vectors
+from compas.geometry.primitives.frame import Frame
 from compas.geometry.primitives.vector import Vector
 from compas.rpc import Proxy
 

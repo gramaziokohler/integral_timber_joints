@@ -3,9 +3,7 @@ import time
 
 from compas.geometry import Frame
 from compas_fab.backends import RosClient
-from compas_fab.robots import Configuration
-from compas_fab.robots import PlanningScene
-from compas_fab.robots import CollisionMesh
+from compas_fab.robots import CollisionMesh, Configuration, PlanningScene
 
 
 class PathPlanner:
@@ -60,6 +58,7 @@ class PathPlanner:
     def remove_collision_mesh(self, id):
         # type: (str) -> None
         self.scene.remove_collision_mesh(id)
+
 
 class RFLPathPlanner(PathPlanner):
     """RFL Robot Specific Path Planner
@@ -242,15 +241,15 @@ class RFLPathPlanner(PathPlanner):
             goal_constraints = self.robot.constraints_from_frame(target_frame, self.free_motion_tolerance_position_mm, tolerances_axes, self.planning_group)
             try:
                 trajectory = self.robot.plan_motion(
-                    goal_constraints = goal_constraints,
-                    start_configuration = start_configuration,
-                    group = self.planning_group,
-                    options = {
-                        'allowed_planning_time':self.free_motion_allowed_planning_time,
+                    goal_constraints=goal_constraints,
+                    start_configuration=start_configuration,
+                    group=self.planning_group,
+                    options={
+                        'allowed_planning_time': self.free_motion_allowed_planning_time,
                         'planner_id': self.free_motion_planner_id,
-                        'path_constraints' : path_constraints
-                        }
-                    )
+                        'path_constraints': path_constraints
+                    }
+                )
             except Exception as e:
                 if verbose:
                     print("robot.plan_motion error:", e)
@@ -260,10 +259,10 @@ class RFLPathPlanner(PathPlanner):
         else:
             try:
                 trajectory = self.robot.plan_cartesian_motion([target_frame],
-                                                            start_configuration,
-                                                            max_step=self.linear_motion_step_distance,
-                                                            avoid_collisions=True
-                                                            )
+                                                              start_configuration,
+                                                              max_step=self.linear_motion_step_distance,
+                                                              avoid_collisions=True
+                                                              )
             except Exception as e:
                 if verbose:
                     print("robot.plan_cartesian_motion error:", e)
@@ -292,9 +291,9 @@ class RFLPathPlanner(PathPlanner):
         try:
             configuration = self.robot.inverse_kinematics(
                 target_frame,
-                start_configuration = start_configuration,
-                group = self.planning_group,
-                options = {'return_full_configuration':True})
+                start_configuration=start_configuration,
+                group=self.planning_group,
+                options={'return_full_configuration': True})
             print("robot.ik_solution success: %s " % configuration)
             return configuration
         except Exception as e:
@@ -302,6 +301,7 @@ class RFLPathPlanner(PathPlanner):
                 print("robot.ik_solution error:", e)
                 # raise e
             return None
+
 
 if __name__ == "__main__":
 
