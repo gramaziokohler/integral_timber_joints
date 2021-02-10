@@ -13,6 +13,8 @@ from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.process_artist import ProcessArtist
 
+compas.PRECISION = '12f'
+
 def get_activedoc_path_no_ext():
     # type: () -> str
     activeDoc = Rhino.RhinoDoc.ActiveDoc  # type: Rhino.RhinoDoc
