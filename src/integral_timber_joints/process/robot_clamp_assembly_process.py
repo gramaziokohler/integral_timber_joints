@@ -561,13 +561,14 @@ class RobotClampAssemblyProcess(Network):
         beam_length = self.assembly.beam(beam_id).length
         chosen_gripper_type = None
         chosen_gripper_ideal = None
-        
+
         # Do not change anything if gripper_type is already set
         if self.assembly.get_beam_attribute(beam_id, "gripper_type") is not None:
             if verbose:
-                print("Joint (%s) clamp_type (%s) has already been set. No change made by assign_gripper_to_beam()." % (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
+                print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
+                      (beam_id, self.assembly.get_joint_attribute(beam_id, "gripper_type")))
             return ComputationalResult.ValidNoChange
- 
+
         for gripper_type in self.available_gripper_types:
             gripper = self.get_one_gripper_by_type(gripper_type)
             # Check if beam length is within limits
