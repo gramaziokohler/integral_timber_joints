@@ -1,9 +1,9 @@
 import json
 import os
 
-import Rhino
+import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
-import scriptcontext as sc # type: ignore
+import scriptcontext as sc  # type: ignore
 
 from compas.utilities import DataDecoder
 from compas_rhino.geometry import RhinoMesh
@@ -17,6 +17,7 @@ from integral_timber_joints.rhino.load import get_process, get_process_artist, p
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
 
+
 def next_step(process):
     # type: (RobotClampAssemblyProcess) -> None
     assembly = process.assembly  # type: Assembly
@@ -26,20 +27,22 @@ def next_step(process):
     if artist.selected_state_id <= len(all_movements):
         artist.selected_state_id += 1
         artist.delete_state(redraw=False)
-        artist.draw_state(redraw=True) # Visualize the state
+        artist.draw_state(redraw=True)  # Visualize the state
         print_current_state_info(process)
-    
+
+
 def prev_step(process):
     # type: (RobotClampAssemblyProcess) -> None
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
     all_movements = process.movements
 
-    if artist.selected_state_id > 0 :
+    if artist.selected_state_id > 0:
         artist.selected_state_id -= 1
         artist.delete_state(redraw=False)
-        artist.draw_state(redraw=True) # Visualize the state
+        artist.draw_state(redraw=True)  # Visualize the state
         print_current_state_info(process)
+
 
 def goto_state_by_beam_seq(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -51,21 +54,20 @@ def goto_state_by_beam_seq(process):
     selected_seq_id = rs.GetInteger("Which Beam to view, by assembly sequence: sequence_id = [0 to %i]" % (len(assembly.sequence) - 1), 0, 0, len(assembly.sequence) - 1)
     if selected_seq_id is None:
         return
-    if selected_seq_id > len(assembly.sequence) - 1 :
-        print ("error: sequence_id must be between [0 to %i]" % (len(assembly.sequence) - 1))
+    if selected_seq_id > len(assembly.sequence) - 1:
+        print("error: sequence_id must be between [0 to %i]" % (len(assembly.sequence) - 1))
 
     # get the first movement before a selected beam
     selected_movement = process.get_movements_by_beam_id(assembly.sequence[selected_seq_id])[0]
     if selected_movement is None:
         return
-    
+
     # Select the start state of the first movement.
-    mov_id = all_movements.index(selected_movement) 
+    mov_id = all_movements.index(selected_movement)
     artist.selected_state_id = mov_id
     artist.delete_state(redraw=False)
-    artist.draw_state(redraw=True) # Visualize the state
+    artist.draw_state(redraw=True)  # Visualize the state
     print_current_state_info(process)
-
 
 
 def print_current_state_info(process):
@@ -98,27 +100,25 @@ def show_menu(process):
         artist.hide_gripper_all_positions(beam_id)
         artist.hide_clamp_all_positions(beam_id)
     rs.EnableRedraw(True)
-    
+
     def show_interactive_beams_delete_state_vis():
         artist.delete_state(redraw=False)
         [artist.show_interactive_beam(beam_id) for beam_id in assembly.sequence]
         rs.EnableRedraw(True)
         sc.doc.Views.Redraw()
 
-
-
     # Menu for user
     config = {
         'message': "Visualize Actions and Movements:",
         'options': [
             {'name': 'Finish', 'action': 'Exit'
-                },
+             },
             {'name': 'NextStep', 'action': next_step
-                },
+             },
             {'name': 'PrevStep', 'action': prev_step
-                },
+             },
             {'name': 'GoToBeam', 'action': goto_state_by_beam_seq
-                },
+             },
         ]
 
     }
@@ -126,7 +126,7 @@ def show_menu(process):
     command_to_run = None
     while (True):
 
-        # Create Menu      
+        # Create Menu
         result = CommandMenu(config).select_action()
 
         # User cancel command by Escape
@@ -142,7 +142,8 @@ def show_menu(process):
             return Rhino.Commands.Result.Cancel
 
         # Add the repeat options after the first loop
-        if command_to_run is None: config['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
+        if command_to_run is None:
+            config['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
 
         # Set command-to-run according to selection, else repeat previous command.
         if result['action'] != 'Repeat':
