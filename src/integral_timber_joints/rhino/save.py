@@ -34,7 +34,7 @@ def save_process(process):
         return
 
     with open(json_path, 'w') as f:
-        json.dump(process, f, cls=DataEncoder, indent=indent)
+        json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
 
     return True
 
