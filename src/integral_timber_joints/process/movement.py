@@ -1,4 +1,12 @@
+from compas.geometry.primitives.frame import Frame
+from compas_fab.robots.trajectory import JointTrajectory
+
 from integral_timber_joints.process.state import ObjectState
+
+try:
+    from typing import Dict, Iterator, List, Optional, Tuple
+except:
+    pass
 
 ##################################
 # Base Classes for all Movement
@@ -50,7 +58,7 @@ class RoboticMovement(Movement):
         self.target_frame = target_frame  # type: Frame
         self.attached_tool_id = attached_tool_id  # type: Optional[str]
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
-        self.trajectory = None  # type: Optional[compas_fab.robots.JointTrajectory]
+        self.trajectory = None  # type: Optional[JointTrajectory]
 
     @property
     def data(self):
@@ -178,11 +186,10 @@ class DigitalOutput(object):
 
 
 class ClampsJawMovement(Movement):
-    def __init__(self, jaw_positions=[], clamp_ids=[], joint_ids=[]):
+    def __init__(self, jaw_positions=[], clamp_ids=[]):
         Movement.__init__(self)
         self.jaw_positions = jaw_positions  # type: list[float]
         self.clamp_ids = clamp_ids  # type: list[str]
-        self.joint_ids = joint_ids  # type: list[tuple[str, str]]
 
     def __str__(self):
         return "Clamps %s Jaw Move to %s" % (self.clamp_ids, self.jaw_positions)
@@ -194,7 +201,6 @@ class ClampsJawMovement(Movement):
         data = super(ClampsJawMovement, self).data
         data['jaw_positions'] = self.jaw_positions
         data['clamp_ids'] = self.clamp_ids
-        data['joint_ids'] = self.joint_ids
         return data
 
     @data.setter
@@ -204,5 +210,26 @@ class ClampsJawMovement(Movement):
         super(ClampsJawMovement, type(self)).data.fset(self, data)
         self.jaw_positions = data.get('jaw_positions', [])
         self.clamp_ids = data.get('clamp_ids', [])
-        self.joint_ids = data.get('joint_ids', [])
 
+
+class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
+
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[]):
+        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id)
+        ClampsJawMovement.__init__(self, jaw_positions, clamp_ids)
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(RoboticClampSyncLinearMovement, self).data
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(RoboticClampSyncLinearMovement, type(self)).data.fset(self, data)
+
+    def __str__(self):
+        return "Robot-Clamp Linear Sync Move to %s. Clamps %s Jaw Move to %s." % (self.target_frame, self.clamp_ids, self.jaw_positions)
