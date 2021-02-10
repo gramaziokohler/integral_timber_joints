@@ -18,12 +18,8 @@ from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWri
 
 class RobotClampAssemblyProcess(Network):
 
-    from .algorithms import create_actions_from_sequence
-    from .algorithms import assign_tools_to_actions
-    from .algorithms import optimize_actions_place_pick_gripper
-    from .algorithms import optimize_actions_place_pick_clamp
-    from .algorithms import create_movements_from_actions
-    from .algorithms import debug_print_process_actions_movements
+    from .algorithms import (assign_tools_to_actions, create_actions_from_sequence, create_movements_from_actions, debug_print_process_actions_movements,
+                             optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper)
 
     # Constants for clamp jaw positions at different key positions.
     clamp_appraoch_position = 220
@@ -1085,7 +1081,8 @@ class RobotClampAssemblyProcess(Network):
             # Do not change anything if clamp_type is already set
             if self.assembly.get_joint_attribute(joint_id, "clamp_type") is not None:
                 if verbose:
-                    print("Joint (%s) clamp_type (%s) has already been set. No change made by assign_clamp_type_to_joints()." % (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
+                    print("Joint (%s) clamp_type (%s) has already been set. No change made by assign_clamp_type_to_joints()." %
+                          (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
                 continue
 
             # Loop through the list of clamp types requested by the joint.
@@ -1120,7 +1117,7 @@ class RobotClampAssemblyProcess(Network):
 
         """
         joints_with_clamps_id = self.get_clamp_ids_for_beam(beam_id)
-        
+
         results = {}
         for joint_id in joints_with_clamps_id:
             joint = self.assembly.joint(joint_id)                   # type: Joint
@@ -1128,7 +1125,7 @@ class RobotClampAssemblyProcess(Network):
             clamp_attachment_frames = joint.get_clamp_frames(neighbour_beam)  # type: Frame
             results[joint_id] = clamp_attachment_frames
         return results
-    
+
     def flip_clamp_guide_vector(self, beam_id):
         """ Flip the direction of design_guide_vector_jawapproach.
 
@@ -1138,16 +1135,16 @@ class RobotClampAssemblyProcess(Network):
         Using assembly.beam(beam_id).frame.xaxis is not perfect, future 
         TODO should change this to align with Beam Face Y Axis.
         """
-        
-        guide_vector = self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach') # type: Vector
-        print ("Previous guide_vector: ", guide_vector)
+
+        guide_vector = self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach')  # type: Vector
+        print("Previous guide_vector: ", guide_vector)
         #  Check if the current guide vector is pointing to the same way as the beam X
         beam_xaxis = self.assembly.beam(beam_id).frame.xaxis
         if dot_vectors(guide_vector, beam_xaxis) >= 0:
             self.assembly.set_beam_attribute(beam_id, 'design_guide_vector_jawapproach', beam_xaxis.scaled(-1))
         else:
             self.assembly.set_beam_attribute(beam_id, 'design_guide_vector_jawapproach', beam_xaxis.scaled(1))
-        print ("New guide_vector: ", self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach'))
+        print("New guide_vector: ", self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach'))
 
     def search_valid_clamp_orientation_with_guiding_vector(self, beam_id):
         """ Search and choose clamp attachment frame based on guide vector alignment
@@ -1186,7 +1183,8 @@ class RobotClampAssemblyProcess(Network):
 
             # Set clamp tcp to selected_frame using set_current_frame_from_tcp()
             clamp = self.get_clamp_of_joint(joint_id, '')
-            if clamp is None: continue
+            if clamp is None:
+                continue
             clamp.set_current_frame_from_tcp(selected_frame)
 
             # Save clamp.current_frame as 'clamp_wcf_final'
@@ -1357,8 +1355,7 @@ class RobotClampAssemblyProcess(Network):
     # Action and Movements
     # -----------------------
 
-    from .algorithms import compute_initial_state
-    from .algorithms import compute_intermediate_states
+    from .algorithms import compute_initial_state, compute_intermediate_states
 
     def get_action_by_beam_id(self, beam_id):
         # type: (str) -> list[Action]
