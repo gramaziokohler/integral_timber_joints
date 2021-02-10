@@ -42,6 +42,7 @@ class ProcessKeyPosition(object):
     # beam_positions and gripper_positions relate directly to Beam Attributes in Assembly
     # clamp_positions  relate directly to Joint Attributes in Assembly
     beam_positions = [
+        'assembly_wcf_storage',
         'assembly_wcf_pickup',
         'assembly_wcf_pickupretract',
         'assembly_wcf_inclampapproach',
@@ -67,8 +68,8 @@ class ProcessKeyPosition(object):
 
     # pos_name, beam_pos, gripper_pos, clamp_pos
     pos_names_for_beam_with_clamps = [
-        ('clamp_attachapproach1',   'assembly_wcf_pickup',         'assembly_wcf_pickupapproach',     'clamp_wcf_attachapproach1'),
-        ('clamp_attachapproach2',   'assembly_wcf_pickup',         'assembly_wcf_pickupapproach',     'clamp_wcf_attachapproach2'),
+        ('clamp_attachapproach1',   'assembly_wcf_storage',         'assembly_wcf_pickupapproach',     'clamp_wcf_attachapproach1'),
+        ('clamp_attachapproach2',   'assembly_wcf_storage',         'assembly_wcf_pickupapproach',     'clamp_wcf_attachapproach2'),
         ('beam_pickup_approach',   'assembly_wcf_pickup',         'assembly_wcf_pickupapproach',     'clamp_wcf_final'),
         ('beam_pickup_pick',       'assembly_wcf_pickup',         'assembly_wcf_pickup',             'clamp_wcf_final'),
         ('beam_pickup_retract',    'assembly_wcf_pickupretract',  'assembly_wcf_pickupretract',      'clamp_wcf_final'),

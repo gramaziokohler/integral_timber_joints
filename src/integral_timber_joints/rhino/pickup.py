@@ -1,12 +1,13 @@
 import json
 import os
 
-import Rhino # type: ignore
+import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
+from compas.geometry.primitives.frame import Frame
+from compas.geometry.primitives.vector import Vector
 from compas.utilities import DataDecoder
-from compas_rhino.ui import CommandMenu
 from compas_rhino.geometry import RhinoMesh, RhinoPoint
-
+from compas_rhino.ui import CommandMenu
 from compas_rhino.utilities.objects import get_object_name
 
 from integral_timber_joints.assembly import Assembly
@@ -14,9 +15,8 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, StackedPickupStation
+from integral_timber_joints.tools.beam_storage import BeamStorage
 
-from compas.geometry.primitives.frame import Frame
-from compas.geometry.primitives.vector import Vector
 
 def create_pickup_station(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -24,23 +24,25 @@ def create_pickup_station(process):
 
     # Ask user for collision model
     guids = rs.GetObjects("Pick mesh(es) as collision objects.", preselect=False, select=False, group=False, filter=rs.filter.mesh)
+    if guids is None:
+        guids = []
     for guid in guids:
         cm = RhinoMesh.from_guid(guid).to_compas()
         station.collision_meshes.append(cm)
-        print (cm)
+        print(cm)
 
     # frame = Frame() # type: compas.geometry.primitives.frame.Frame
-    
+
     # Ask for origin
     origin = rs.GetPoint("Pick point as alignment origin.")
     # Ask for X axis and Y Axis
     x_point = rs.GetPoint("Pick point on X direction.")
     y_point = rs.GetPoint("Pick point on Y direction.")
-    
+
     # Alignment frame
     alignment_frame = Frame(origin, x_point - origin, y_point - origin)
     station.alignment_frame = alignment_frame
-    print (alignment_frame)
+    print(alignment_frame)
 
     # Ask for pickup retract direction
     retraction_point = rs.GetPoint("Pick point on retraction direction at correct distance from origin.")
@@ -58,11 +60,44 @@ def create_pickup_station(process):
 def create_stacked_pickup_station(process):
     pass
 
+
 def import_pickup_station(process):
     pass
 
+
 def export_pickup_station(process):
     pass
+
+
+def create_beam_storage(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    beam_storage = BeamStorage()
+    artist = get_process_artist()
+
+    # Ask for origin
+    origin = rs.GetPoint("Pick point as Storage origin.")
+    # Ask for X axis and Y Axis
+    x_point = rs.GetPoint("Pick point on X direction (Beam Length).")
+    y_point = rs.GetPoint("Pick point on Y direction. (Row Direction)")
+
+    # Alignment frame
+    alignment_frame = Frame(origin, x_point - origin, y_point - origin)
+    beam_storage.frame = alignment_frame
+
+    # Ask User how many columns
+    columns = rs.GetInteger("How many columns of beams to stack", 5)
+    if columns is None:
+        return
+    beam_storage.y_count = columns
+
+    # Save beam_storage to process and recompute storage frame
+    process.beam_storage = beam_storage
+    for beam_id in process.assembly.sequence:
+        process.compute_storeage_frame(beam_id)
+        artist.delete_beam_at_position(beam_id, 'assembly_wcf_storage')
+
+    print('BeamStorage Defined')
+
 
 def not_implemented(process):
     #
@@ -93,6 +128,8 @@ def show_menu(process):
                 {'name': 'DefinePickupStation', 'action': create_pickup_station
                  },
                 {'name': 'DefineStackedPickupStation', 'action': create_stacked_pickup_station
+                 },
+                {'name': 'DefineBeamStorage', 'action': create_beam_storage
                  },
                 {'name': 'Import', 'action': import_pickup_station
                  },

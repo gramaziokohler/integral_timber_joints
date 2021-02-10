@@ -807,11 +807,11 @@ class RobotClampAssemblyProcess(Network):
         - 'assembly_wcf_storage'
         """
         # Use the origin as storage frame if there is no beam_storage object
-        if self.beam is None:
+        if self.beam_storage is None:
             self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', Frame.worldXY())
 
         beam = self.assembly.beam(beam_id)
-        storage_frame = self.beam_storage.get_storage_frame(self.assembly.sequence.index(beam_id))
+        storage_frame = self.beam_storage.get_storage_frame(self.assembly.sequence.index(beam_id), len(self.assembly.sequence))
         self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', storage_frame)
 
     def compute_pickup_frame(self, beam_id):
