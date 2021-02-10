@@ -67,7 +67,7 @@
         </text>
         <left_macro_id>4f2dc14b-ee31-4e12-9b92-7c1a9aa30070</left_macro_id>
       </tool_bar_item>
-      <tool_bar_item guid="e8f66d0c-adb9-496b-9c78-b5c1881920b2" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="ad89af55-b548-4683-8c4b-b1c21ad2f628" button_display_mode="text_only" display_style_from_parent="False">
+      <tool_bar_item guid="e8f66d0c-adb9-496b-9c78-b5c1881920b2" button_display_mode="text_only" display_style_from_parent="False">
         <text>
           <locale_1033>Toolbar item 04</locale_1033>
         </text>
@@ -207,7 +207,7 @@
       </button_text>
       <script>! _-RunPythonScript "integral_timber_joints.rhino.tools_environment.py"</script>
     </macro_item>
-    <macro_item guid="dc1de8be-ffe7-41d5-9d05-e5b13b804cc6" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="69534d46-759f-473a-a3d2-34d17918c4ee" bitmap_id="d2584eb2-0549-4d5c-9c22-37c9fa5bc523">
+    <macro_item guid="dc1de8be-ffe7-41d5-9d05-e5b13b804cc6" bitmap_id="d2584eb2-0549-4d5c-9c22-37c9fa5bc523">
       <text>
         <locale_1033>Macro 14</locale_1033>
       </text>
@@ -218,7 +218,7 @@
         <locale_1033>Macro 01</locale_1033>
       </help_text>
       <button_text>
-        <locale_1033>Pickup</locale_1033>
+        <locale_1033>Pickup and Storage</locale_1033>
       </button_text>
       <menu_text>
         <locale_1033>Macro 01</locale_1033>
@@ -413,9 +413,6 @@
       <text>
         <locale_1033>Macro 06 - Copy</locale_1033>
       </text>
-      <tooltip>
-        <locale_1033 />
-      </tooltip>
       <help_text>
         <locale_1033>Macro 06</locale_1033>
       </help_text>
@@ -451,9 +448,9 @@
       <bitmap_item guid="2f854190-88f3-409b-a115-36a5e872563a" index="19" />
       <bitmap_item guid="47652f9a-9f70-47a9-9a61-99478ac108ea" index="20" />
       <bitmap_item guid="e9adad4a-119e-4b6c-94e1-e205bfc75fb0" index="21" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAAFgCAYAAACypvkUAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAtSURBVHhe7cEBDQAAAMKg909tDjcgAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAgCs1WWAAASPcj+IAAAAASUVORK5CYIIAAAAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAAFgCAYAAACypvkUAAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
+AAAOvwAADr8BOAVTJAAAAC1JREFUeF7twQENAAAAwqD3T20ONyAAAAAAAAAAAAAAAAAAAAAAAAAA
+AACAKzVZYAABI9yP4gAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </small_bitmap>
@@ -480,10 +477,10 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="2f854190-88f3-409b-a115-36a5e872563a" index="19" />
       <bitmap_item guid="47652f9a-9f70-47a9-9a61-99478ac108ea" index="20" />
       <bitmap_item guid="e9adad4a-119e-4b6c-94e1-e205bfc75fb0" index="21" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAAIQCAYAAACbu668AAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABJSURBVHhe7cExAQAAAMKg9U9tDB8gAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALirAcgQAAFuJGErAAAA
-AElFTkSuQmCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAAIQCAYAAACbu668AAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
+AAAOvwAADr8BOAVTJAAAAElJREFUeF7twTEBAAAAwqD1T20MHyAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAuKsByBAAAW4kYSsAAAAASUVORK5CYIIAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </normal_bitmap>
     <large_bitmap item_width="32" item_height="32">
@@ -509,10 +506,10 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="2f854190-88f3-409b-a115-36a5e872563a" index="19" />
       <bitmap_item guid="47652f9a-9f70-47a9-9a61-99478ac108ea" index="20" />
       <bitmap_item guid="e9adad4a-119e-4b6c-94e1-e205bfc75fb0" index="21" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAALACAYAAADyoXBfAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABuSURBVHhe7cEBAQAAAIIg/69uSEAAAAAAAAAA
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAALACAYAAADyoXBfAAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
+AAAOvwAADr8BOAVTJAAAAG5JREFUeF7twQEBAAAAgiD/r25IQAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAuRpizwABE3jeCwAAAABJRU5ErkJgggAAAAAAAAAAAAAA
+AAAAAAAAAAAAAMC5GmLPAAETeN4LAAAAAElFTkSuQmCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </large_bitmap>
   </bitmaps>
