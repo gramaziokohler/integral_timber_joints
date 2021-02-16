@@ -1,6 +1,8 @@
 #from compas_fab.robots import Robot
 
 from compas.geometry import Frame, Point, Transformation, Vector
+from compas.geometry.transformations.translation import  Translation
+
 from compas.robots import Axis, Joint, Link
 # from compas.datastructures import Mesh
 from compas_fab.robots import Configuration
@@ -136,6 +138,39 @@ class Clamp (Gripper):
     @approach2_vector.setter
     def approach2_vector(self, v):
         self.attributes['approach2_vector'] = v  # robot_model.jaw_clearance_vector = Vector(110, 0, 0)
+
+    # ----------------------------------
+    # Functions for computing the complexed approach and retract
+    # ----------------------------------
+
+    @ property
+    def tool_storage_approach_frame2(self):
+        # type: () -> Frame
+        # Compute the approach frame in wcf
+        approach2_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.approach2_vector)
+        return self.tool_storage_frame.transformed(Translation.from_vector(approach2_vector_wcf.scaled(-1)))
+
+    @ property
+    def tool_storage_approach_frame1(self):
+        # type: () -> Frame
+        # Compute the approach frame in wcf
+        approach1_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.approach1_vector)
+        return self.tool_storage_approach_frame2.transformed(Translation.from_vector(approach1_vector_wcf.scaled(-1)))
+
+    @ property
+    def tool_storage_retract_frame1(self):
+        # type: () -> Frame
+        # Compute the retract frame in wcf
+        detachretract1_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.detachretract1_vector)
+        return self.tool_storage_frame.transformed(Translation.from_vector(detachretract1_vector_wcf))
+
+    @ property
+    def tool_storage_retract_frame2(self):
+        # type: () -> Frame
+        # Compute the retract frame in wcf
+        detachretract2_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.detachretract2_vector)
+        return self.tool_storage_retract_frame1.transformed(Translation.from_vector(detachretract2_vector_wcf))
+
 
     # ----------------------------------
     # Functions for kinematic state
