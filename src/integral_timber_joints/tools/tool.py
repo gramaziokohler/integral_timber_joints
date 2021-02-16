@@ -41,7 +41,8 @@ class Tool (ToolModel):
     assume the tool changer's tip is the root.
 
     tool_storage_frame is the location (in WCF) where the tool is stored. Assuming the
-    tool is moved from the tool_coordinate_frame to the tool_storage_frame
+    tool is moved from the tool_coordinate_frame to the tool_storage_frame. Such as 
+    tool.current_frame = tool.tool_storage_frame
     """
 
     def __init__(self,

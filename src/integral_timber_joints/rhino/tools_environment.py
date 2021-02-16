@@ -5,6 +5,7 @@ import Rhino
 import rhinoscriptsyntax as rs
 from compas.utilities import DataDecoder
 from compas_rhino.geometry import RhinoMesh
+from compas.geometry.primitives.frame import Frame
 from compas_rhino.ui import CommandMenu
 from compas_rhino.utilities.objects import get_object_name
 
@@ -345,6 +346,41 @@ def copy_all(process):
         print("Old Environment Model(es) deleted, %i Environment Model(es) imported." % (len(process.environment_models)))
 
 
+def set_tool_storage(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Function invoked by user to set the storage position."""
+    print("-- Existing Clamps --")
+    ids = []
+    for clamp in process.clamps:
+        ids.append(clamp.name)
+        print("  Clamp (id = %s) type = %s)" % (clamp.name, clamp.type_name))
+
+    print("-- Existing Gripper --")
+    for gripper in process.grippers:
+        ids.append(gripper.name)
+        print("  type: %s (id = %s))" % (gripper.type_name, gripper.name))
+
+    # Ask user which gripper to delete
+    tool_id = rs.GetString("Change storage position for which tool?", "Cancel", ["Cancel"] + sorted(ids))
+
+    # Ask user for 3 point input
+    if tool_id in ids:
+        # Ask for origin
+        origin = rs.GetPoint("Pick point as storage frame origin for %s." % tool_id)
+        # Ask for X axis and Y Axis
+        x_point = rs.GetPoint("Pick point on storage frame X direction for %s." % tool_id)
+        y_point = rs.GetPoint("Pick point on storage frame Y direction for %s." % tool_id)
+
+        # Alignment frame
+        tool_storage_frame = Frame(origin, x_point - origin, y_point - origin)
+        process.tool(tool_id).tool_storage_frame = tool_storage_frame
+        print("Tool %s Storage Frame changed to : %s " % (tool_id, tool_storage_frame))
+
+        # Invalidate tool storage related calculations
+        # process.dependency.invalidate(something about storage position)
+        # Storage positions do not actually have much computation. It is not visualized in Grasp Pose
+        # It is only used directly when Actions create Movements.
+
 def not_implemented(process):
     #
     print('This function is not implemented')
@@ -363,6 +399,8 @@ def show_menu(process):
                 {'name': 'Finish', 'action': 'Exit'
                  },
                 {'name': 'ListTools', 'action': list_tools
+                 },                
+                {'name': 'SetToolStorage', 'action': set_tool_storage
                  },
                 {'name': 'Clamps', 'message': 'Process have %i Clamps:' % len(list(process.clamps)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
