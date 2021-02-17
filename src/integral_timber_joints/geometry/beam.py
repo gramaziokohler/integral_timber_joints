@@ -18,7 +18,8 @@ import math
 
 import compas
 from compas.datastructures import Mesh, Network, mesh_bounding_box
-from compas.geometry import Box, Frame, Line, Plane, Point, Transformation, Translation, Vector, distance_point_plane, is_point_on_plane
+from compas.geometry.primitives.frame import Frame
+from compas.geometry import Box, Line, Plane, Point, Transformation, Translation, Vector, distance_point_plane, is_point_on_plane
 
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import create_id
@@ -119,6 +120,8 @@ class Beam(Network):
     @property
     def cached_mesh(self):
         # type: () -> Mesh
+        """Beam mesh at the designed (final) location in WCF.
+        """
         return self.attributes['cached_mesh']
 
     @cached_mesh.setter
@@ -126,11 +129,16 @@ class Beam(Network):
         # type: (Mesh) -> None
         self.attributes['cached_mesh'] = value
 
-        # self.attributes['is_visible'] = True
-        # self.attributes['is_attached'] = True
-        # self.attributes['current_location'] = frame.copy()
-        # self.attributes['storage_location'] = frame.copy()
-        # self.attributes['grasp_frame'] = Frame.worldXY()
+    @property
+    def mesh(self):
+        # type() -> Mesh
+        """Beam mesh in the ObjectCoordinateFrame (OCF). 
+        This mesh can be transformed to self.frame to be shown at final location.
+        This can also be transformed to other frames for key position visualization.
+        """
+        assert self.cached_mesh is not None
+        T = Transformation.from_frame_to_frame(self.frame, Frame.worldXY())
+        return self.cached_mesh.transformed(T)
 
     # -----------------------
     # Constructors
