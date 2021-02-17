@@ -477,6 +477,19 @@ class Beam(Network):
         """
         return self.frame.to_world_coordinates(self.reference_edge_ocf(edge_id, wrap_edge_id))
 
+
+    # -------------------------
+    # Transformation
+    # -------------------------
+
+    def transform(self, transformation):
+        """Transform the frame and current frame of the beam"""
+        self.frame.transform(transformation)
+        if self.current_frame is not None:
+            self.current_frame.transform(transformation)
+        if self.cached_mesh is not None:
+            self.cached_mesh.transform(transformation)
+
     # -------------------------------
     # Extended Set of Geo Properities
     # -------------------------------

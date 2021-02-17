@@ -70,7 +70,6 @@ class Assembly(Network):
             'design_guide_vector_jawapproach': Vector(1, 1, 1),
             'assembly_vector_final': None,
             'assembly_vector_jawapproach': None,
-            'assembly_vector_pickup': None,
             'assembly_wcf_storage': None,           # Beam storage position (modeled as beam frame) before getting to the pickup point
             'assembly_wcf_pickupapproach': None,    # Beam gripper position (modeled as beam frame) before approaching pickup point
             'assembly_wcf_pickup': None,            # Beam position at pick-up point
@@ -393,6 +392,7 @@ class Assembly(Network):
     # --------------------------------------------
     # Beam cuts
     # --------------------------------------------
+
     def beam_cuts(self, beam_id):
         # type: (str) -> list[Beamcut]
         # Creating the beam attribute if the attribute is None as default
@@ -479,6 +479,47 @@ class Assembly(Network):
             beam_id = 'b%i' % i
             if beam_id not in self.nodes(data=False):
                 return beam_id
+
+    # -------------------------
+    # Transformation
+    # -------------------------
+
+    def transform(self, transformation):
+        """Transform the assembly. 
+        Tansformation should contain translation and rotation only.
+        """
+        # Change the frame in beam
+        [beam.transform(transformation) for beam in self.beams()]
+            
+        # Helper function to transform attributes
+        def transform_beam_attribute_if_not_none(beam_id, attribute_name, _transformation):
+            if self.get_beam_attribute(beam_id, attribute_name) is not None:
+                self.get_beam_attribute(beam_id, attribute_name).transform(_transformation)
+        
+        def transform_clamp_attribute_if_not_none(joint_id, attribute_name, _transformation):
+            if self.get_joint_attribute(joint_id, attribute_name) is not None:
+                self.get_joint_attribute(joint_id, attribute_name).transform(_transformation)
+
+        # Transform key position frames and vectors in assembly.
+        # Storage and Pickup frames are not affected.
+        for beam_id in self.sequence:
+            transform_beam_attribute_if_not_none(beam_id, 'assembly_wcf_inclampapproach', transformation)
+            transform_beam_attribute_if_not_none(beam_id, 'assembly_wcf_inclamp', transformation)
+            transform_beam_attribute_if_not_none(beam_id, 'assembly_wcf_final', transformation)
+            transform_beam_attribute_if_not_none(beam_id, 'assembly_wcf_finalretract', transformation)
+            transform_beam_attribute_if_not_none(beam_id, 'assembly_vector_final', transformation)
+            transform_beam_attribute_if_not_none(beam_id, 'assembly_vector_jawapproach', transformation)
+            transform_beam_attribute_if_not_none(beam_id, 'design_guide_vector_jawapproach', transformation)
+
+            for clamp_id in self.get_joint_ids_of_beam_clamps(beam_id):
+                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_attachapproach1', transformation)
+                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_attachapproach2', transformation)
+                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_final', transformation)
+                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_attachretract', transformation)
+                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_detachapproach', transformation)
+                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_detachretract1', transformation)
+                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_detachretract2', transformation)
+
     # --------------------------------------------
     # Beam Joints Geometrical Functions
     # --------------------------------------------
@@ -560,6 +601,7 @@ class Assembly(Network):
         # The if statement checkes if the joint attribute 'sequence_earlier' == False
         this_beam_sequence = self.get_beam_sequence(beam_id)
         return [neighbor_id for neighbor_id in self.neighbors_out(beam_id) if self.get_beam_sequence(neighbor_id) > this_beam_sequence]
+
     # -------------------------------------
     # Computing joints and joint directions
     # -------------------------------------
