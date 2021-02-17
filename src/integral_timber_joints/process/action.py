@@ -493,7 +493,7 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
         assert assembly_wcf_inclamp is not None and assembly_wcf_final is not None and assembly_wcf_finalretract is not None
 
         self.movements.append(RoboticFreeMovement(assembly_wcf_inclamp.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id))
-        self.movements.append(RoboticLinearMovement(assembly_wcf_final.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id))
+        self.movements.append(RoboticLinearMovement(assembly_wcf_final.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id, planning_priority=1))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id, self.beam_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id))
 
@@ -535,7 +535,7 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
         # A Robot Clamp Sync Move
         target_frame, attached_tool_id, attached_beam_id = assembly_wcf_final.copy(), self.gripper_id, self.beam_id
         jaw_positions, clamp_ids = [process.clamp_final_position] * len(self.clamp_ids), self.clamp_ids
-        self.movements.append(RoboticClampSyncLinearMovement(target_frame, attached_tool_id, attached_beam_id, jaw_positions, clamp_ids))
+        self.movements.append(RoboticClampSyncLinearMovement(target_frame, attached_tool_id, attached_beam_id, jaw_positions, clamp_ids, planning_priority=1))
 
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id, self.beam_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id))
