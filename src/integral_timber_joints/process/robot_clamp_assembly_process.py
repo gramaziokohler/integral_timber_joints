@@ -225,7 +225,7 @@ class RobotClampAssemblyProcess(Network):
         elif tool_id in self.attributes['clamps']:
             return self.clamp(tool_id)
         else:
-            raise KeyError("tool_id (%s) cannot be found in process.grippers or process.clamps")
+            raise KeyError("tool_id ({}) cannot be found in process.grippers or process.clamps".format(tool_id))
 
     def environment_model(self, env_id):
         # type: (str) -> EnvironmentModel
@@ -261,7 +261,7 @@ class RobotClampAssemblyProcess(Network):
 
     def get_clamp_of_joint(self, joint_id, position_name='clamp_wcf_final'):
         # type: (tuple[str, str], bool) -> Clamp
-        """Returns one of the clamp object being set at the position 
+        """Returns one of the clamp object being set at the position
         specified by 'position_name', default is 'clamp_wcf_final'.
         Refering to the attached position on the beam.
 
@@ -437,7 +437,7 @@ class RobotClampAssemblyProcess(Network):
         State Change
         ------------
         This functions sets the following beam_attribute
-        - 'assembly_vector_jawapproach' 
+        - 'assembly_vector_jawapproach'
         - 'assembly_wcf_inclampapproach'
 
         Return
@@ -488,12 +488,12 @@ class RobotClampAssemblyProcess(Network):
 
     def override_grasp_face(self, beam_id, grasp_face):
         """Manually override `gripper_grasp_face` for a specified beam
-        `grasp_face` can only be within 1 - 4, overrange value will be wrapped 
+        `grasp_face` can only be within 1 - 4, overrange value will be wrapped
 
         State Change
         ------------
         This functions sets the following beam_attribute
-        - 'gripper_grasp_face' 
+        - 'gripper_grasp_face'
 
         Dependency Trigger
         ------------------
@@ -539,12 +539,12 @@ class RobotClampAssemblyProcess(Network):
     def search_grasp_face_from_joint_assembly_direction(self, beam_id):
         # type: (str) -> Vector
         """Return the best face number (1-4) for creating `gripper_tcp_in_ocf`
-        where grasp face normal is the opposite direction of the beam's assembly direction. 
+        where grasp face normal is the opposite direction of the beam's assembly direction.
 
         State Change
         ------------
         This functions sets the following beam_attribute
-        - 'gripper_grasp_face' 
+        - 'gripper_grasp_face'
 
         Dependency Trigger
         ------------------
@@ -572,7 +572,7 @@ class RobotClampAssemblyProcess(Network):
         State Change
         ------------
         This functions sets the following beam_attribute
-        - 'gripper_type' 
+        - 'gripper_type'
 
         Return
         ------
@@ -624,7 +624,7 @@ class RobotClampAssemblyProcess(Network):
         This functions sets the following beam_attribute
         - 'gripper_grasp_dist_from_start' (if default)
         - 'gripper_grasp_face' (if default)
-        - 'gripper_tcp_in_ocf' 
+        - 'gripper_tcp_in_ocf'
 
         Return
         ------
@@ -721,7 +721,7 @@ class RobotClampAssemblyProcess(Network):
         The grasp is retrived from beam attribute `gripper_tcp_in_ocf`
         The gripper.current_frame should be set to the intended location
 
-        ### Credits: 
+        ### Credits:
         YiJiang contributed this rather clear way of expressing everytihing in Transformation.
         If one day we have time, we should all switch to this notation to be consistent with
         robotics code community.
@@ -772,8 +772,8 @@ class RobotClampAssemblyProcess(Network):
         State Change
         ------------
         This functions updates the following beam_attribute
-        - 'gripper_grasp_dist_from_start' 
-        - 'gripper_tcp_in_ocf' 
+        - 'gripper_grasp_dist_from_start'
+        - 'gripper_tcp_in_ocf'
 
         Return
         ------
@@ -1174,10 +1174,10 @@ class RobotClampAssemblyProcess(Network):
     def flip_clamp_guide_vector(self, beam_id):
         """ Flip the direction of design_guide_vector_jawapproach.
 
-        The resulting design_guide_vector_jawapproach is either 
+        The resulting design_guide_vector_jawapproach is either
         the +ve or -ve of beam(beam_id).frame.xaxis
 
-        Using assembly.beam(beam_id).frame.xaxis is not perfect, future 
+        Using assembly.beam(beam_id).frame.xaxis is not perfect, future
         TODO should change this to align with Beam Face Y Axis.
         """
 
@@ -1250,7 +1250,7 @@ class RobotClampAssemblyProcess(Network):
         State Change
         ------------
         This functions sets the following joint_attribute
-        - 'clamp_wcf_attachapproach1' 
+        - 'clamp_wcf_attachapproach1'
         - 'clamp_wcf_attachapproach2'
         - 'clamp_wcf_attachretract'
         - 'clamp_wcf_detachapproach'
@@ -1373,9 +1373,9 @@ class RobotClampAssemblyProcess(Network):
 
     def get_new_environment_model_id(self):
         # type: () -> str
-        """ Returns the next available env_id in the format of 'e%i'. 
+        """ Returns the next available env_id in the format of 'e%i'.
         Starting from 'e0' to maximum 'e999', it returns the next unused env_id
-        If there are holes between the used_id, the hole will be returned. 
+        If there are holes between the used_id, the hole will be returned.
         """
         for i in range(1000):
             env_id = 'e%i' % i
