@@ -28,7 +28,7 @@ class ObjectState(object):
 
     def __init__(self):
         self.current_frame = None  # type: Frame
-        self.kinematic_config = None  # type: Frame
+        self.kinematic_config = None  # type: ignore
         self.attached_to_robot = False  # type: bool
         self.attached_to_joint = None  # type: tuple[str,str]
 
