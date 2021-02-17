@@ -12,12 +12,14 @@ from integral_timber_joints.geometry import Beam
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.process.state import ObjectState
 from integral_timber_joints.rhino.tool_artist import ToolArtist
+from integral_timber_joints.rhino.utility import purge_objects
 
 from System.Drawing import Color  # type: ignore
 from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
 
 
 def AddAnnotationText(frame, text, height, layer, redraw=True):
+    rs.EnableRedraw(False)
     font = "Arial"
     plane = RhinoPlane.from_geometry(frame).geometry
     justification = Rhino.Geometry.TextJustification.BottomLeft
@@ -29,6 +31,7 @@ def AddAnnotationText(frame, text, height, layer, redraw=True):
         # o.Geometry.TextOrientation = Rhino.DocObjects.TextOrientation.InPlane
         # o.CommitChanges()
         if redraw:
+            rs.EnableRedraw(True)
             sc.doc.Views.Redraw()
         return guid
 
@@ -265,6 +268,7 @@ class ProcessArtist(object):
     def draw_beam_seqtag(self, beam_id, faces=[1, 3], padding_factor=0.2, size_factor=0.6, redraw=True):
         assembly = self.process.assembly
         seq_num = assembly.sequence.index(beam_id)
+        rs.EnableRedraw(False)
         for face_id in faces:
             # Get Face Frame
             beam = assembly.beam(beam_id)
@@ -282,8 +286,10 @@ class ProcessArtist(object):
 
             # Create Tag
             layer = 'itj::interactive::beams_seqtag'
-            guid = AddAnnotationText(face_frame, tag_text, tag_height, layer, redraw=True)
+            guid = AddAnnotationText(face_frame, tag_text, tag_height, layer, redraw=redraw)
             self.interactive_guids[beam_id][layer].append(guid)
+        if redraw:
+            rs.EnableRedraw(True)
 
     def draw_beam_mesh(self, beam_id, update_cache=False, redraw=True):
         # type:(str, bool, bool) -> None
@@ -309,11 +315,14 @@ class ProcessArtist(object):
         ''' Redraw beam visualizations.
         Redraws interactive beam mesh and sequence tag
         '''
-        self.delete_interactive_beam_visualization(beam_id)
+        rs.EnableRedraw(False)
+        self.delete_interactive_beam_visualization(beam_id, redraw=False)
         if draw_mesh:
-            self.draw_beam_mesh(beam_id, force_update, redraw=redraw)
+            self.draw_beam_mesh(beam_id, force_update, redraw=False)
         if draw_tag:
-            self.draw_beam_seqtag(beam_id, redraw=redraw)
+            self.draw_beam_seqtag(beam_id, redraw=False)
+        if redraw:
+            rs.EnableRedraw(True)
 
     def interactive_beam_guid(self, beam_id, layer='itj::interactive::beams_mesh'):
         # type:(str, str) -> list(str)
@@ -401,13 +410,18 @@ class ProcessArtist(object):
             guids = self.draw_meshes_get_guids([beam_mesh], beam_id)
             self.beam_guids[beam_id][beam_position].extend(guids)
 
-    def delete_beam_all_positions(self, beam_id):
+    def delete_beam_all_positions(self, beam_id, redraw=True):
         """Delete all Rhino geometry associated to a beam at all position.
         """
+        rs.EnableRedraw(False)
         for beam_position in ProcessKeyPosition.beam_positions:
-            self.delete_beam_at_position(beam_id, beam_position)
+            # The redraw is supressed in each individual call to save time.
+            self.delete_beam_at_position(beam_id, beam_position, redraw=False)
+        if redraw:
+            rs.EnableRedraw(True)
 
-    def delete_beam_at_position(self, beam_id, beam_position):
+    def delete_beam_at_position(self, beam_id, beam_position, redraw=True):
+        # type:(str, str, bool) -> None
         """Delete all Rhino geometry associated to a beam at specified position
 
         No change will be made if the beam_id or beam_position do not exist in the guid dictionary.
@@ -418,7 +432,7 @@ class ProcessArtist(object):
             return
         guids = self.beam_guids[beam_id][beam_position]
         if len(guids) > 0:
-            delete_objects(guids)
+            purge_objects(guids, redraw)
             self.beam_guids[beam_id][beam_position] = []
 
     def show_beam_at_one_position(self, beam_id, position=None):
@@ -444,23 +458,26 @@ class ProcessArtist(object):
     def draw_beam_brep(self, process):
         raise NotImplementedError
 
-    def delete_interactive_beam_visualization(self, beam_id):
-        # type:(str) -> None
+    def delete_interactive_beam_visualization(self, beam_id, redraw=True):
+        # type:(str, bool) -> None
         """ Delete visualization geometry geometry (brep, mesh, tag etc) related to a beam.
         Tools are not affected.
         Stored guid reference is also removed.
 
         If beam_id is not yet tracked in self.guid, the new entry will be created.
         """
+        rs.EnableRedraw(False)
         if beam_id in self.interactive_guids:
             for layer in self.interactive_guids[beam_id]:
-                delete_objects(self.interactive_guids[beam_id][layer])
+                purge_objects(self.interactive_guids[beam_id][layer], redraw=False)
                 self.interactive_guids[beam_id][layer] = []
         else:
             self.interactive_guids[beam_id] = {}
             for layer in self.interactive_layers:
                 self.interactive_guids[beam_id][layer] = []
-
+        if redraw:
+            rs.EnableRedraw(True)
+        
     @property
     def all_layer_names(self):
         for layer in self.interactive_layers:
@@ -564,14 +581,18 @@ class ProcessArtist(object):
 
         return new_guids
 
-    def delete_gripper_all_positions(self, beam_id):
+    def delete_gripper_all_positions(self, beam_id, redraw=True):
         """Delete all Rhino geometry associated to a a gripper.
         All positions are deleted
         """
+        rs.EnableRedraw(False)
         for gripper_position in ProcessKeyPosition.gripper_positions:
-            self.delete_gripper_at_position(beam_id, gripper_position)
+            # The redraw is supressed in each individual call to save time.
+            self.delete_gripper_at_position(beam_id, gripper_position, redraw=False)
+        if redraw:
+            rs.EnableRedraw(True)
 
-    def delete_gripper_at_position(self, beam_id, gripper_position):
+    def delete_gripper_at_position(self, beam_id, gripper_position, redraw=True):
         """Delete all Rhino geometry associated to a gripper at specified position
 
         No change will be made if the beam_id or gripper_position do not exist in the guid dictionary.
@@ -582,7 +603,7 @@ class ProcessArtist(object):
             return
         guids = self.gripper_guids[beam_id][gripper_position]
         if len(guids) > 0:
-            delete_objects(guids)
+            purge_objects(guids, redraw)
             self.gripper_guids[beam_id][gripper_position] = []
 
     def show_gripper_at_one_position(self, beam_id, position=None):
@@ -662,14 +683,18 @@ class ProcessArtist(object):
                 new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, clamp.current_frame, layer_name, )
                 self.clamp_guids[joint_id][clamp_position].extend(new_guids)
 
-    def delete_clamp_all_positions(self, joint_id):
+    def delete_clamp_all_positions(self, joint_id, redraw=True):
         """Delete all Rhino geometry associated to a a gripper.
         All positions are deleted
         """
+        rs.EnableRedraw(False)
         for clamp_position in ProcessKeyPosition.clamp_positions:
-            self.delete_gripper_at_position(joint_id, clamp_position)
+            # The redraw is supressed in each individual call to save time.
+            self.delete_gripper_at_position(joint_id, clamp_position, redraw=False)
+        if redraw:
+            rs.EnableRedraw(True)
 
-    def delete_clamp_at_position(self, joint_id, clamp_position):
+    def delete_clamp_at_position(self, joint_id, clamp_position, redraw=True):
         """Delete all Rhino geometry associated to a gripper at specified position
 
         No change will be made if the joint_id or clamp_position do not exist in the guid dictionary.
@@ -680,7 +705,7 @@ class ProcessArtist(object):
             return
         guids = self.clamp_guids[joint_id][clamp_position]
         if len(guids) > 0:
-            delete_objects(guids)
+            purge_objects(guids, redraw)
             self.clamp_guids[joint_id][clamp_position] = []
 
     def show_clamp_at_one_position(self, beam_id, position=None, clamping_this_beam=True):
@@ -713,7 +738,7 @@ class ProcessArtist(object):
     ######################
     # State
     ######################
-    def draw_meshes_get_guids(self, meshes, name,  disjoint=True, redraw=False):
+    def draw_meshes_get_guids(self, meshes, name, disjoint=True, redraw=False):
         """ 
         Draws a mesh to Rhino in a specific color and return the guids.
 
@@ -727,7 +752,8 @@ class ProcessArtist(object):
         rs.EnableRedraw(False)
         for mesh in meshes:
             v, f = mesh.to_vertices_and_faces()
-            guid = draw_mesh(v, f, name=name, redraw=redraw, disjoint=disjoint)
+            # Redraw for individual call supressed here.
+            guid = draw_mesh(v, f, name=name, redraw=False, disjoint=disjoint)
             guids.append(guid)
         if redraw:
             rs.EnableRedraw(True)
@@ -794,14 +820,6 @@ class ProcessArtist(object):
             sc.doc.Views.Redraw()
 
 
-try:
-    purge_object = sc.doc.Objects.Purge
-except AttributeError:
-    purge_object = None
-
-find_object = sc.doc.Objects.Find
-
-
 def meshes_apply_color(guids, color):
     for guid in guids:
         obj = sc.doc.Objects.Find(guid)
@@ -810,28 +828,6 @@ def meshes_apply_color(guids, color):
         attr.ObjectColor = Color.FromArgb(a, r, g, b)
         attr.ColorSource = ColorFromObject
         obj.CommitChanges()
-
-
-def purge_objects(guids, redraw=True):
-    """Purge objects from memory.
-    Adapted from compas_rhino.utilities
-
-    Parameters
-    ----------
-    guids : list of GUID
-    """
-    if not purge_object:
-        raise RuntimeError('Cannot purge outside Rhino script context')
-    rs.EnableRedraw(False)
-    for guid in guids:
-        if rs.IsObject(guid):
-            if rs.IsObjectHidden(guid):
-                rs.ShowObject(guid)
-            o = find_object(guid)
-            purge_object(o.RuntimeSerialNumber)
-    if redraw:
-        rs.EnableRedraw(True)
-        sc.doc.Views.Redraw()
 
 
 if __name__ == "__main__":
