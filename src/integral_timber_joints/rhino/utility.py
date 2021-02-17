@@ -4,9 +4,17 @@ import compas
 import compas_bootstrapper
 import compas_fab
 import rhinoscriptsyntax as rs
+import scriptcontext as sc  # type: ignore
 
 from integral_timber_joints.process import RobotClampAssemblyProcess
-from integral_timber_joints.rhino.load import get_process_artist
+
+
+# This is a duplicate from integral_timber_joints.rhino.load to avoid circular referencing
+def get_process_artist():
+    if "itj_process_artist" in sc.sticky:
+        return sc.sticky["itj_process_artist"]
+    else:
+        return None
 
 
 def print_package_info():
@@ -59,6 +67,37 @@ def get_existing_beams_filter(process, exclude_beam_ids=[]):
         return False
 
     return existing_beams_filter
+
+
+# Importing sc functions for purge_objects
+try:
+    purge_object = sc.doc.Objects.Purge
+except AttributeError:
+    purge_object = None
+
+find_object = sc.doc.Objects.Find
+
+
+def purge_objects(guids, redraw=True):
+    """Purge objects from memory.
+    Adapted from compas_rhino.utilities
+
+    Parameters
+    ----------
+    guids : list of GUID
+    """
+    if not purge_object:
+        raise RuntimeError('Cannot purge outside Rhino script context')
+    rs.EnableRedraw(False)
+    for guid in guids:
+        if rs.IsObject(guid):
+            if rs.IsObjectHidden(guid):
+                rs.ShowObject(guid)
+            o = find_object(guid)
+            purge_object(o.RuntimeSerialNumber)
+    if redraw:
+        rs.EnableRedraw(True)
+        sc.doc.Views.Redraw()
 
 
 if __name__ == "__main__":
