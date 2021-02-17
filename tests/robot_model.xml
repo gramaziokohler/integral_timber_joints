@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="MinimalRobotModel">
+  <link name="link1">
+    <visual>
+      <origin rpy="0.0 -0.0 0.0" xyz="2.0 0.5 0.25" />
+      <geometry>
+        <box size="1.0 2.0 0.5" />
+      </geometry>
+      <material name="Material">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+    <visual>
+      <origin rpy="0.0 -0.0 0.0" xyz="2.0 0.0 4.0" />
+      <geometry>
+        <box size="0.5 1.0 7.0" />
+      </geometry>
+      <material name="Material">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+  </link>
+  <link name="link2">
+    <visual>
+      <origin rpy="-0.0 -0.0 -1.57079632679" xyz="0.0 0.0 0.0" />
+      <geometry>
+        <cylinder length="8.0" radius="0.5" />
+      </geometry>
+      <material name="Material">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+  </link>
+  <link name="link3">
+    <visual>
+      <geometry>
+        <mesh filename="" />
+      </geometry>
+      <material name="Material">
+        <color rgba="0.8 0.8 0.8 1.0" />
+      </material>
+    </visual>
+  </link>
+  <joint name="joint1" type="continuous">
+    <parent link="link1" />
+    <child link="link2" />
+    <axis xyz="1.0 0.0 0.0" />
+    <origin rpy="0.0 -0.0 0.0" xyz="0.0 0.0 7.0" />
+  </joint>
+  <joint name="joint2" type="continuous">
+    <parent link="link2" />
+    <child link="link3" />
+    <axis xyz="1.0 0.0 0.0" />
+    <origin rpy="0.0 -0.0 0.0" xyz="0.0 0.0 7.0" />
+  </joint>
+</robot>
