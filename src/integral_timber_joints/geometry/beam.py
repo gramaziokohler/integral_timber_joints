@@ -18,7 +18,8 @@ import math
 
 import compas
 from compas.datastructures import Mesh, Network, mesh_bounding_box
-from compas.geometry import Box, Frame, Line, Plane, Point, Transformation, Translation, Vector, distance_point_plane, is_point_on_plane
+from compas.geometry import Box, Line, Plane, Point, Transformation, Translation, Vector, distance_point_plane, is_point_on_plane
+from compas.geometry.primitives.frame import Frame
 
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import create_id
@@ -53,6 +54,7 @@ class Beam(Network):
             frame = Frame.worldXY()
         # self.frame = frame.copy()       # type: Frame
         self.attributes['frame'] = frame.copy()
+        self.attributes['current_frame'] = frame.copy()
         self.attributes['length'] = float(length)
         self.attributes['width'] = float(width)
         self.attributes['height'] = float(height)
@@ -109,6 +111,7 @@ class Beam(Network):
     @property
     def frame(self):
         # type: () -> Frame
+        """Final position of the beam as-designed """
         return self.attributes['frame']
 
     @frame.setter
@@ -117,8 +120,21 @@ class Beam(Network):
         self.attributes['frame'] = value
 
     @property
+    def current_frame(self):
+        # type: () -> Frame
+        """An extrinsic state of the beam in a different location other than the final location"""
+        return self.attributes['current_frame']
+
+    @current_frame.setter
+    def current_frame(self, value):
+        # type: (Frame) -> None
+        self.attributes['current_frame'] = value
+
+    @property
     def cached_mesh(self):
         # type: () -> Mesh
+        """Beam mesh at the designed (final) location in WCF.
+        """
         return self.attributes['cached_mesh']
 
     @cached_mesh.setter
@@ -126,11 +142,16 @@ class Beam(Network):
         # type: (Mesh) -> None
         self.attributes['cached_mesh'] = value
 
-        # self.attributes['is_visible'] = True
-        # self.attributes['is_attached'] = True
-        # self.attributes['current_location'] = frame.copy()
-        # self.attributes['storage_location'] = frame.copy()
-        # self.attributes['grasp_frame'] = Frame.worldXY()
+    @property
+    def mesh(self):
+        # type() -> Mesh
+        """Beam mesh in the ObjectCoordinateFrame (OCF). 
+        This mesh can be transformed to self.frame to be shown at final location.
+        This can also be transformed to other frames for key position visualization.
+        """
+        assert self.cached_mesh is not None
+        T = Transformation.from_frame_to_frame(self.frame, Frame.worldXY())
+        return self.cached_mesh.transformed(T)
 
     # -----------------------
     # Constructors
@@ -562,25 +583,22 @@ class Beam(Network):
 
         return self.cached_mesh
 
-    def set_state(self, state_dict):
+    def set_state(self, state):
+        # type: (ObjectState) -> None
+        '''Set the state of the beam from an ObjectState
+        Only current_frame is set.
         '''
-        This function serves animation / viauslization purpose only
-        '''
-        # state is simply a frame
-        self.current_location = state_dict['current_location'].copy()   # Frame
-        self.is_visible = state_dict['is_visible']                      # Boolean
-        self.is_attached = state_dict['is_attached']                      # Boolean
+        assert state.current_frame is not None
+        self.current_frame = state.current_frame
 
     def get_state(self):
+        # type: () -> ObjectState
+        ''' Get an ObjectState object representing the Beam.
+        Only current_frame is set.
         '''
-        This function serves animation / viauslization purpose only
-        '''
-        state_dict = {}
-        state_dict['current_location'] = self.current_location.copy()
-        state_dict['is_visible'] = self.is_visible
-        state_dict['is_attached'] = self.is_attached
-
-        return state_dict
+        state = ObjectState()
+        state.current_frame = self.current_frame.copy()
+        return state
 
     def draw_visuals(self):
         '''
@@ -604,16 +622,19 @@ class Beam(Network):
         # type: (ObjectState, Optional[Transformation]) -> List[Mesh]
         """Returns the collision meshe(s) of the Beam (typically 1) for a given state.
 
+        State Change
+        ------------
+        Calling this function sets the beam's state to the given state.
+        If desired, call `beam.get_state()` to backup the current state.
+
         Two transformation is performed:
         - `state.current_frame` if not `None` (typically it is None for EnvironmentMesh)
         - `robot_world_transform` if not `None`
         """
+        self.set_state(state)
 
-        if state.current_frame is not None:
-            T = Transformation.from_frame_to_frame(self.frame, state.current_frame)
-        else:
-            T = Transformation()  # Identity Matrix
-
+        # The cached_mesh is located at self.frame
+        T = Transformation.from_frame_to_frame(self.frame, state.current_frame)
         transformed_mesh = self.cached_mesh.transformed(T)  # type: Mesh
 
         if robot_world_transform is not None:

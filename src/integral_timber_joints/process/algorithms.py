@@ -324,7 +324,14 @@ def debug_print_process_actions_movements(process, file_path=None):
 
         # Print Movement Name
         for j, movement in enumerate(action.movements):
-            line = "|  |- Movement %s (%s): %s\n" % (j, movement.__class__.__name__, movement)
+
+            # Print Priority String
+            if movement.planning_priority < 0:
+                priority_string = 'x'
+            else:
+                priority_string = '%s' % movement.planning_priority
+            
+            line = "|  |- <%s> Movement %s (%s): %s\n" % (priority_string, j, movement.__class__.__name__, movement)
             if file_path is not None:
                 f.write(line)
             else:
@@ -357,11 +364,6 @@ def compute_initial_state(process, verbose=True):
         state = ObjectState()
         state.current_frame = tool.tool_storage_frame
         process.initial_state[tool.name] = state
-
-    # Environment models are in its own position. They dont move anyways. The State is simply empty.
-    for env_id, env_model in process.environment_models.items():
-        state = ObjectState()
-        process.initial_state[env_id] = state
 
     # Robot configuration should be take from an initial robot state.
     # TODO
