@@ -379,13 +379,15 @@ class ProcessArtist(object):
     # Beam in different positions
     #############################
 
-    def draw_beam_all_positions(self, beam_id, delete_old=False, verbose=False):
+    def draw_beam_all_positions(self, beam_id, delete_old=False, verbose=False, redraw=True):
         """ Delete old beam geometry if delete_old is True
         Redraw them in Rhino in different layers.
         The resulting Rhino guids are kept in self.beam_guids[beam_id][position]
 
         This applies to all positions where the attribute is set in beam attributes.
         """
+        rs.EnableRedraw(False)
+
         for beam_position in ProcessKeyPosition.beam_positions:
             layer_name = 'itj::beam::' + beam_position
             # If not delete_old, and there are already items drawn, we preserve them.
@@ -393,7 +395,7 @@ class ProcessArtist(object):
                 continue
 
             # Delete old geometry
-            self.delete_beam_at_position(beam_id, beam_position)
+            self.delete_beam_at_position(beam_id, beam_position, redraw=False)
 
             # Skip the rest of code if the position does not exist.
             if self.process.assembly.get_beam_attribute(beam_id, beam_position) is None:
@@ -407,8 +409,11 @@ class ProcessArtist(object):
             # Transform the beam_mesh to location and
             T = self.process.assembly.get_beam_transformaion_to(beam_id, beam_position)
             beam_mesh = self.process.assembly.beam(beam_id).cached_mesh.transformed(T)  # type: Mesh
-            guids = self.draw_meshes_get_guids([beam_mesh], beam_id)
+            guids = self.draw_meshes_get_guids([beam_mesh], beam_id, redraw=False)
             self.beam_guids[beam_id][beam_position].extend(guids)
+        
+        if redraw:
+            rs.EnableRedraw(True)
 
     def delete_beam_all_positions(self, beam_id, redraw=True):
         """Delete all Rhino geometry associated to a beam at all position.
@@ -519,13 +524,15 @@ class ProcessArtist(object):
     # Drawing Gripper
     ######################
 
-    def draw_gripper_all_positions(self, beam_id, delete_old=False, verbose=False):
+    def draw_gripper_all_positions(self, beam_id, delete_old=False, verbose=False, redraw=True):
         """ Delete old gripper geometry if delete_old is True
         Redraw them in Rhino in different layers.
         The resulting Rhino guids are kept in self.gripper_guids[beam_id][gripper_position]
 
         This applies to all positions where the attribute is set in beam attributes.
         """
+        rs.EnableRedraw(False)
+
         for gripper_position in ProcessKeyPosition.gripper_positions:
             layer_name = 'itj::gripper::' + gripper_position
             # If not delete_old, and there are already items drawn, we preserve them.
@@ -541,7 +548,7 @@ class ProcessArtist(object):
             layer_name = 'itj::clamp::' + gripper_position
 
             # Delete old geometry
-            self.delete_gripper_at_position(beam_id, gripper_position)
+            self.delete_gripper_at_position(beam_id, gripper_position, redraw=False)
 
             # Skip the rest of code if the position does not exist.
             if self.process.assembly.get_beam_attribute(beam_id, attribute_name) is None:
@@ -565,6 +572,9 @@ class ProcessArtist(object):
             # Draw ToolChanger and Robot Wrist
             new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, gripper.current_frame, layer_name, )
             self.gripper_guids[beam_id][gripper_position].extend(new_guids)
+
+        if redraw:
+            rs.EnableRedraw(True)
 
     def draw_toolchanger_and_robot_wrist(self, beam_id, tcp_frame, layer_name):
         # type: (str, Frame, str) -> list(str)
@@ -633,13 +643,14 @@ class ProcessArtist(object):
     # Drawing Clamp
     ######################
 
-    def draw_clamp_all_positions(self, beam_id, delete_old=False, verbose=False):
+    def draw_clamp_all_positions(self, beam_id, delete_old=False, verbose=False, redraw=True):
         """ Delete old clamp geometry if delete_old is True
         Redraw them in Rhino in different layers.
         The resulting Rhino guids are kept in self.clamp_guids[joint_id][clamp_position]
 
         This applies to all positions where the attribute is set in joint attributes.
         """
+        rs.EnableRedraw(False)
         # clamp_id == joint_id
         # Loop through all clamps that are clamping this beam
         for joint_id in self.process.assembly.get_joint_ids_of_beam_clamps(beam_id, clamping_this_beam=True):
@@ -658,7 +669,7 @@ class ProcessArtist(object):
                 layer_name = 'itj::clamp::' + clamp_position
 
                 # Delete old geometry
-                self.delete_clamp_at_position(joint_id, clamp_position)
+                self.delete_clamp_at_position(joint_id, clamp_position, redraw=False)
 
                 # Skip the rest of code if the position does not exist.
                 if self.process.assembly.get_joint_attribute(joint_id, attribute_name) is None:
@@ -682,6 +693,8 @@ class ProcessArtist(object):
                 # Draw ToolChanger and Robot Wrist
                 new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, clamp.current_frame, layer_name, )
                 self.clamp_guids[joint_id][clamp_position].extend(new_guids)
+        if redraw:
+            rs.EnableRedraw(True)
 
     def delete_clamp_all_positions(self, joint_id, redraw=True):
         """Delete all Rhino geometry associated to a a gripper.

@@ -103,11 +103,11 @@ def show_menu(process):
     # Initially hide them.
     rs.EnableRedraw(False)
     for beam_id in assembly.sequence:
-        artist.draw_beam_all_positions(beam_id)
+        artist.draw_beam_all_positions(beam_id, redraw=False)
         artist.hide_beam_all_positions(beam_id)
-        artist.draw_gripper_all_positions(beam_id)
+        artist.draw_gripper_all_positions(beam_id, redraw=False)
         artist.hide_gripper_all_positions(beam_id)
-        artist.draw_clamp_all_positions(beam_id)
+        artist.draw_clamp_all_positions(beam_id, redraw=False)
         artist.hide_clamp_all_positions(beam_id)
     rs.EnableRedraw(True)
     rs.Redraw()
@@ -296,8 +296,8 @@ def show_menu(process):
         process.dependency.invalidate(beam_id, process.search_valid_clamp_orientation_with_guiding_vector)
         process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
         # Refresh Display
-        artist.draw_beam_all_positions(beam_id, delete_old=True)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True)
+        artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
         artist.draw_clamp_all_positions(beam_id, delete_old=True)
         show_sequence_color(process, beam_id)
 

@@ -381,17 +381,21 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         """ Movement for picking Clamp (and other tools) from Storage
         """
         self.movements = []
-        tool = process.tool(self.tool_id)  # type: Clamp
+        tool = process.clamp(self.tool_id)  # type: Clamp
 
         clamp_wcf_detachapproach = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_detachapproach')
         clamp_wcf_final = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_final')
         clamp_wcf_detachretract1 = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_detachretract1')
         clamp_wcf_detachretract2 = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_detachretract2')
 
+        # Approach
         self.movements.append(RoboticFreeMovement(clamp_wcf_detachapproach))
         self.movements.append(RoboticLinearMovement(clamp_wcf_final.copy()))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id))
+        # Open Clamp Jaw 
+        self.movements.append(ClampsJawMovement([process.clamp_appraoch_position], [self.tool_id]))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id))
+        # Retract
         self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract1.copy(), attached_tool_id=self.tool_id))  # Tool Retract Frame at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract2.copy(), attached_tool_id=self.tool_id))  # Tool Retract Frame at structure
 
