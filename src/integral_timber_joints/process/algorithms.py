@@ -361,7 +361,12 @@ def compute_initial_state(process, verbose=True):
 
     # Tools (Clamps, Grippers) are all in their storage position
     for tool in itertools.chain(process.clamps, process.grippers):
+        tool.close_gripper()
+        # Clamps should have a open clamp jaw state in the begining.
+        if isinstance(tool, Clamp):
+            tool.open_clamp()
         state = ObjectState()
+        state.kinematic_config = tool._get_kinematic_state()
         state.current_frame = tool.tool_storage_frame
         process.initial_state[tool.name] = state
 
