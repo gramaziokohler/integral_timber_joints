@@ -22,6 +22,7 @@ class Movement(object):
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
         self.planning_priority = planning_priority  # type: int # Default to zero, -1 means planning not required, +1 meaning the movement should be planned first.
+        self.movement_id = ""  # type: str # In the format of 
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -44,6 +45,7 @@ class Movement(object):
             'operator_stop_after': self.operator_stop_after,
             'end_state': self.end_state,
             'planning_priority': self.planning_priority,
+            'movement_id': self.movement_id,
         }
         return data
 
@@ -53,6 +55,7 @@ class Movement(object):
         self.operator_stop_after = data.get('operator_stop_after', "")
         self.planning_priority = data.get('planning_priority', 0)
         self.end_state = data.get('end_state', {})
+        self.movement_id = data.get('movement_id', "")
 
 
 class RoboticMovement(Movement):

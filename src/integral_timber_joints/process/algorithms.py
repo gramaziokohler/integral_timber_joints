@@ -33,20 +33,20 @@ def create_actions_from_sequence(process, verbose=True):
     process.actions = []
     actions = process.actions  # type: List[Action]
 
-    for seq_n, beam_id in enumerate(assembly.sequence):
+    def act_n(reset=False):
         # Fuction to keep count of act_n
+        if hasattr(act_n, 'counter'):
+            act_n.counter += 1
+        else:
+            act_n.counter = 0
+        return act_n.counter
 
-        def act_n(reset=False):
-            if reset:
-                act_n.counter = 0
-            else:
-                act_n.counter += 1
-            return act_n.counter
+    for seq_n, beam_id in enumerate(assembly.sequence):
 
         beam = assembly.beam(beam_id)  # type: Beam
         if verbose:
             print("Beam %s" % beam_id)
-        actions.append(LoadBeamAction(seq_n, act_n(True), beam_id))
+        actions.append(LoadBeamAction(seq_n, act_n(), beam_id))
         if verbose:
             print('|- ' + actions[-1].__str__())
 
@@ -300,7 +300,6 @@ def create_movements_from_actions(process, verbose=True):
     # The functions to create_movements are located within each of the Action class.
     for action in actions:
         action.create_movements(process)
-
 
 def debug_print_process_actions_movements(process, file_path=None):
     f = None
