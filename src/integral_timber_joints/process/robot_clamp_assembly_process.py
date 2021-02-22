@@ -16,7 +16,7 @@ from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
 from integral_timber_joints.process.state import ObjectState
-from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
+from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger, GripperAlignedPickupStation
 from integral_timber_joints.tools.beam_storage import BeamStorage
 
 
@@ -849,6 +849,11 @@ class RobotClampAssemblyProcess(Network):
         if isinstance(self.pickup_station, StackedPickupStation):
             print("StackedPickupStation not implemented at compute_pickup_frame")
             return ComputationalResult.ValidCannotContinue
+        elif isinstance(self.pickup_station, GripperAlignedPickupStation):
+            if self.pickup_station.compute_pickup_frame(self, beam_id):
+                return ComputationalResult.ValidCanContinue
+            else:
+                return ComputationalResult.ValidCannotContinue
         elif isinstance(self.pickup_station, PickupStation):
             return self.compute_pickup_location_at_corner_aligning_pickup_location(beam_id)
         else:

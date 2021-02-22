@@ -14,13 +14,14 @@ from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
-from integral_timber_joints.tools import Clamp, Gripper, PickupStation, StackedPickupStation
+from integral_timber_joints.tools import Clamp, Gripper, PickupStation, StackedPickupStation, GripperAlignedPickupStation
 from integral_timber_joints.tools.beam_storage import BeamStorage
 
 
 def create_pickup_station(process):
     # type: (RobotClampAssemblyProcess) -> None
     station = PickupStation()
+    artist = get_process_artist()
 
     # Ask user for collision model
     guids = rs.GetObjects("Pick mesh(es) as collision objects.", preselect=False, select=False, group=False, filter=rs.filter.mesh)
@@ -54,8 +55,63 @@ def create_pickup_station(process):
     # Save station to process
     process.pickup_station = station
 
-    # Invalidate process 
+    # Invalidate process
     [process.dependency.invalidate(beam_id, process.compute_pickup_frame) for beam_id in process.assembly.sequence]
+
+    # Artist deltete related geometry
+    for beam_id in process.assembly.sequence:
+        artist.delete_beam_at_position(beam_id, 'assembly_wcf_pickupapproach')
+        artist.delete_beam_at_position(beam_id, 'assembly_wcf_pickup')
+        artist.delete_beam_at_position(beam_id, 'assembly_wcf_pickupretract')
+        artist.delete_gripper_at_position(beam_id, 'assembly_wcf_pickupapproach')
+        artist.delete_gripper_at_position(beam_id, 'assembly_wcf_pickup')
+        artist.delete_gripper_at_position(beam_id, 'assembly_wcf_pickupretract')
+
+
+def create_gripper_aligning_pickup_station(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    station = GripperAlignedPickupStation()
+    artist = get_process_artist()
+
+    # Ask user for collision model
+    guids = rs.GetObjects("Pick mesh(es) as collision objects.", preselect=False, select=False, group=False, filter=rs.filter.mesh)
+    if guids is None:
+        guids = []
+    for guid in guids:
+        cm = RhinoMesh.from_guid(guid).to_compas()
+        station.collision_meshes.append(cm)
+
+    # Ask for origin
+    origin = rs.GetPoint("Pick point as alignment origin.")
+    # Ask for X axis and Y Axis
+    x_point = rs.GetPoint("Pick point on X direction. (length of beam)")
+    y_point = rs.GetPoint("Pick point on Y direction. (side)")
+
+    # Alignment frame
+    alignment_frame = Frame(origin, x_point - origin, y_point - origin)
+    station.alignment_frame = alignment_frame
+    print(alignment_frame)
+
+    # Ask for pickup retract direction
+    retraction_point = rs.GetPoint("Pick point on retraction direction at correct distance from origin.")
+    pickup_retract_vector = Vector.from_start_end(origin, retraction_point)
+    station.pickup_retract_vector = pickup_retract_vector
+
+    # Save station to process
+    process.pickup_station = station
+
+    # Invalidate process
+    [process.dependency.invalidate(beam_id, process.compute_pickup_frame) for beam_id in process.assembly.sequence]
+
+    # Artist deltete related geometry
+    for beam_id in process.assembly.sequence:
+        artist.delete_beam_at_position(beam_id, 'assembly_wcf_pickupapproach')
+        artist.delete_beam_at_position(beam_id, 'assembly_wcf_pickup')
+        artist.delete_beam_at_position(beam_id, 'assembly_wcf_pickupretract')
+        artist.delete_gripper_at_position(beam_id, 'assembly_wcf_pickupapproach')
+        artist.delete_gripper_at_position(beam_id, 'assembly_wcf_pickup')
+        artist.delete_gripper_at_position(beam_id, 'assembly_wcf_pickupretract')
+
 
 def create_stacked_pickup_station(process):
     pass
@@ -113,6 +169,8 @@ def show_menu(process):
         # Create Menu
         if process.pickup_station is None:
             message = "Material Pickup is undefined"
+        elif isinstance(process.pickup_station, GripperAlignedPickupStation):
+            message = "Material Pickup is defined from a Gripper-Aligned Pickup Station"
         elif isinstance(process.pickup_station, StackedPickupStation):
             message = "Material Pickup is defined from a Stacked Pickup Station"
         elif isinstance(process.pickup_station, PickupStation):
@@ -126,6 +184,8 @@ def show_menu(process):
                 {'name': 'Finish', 'action': 'Exit'
                  },
                 {'name': 'DefinePickupStation', 'action': create_pickup_station
+                 },
+                {'name': 'DefineGripperAlignedPickupStation', 'action': create_gripper_aligning_pickup_station
                  },
                 {'name': 'DefineStackedPickupStation', 'action': create_stacked_pickup_station
                  },
