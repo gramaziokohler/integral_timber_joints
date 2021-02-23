@@ -1431,3 +1431,7 @@ class RobotClampAssemblyProcess(Network):
         # type: (Movement) -> dict[str, ObjectState]
         """ return the end state after the movment """
         return movement.end_state
+
+    def get_movements_by_planning_priority(self, beam_id, priority):
+        # type: (str, int) -> list[Movement]
+        return [m for m in self.get_movements_by_beam_id(beam_id) if m.planning_priority == priority]
