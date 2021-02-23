@@ -17,11 +17,12 @@ except:
 class Movement(object):
     """ Base class of all movements """
 
-    def __init__(self, operator_stop_before=False, operator_stop_after=False, planning_priority=0):
-        self.operator_stop_before = operator_stop_before  # type: bool
-        self.operator_stop_after = operator_stop_after  # type: bool
+    def __init__(self, operator_stop_before="", operator_stop_after="", planning_priority=0):
+        self.operator_stop_before = operator_stop_before  # type: str
+        self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
         self.planning_priority = planning_priority  # type: int # Default to zero, -1 means planning not required, +1 meaning the movement should be planned first.
+        self.movement_id = ""  # type: str # In the format of 
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -44,23 +45,26 @@ class Movement(object):
             'operator_stop_after': self.operator_stop_after,
             'end_state': self.end_state,
             'planning_priority': self.planning_priority,
+            'movement_id': self.movement_id,
         }
         return data
 
     @data.setter
     def data(self, data):
-        self.operator_stop_before = data.get('operator_stop_before', False)
-        self.operator_stop_after = data.get('operator_stop_after', False)
+        self.operator_stop_before = data.get('operator_stop_before', "")
+        self.operator_stop_after = data.get('operator_stop_after', "")
         self.planning_priority = data.get('planning_priority', 0)
         self.end_state = data.get('end_state', {})
+        self.movement_id = data.get('movement_id', "")
 
 
 class RoboticMovement(Movement):
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0):
-        Movement.__init__(self, planning_priority=planning_priority)
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="", operator_stop_after="", speed_type=""):
+        Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=planning_priority)
         self.target_frame = target_frame  # type: Frame
         self.attached_tool_id = attached_tool_id  # type: Optional[str]
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
+        self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
 
     @property
@@ -72,6 +76,7 @@ class RoboticMovement(Movement):
         data['attached_tool_id'] = self.attached_tool_id
         data['attached_beam_id'] = self.attached_beam_id
         data['trajectory'] = self.trajectory
+        data['speed_type'] = self.speed_type
         return data
 
     @data.setter
@@ -82,7 +87,8 @@ class RoboticMovement(Movement):
         self.target_frame = data['target_frame']
         self.attached_tool_id = data['attached_tool_id']
         self.attached_beam_id = data['attached_beam_id']
-        self.trajectory = data['trajectory']
+        self.trajectory = data.get('trajectory', None)
+        self.speed_type = data.get('speed_type', "")
 
 ######################################
 # Movement Classes that can be used
@@ -95,7 +101,7 @@ class OperatorLoadBeamMovement(Movement):
     """
 
     def __init__(self, beam_id=None, grasp_face=None, target_frame=None):
-        Movement.__init__(self, operator_stop_after=True, planning_priority=-1)
+        Movement.__init__(self, operator_stop_after="Confirm Beam placed in Pickup", planning_priority=-1)
         self.beam_id = beam_id
         self.grasp_face = grasp_face
         self.target_frame = target_frame  # type: Frame
@@ -136,8 +142,8 @@ class RoboticLinearMovement(RoboticMovement):
 
 
 class RoboticDigitalOutput(Movement):
-    def __init__(self, digital_output=None, tool_id=None, beam_id=None):
-        # type: (DigitalOutput, str, str) -> None
+    def __init__(self, digital_output=None, tool_id=None, beam_id=None, operator_stop_before="", operator_stop_after=""):
+        # type: (DigitalOutput, str, str, str, str) -> None
         """ `tool_id` relates to the tool that is being operated.
         `beam_id` should be filled in for Open or Close Gripper movements that
         involved letting go or picking up a beam. This helps the state manage to figure
@@ -145,10 +151,18 @@ class RoboticDigitalOutput(Movement):
 
         For Clamp Closing Gripper to attach to a fixed beam, `beam_id` should be left None. 
         """
-        Movement.__init__(self, planning_priority=-1)
+        Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=-1)
         self.digital_output = digital_output
         self.tool_id = tool_id
         self.beam_id = beam_id
+        if self.digital_output == DigitalOutput.LockTool:
+            self.operator_stop_after = "Confirm QC Locked"
+        if self.digital_output == DigitalOutput.UnlockTool:
+            self.operator_stop_before = "Confirm safe to Unlock Tool."
+        if self.digital_output == DigitalOutput.OpenGripper:
+            self.operator_stop_before = "Confirm safe to Open Gripper"
+        if self.digital_output == DigitalOutput.CloseGripper:
+            self.operator_stop_before = "Confirm safe to Close Gripper"
 
     def __str__(self):
         if self.digital_output == DigitalOutput.LockTool:
@@ -189,10 +203,11 @@ class DigitalOutput(object):
 
 
 class ClampsJawMovement(Movement):
-    def __init__(self, jaw_positions=[], clamp_ids=[]):
-        Movement.__init__(self, planning_priority=-1)
+    def __init__(self, jaw_positions=[], clamp_ids=[], speed_type="", planning_priority=-1):
+        Movement.__init__(self, planning_priority=planning_priority)
         self.jaw_positions = jaw_positions  # type: list[float]
         self.clamp_ids = clamp_ids  # type: list[str]
+        self.speed_type = speed_type  # type: str # A string linking to a setting
 
     def __str__(self):
         return "Clamps %s Jaw Move to %s" % (self.clamp_ids, self.jaw_positions)
@@ -204,6 +219,7 @@ class ClampsJawMovement(Movement):
         data = super(ClampsJawMovement, self).data
         data['jaw_positions'] = self.jaw_positions
         data['clamp_ids'] = self.clamp_ids
+        data['speed_type'] = self.speed_type
         return data
 
     @data.setter
@@ -213,14 +229,14 @@ class ClampsJawMovement(Movement):
         super(ClampsJawMovement, type(self)).data.fset(self, data)
         self.jaw_positions = data.get('jaw_positions', [])
         self.clamp_ids = data.get('clamp_ids', [])
+        self.speed_type = data.get('speed_type', "")
 
 
 class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=0):
-        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id)
-        ClampsJawMovement.__init__(self, jaw_positions, clamp_ids)
-        self.planning_priority = planning_priority
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type=""):
+        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority, speed_type=speed_type)
+        ClampsJawMovement.__init__(self, jaw_positions, clamp_ids, planning_priority=planning_priority, speed_type=speed_type)
 
     @property
     def data(self):
