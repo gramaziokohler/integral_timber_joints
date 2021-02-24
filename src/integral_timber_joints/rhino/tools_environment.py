@@ -3,9 +3,10 @@ import os
 
 import Rhino
 import rhinoscriptsyntax as rs
-from compas.utilities import DataDecoder
-from compas_rhino.geometry import RhinoMesh
 from compas.geometry.primitives.frame import Frame
+from compas.utilities import DataDecoder
+from compas_fab.robots.configuration import Configuration
+from compas_rhino.geometry import RhinoMesh
 from compas_rhino.ui import CommandMenu
 from compas_rhino.utilities.objects import get_object_name
 
@@ -174,6 +175,18 @@ def replace_robot(process):
     # robot = Robot(model, artist, semantics=robot_semantics)
     process.robot_model = robot_model
     print(robot_model.to_data())
+
+
+def set_robot_initial_config(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    # Ask user to pick a Configuration json
+    path = rs.OpenFileName("Open a Configuration json, representing initial robot config.", "Configuration File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            configuration = json.load(f, cls=DataDecoder)  # type: Configuration
+            assert isinstance(configuration, Configuration)
+            process.robot_initial_config = configuration
+            print("Robot Initial Config is successfully loaded from %s" % path)
 
 
 def replace_robot_wrist(process):
@@ -360,7 +373,7 @@ def set_tool_storage(process):
         ids.append(gripper.name)
         print("  type: %s (id = %s))" % (gripper.type_name, gripper.name))
 
-    # Ask user which gripper to delete
+    # Ask user which tool to set
     tool_id = rs.GetString("Change storage position for which tool?", "Cancel", ["Cancel"] + sorted(ids))
 
     # Ask user for 3 point input
@@ -381,6 +394,7 @@ def set_tool_storage(process):
         # Storage positions do not actually have much computation. It is not visualized in Grasp Pose
         # It is only used directly when Actions create Movements.
 
+
 def not_implemented(process):
     #
     print('This function is not implemented')
@@ -399,7 +413,7 @@ def show_menu(process):
                 {'name': 'Finish', 'action': 'Exit'
                  },
                 {'name': 'ListTools', 'action': list_tools
-                 },                
+                 },
                 {'name': 'SetToolStorage', 'action': set_tool_storage
                  },
                 {'name': 'Clamps', 'message': 'Process have %i Clamps:' % len(list(process.clamps)), 'options': [
@@ -416,7 +430,11 @@ def show_menu(process):
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'ReplaceToolChanger', 'action': replace_toolchanger},
                 ]},
-                {'name': 'Robot', 'action': replace_robot},
+                {'name': 'Robot', 'message': 'Process Robot is: %s' % process.robot_model, 'options': [
+                    {'name': 'Back', 'action': 'Back'},
+                    {'name': 'ReplaceRobotModel', 'action': replace_robot},
+                    {'name': 'SetInitialConfig', 'action': set_robot_initial_config},
+                ]},
                 {'name': 'RobotWrist', 'message': 'Process robot_wrist', 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'ReplaceRobotWrist', 'action': replace_robot_wrist},

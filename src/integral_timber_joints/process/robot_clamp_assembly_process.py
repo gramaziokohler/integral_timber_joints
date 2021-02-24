@@ -6,8 +6,8 @@ from compas.geometry._core._algebra import dot_vectors
 from compas.geometry.primitives.frame import Frame
 from compas.geometry.primitives.vector import Vector
 from compas.robots.model.robot import RobotModel
-
 from compas.rpc import Proxy
+from compas_fab.robots.configuration import Configuration
 
 from geometric_blocking import blocked
 from integral_timber_joints.assembly import Assembly
@@ -16,7 +16,7 @@ from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
 from integral_timber_joints.process.state import ObjectState
-from integral_timber_joints.tools import Clamp, Gripper, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger, GripperAlignedPickupStation
+from integral_timber_joints.tools import Clamp, Gripper, GripperAlignedPickupStation, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
 from integral_timber_joints.tools.beam_storage import BeamStorage
 
 
@@ -44,6 +44,7 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['robot_model'] = None                         # RobotModel
         self.attributes['robot_toolchanger'] = None             # ToolChanger
         self.attributes['robot_wrist'] = None                   # RobotWrist
+        self.attributes['robot_initial_config'] = None          # tuple(list(float), flaot)
         self.attributes['actions'] = []                         # list[Action]
         self.attributes['pickup_station'] = None                # PickupStation
         self.attributes['beam_storage'] = None                  # BeamStorage
@@ -94,6 +95,16 @@ class RobotClampAssemblyProcess(Network):
     def robot_wrist(self, value):
         # type: (RobotWrist) -> None
         self.attributes['robot_wrist'] = value
+
+    @property
+    def robot_initial_config(self):
+        # type: () -> Configuration
+        return self.attributes['robot_initial_config']
+
+    @robot_initial_config.setter
+    def robot_initial_config(self, value):
+        # type: (Configuration) -> None
+        self.attributes['robot_initial_config'] = value
 
     @property
     def actions(self):
