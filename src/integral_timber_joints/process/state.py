@@ -59,10 +59,10 @@ class ObjectState(object):
 
     @data.setter
     def data(self, data):
-        self.current_frame = data['current_frame']
-        self.kinematic_config = data['kinematic_config']
-        self.attached_to_robot = data['attached_to_robot']
-        self.attached_to_joint = data['attached_to_joint']
+        self.current_frame = data.get('current_frame', None)
+        self.kinematic_config = data.get('kinematic_config', None)
+        self.attached_to_robot = data.get('attached_to_robot', False)
+        self.attached_to_joint = data.get('attached_to_joint', None)
 
 
 def get_object_from_flange(object_states, object_id):
