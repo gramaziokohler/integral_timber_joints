@@ -1,8 +1,8 @@
 import json
 import os
 
-import Rhino
-import rhinoscriptsyntax as rs
+import Rhino  # type: ignore
+import rhinoscriptsyntax as rs  # type: ignore
 from compas.geometry.primitives.frame import Frame
 from compas.utilities import DataDecoder
 from compas_fab.robots.configuration import Configuration

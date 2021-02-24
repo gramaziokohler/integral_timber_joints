@@ -2,9 +2,9 @@ import datetime
 import json
 import os
 
-import Rhino
+import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
-import scriptcontext as sc
+import scriptcontext as sc  # type: ignore
 import compas
 import compas_fab
 from compas.utilities import DataDecoder, DataEncoder
@@ -15,11 +15,13 @@ from integral_timber_joints.rhino.process_artist import ProcessArtist
 
 compas.PRECISION = '12f'
 
+
 def get_activedoc_path_no_ext():
     # type: () -> str
     activeDoc = Rhino.RhinoDoc.ActiveDoc  # type: Rhino.RhinoDoc
     path = os.path.splitext(activeDoc.Path)[0]
     return path
+
 
 def get_activedoc_process_path():
     # type: () -> str
@@ -102,8 +104,8 @@ if __name__ == "__main__":
     exist = os.path.exists(json_path)
 
     if exist:
-        print("Compas Version: %s installed in: %s" %(compas.__version__, compas.__file__))
-        print("Compas Fab Version: %s installed in: %s" %(compas_fab.__version__, compas_fab.__file__))
+        print("Compas Version: %s installed in: %s" % (compas.__version__, compas.__file__))
+        print("Compas Fab Version: %s installed in: %s" % (compas_fab.__version__, compas_fab.__file__))
         load_process()
         c_time = datetime.datetime.fromtimestamp(os.path.getmtime(json_path))
         print("Process loaded from: %s (%i Beams). File last modified on %s." % (os.path.basename(json_path), len(list(get_process().assembly.beams())), c_time))
@@ -113,10 +115,10 @@ if __name__ == "__main__":
         artist.empty_layers()
         process = get_process()
         for beam_id in process.assembly.beam_ids():
-            artist.redraw_interactive_beam(beam_id, force_update=False, redraw = False)
+            artist.redraw_interactive_beam(beam_id, force_update=False, redraw=False)
         # Enable Redraw
         rs.EnableRedraw(True)
-        
+
     else:
         # Ask user if create new process file.
         from Rhino.Input.Custom import GetString
