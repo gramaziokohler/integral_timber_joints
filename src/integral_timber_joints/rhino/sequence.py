@@ -204,7 +204,7 @@ def show_menu(process):
                 go.AddOption("Finish")
             artist.selected_beam_id = beam_id
 
-        print("Currently showing Beam %i of %i" % (assembly.get_beam_sequence(artist.selected_beam_id) + 1, len(assembly.sequence)))
+        print("Currently showing Beam %i of %i (%s)" % (assembly.get_beam_sequence(artist.selected_beam_id) + 1, len(assembly.sequence), artist.selected_beam_id))
 
 ######################
 # Rhino Entry Point
