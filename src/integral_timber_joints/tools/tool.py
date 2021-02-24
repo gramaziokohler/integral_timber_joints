@@ -197,6 +197,23 @@ class Tool (ToolModel):
             self.attributes['tool_storage_frame'] = frame.copy()
 
     @property
+    def tool_storage_configuration(self):
+        # type: () -> Configuration
+        """ Get robot configuration when the tool is in storage."""
+        return self.attributes.get('tool_storage_configuration', None)
+
+    @tool_storage_configuration.setter
+    def tool_storage_configuration(self, config):
+        # type: (Configuration) -> None
+        """ Set the robot configuration when the tool is in storage.
+        This is optional, when set, it will be passed to the end state of 
+        Movements that goes to tool_storage"""
+        if config is None:
+            self.attributes['tool_storage_configuration'] = None
+        else:
+            self.attributes['tool_storage_configuration'] = config.copy()
+
+    @property
     def current_configuration(self):
         """Gets the current Configuration of the joints in the underlying RobotModel
         This can be used to update the artist or update the robot.
