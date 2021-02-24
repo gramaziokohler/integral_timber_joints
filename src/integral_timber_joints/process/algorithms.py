@@ -374,6 +374,7 @@ def compute_initial_state(process, verbose=True):
 
     # Robot is in its initial position
     robot_state = ObjectState()
+    robot_state.kinematic_config = process.robot_initial_config
     process.initial_state['robot'] = robot_state
 
     # Tool Chagner is attached to the robot
