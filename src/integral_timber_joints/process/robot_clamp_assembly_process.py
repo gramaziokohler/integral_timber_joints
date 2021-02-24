@@ -238,6 +238,18 @@ class RobotClampAssemblyProcess(Network):
         else:
             raise KeyError("tool_id (%s) cannot be found in process.grippers or process.clamps")
 
+    @property
+    def tools(self):
+        # type: () -> list(Tool)
+        """Return a list of all grippers and clamps."""
+        return list(self.clamps) + list(self.grippers)
+
+    @property
+    def tool_ids(self):
+        # type: () -> list(str)
+        """Return all gripper and clamp ids."""
+        return list(self.attributes['grippers'].keys()) + list(self.attributes['clamps'].keys())
+
     def environment_model(self, env_id):
         # type: (str) -> EnvironmentModel
         return self.environment_models[env_id]
