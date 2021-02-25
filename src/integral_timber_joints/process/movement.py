@@ -18,14 +18,34 @@ except:
 
 
 class Movement(object):
-    """ Base class of all movements """
+    """ Base class of all movements.
+    `Movement.end_state`
+    A diction of all the object's ObjectState object representing the scene after the movement is completed.
+    No `start_state` exist becuase it is simply the `end_state` of the previous movement.
+
+    `Movement.planning_priority`
+    Integer that can only have three possible values
+    - -1 means planning not required
+    - 0 means normal
+    - 1 meaning the movement should be planned first
+
+    `Movement.movement_id`
+    - A String on the format of  "A%i_M%i" % (act_n, mov_n)
+    - This is a unique identifier for the movement.
+
+    `Movement.tag`
+    - Optional human readable text describing the sementic meaning of the movement within the Action.
+    - This text should make sense in the absence of the Action description.
+
+    """
 
     def __init__(self, operator_stop_before="", operator_stop_after="", planning_priority=0):
         self.operator_stop_before = operator_stop_before  # type: str
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
-        self.planning_priority = planning_priority  # type: int # Default to zero, -1 means planning not required, +1 meaning the movement should be planned first.
-        self.movement_id = ""  # type: str # In the format of  "A%i_M%i" % (act_n, mov_n)
+        self.planning_priority = planning_priority  # type: int 
+        self.movement_id = ""  # type: str # 
+        self.tag = "" # type str
 
     def to_data(self):
         """Simpliest way to get this class serialized.
