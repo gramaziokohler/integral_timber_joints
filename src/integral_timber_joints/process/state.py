@@ -1,4 +1,5 @@
 from compas.geometry import Frame
+from compas.geometry.transformations.transformation import Transformation
 
 
 class ObjectState(object):
@@ -58,11 +59,20 @@ class ObjectState(object):
 
     @data.setter
     def data(self, data):
-        self.current_frame = data['current_frame']
-        self.kinematic_config = data['kinematic_config']
-        self.attached_to_robot = data['attached_to_robot']
-        self.attached_to_joint = data['attached_to_joint']
+        self.current_frame = data.get('current_frame', None)
+        self.kinematic_config = data.get('kinematic_config', None)
+        self.attached_to_robot = data.get('attached_to_robot', False)
+        self.attached_to_joint = data.get('attached_to_joint', None)
 
     def __str__(self):
         return "State: frame: {} | config: {} | attached to robot: {} | attached to joint: {}".format(
             self.current_frame, self.kinematic_config, self.attached_to_robot, self.attached_to_joint)
+
+
+def get_object_from_flange(object_states, object_id):
+    flange_frame = object_states['robot'].current_frame
+    object_frame = object_states[object_id].current_frame
+    world_from_flange = Transformation.from_frame(flange_frame)
+    world_from_object = Transformation.from_frame(object_frame)
+
+    return world_from_object.inverse() * world_from_flange

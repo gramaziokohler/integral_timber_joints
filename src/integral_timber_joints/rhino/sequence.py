@@ -1,4 +1,4 @@
-import Rhino
+import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 from compas_rhino.utilities.objects import get_object_name
 
@@ -36,7 +36,7 @@ def show_sequence_color(process, beam_id):
             artist.show_interactive_beam(beam_id)
         # print out for debug
         if problem:
-            print (beam_id, problem)
+            print(beam_id, problem)
     rs.EnableRedraw(True)
 
 
@@ -85,7 +85,7 @@ def show_menu(process):
         if assembly.get_beam_sequence(artist.selected_beam_id) == 0:
             return
         member_seq_affected_by_swap = assembly.shift_beam_sequence(artist.selected_beam_id, -1)
-        [artist.redraw_interactive_beam(beam_id, force_update=True, redraw = False) for beam_id in member_seq_affected_by_swap]
+        [artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False) for beam_id in member_seq_affected_by_swap]
         show_sequence_color(process, artist.selected_beam_id)
         rs.EnableRedraw(True)
         go.SetDefaultString("Enter again = MoveEarlier")
@@ -93,10 +93,10 @@ def show_menu(process):
     def move_later():
         """ Function invoked by user to move the active element's sequence one step later.
         """
-        if assembly.get_beam_sequence(artist.selected_beam_id) == len(assembly.sequence) -1:
+        if assembly.get_beam_sequence(artist.selected_beam_id) == len(assembly.sequence) - 1:
             return
         member_seq_affected_by_swap = assembly.shift_beam_sequence(artist.selected_beam_id, +1)
-        [artist.redraw_interactive_beam(beam_id, force_update=True, redraw = False) for beam_id in member_seq_affected_by_swap]
+        [artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False) for beam_id in member_seq_affected_by_swap]
         show_sequence_color(process, artist.selected_beam_id)
         rs.EnableRedraw(True)
         go.SetDefaultString("Enter again = MoveLater")
@@ -121,7 +121,7 @@ def show_menu(process):
                 shift = shift + 1
             member_seq_affected_by_swap = assembly.shift_beam_sequence(beam_id, shift)
             artist.selected_beam_id = beam_id
-            [artist.redraw_interactive_beam(beam_id, force_update=True, redraw = False) for beam_id in member_seq_affected_by_swap]
+            [artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False) for beam_id in member_seq_affected_by_swap]
             show_sequence_color(process, artist.selected_beam_id)
             rs.EnableRedraw(True)
         go.SetDefaultString("Enter again = ChangeElementAfterThis")
@@ -204,7 +204,7 @@ def show_menu(process):
                 go.AddOption("Finish")
             artist.selected_beam_id = beam_id
 
-        print("Currently showing Beam %i of %i" % (assembly.get_beam_sequence(artist.selected_beam_id) + 1, len(assembly.sequence)))
+        print("Currently showing Beam %i of %i (%s)" % (assembly.get_beam_sequence(artist.selected_beam_id) + 1, len(assembly.sequence), artist.selected_beam_id))
 
 ######################
 # Rhino Entry Point

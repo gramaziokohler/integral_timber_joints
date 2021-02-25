@@ -301,6 +301,7 @@ def create_movements_from_actions(process, verbose=True):
     for action in actions:
         action.create_movements(process)
 
+
 def debug_print_process_actions_movements(process, file_path=None):
     f = None
     if file_path is not None:
@@ -329,7 +330,7 @@ def debug_print_process_actions_movements(process, file_path=None):
                 priority_string = 'x'
             else:
                 priority_string = '%s' % movement.planning_priority
-            
+
             line = "|  |- <%s> Movement %s (%s): %s\n" % (priority_string, j, movement.__class__.__name__, movement)
             if file_path is not None:
                 f.write(line)
@@ -374,6 +375,7 @@ def compute_initial_state(process, verbose=True):
 
     # Robot is in its initial position
     robot_state = ObjectState()
+    robot_state.kinematic_config = process.robot_initial_config
     process.initial_state['robot'] = robot_state
 
     # Tool Chagner is attached to the robot
@@ -413,6 +415,8 @@ def compute_intermediate_states(process, verbose=True):
             if isinstance(movement, RoboticMovement):  # This include RoboticFreeMovement and RoboticLinearMovement
                 # Change robot flange frame
                 current_state['robot'].current_frame = movement.target_frame
+                # If target_configuration is available, pass it to robot kinematic_config.
+                current_state['robot'].kinematic_config = movement.target_configuration
 
                 # Change ToolChanger location, it is always attached to robot
                 current_state['tool_changer'].current_frame = movement.target_frame

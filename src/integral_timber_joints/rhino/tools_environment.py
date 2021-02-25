@@ -1,11 +1,12 @@
 import json
 import os
 
-import Rhino
-import rhinoscriptsyntax as rs
-from compas.utilities import DataDecoder
-from compas_rhino.geometry import RhinoMesh
+import Rhino  # type: ignore
+import rhinoscriptsyntax as rs  # type: ignore
 from compas.geometry.primitives.frame import Frame
+from compas.utilities import DataDecoder
+from compas_fab.robots.configuration import Configuration
+from compas_rhino.geometry import RhinoMesh
 from compas_rhino.ui import CommandMenu
 from compas_rhino.utilities.objects import get_object_name
 
@@ -99,6 +100,9 @@ def delete_clamp(process):
         print("%s is deleted" % (id))
         process.delete_clamp(id)
 
+    artist = get_process_artist()
+    artist.delete_tool_in_storage(id)
+
 
 def add_gripper(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -135,6 +139,9 @@ def delete_gripper(process):
     if id in ids:
         print("%s is deleted" % (id))
         process.delete_gripper(id)
+
+    artist = get_process_artist()
+    artist.delete_tool_in_storage(id)
 
 
 def replace_toolchanger(process):
@@ -174,6 +181,18 @@ def replace_robot(process):
     # robot = Robot(model, artist, semantics=robot_semantics)
     process.robot_model = robot_model
     print(robot_model.to_data())
+
+
+def set_robot_initial_config(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    # Ask user to pick a Configuration json
+    path = rs.OpenFileName("Open a Configuration json, representing initial robot config.", "Configuration File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            configuration = json.load(f, cls=DataDecoder)  # type: Configuration
+            assert isinstance(configuration, Configuration)
+            process.robot_initial_config = configuration
+            print("Robot Initial Config is successfully loaded from %s" % path)
 
 
 def replace_robot_wrist(process):
@@ -254,6 +273,9 @@ def copy_tools(process):
                 process.add_gripper(another_process.gripper(id))
             print("%i Clamps, %i Grippers imported. Now total: %i Clamps, %i Grippers" % (len(list(another_process.clamps)),
                                                                                           len(list(another_process.grippers)), len(list(process.clamps)), len(list(process.grippers))))
+
+    artist = get_process_artist()
+    artist.delete_all_tools_in_storage()
 
 
 def copy_tool_changer(process):
@@ -346,33 +368,67 @@ def copy_all(process):
         print("Old Environment Model(es) deleted, %i Environment Model(es) imported." % (len(process.environment_models)))
 
 
-def set_tool_storage(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    """Function invoked by user to set the storage position."""
-    print("-- Existing Clamps --")
+def ui_ask_user_for_tool_id(process, message="Which Tool ID", print_existing_tools=True, include_clamp=True, inclde_gripper=True):
+    # type: (RobotClampAssemblyProcess,str, bool,bool, bool) -> str
+    """Note that the list of tools names available must start with a letter character, cannot be numbers"""
     ids = []
-    for clamp in process.clamps:
-        ids.append(clamp.name)
-        print("  Clamp (id = %s) type = %s)" % (clamp.name, clamp.type_name))
+    if include_clamp:
+        if print_existing_tools:
+            print("-- Existing Clamps --")
+        for clamp in process.clamps:
+            ids.append(clamp.name)
+            if print_existing_tools:
+                print("  Clamp (id = %s) type = %s)" % (clamp.name, clamp.type_name))
 
-    print("-- Existing Gripper --")
-    for gripper in process.grippers:
-        ids.append(gripper.name)
-        print("  type: %s (id = %s))" % (gripper.type_name, gripper.name))
+    if inclde_gripper:
+        if print_existing_tools:
+            print("-- Existing Gripper --")
+        for gripper in process.grippers:
+            ids.append(gripper.name)
+            if print_existing_tools:
+                print("  type: %s (id = %s))" % (gripper.type_name, gripper.name))
 
-    # Ask user which gripper to delete
-    tool_id = rs.GetString("Change storage position for which tool?", "Cancel", ["Cancel"] + sorted(ids))
+    # Return wNone if nothing is available for picking
+    if len(ids) == 0:
+        print("Error: No existing tool for picking.")
+        return None
 
+    # Ask user to pick from a list
+    tool_id = rs.GetString(message, "Cancel", ["Cancel"] + sorted(ids))
     # Ask user for 3 point input
     if tool_id in ids:
+        return tool_id
+    else:
+        print("%s is not a valid input." % tool_id)
+        return None
+
+
+def set_tool_storage_frame(process, set_from_robot_flange=False):
+    # type: (RobotClampAssemblyProcess, bool) -> None
+    """Function invoked by user to set the storage position."""
+
+    # Ask user which tool to set
+    tool_id = ui_ask_user_for_tool_id(process, "Change storage position for which tool?")
+
+    # Ask user for 3 point input
+    if tool_id is not None:
         # Ask for origin
-        origin = rs.GetPoint("Pick point as storage frame origin for %s." % tool_id)
-        # Ask for X axis and Y Axis
-        x_point = rs.GetPoint("Pick point on storage frame X direction for %s." % tool_id)
-        y_point = rs.GetPoint("Pick point on storage frame Y direction for %s." % tool_id)
+        if set_from_robot_flange:
+            origin = rs.GetPoint("Pick point as robot flange origin for %s in storage." % tool_id)
+            x_point = rs.GetPoint("Pick point on robot flange X direction for %s in storage." % tool_id)
+            y_point = rs.GetPoint("Pick point on robot flange Y direction for %s in storage." % tool_id)
+
+            robot_flange_frame = Frame(origin, x_point - origin, y_point - origin)
+            tool_changer = process.robot_toolchanger
+            tool_changer.current_frame = robot_flange_frame
+            tool_storage_frame = tool_changer.current_tcf
+        else:
+            origin = rs.GetPoint("Pick point as frame origin for %s in storage." % tool_id)
+            x_point = rs.GetPoint("Pick point on frame X direction for %s in storage." % tool_id)
+            y_point = rs.GetPoint("Pick point on frame Y direction for %s in storage." % tool_id)
+            tool_storage_frame = Frame(origin, x_point - origin, y_point - origin)
 
         # Alignment frame
-        tool_storage_frame = Frame(origin, x_point - origin, y_point - origin)
         process.tool(tool_id).tool_storage_frame = tool_storage_frame
         print("Tool %s Storage Frame changed to : %s " % (tool_id, tool_storage_frame))
 
@@ -380,6 +436,52 @@ def set_tool_storage(process):
         # process.dependency.invalidate(something about storage position)
         # Storage positions do not actually have much computation. It is not visualized in Grasp Pose
         # It is only used directly when Actions create Movements.
+
+        # Redraw Tool
+        artist = get_process_artist()
+        artist.draw_tool_in_storage(tool_id, delete_old=True)
+        rs.EnableRedraw(True)
+
+
+def set_tool_storage_frame_from_robot_flange(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Function invoked by user to set the storage position."""
+    if process.robot_toolchanger is None:
+        print("robot_toolchanger is None. Load the toolchanger first.")
+        return False
+    set_tool_storage_frame(process, True)
+
+
+def set_tool_storage_configuration(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Function invoked by user to set the storage configuration."""
+
+    # Ask user which tool to set
+    tool_id = ui_ask_user_for_tool_id(process, "Set storage configuration for which tool?")
+
+    # Ask user for 3 point input
+    if tool_id is not None:
+        path = rs.OpenFileName("Open a Configuration json, for Tool %s storage configuration." % tool_id, "Configuration File (*.json)|*.json|All Files (*.*)|*.*||")
+        if path:
+            with open(path, 'r') as f:
+                configuration = json.load(f, cls=DataDecoder)  # type: Configuration
+                assert isinstance(configuration, Configuration)
+                process.tool(tool_id).tool_storage_configuration = configuration
+                print("Tool Storage Configuration is successfully loaded from %s" % path)
+        else:
+            print("Function Canceled")
+
+
+def remove_tool_storage_configuration(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Function invoked by user to remove the storage configuration."""
+
+    # Ask user which tool to set
+    tool_id = ui_ask_user_for_tool_id(process, "Remove storage configuration for which tool?")
+    if tool_id is not None:
+        process.tool(tool_id).tool_storage_configuration = None
+        print("Tool %s Storage Configuration is successfully removed." % tool_id)
+
 
 def not_implemented(process):
     #
@@ -392,6 +494,12 @@ def show_menu(process):
     artist = get_process_artist()
 
     while (True):
+
+        # Have artist paint all the tools in storage position
+        for tool_id in process.tool_ids:
+            artist.draw_tool_in_storage(tool_id)
+        rs.EnableRedraw(True)
+
         # Create Menu
         config = {
             'message': 'Assembly contains %i Clamps, %i Grippers, %i EnvMeshs:' % (len(list(process.clamps)), len(list(process.grippers)), len(process.environment_models)),
@@ -399,8 +507,6 @@ def show_menu(process):
                 {'name': 'Finish', 'action': 'Exit'
                  },
                 {'name': 'ListTools', 'action': list_tools
-                 },                
-                {'name': 'SetToolStorage', 'action': set_tool_storage
                  },
                 {'name': 'Clamps', 'message': 'Process have %i Clamps:' % len(list(process.clamps)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
@@ -412,11 +518,22 @@ def show_menu(process):
                     {'name': 'AddGripper', 'action': add_gripper},
                     {'name': 'DeleteGripper', 'action': delete_gripper},
                 ]},
+                {'name': 'SetToolStorage', 'message': 'Setting Tool Storage', 'options': [
+                    {'name': 'Back', 'action': 'Back'},
+                    {'name': 'SetFrameFromToolFrame', 'action': set_tool_storage_frame},
+                    {'name': 'SetFrameFromRobotFlangeFrame', 'action': set_tool_storage_frame_from_robot_flange},
+                    {'name': 'SetConfiguration', 'action': set_tool_storage_configuration},
+                    {'name': 'RemoveConfiguration', 'action': remove_tool_storage_configuration},
+                ]},
                 {'name': 'RobotToolChanger', 'message': 'Process robot_toolchanger:', 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'ReplaceToolChanger', 'action': replace_toolchanger},
                 ]},
-                {'name': 'Robot', 'action': replace_robot},
+                {'name': 'Robot', 'message': 'Process Robot is: %s' % process.robot_model, 'options': [
+                    {'name': 'Back', 'action': 'Back'},
+                    {'name': 'ReplaceRobotModel', 'action': replace_robot},
+                    {'name': 'SetInitialConfig', 'action': set_robot_initial_config},
+                ]},
                 {'name': 'RobotWrist', 'message': 'Process robot_wrist', 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'ReplaceRobotWrist', 'action': replace_robot_wrist},
@@ -443,6 +560,8 @@ def show_menu(process):
         result = CommandMenu(config).select_action()
         # User cancel command by Escape
         if result is None or 'action' not in result:
+            artist.hide_all_tools_in_storage()
+            rs.EnableRedraw(True)
             print('Exit Function')
             return Rhino.Commands.Result.Cancel
 
@@ -450,6 +569,8 @@ def show_menu(process):
 
         # User click Exit Button
         if action == 'Exit':
+            artist.hide_all_tools_in_storage()
+            rs.EnableRedraw(True)
             print('Exit Function')
             return Rhino.Commands.Result.Cancel
         if action == 'Back':

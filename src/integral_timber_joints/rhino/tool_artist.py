@@ -1,8 +1,8 @@
 import compas_rhino
-import scriptcontext as sc
+import scriptcontext as sc  # type: ignore
 from compas_rhino.artists import RobotModelArtist
-from Rhino.DocObjects.ObjectColorSource import ColorFromLayer, ColorFromObject
-from Rhino.DocObjects.ObjectMaterialSource import MaterialFromObject
+from Rhino.DocObjects.ObjectColorSource import ColorFromLayer, ColorFromObject  # type: ignore
+from Rhino.DocObjects.ObjectMaterialSource import MaterialFromObject  # type: ignore
 from System.Drawing import Color
 
 
@@ -10,7 +10,7 @@ class ToolArtist(RobotModelArtist):
     def _exit_layer(self):
         if self.layer and self._previous_layer:
             compas_rhino.rs.CurrentLayer(self._previous_layer)
-    
+
     # Hot fix to add guid return function to compas artist
     # Overridding compas_rhino RobotModelArtist's drawvisual to return stuff
     def draw_visual(self):

@@ -1,5 +1,6 @@
-import Rhino
-import scriptcontext
+import Rhino  # type: ignore
+import scriptcontext  # type: ignore
+
 
 def CommandLineOptions():
     # For this example we will use a GetPoint class, but all of the custom
@@ -23,19 +24,19 @@ def CommandLineOptions():
         # input a point, but also allow for command line options
         # defined above
         get_rc = gp.Get()
-        if gp.CommandResult()!=Rhino.Commands.Result.Success:
+        if gp.CommandResult() != Rhino.Commands.Result.Success:
             return gp.CommandResult()
-        if get_rc==Rhino.Input.GetResult.Point:
+        if get_rc == Rhino.Input.GetResult.Point:
             point = gp.Point()
-            #scriptcontext.doc.Objects.AddPoint(point)
+            # scriptcontext.doc.Objects.AddPoint(point)
             scriptcontext.doc.Views.Redraw()
-            print ("Command line option values are")
-            print (" Integer =", intOption.CurrentValue)
-            print (" Double =", dblOption.CurrentValue)
-            print (" Boolean =", boolOption.CurrentValue)
-            print (" List =", listValues[listIndex])
-        elif get_rc==Rhino.Input.GetResult.Option:
-            if gp.OptionIndex()==opList:
+            print("Command line option values are")
+            print(" Integer =", intOption.CurrentValue)
+            print(" Double =", dblOption.CurrentValue)
+            print(" Boolean =", boolOption.CurrentValue)
+            print(" List =", listValues[listIndex])
+        elif get_rc == Rhino.Input.GetResult.Option:
+            if gp.OptionIndex() == opList:
                 listIndex = gp.Option().CurrentListOptionIndex
             continue
         break

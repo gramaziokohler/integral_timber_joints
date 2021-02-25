@@ -9,6 +9,7 @@ from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam
+from integral_timber_joints.tools import Tool, Clamp, Gripper
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.process.state import ObjectState
 from integral_timber_joints.rhino.tool_artist import ToolArtist
@@ -179,6 +180,7 @@ class ProcessArtist(object):
     ]
 
     state_visualization_layer = 'itj::state_visualization'
+    tools_in_storage_layer = 'itj::tools::in_storage'
 
     color_meaning = {
         'normal': (0, 0, 0),
@@ -207,6 +209,7 @@ class ProcessArtist(object):
         self.interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
         self.clamp_guids = {}  # type: dict[str, dict[str, list[str]]]
         self.state_visualization_guids = {}  # type: dict[str, list[str]]
+        self._tools_in_storage_guids = {}  # type: dict[str, list[str]]
 
         for beam_id in process.assembly.beam_ids():
             self.beam_guids[beam_id] = {}
@@ -239,6 +242,12 @@ class ProcessArtist(object):
     def selected_beam_id(self):
         return self._selected_beam_id
 
+    def tools_in_storage_guids(self, tool_id):
+        # type: (str) -> list(guid)
+        if tool_id not in self._tools_in_storage_guids:
+            self._tools_in_storage_guids[tool_id] = []
+        return self._tools_in_storage_guids[tool_id]
+
     @selected_beam_id.setter
     def selected_beam_id(self, beam_id):
         self._selected_beam_id = beam_id
@@ -261,6 +270,7 @@ class ProcessArtist(object):
         seq_num = assembly.get_beam_sequence(self.selected_beam_id) - 1
         seq_num = max(seq_num,  0)  # seq_num not less than 0
         self.selected_beam_id = assembly.sequence[seq_num]
+
     #############################
     # Beam in Interactive Layers
     #############################
@@ -411,7 +421,7 @@ class ProcessArtist(object):
             beam_mesh = self.process.assembly.beam(beam_id).cached_mesh.transformed(T)  # type: Mesh
             guids = self.draw_meshes_get_guids([beam_mesh], beam_id, redraw=False)
             self.beam_guids[beam_id][beam_position].extend(guids)
-        
+
         if redraw:
             rs.EnableRedraw(True)
 
@@ -482,7 +492,7 @@ class ProcessArtist(object):
                 self.interactive_guids[beam_id][layer] = []
         if redraw:
             rs.EnableRedraw(True)
-        
+
     @property
     def all_layer_names(self):
         for layer in self.interactive_layers:
@@ -494,6 +504,7 @@ class ProcessArtist(object):
         for beam_position in ProcessKeyPosition.beam_positions:
             yield 'itj::beam::' + beam_position
         yield self.state_visualization_layer
+        yield self.tools_in_storage_layer
 
     def empty_layers(self):
         # type:() -> None
@@ -520,6 +531,7 @@ class ProcessArtist(object):
                 for position in ProcessKeyPosition.clamp_positions:
                     self.clamp_guids[joint_id][position] = []
         self.state_visualization_guids = {}
+        self._tools_in_storage_guids = {}
     ######################
     # Drawing Gripper
     ######################
@@ -743,6 +755,53 @@ class ProcessArtist(object):
         `positions` are defaulted to all position.
         """
         self.show_clamp_at_one_position(beam_id, '', clamping_this_beam=clamping_this_beam)
+
+    #################################
+    # Tools in storage Visualization
+    #################################
+
+    def draw_tool_in_storage(self, tool_id, delete_old=False):
+        tool = self.process.tool(tool_id)
+        if len(self.tools_in_storage_guids(tool_id)) > 0 and not delete_old:
+            self.show_tool_in_storage(tool_id)
+            return
+        layer_name = self.tools_in_storage_layer
+
+        # Set default state
+        if isinstance(tool, Clamp):
+            tool.open_clamp()
+        if isinstance(tool, Gripper):
+            tool.close_gripper()
+
+        # Delete old geometry
+            self.delete_tool_in_storage(tool_id)
+
+        # Set Tool to storage frame
+        tool.current_frame = tool.tool_storage_frame.copy()
+
+        # Artist Draw Tool add Guids to dictionary
+        artist = ToolArtist(tool, layer_name)
+        new_guids = tool.draw_visual(artist)
+        del self.tools_in_storage_guids(tool_id)[:]
+        self.tools_in_storage_guids(tool_id).extend(new_guids)
+
+    def show_tool_in_storage(self, tool_id):
+        rs.ShowObject(self.tools_in_storage_guids(tool_id))
+
+    def hide_tool_in_storage(self, tool_id):
+        rs.HideObject(self.tools_in_storage_guids(tool_id))
+
+    def hide_all_tools_in_storage(self):
+        for tool_id in self._tools_in_storage_guids.keys():
+            self.hide_tool_in_storage(tool_id)
+    
+    def delete_tool_in_storage(self, tool_id):
+        purge_objects(self.tools_in_storage_guids(tool_id), redraw=False)
+
+    def delete_all_tools_in_storage(self):
+        for tool_id in self._tools_in_storage_guids.keys():
+            self.delete_tool_in_storage(tool_id)
+
 
     ######################
     # Robot
