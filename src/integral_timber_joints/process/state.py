@@ -72,3 +72,18 @@ def get_object_from_flange(object_states, object_id):
     world_from_object = Transformation.from_frame(object_frame)
 
     return world_from_object.inverse() * world_from_flange
+
+
+def copy_state_dict(target_state_dict, source_state_dict, clear=False, deep_copy=False):
+    # type: (dict[str, ObjectState], dict[str, ObjectState], bool, bool) -> None
+    """Copy one state dictionary to another. 
+    If `clear = True`, keys not present in the source_state_dict are removed.
+
+    If `deep_copy = True`, deep copy is made for each object State """
+    if clear:
+        target_state_dict.clear()
+    for object_id, state in source_state_dict.items():
+        if deep_copy:
+            target_state_dict[object_id] = ObjectState.from_data(state.to_data())
+        else:
+            target_state_dict[object_id] = state

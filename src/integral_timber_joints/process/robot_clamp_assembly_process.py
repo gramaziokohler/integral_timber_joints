@@ -15,7 +15,7 @@ from integral_timber_joints.geometry import Beam, EnvironmentModel, Joint
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
-from integral_timber_joints.process.state import ObjectState
+from integral_timber_joints.process.state import ObjectState, copy_state_dict
 from integral_timber_joints.tools import Clamp, Gripper, GripperAlignedPickupStation, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
 from integral_timber_joints.tools.beam_storage import BeamStorage
 
@@ -1458,3 +1458,29 @@ class RobotClampAssemblyProcess(Network):
     def get_movements_by_planning_priority(self, beam_id, priority):
         # type: (str, int) -> list[Movement]
         return [m for m in self.get_movements_by_beam_id(beam_id) if m.planning_priority == priority]
+
+    def set_movement_start_state(self, movement, state_dict, deep_copy=False):
+        # type: (Movement, dict[str, ObjectState], bool) -> None
+        """Set the start state of a movement, effectively changing the end state of the previous movement.
+        Attempt to set the start state of the first movement will modify process.initial_state.
+
+        An optional deep copy is made for each object State """
+
+        # In order to reuse the function get_movement_start_state(),
+        # we keep the pointer to the dictionary, clear all the contents and fill in the new stuff.
+        # this is handeled by the copy_state_dict()
+        start_state = self.get_movement_start_state(movement)
+        copy_state_dict(start_state, state_dict, clear=False, deep_copy=deep_copy)
+
+    def set_movement_end_state(self, movement, state_dict, deep_copy=False):
+        # type: (Movement, dict[str, ObjectState], bool) -> None
+        """Set the end state of a movement, effectively changing the end state of the previous movement.
+        Attempt to set the start state of the first movement will modify process.initial_state.
+
+        An optional deep copy is made for each object State """
+
+        # In order to reuse the function get_movement_start_state(),
+        # we keep the pointer to the dictionary, clear all the contents and fill in the new stuff.
+        # this is handeled by the copy_state_dict()
+        start_state = self.get_movement_end_state(movement)
+        copy_state_dict(start_state, state_dict, clear=False, deep_copy=deep_copy)
