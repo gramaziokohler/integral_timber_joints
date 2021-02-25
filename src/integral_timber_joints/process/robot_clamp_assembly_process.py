@@ -1492,3 +1492,15 @@ class RobotClampAssemblyProcess(Network):
             for _movement in action.movements:
                 if movement is _movement:
                     return action
+
+    def movement_has_start_robot_config(self, movement):
+        # type: (Movement) -> bool
+        """Returns True if the movement's start_state.['robot'].kinematic_config is not None """
+        state = self.get_movement_start_state(movement)
+        return state['robot'].kinematic_config is not None
+
+    def movement_has_end_robot_config(self, movement):
+        # type: (Movement) -> bool
+        """Returns True if the movement's end_state.['robot'].kinematic_config is not None """
+        state = self.get_movement_end_state(movement)
+        return state['robot'].kinematic_config is not None
