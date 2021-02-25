@@ -23,7 +23,7 @@ class Movement(object):
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
         self.planning_priority = planning_priority  # type: int # Default to zero, -1 means planning not required, +1 meaning the movement should be planned first.
-        self.movement_id = ""  # type: str # In the format of 
+        self.movement_id = ""  # type: str # In the format of
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -136,13 +136,13 @@ class OperatorLoadBeamMovement(Movement):
 class RoboticFreeMovement(RoboticMovement):
 
     def __str__(self):
-        return "Free Move to %s" % (self.target_frame)
+        return "Free Move to %s, target conf: %s" % (self.target_frame, self.target_configuration is not None)
 
 
 class RoboticLinearMovement(RoboticMovement):
 
     def __str__(self):
-        return "Linear Move to %s" % (self.target_frame)
+        return "Linear Move to %s, target conf: %s" % (self.target_frame, self.target_configuration is not None)
 
 
 class RoboticDigitalOutput(Movement):
@@ -151,9 +151,9 @@ class RoboticDigitalOutput(Movement):
         """ `tool_id` relates to the tool that is being operated.
         `beam_id` should be filled in for Open or Close Gripper movements that
         involved letting go or picking up a beam. This helps the state manage to figure
-        out which beam is picked up and attached or no longer attached. 
+        out which beam is picked up and attached or no longer attached.
 
-        For Clamp Closing Gripper to attach to a fixed beam, `beam_id` should be left None. 
+        For Clamp Closing Gripper to attach to a fixed beam, `beam_id` should be left None.
         """
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=-1)
         self.digital_output = digital_output
