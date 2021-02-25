@@ -18,8 +18,9 @@ import math
 
 import compas
 from compas.datastructures import Mesh, Network, mesh_bounding_box
-from compas.geometry import Box, Line, Plane, Point, Transformation, Translation, Vector, distance_point_plane, is_point_on_plane
+from compas.geometry import Box, Line, Plane, Point, Transformation, Translation, distance_point_plane, is_point_on_plane
 from compas.geometry.primitives.frame import Frame
+from compas.geometry.primitives.vector import Vector
 
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import create_id
