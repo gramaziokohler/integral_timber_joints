@@ -1484,3 +1484,11 @@ class RobotClampAssemblyProcess(Network):
         # this is handeled by the copy_state_dict()
         start_state = self.get_movement_end_state(movement)
         copy_state_dict(start_state, state_dict, clear=False, deep_copy=deep_copy)
+
+    def get_action_of_movement(self, movement):
+        # type: (Movement) -> Action
+        """Returns the Action object in which the movement belongs to"""
+        for action in self.actions:
+            for _movement in action.movements:
+                if movement is _movement:
+                    return action
