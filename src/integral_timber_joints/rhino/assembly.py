@@ -36,9 +36,11 @@ def ui_add_beam_from_lines(process):
     for guid in guids:
         rhinoline = RhinoCurve.from_guid(guid)  # RhinoLine is not implemented sigh... RhinoCurve is used.
         centerline = rhinoline.to_compas()
+        centerline_vector = Vector.from_start_end(centerline.start, centerline.end) 
         # Compute guide vector: For vertical lines, guide vector points to world X
         # Otherwise, guide vector points to Z,
-        if centerline.start.z == centerline.start.z:
+
+        if centerline_vector.angle(Vector(0,0,1)) < 0.001:
             guide_vector = Vector(1, 0, 0)
         else:
             guide_vector = Vector(0, 0, 1)
