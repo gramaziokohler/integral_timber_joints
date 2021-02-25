@@ -1,3 +1,5 @@
+import os
+
 from compas.geometry.primitives.frame import Frame
 from compas_fab.robots import Configuration
 from compas_fab.robots.trajectory import JointTrajectory
@@ -23,7 +25,7 @@ class Movement(object):
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
         self.planning_priority = planning_priority  # type: int # Default to zero, -1 means planning not required, +1 meaning the movement should be planned first.
-        self.movement_id = ""  # type: str # In the format of 
+        self.movement_id = ""  # type: str # In the format of  "A%i_M%i" % (act_n, mov_n)
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -50,6 +52,15 @@ class Movement(object):
         }
         return data
 
+    @property
+    def filepath(self):
+        # type: () -> str
+        """ Returns the location of the json file when saved externally.
+        This is useful to save a movement containing computed trajectory and has a large file size
+        e.g.: 'movements\A2_M2.json'
+        """
+        return os.path.join("movements", "%s.json" % self.movement_id)
+
     @data.setter
     def data(self, data):
         self.operator_stop_before = data.get('operator_stop_before', "")
@@ -60,14 +71,15 @@ class Movement(object):
 
 
 class RoboticMovement(Movement):
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="", operator_stop_after="", speed_type="", target_configuration = None):
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="", operator_stop_after="", speed_type="", target_configuration=None):
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=planning_priority)
         self.target_frame = target_frame  # type: Frame
         self.attached_tool_id = attached_tool_id  # type: Optional[str]
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
-        self.target_configuration = target_configuration # type: Optional[Configuration] # Optional configuration for the target, when set, will be passed to state and eventually path planner.
+        # type: Optional[Configuration] # Optional configuration for the target, when set, will be passed to state and eventually path planner.
+        self.target_configuration = target_configuration
 
     @property
     def data(self):
