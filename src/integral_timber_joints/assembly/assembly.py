@@ -6,9 +6,12 @@ except:
     pass
 
 from compas.datastructures import Network
-from compas.geometry import Frame, Point, Transformation, Translation, Vector
+from compas.geometry import Point, Transformation, Translation, Vector
 from compas.geometry.primitives.plane import Plane
+from compas.geometry.primitives.frame import Frame
 from compas.geometry.transformations.transformation import Transformation
+from compas.geometry.transformations.rotation import Rotation
+
 from compas.rpc import Proxy
 
 from integral_timber_joints.geometry import Beamcut, Joint
@@ -519,6 +522,40 @@ class Assembly(Network):
                 transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_detachapproach', transformation)
                 transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_detachretract1', transformation)
                 transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_detachretract2', transformation)
+
+    def rotate_beam_to_align_Y_axis(self, beam_id, Y_axis_guide):
+        # type: (str, Vector) -> list(str)
+        """ Rotates the beam such that the Y axis is aligned to a guide vector.
+        If the guide vector is parallel to the beam's X axis, error will occur.
+        The beam object will be transformed, all joints related to the beam is deleted.
+
+        All existing beams will be checked for new joints. 
+        Returns a list of joint_id that are affected."""
+        beam = self.beam(beam_id)
+        beam_centerline = beam.get_center_line()
+        if beam.frame.xaxis.angle(Y_axis_guide) < 0.01:
+            raise ValueError("The guide vector cannot be parallel to the beam's X axis")
+
+        original_frame = Frame(beam_centerline.start, beam.frame.xaxis, beam.frame.yaxis)
+        new_zaxis = beam.frame.xaxis.cross(Y_axis_guide)
+        new_yaxis = new_zaxis.cross(beam.frame.xaxis)
+        new_frame = Frame(beam_centerline.start, beam.frame.xaxis, new_yaxis)
+        
+        T = Transformation.from_frame_to_frame(original_frame, new_frame)
+        beam.transform(T)
+
+        # Delete old joints
+        affected_neighbours = []
+        for nbr in self.neighbors(beam_id):  # This is a hot fix for compas Network.delete_node fail to delete edges.
+            del self.adjacency[nbr][beam_id]
+            del self.adjacency[beam_id][nbr]
+            del self.edge[nbr][beam_id]
+            del self.edge[beam_id][nbr]
+            affected_neighbours.append(nbr)
+
+        # Test to see if there are new joints
+
+
 
     # --------------------------------------------
     # Beam Joints Geometrical Functions

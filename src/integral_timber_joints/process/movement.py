@@ -1,3 +1,5 @@
+import os
+
 from compas.geometry.primitives.frame import Frame
 from compas_fab.robots import Configuration
 from compas_fab.robots.trajectory import JointTrajectory
@@ -16,14 +18,34 @@ except:
 
 
 class Movement(object):
-    """ Base class of all movements """
+    """ Base class of all movements.
+    `Movement.end_state`
+    A diction of all the object's ObjectState object representing the scene after the movement is completed.
+    No `start_state` exist becuase it is simply the `end_state` of the previous movement.
+
+    `Movement.planning_priority`
+    Integer that can only have three possible values
+    - -1 means planning not required
+    - 0 means normal
+    - 1 meaning the movement should be planned first
+
+    `Movement.movement_id`
+    - A String on the format of  "A%i_M%i" % (act_n, mov_n)
+    - This is a unique identifier for the movement.
+
+    `Movement.tag`
+    - Optional human readable text describing the sementic meaning of the movement within the Action.
+    - This text should make sense in the absence of the Action description.
+
+    """
 
     def __init__(self, operator_stop_before="", operator_stop_after="", planning_priority=0):
         self.operator_stop_before = operator_stop_before  # type: str
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
-        self.planning_priority = planning_priority  # type: int # Default to zero, -1 means planning not required, +1 meaning the movement should be planned first.
-        self.movement_id = ""  # type: str # In the format of
+        self.planning_priority = planning_priority  # type: int 
+        self.movement_id = ""  # type: str # 
+        self.tag = "" # type str
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -50,6 +72,15 @@ class Movement(object):
         }
         return data
 
+    @property
+    def filepath(self):
+        # type: () -> str
+        """ Returns the location of the json file when saved externally.
+        This is useful to save a movement containing computed trajectory and has a large file size
+        e.g.: 'movements\A2_M2.json'
+        """
+        return os.path.join("movements", "%s.json" % self.movement_id)
+
     @data.setter
     def data(self, data):
         self.operator_stop_before = data.get('operator_stop_before', "")
@@ -60,14 +91,15 @@ class Movement(object):
 
 
 class RoboticMovement(Movement):
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="", operator_stop_after="", speed_type="", target_configuration = None):
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="", operator_stop_after="", speed_type="", target_configuration=None):
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=planning_priority)
         self.target_frame = target_frame  # type: Frame
         self.attached_tool_id = attached_tool_id  # type: Optional[str]
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
-        self.target_configuration = target_configuration # type: Optional[Configuration] # Optional configuration for the target, when set, will be passed to state and eventually path planner.
+        # type: Optional[Configuration] # Optional configuration for the target, when set, will be passed to state and eventually path planner.
+        self.target_configuration = target_configuration
 
     @property
     def data(self):

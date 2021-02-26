@@ -18,8 +18,10 @@ import math
 
 import compas
 from compas.datastructures import Mesh, Network, mesh_bounding_box
-from compas.geometry import Box, Line, Plane, Point, Transformation, Translation, Vector, distance_point_plane, is_point_on_plane
+from compas.geometry import Box, Plane, Point, Transformation, Translation, distance_point_plane, is_point_on_plane
 from compas.geometry.primitives.frame import Frame
+from compas.geometry.primitives.line import Line
+from compas.geometry.primitives.vector import Vector
 
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import create_id
@@ -383,6 +385,7 @@ class Beam(Network):
             raise IndexError()
 
     def get_center_line(self):
+        # type: () -> Line
         start = self.frame.to_world_coordinates([0, self.height/2, self.width/2])
         end = self.frame.to_world_coordinates([self.length, self.height/2, self.width/2])
         return Line(start, end)
@@ -477,13 +480,13 @@ class Beam(Network):
         """
         return self.frame.to_world_coordinates(self.reference_edge_ocf(edge_id, wrap_edge_id))
 
-
     # -------------------------
     # Transformation
     # -------------------------
 
     def transform(self, transformation):
-        """Transform the frame and current frame of the beam"""
+        """Transform the frame and current frame of the beam.
+        This transforms the beam's frame within the WCF"""
         self.frame.transform(transformation)
         if self.current_frame is not None:
             self.current_frame.transform(transformation)

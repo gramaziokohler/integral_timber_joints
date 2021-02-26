@@ -1,4 +1,4 @@
-import Rhino # type: ignore
+import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 from compas_rhino import artists
 from compas_rhino.utilities.objects import get_object_name
@@ -13,7 +13,7 @@ def show_sequence_color(process, selected_beam_id):
     # type: (RobotClampAssemblyProcess, str) -> None
     """Function to toggle (show/hide) visualization geometry and apply warning color
     Based on which beam is selected, we show beam visualization differently. 
-   
+
     # Beams
     - Beams (seq) before the selection = Interactive beam is shown (Warning colors applied)
     - The selected beam = Beam-in-Position is shown, position is based on current selected_key_position (Warning colors applied)
@@ -59,7 +59,7 @@ def show_sequence_color(process, selected_beam_id):
         else:
             artist.hide_beam_all_positions(beam_id)
 
-        # Show gripper and clamp 
+        # Show gripper and clamp
         if seq == selected_seq_num:
             artist.show_gripper_at_one_position(beam_id)
             artist.show_clamp_at_one_position(beam_id)
@@ -147,7 +147,7 @@ def show_menu(process):
     ###################################
     # Showing Different Key Position
     ###################################
-    
+
     def next_key_position():
         artist.selected_key_position.next_position()
         _show_key_position_beam_gripper_clamp()
@@ -155,7 +155,7 @@ def show_menu(process):
     def prev_key_position():
         artist.selected_key_position.prev_position()
         _show_key_position_beam_gripper_clamp()
-    
+
     def first_key_position():
         artist.selected_key_position.first_position()
         _show_key_position_beam_gripper_clamp()
@@ -249,12 +249,13 @@ def show_menu(process):
             current_grasp_face = process.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')
 
             # Ask user which face to grasp
-            options =  ['Back', 'Face1', 'Face2', 'Face3', 'Face4']
-            options_number =  ['Back', '1', '2', '3', '4']
-            selected_grasp_face = rs.GetString("Which face to grasp for Beam(%s)? Current grasp face is: %s" % (beam_id, options[current_grasp_face]), options[current_grasp_face], options)
+            options = ['Back', 'Face1', 'Face2', 'Face3', 'Face4']
+            options_number = ['Back', '1', '2', '3', '4']
+            selected_grasp_face = rs.GetString("Which face to grasp for Beam(%s)? Current grasp face is: %s" %
+                                               (beam_id, options[current_grasp_face]), options[current_grasp_face], options)
             if selected_grasp_face is None:
                 # User press Escape
-                return # Exit loop
+                return  # Exit loop
             elif selected_grasp_face in options:
                 # User selected one of the Buttons
                 selected_grasp_face = options.index(selected_grasp_face)
@@ -262,16 +263,16 @@ def show_menu(process):
                 # User typed in just a number
                 selected_grasp_face = options_number.index(selected_grasp_face)
             else:
-                print ("Input not recognized : %s" % selected_grasp_face)
-                continue # Continue loop and try again.
-            if selected_grasp_face == 0 :
+                print("Input not recognized : %s" % selected_grasp_face)
+                continue  # Continue loop and try again.
+            if selected_grasp_face == 0:
                 # User selected Back as option
-                return # Exit loop
-            
+                return  # Exit loop
+
             # Check if new selection is the same as before
             if selected_grasp_face != current_grasp_face:
                 # Recompute dependency
-                process.override_grasp_face(beam_id,selected_grasp_face)
+                process.override_grasp_face(beam_id, selected_grasp_face)
                 process.dependency.compute(beam_id, process.compute_all)
 
                 # Redraw Visualization
@@ -279,7 +280,7 @@ def show_menu(process):
                 artist.draw_gripper_all_positions(beam_id, delete_old=True)
                 show_sequence_color(process, beam_id)
             else:
-                print ("Selection is the same as before, grasp face unchanged.")
+                print("Selection is the same as before, grasp face unchanged.")
 
     ###################################
     # Changing Clamp Definitions
@@ -288,7 +289,7 @@ def show_menu(process):
     def flip_clamp():
         beam_id = artist.selected_beam_id
         print("get_clamp_orientation_options:")
-        print (process.get_clamp_orientation_options(beam_id))
+        print(process.get_clamp_orientation_options(beam_id))
 
         # Call fnction to change direction
         process.flip_clamp_guide_vector(beam_id)
@@ -300,8 +301,6 @@ def show_menu(process):
         artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
         artist.draw_clamp_all_positions(beam_id, delete_old=True)
         show_sequence_color(process, beam_id)
-
-
 
     run_cmd = None  # Variable to remember the last command to allow easy rerun.
     while(True):
@@ -356,8 +355,12 @@ def show_menu(process):
 
         elif result != Rhino.Input.GetResult.Object:
             # Repeat last command
-            run_cmd()
-
+            if run_cmd is not None:
+                run_cmd()
+            else:
+                # Cancels the color preview and exit function
+                show_normal_color_and_unhide(process)
+                return Rhino.Commands.Result.Cancel
         else:
             # User clicked on a beam.
             # Show color preview of the sequence at that point

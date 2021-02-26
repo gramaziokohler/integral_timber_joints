@@ -15,9 +15,14 @@ from integral_timber_joints.geometry import Beam, EnvironmentModel, Joint
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
-from integral_timber_joints.process.state import ObjectState
-from integral_timber_joints.tools import Clamp, Gripper, GripperAlignedPickupStation, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
+from integral_timber_joints.process.state import ObjectState, copy_state_dict
 from integral_timber_joints.tools.beam_storage import BeamStorage
+from integral_timber_joints.tools.clamp import Clamp
+from integral_timber_joints.tools.gripper import Gripper
+from integral_timber_joints.tools.pickup_station import GripperAlignedPickupStation, PickupStation, StackedPickupStation
+from integral_timber_joints.tools.robot_wrist import RobotWrist
+from integral_timber_joints.tools.tool import Tool
+from integral_timber_joints.tools.tool_changer import ToolChanger
 
 
 class RobotClampAssemblyProcess(Network):
@@ -1458,3 +1463,49 @@ class RobotClampAssemblyProcess(Network):
     def get_movements_by_planning_priority(self, beam_id, priority):
         # type: (str, int) -> list[Movement]
         return [m for m in self.get_movements_by_beam_id(beam_id) if m.planning_priority == priority]
+
+    def set_movement_start_state(self, movement, state_dict, deep_copy=False):
+        # type: (Movement, dict[str, ObjectState], bool) -> None
+        """Set the start state of a movement, effectively changing the end state of the previous movement.
+        Attempt to set the start state of the first movement will modify process.initial_state.
+
+        An optional deep copy is made for each object State """
+
+        # In order to reuse the function get_movement_start_state(),
+        # we keep the pointer to the dictionary, clear all the contents and fill in the new stuff.
+        # this is handeled by the copy_state_dict()
+        start_state = self.get_movement_start_state(movement)
+        copy_state_dict(start_state, state_dict, clear=False, deep_copy=deep_copy)
+
+    def set_movement_end_state(self, movement, state_dict, deep_copy=False):
+        # type: (Movement, dict[str, ObjectState], bool) -> None
+        """Set the end state of a movement, effectively changing the end state of the previous movement.
+        Attempt to set the start state of the first movement will modify process.initial_state.
+
+        An optional deep copy is made for each object State """
+
+        # In order to reuse the function get_movement_start_state(),
+        # we keep the pointer to the dictionary, clear all the contents and fill in the new stuff.
+        # this is handeled by the copy_state_dict()
+        start_state = self.get_movement_end_state(movement)
+        copy_state_dict(start_state, state_dict, clear=False, deep_copy=deep_copy)
+
+    def get_action_of_movement(self, movement):
+        # type: (Movement) -> Action
+        """Returns the Action object in which the movement belongs to"""
+        for action in self.actions:
+            for _movement in action.movements:
+                if movement is _movement:
+                    return action
+
+    def movement_has_start_robot_config(self, movement):
+        # type: (Movement) -> bool
+        """Returns True if the movement's start_state.['robot'].kinematic_config is not None """
+        state = self.get_movement_start_state(movement)
+        return state['robot'].kinematic_config is not None
+
+    def movement_has_end_robot_config(self, movement):
+        # type: (Movement) -> bool
+        """Returns True if the movement's end_state.['robot'].kinematic_config is not None """
+        state = self.get_movement_end_state(movement)
+        return state['robot'].kinematic_config is not None

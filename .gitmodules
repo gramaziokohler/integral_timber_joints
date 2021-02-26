@@ -4,3 +4,6 @@
 [submodule "external/pybullet_planning"]
 	path = external/pybullet_planning
 	url = https://github.com/yijiangh/pybullet_planning.git
+[submodule "external/itj_design_study"]
+	path = external/itj_design_study
+	url = https://github.com/gramaziokohler/itj_design_study

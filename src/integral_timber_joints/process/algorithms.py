@@ -370,18 +370,16 @@ def compute_initial_state(process, verbose=True):
         state.current_frame = tool.tool_storage_frame
         process.initial_state[tool.name] = state
 
-    # Robot configuration should be take from an initial robot state.
-    # TODO
-
     # Robot is in its initial position
     robot_state = ObjectState()
     robot_state.kinematic_config = process.robot_initial_config
+    # TODO robot_state.current_frame should be an FK of the robot form the robot_initial_config
     process.initial_state['robot'] = robot_state
 
     # Tool Chagner is attached to the robot
     tool_changer_state = ObjectState()
     tool_changer_state.attached_to_robot = True
-    tool_changer_state.current_frame = Frame((0, 0, 0), (1, 0, 0), (0, 1, 0))  # shouold be robot's frame
+    tool_changer_state.current_frame = Frame((0, 0, 0), (1, 0, 0), (0, 1, 0))  # TODO shouold be robot_state.current_frame
     process.initial_state['tool_changer'] = tool_changer_state
 
 

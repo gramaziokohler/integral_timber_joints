@@ -6,17 +6,16 @@ from compas.geometry import Frame
 from compas_rhino.artists import RobotModelArtist
 from compas_rhino.geometry import RhinoPlane
 from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
+from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
+from System.Drawing import Color  # type: ignore
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam
-from integral_timber_joints.tools import Tool, Clamp, Gripper
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.process.state import ObjectState
 from integral_timber_joints.rhino.tool_artist import ToolArtist
 from integral_timber_joints.rhino.utility import purge_objects
-
-from System.Drawing import Color  # type: ignore
-from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
+from integral_timber_joints.tools import Clamp, Gripper, Tool
 
 
 def AddAnnotationText(frame, text, height, layer, redraw=True):
@@ -204,19 +203,12 @@ class ProcessArtist(object):
         self.process = process  # type: RobotClampAssemblyProcess
 
         # # Create guid in dictionary to store geometries added to Rhino document
-        self.beam_guids = {}  # type: dict[str, dict[str, list[str]]]
-        self.gripper_guids = {}  # type: dict[str, dict[str, list[str]]]
-        self.interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
-        self.clamp_guids = {}  # type: dict[str, dict[str, list[str]]]
-        self.state_visualization_guids = {}  # type: dict[str, list[str]]
+        self._beam_guids = {}  # type: dict[str, dict[str, list[str]]]
+        self._gripper_guids = {}  # type: dict[str, dict[str, list[str]]]
+        self._clamp_guids = {}  # type: dict[str, dict[str, list[str]]]
+        self._interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
+        self._state_visualization_guids = {}  # type: dict[str, list[str]]
         self._tools_in_storage_guids = {}  # type: dict[str, list[str]]
-
-        for beam_id in process.assembly.beam_ids():
-            self.beam_guids[beam_id] = {}
-            self.gripper_guids[beam_id] = {}
-            self.interactive_guids[beam_id] = {}
-            for joint_id in self.process.assembly.get_joint_ids_of_beam(beam_id):
-                self.clamp_guids[joint_id] = {}
 
         self.settings = {
             'color.vertex': (255, 255, 255),
@@ -238,15 +230,76 @@ class ProcessArtist(object):
         self.selected_state_id = 0  # type: str # State Id = Start State of Movement with the same ID"""
         self.selected_key_position = ProcessKeyPosition(0)
 
-    @property
-    def selected_beam_id(self):
-        return self._selected_beam_id
+    #######################################
+    # Functions to handle the guid records
+    #######################################
+    def beam_guids(self, beam_id):
+        # type: (str) -> dict(str, list(guid))
+        if beam_id not in self._beam_guids:
+            self._beam_guids[beam_id] = {}
+        return self._beam_guids[beam_id]
 
+    def beam_guids_at_position(self, beam_id, position_id):
+        # type: (str, str) -> list(guid)
+        if position_id not in self.beam_guids(beam_id):
+            self.beam_guids(beam_id)[position_id] = []
+        return self.beam_guids(beam_id)[position_id]
+
+    def gripper_guids(self, beam_id):
+        # type: (str) -> dict(str, list(guid))
+        if beam_id not in self._gripper_guids:
+            self._gripper_guids[beam_id] = {}
+        return self._gripper_guids[beam_id]
+
+    def gripper_guids_at_position(self, beam_id, position_id):
+        # type: (str, str) -> list(guid)
+        if position_id not in self.gripper_guids(beam_id):
+            self.gripper_guids(beam_id)[position_id] = []
+        return self.gripper_guids(beam_id)[position_id]
+
+    def clamp_guids(self, joint_id):
+        # type: (tuple(str, str)) -> dict(str, list(guid))
+        if joint_id not in self._clamp_guids:
+            self._clamp_guids[joint_id] = {}
+        return self._clamp_guids[joint_id]
+
+    def clamp_guids_at_position(self, joint_id, position_id):
+        # type: (str, str) -> list(guid)
+        if position_id not in self.clamp_guids(joint_id):
+            self.clamp_guids(joint_id)[position_id] = []
+        return self.clamp_guids(joint_id)[position_id]
+
+    def interactive_guids(self, beam_id):
+        # type: (tuple(str, str)) -> dict(str, list(guid))
+        if beam_id not in self._interactive_guids:
+            self._interactive_guids[beam_id] = {}
+        return self._interactive_guids[beam_id]
+
+    def interactive_guids_at_layer(self, beam_id, layer_name):
+        # type: (str, str) -> list(guid)
+        if layer_name not in self.interactive_guids(beam_id):
+            self.interactive_guids(beam_id)[layer_name] = []
+        return self.interactive_guids(beam_id)[layer_name]
+
+    def state_visualization_guids(self, object_id):
+        # type: (str) -> list(guid)
+        if object_id not in self._state_visualization_guids:
+            self._state_visualization_guids[object_id] = []
+        return self._state_visualization_guids[object_id]
+        
     def tools_in_storage_guids(self, tool_id):
         # type: (str) -> list(guid)
         if tool_id not in self._tools_in_storage_guids:
             self._tools_in_storage_guids[tool_id] = []
         return self._tools_in_storage_guids[tool_id]
+        
+    ###########################################################
+    # Functions to keep track of user selected interactive beam
+    ###########################################################
+
+    @property
+    def selected_beam_id(self):
+        return self._selected_beam_id
 
     @selected_beam_id.setter
     def selected_beam_id(self, beam_id):
@@ -297,7 +350,7 @@ class ProcessArtist(object):
             # Create Tag
             layer = 'itj::interactive::beams_seqtag'
             guid = AddAnnotationText(face_frame, tag_text, tag_height, layer, redraw=redraw)
-            self.interactive_guids[beam_id][layer].append(guid)
+            self.interactive_guids_at_layer(beam_id, layer).append(guid)
         if redraw:
             rs.EnableRedraw(True)
 
@@ -315,7 +368,7 @@ class ProcessArtist(object):
 
         # Draw Mesh
         guids = self.draw_meshes_get_guids([beam_mesh], beam_id)
-        self.interactive_guids[beam_id][layer].extend(guids)
+        self.interactive_guids_at_layer(beam_id, layer).extend(guids)
 
         # Redraw
         if redraw:
@@ -339,7 +392,7 @@ class ProcessArtist(object):
         ''' Returns the interactive beam's guid(s) 
         Typically this is a list of one mesh that represent the beam. 
         '''
-        return self.interactive_guids[beam_id][layer]
+        return self.interactive_guids_at_layer(beam_id, layer)
 
     ######################
     # Beam in Interactive Layers
@@ -350,13 +403,13 @@ class ProcessArtist(object):
         """ Show the beam of the beam_id.
         """
         for layer in self.interactive_layers:
-            rs.ShowObject(self.interactive_guids[beam_id][layer])
+            rs.ShowObject(self.interactive_guids_at_layer(beam_id, layer))
 
     def hide_interactive_beam(self, beam_id):
         """ Show the beam of the beam_id.
         """
         for layer in self.interactive_layers:
-            rs.HideObject(self.interactive_guids[beam_id][layer])
+            rs.HideObject(self.interactive_guids_at_layer(beam_id, layer))
 
     def show_interactive_beam_until(self, beam_id):
         """ Show only the beams before and the given beam_id, others are hidden.
@@ -382,7 +435,7 @@ class ProcessArtist(object):
         """ Chagne the beam brep and mesh color to a given colour string
         Colour string refer to color_meaning dict
         """
-        for guid in self.interactive_guids[beam_id][layer]:
+        for guid in self.interactive_guids_at_layer(beam_id, layer):
             rs.ObjectColor(guid, self.color_meaning.get(meaning, (0, 0, 0)))
 
     #############################
@@ -392,7 +445,7 @@ class ProcessArtist(object):
     def draw_beam_all_positions(self, beam_id, delete_old=False, verbose=False, redraw=True):
         """ Delete old beam geometry if delete_old is True
         Redraw them in Rhino in different layers.
-        The resulting Rhino guids are kept in self.beam_guids[beam_id][position]
+        The resulting Rhino guids are kept in self.beam_guids_at_position(beam_id, position)
 
         This applies to all positions where the attribute is set in beam attributes.
         """
@@ -401,7 +454,7 @@ class ProcessArtist(object):
         for beam_position in ProcessKeyPosition.beam_positions:
             layer_name = 'itj::beam::' + beam_position
             # If not delete_old, and there are already items drawn, we preserve them.
-            if len(self.beam_guids[beam_id][beam_position]) > 0 and not delete_old:
+            if len(self.beam_guids_at_position(beam_id, beam_position)) > 0 and not delete_old:
                 continue
 
             # Delete old geometry
@@ -420,7 +473,7 @@ class ProcessArtist(object):
             T = self.process.assembly.get_beam_transformaion_to(beam_id, beam_position)
             beam_mesh = self.process.assembly.beam(beam_id).cached_mesh.transformed(T)  # type: Mesh
             guids = self.draw_meshes_get_guids([beam_mesh], beam_id, redraw=False)
-            self.beam_guids[beam_id][beam_position].extend(guids)
+            self.beam_guids_at_position(beam_id, beam_position).extend(guids)
 
         if redraw:
             rs.EnableRedraw(True)
@@ -441,14 +494,12 @@ class ProcessArtist(object):
 
         No change will be made if the beam_id or beam_position do not exist in the guid dictionary.
         """
-        if beam_id not in self.beam_guids:
+        if len(self.beam_guids_at_position(beam_id, beam_position)) == 0:
             return
-        if beam_position not in self.beam_guids[beam_id]:
-            return
-        guids = self.beam_guids[beam_id][beam_position]
+        guids = self.beam_guids_at_position(beam_id, beam_position)
         if len(guids) > 0:
             purge_objects(guids, redraw)
-            self.beam_guids[beam_id][beam_position] = []
+            del self.beam_guids_at_position(beam_id, beam_position)[:]
 
     def show_beam_at_one_position(self, beam_id, position=None):
         """ Show Beam only at the specified position.
@@ -459,9 +510,9 @@ class ProcessArtist(object):
 
         for beam_position in ProcessKeyPosition.beam_positions:
             if beam_position == position:
-                rs.ShowObject(self.beam_guids[beam_id][beam_position])
+                rs.ShowObject(self.beam_guids_at_position(beam_id, beam_position))
             else:
-                rs.HideObject(self.beam_guids[beam_id][beam_position])
+                rs.HideObject(self.beam_guids_at_position(beam_id, beam_position))
 
     def hide_beam_all_positions(self, beam_id):
         """ Hide all gripper instances in the specified positions.
@@ -482,14 +533,11 @@ class ProcessArtist(object):
         If beam_id is not yet tracked in self.guid, the new entry will be created.
         """
         rs.EnableRedraw(False)
-        if beam_id in self.interactive_guids:
-            for layer in self.interactive_guids[beam_id]:
-                purge_objects(self.interactive_guids[beam_id][layer], redraw=False)
-                self.interactive_guids[beam_id][layer] = []
-        else:
-            self.interactive_guids[beam_id] = {}
+        if beam_id in self.process.assembly.beam_ids():
             for layer in self.interactive_layers:
-                self.interactive_guids[beam_id][layer] = []
+                if len(self.interactive_guids_at_layer(beam_id, layer)) > 0:
+                    purge_objects(self.interactive_guids_at_layer(beam_id, layer), redraw=False)
+                    del self.interactive_guids_at_layer(beam_id, layer)[:]
         if redraw:
             rs.EnableRedraw(True)
 
@@ -521,16 +569,13 @@ class ProcessArtist(object):
 
         # Create new guid dictionary / clear out previously-saved guids.
         for beam_id in self.process.assembly.beam_ids():
-            for layer in self.interactive_layers:
-                self.interactive_guids[beam_id][layer] = []
-            for position in ProcessKeyPosition.beam_positions:
-                self.beam_guids[beam_id][position] = []
-            for position in ProcessKeyPosition.gripper_positions:
-                self.gripper_guids[beam_id][position] = []
+            self.delete_interactive_beam_visualization(beam_id, redraw=False)
+            self.delete_beam_all_positions(beam_id=beam_id, redraw=False)
+            self.delete_gripper_all_positions(beam_id, redraw=False)
             for joint_id in self.process.assembly.get_joint_ids_of_beam(beam_id):
-                for position in ProcessKeyPosition.clamp_positions:
-                    self.clamp_guids[joint_id][position] = []
-        self.state_visualization_guids = {}
+                self.delete_clamp_all_positions(joint_id=joint_id, redraw=False)
+
+        self._state_visualization_guids = {}
         self._tools_in_storage_guids = {}
     ######################
     # Drawing Gripper
@@ -548,7 +593,7 @@ class ProcessArtist(object):
         for gripper_position in ProcessKeyPosition.gripper_positions:
             layer_name = 'itj::gripper::' + gripper_position
             # If not delete_old, and there are already items drawn, we preserve them.
-            if len(self.gripper_guids[beam_id][gripper_position]) > 0 and not delete_old:
+            if len(self.gripper_guids_at_position(beam_id, gripper_position)) > 0 and not delete_old:
                 continue
 
             # Check if the position string contains a dot notation for states , such as open gripper
@@ -579,11 +624,11 @@ class ProcessArtist(object):
 
             artist = ToolArtist(gripper, layer_name)
             new_guids = gripper.draw_visual(artist)
-            self.gripper_guids[beam_id][gripper_position].extend(new_guids)
+            self.gripper_guids_at_position(beam_id, gripper_position).extend(new_guids)
 
             # Draw ToolChanger and Robot Wrist
             new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, gripper.current_frame, layer_name, )
-            self.gripper_guids[beam_id][gripper_position].extend(new_guids)
+            self.gripper_guids_at_position(beam_id, gripper_position).extend(new_guids)
 
         if redraw:
             rs.EnableRedraw(True)
@@ -619,14 +664,11 @@ class ProcessArtist(object):
 
         No change will be made if the beam_id or gripper_position do not exist in the guid dictionary.
         """
-        if beam_id not in self.gripper_guids:
-            return
-        if gripper_position not in self.gripper_guids[beam_id]:
-            return
-        guids = self.gripper_guids[beam_id][gripper_position]
+
+        guids = self.gripper_guids_at_position(beam_id, gripper_position)
         if len(guids) > 0:
             purge_objects(guids, redraw)
-            self.gripper_guids[beam_id][gripper_position] = []
+            del self.gripper_guids_at_position(beam_id, gripper_position)[:]
 
     def show_gripper_at_one_position(self, beam_id, position=None):
         """ Show Gripper only at the specified position.
@@ -639,9 +681,9 @@ class ProcessArtist(object):
 
         for gripper_position in ProcessKeyPosition.gripper_positions:
             if gripper_position == position:
-                rs.ShowObject(self.gripper_guids[beam_id][gripper_position])
+                rs.ShowObject(self.gripper_guids_at_position(beam_id, gripper_position))
             else:
-                rs.HideObject(self.gripper_guids[beam_id][gripper_position])
+                rs.HideObject(self.gripper_guids_at_position(beam_id, gripper_position))
 
     def hide_gripper_all_positions(self, beam_id):
         """ Hide all gripper instances in the specified positions.
@@ -658,7 +700,7 @@ class ProcessArtist(object):
     def draw_clamp_all_positions(self, beam_id, delete_old=False, verbose=False, redraw=True):
         """ Delete old clamp geometry if delete_old is True
         Redraw them in Rhino in different layers.
-        The resulting Rhino guids are kept in self.clamp_guids[joint_id][clamp_position]
+        The resulting Rhino guids are kept in self.clamp_guids(joint_id, clamp_position)
 
         This applies to all positions where the attribute is set in joint attributes.
         """
@@ -669,7 +711,7 @@ class ProcessArtist(object):
             # Loop through each position
             for clamp_position in ProcessKeyPosition.clamp_positions:
                 # If not delete_old, and there are already items drawn, we preserve them.
-                if len(self.clamp_guids[joint_id][clamp_position]) > 0 and not delete_old:
+                if len(self.clamp_guids_at_position(joint_id, clamp_position)) > 0 and not delete_old:
                     continue
 
                 # Check if the position string contains a dot notation for states , such as open gripper
@@ -700,11 +742,11 @@ class ProcessArtist(object):
 
                 artist = ToolArtist(clamp, layer_name)
                 new_guids = clamp.draw_visual(artist)
-                self.clamp_guids[joint_id][clamp_position].extend(new_guids)
+                self.clamp_guids_at_position(joint_id, clamp_position).extend(new_guids)
 
                 # Draw ToolChanger and Robot Wrist
                 new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, clamp.current_frame, layer_name, )
-                self.clamp_guids[joint_id][clamp_position].extend(new_guids)
+                self.clamp_guids_at_position(joint_id, clamp_position).extend(new_guids)
         if redraw:
             rs.EnableRedraw(True)
 
@@ -724,14 +766,11 @@ class ProcessArtist(object):
 
         No change will be made if the joint_id or clamp_position do not exist in the guid dictionary.
         """
-        if joint_id not in self.clamp_guids:
-            return
-        if clamp_position not in self.clamp_guids[joint_id]:
-            return
-        guids = self.clamp_guids[joint_id][clamp_position]
+
+        guids = self.clamp_guids_at_position(joint_id, clamp_position)
         if len(guids) > 0:
             purge_objects(guids, redraw)
-            self.clamp_guids[joint_id][clamp_position] = []
+            del self.clamp_guids_at_position(joint_id, clamp_position)[:]
 
     def show_clamp_at_one_position(self, beam_id, position=None, clamping_this_beam=True):
         """ Show Gripper only at the specified position.
@@ -745,9 +784,9 @@ class ProcessArtist(object):
         for joint_id in self.process.assembly.get_joint_ids_of_beam_clamps(beam_id, clamping_this_beam=clamping_this_beam):
             for clamp_position in ProcessKeyPosition.clamp_positions:
                 if clamp_position == position:
-                    rs.ShowObject(self.clamp_guids[joint_id][clamp_position])
+                    rs.ShowObject(self.clamp_guids_at_position(joint_id, clamp_position))
                 else:
-                    rs.HideObject(self.clamp_guids[joint_id][clamp_position])
+                    rs.HideObject(self.clamp_guids_at_position(joint_id, clamp_position))
 
     def hide_clamp_all_positions(self, beam_id, clamping_this_beam=True):
         """ Hide all gripper instances in the specified positions.
@@ -794,14 +833,14 @@ class ProcessArtist(object):
     def hide_all_tools_in_storage(self):
         for tool_id in self._tools_in_storage_guids.keys():
             self.hide_tool_in_storage(tool_id)
-    
+
     def delete_tool_in_storage(self, tool_id):
         purge_objects(self.tools_in_storage_guids(tool_id), redraw=False)
+        del self.tools_in_storage_guids(tool_id)[:]
 
     def delete_all_tools_in_storage(self):
         for tool_id in self._tools_in_storage_guids.keys():
             self.delete_tool_in_storage(tool_id)
-
 
     ######################
     # Robot
@@ -810,6 +849,7 @@ class ProcessArtist(object):
     ######################
     # State
     ######################
+
     def draw_meshes_get_guids(self, meshes, name, disjoint=True, redraw=False):
         """ 
         Draws a mesh to Rhino in a specific color and return the guids.
@@ -869,7 +909,7 @@ class ProcessArtist(object):
             # Shared functions to draw meshes and add guids to tracking dict
             if meshes is not None:
                 guids = self.draw_meshes_get_guids(meshes, object_id, redraw=False)
-                self.state_visualization_guids[object_id] = guids
+                self.state_visualization_guids(object_id).extend(guids)
                 # Add a color to the objects that are attached-to-robot
                 if object_state.attached_to_robot:
                     meshes_apply_color(guids, (0.7, 1, 1, 1))
@@ -882,9 +922,9 @@ class ProcessArtist(object):
     def delete_state(self, redraw=True):
         # type: (bool) -> None
         """Delete all geometry that is related to showing object state"""
-        for object_id, guids in self.state_visualization_guids.items():
+        for object_id, guids in self._state_visualization_guids.items():
             purge_objects(guids, redraw=False)
-        self.state_visualization_guids = {}
+        self._state_visualization_guids = {}
 
         # Enable Redraw
         if redraw:
