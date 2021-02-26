@@ -1,5 +1,4 @@
 from copy import deepcopy
-from termcolor import cprint, colored
 
 from compas.datastructures import Mesh, Network
 from compas.geometry import Transformation, Translation
@@ -24,6 +23,11 @@ from integral_timber_joints.tools.pickup_station import GripperAlignedPickupStat
 from integral_timber_joints.tools.robot_wrist import RobotWrist
 from integral_timber_joints.tools.tool import Tool
 from integral_timber_joints.tools.tool_changer import ToolChanger
+
+try:
+    from termcolor import colored, cprint
+except:
+    pass
 
 
 class RobotClampAssemblyProcess(Network):
@@ -1524,12 +1528,14 @@ class RobotClampAssemblyProcess(Network):
         state = self.get_movement_end_state(movement)
         return state['robot'].kinematic_config is not None
 
+
 def _colored_is_none(value):
     if value is None:
         return colored('None', 'yellow')
     else:
         return colored(value, 'green' if value else 'red')
 
+
 def _colored_planning_priority(p):
-    color_from_p = {1:'blue', 0:'magenta', -1:'white'}
+    color_from_p = {1: 'blue', 0: 'magenta', -1: 'white'}
     return colored(p, color_from_p[p])
