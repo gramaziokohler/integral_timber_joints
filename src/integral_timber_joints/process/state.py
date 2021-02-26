@@ -55,6 +55,10 @@ class ObjectState(object):
         self.kinematic_config = data.get('kinematic_config', None)
         self.attached_to_robot = data.get('attached_to_robot', False)
 
+    def __str__(self):
+        return "State: current frame: {} | config: {} | attached to robot: {} | attached to joint: {}".format(
+            self.current_frame, self.kinematic_config, self.attached_to_robot, self.attached_to_joint)
+
 
 def get_object_from_flange(object_states, object_id):
     flange_frame = object_states['robot'].current_frame
