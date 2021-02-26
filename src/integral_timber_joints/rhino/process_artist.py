@@ -6,17 +6,16 @@ from compas.geometry import Frame
 from compas_rhino.artists import RobotModelArtist
 from compas_rhino.geometry import RhinoPlane
 from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
+from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
+from System.Drawing import Color  # type: ignore
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam
-from integral_timber_joints.tools import Tool, Clamp, Gripper
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.process.state import ObjectState
 from integral_timber_joints.rhino.tool_artist import ToolArtist
 from integral_timber_joints.rhino.utility import purge_objects
-
-from System.Drawing import Color  # type: ignore
-from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
+from integral_timber_joints.tools import Clamp, Gripper, Tool
 
 
 def AddAnnotationText(frame, text, height, layer, redraw=True):
@@ -538,7 +537,7 @@ class ProcessArtist(object):
             for layer in self.interactive_layers:
                 if len(self.interactive_guids_at_layer(beam_id, layer)) > 0:
                     purge_objects(self.interactive_guids_at_layer(beam_id, layer), redraw=False)
-
+                    del self.interactive_guids_at_layer(beam_id, layer)[:]
         if redraw:
             rs.EnableRedraw(True)
 
@@ -837,6 +836,7 @@ class ProcessArtist(object):
 
     def delete_tool_in_storage(self, tool_id):
         purge_objects(self.tools_in_storage_guids(tool_id), redraw=False)
+        del self.tools_in_storage_guids(tool_id)[:]
 
     def delete_all_tools_in_storage(self):
         for tool_id in self._tools_in_storage_guids.keys():

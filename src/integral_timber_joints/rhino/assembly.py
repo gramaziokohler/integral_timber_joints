@@ -2,6 +2,7 @@ import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 from compas.geometry.primitives.frame import Frame
 from compas.geometry.primitives.vector import Vector
+from compas.geometry.transformations.transformation import Transformation
 from compas_rhino.geometry import RhinoCurve
 from compas_rhino.ui import CommandMenu
 # from compas_rhino.utilities import delete_objects
@@ -12,9 +13,7 @@ from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint_halflap import Joint_halflap_from_beam_beam_intersection
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
-from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
-from compas.geometry.transformations.transformation import Transformation
-from integral_timber_joints.rhino.utility import purge_objects
+from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
 
 
 def ui_add_beam_from_lines(process):
@@ -96,8 +95,9 @@ def ui_delete_beams(process):
     for beam_id in beam_ids:
         neighbors += assembly.neighbors(beam_id)
     neighbors = set(neighbors) - set(beam_ids)
-    print('neighbors = %s' % neighbors)
+    print('Neighbour Beam Affected: %s' % neighbors)
 
+    rs.EnableRedraw(False)
     # Delete Beams and their joints
     for beam_id in beam_ids:
         artist.delete_interactive_beam_visualization(beam_id)
@@ -106,9 +106,8 @@ def ui_delete_beams(process):
         print('Beam Removed: %s' % beam_id)
 
     # Redraw neighbour beams since joints maybe gone.
-    show_assembly_color(process, neighbors, redraw=True)
-
-    print('Neighbour Beam Affected: %s' % neighbors)
+    show_assembly_color(process, neighbors, delete_old=True, redraw=False)
+    rs.EnableRedraw(True)
 
 
 def ui_flip_beams(process):
@@ -258,7 +257,7 @@ def something(process):
     print('something')
 
 
-def show_assembly_color(process, beam_ids=None, redraw=False):
+def show_assembly_color(process, beam_ids=None, delete_old=False, redraw=True):
     """Activate assembly menu colour code.
     Problematic beams that cannot be assembled are highlighted
     """
@@ -267,13 +266,15 @@ def show_assembly_color(process, beam_ids=None, redraw=False):
     artist = get_process_artist()
     rs.EnableRedraw(False)
     for beam_id in beam_ids:
-        if redraw:
+        print (beam_id)
+        if delete_old:
             artist.redraw_interactive_beam(beam_id, redraw=False)
         if process.assembly.beam_problems(beam_id):
             artist.change_interactive_beam_colour(beam_id, 'warning')
         else:
             artist.change_interactive_beam_colour(beam_id, 'active')
-    rs.EnableRedraw(True)
+    if redraw:
+        rs.EnableRedraw(True)
 
 
 def hide_assembly_color(process, beam_ids=None):
