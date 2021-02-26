@@ -1,4 +1,3 @@
-from integral_timber_joints.process.dependency import ComputationalResult
 
 
 class PickupStation (object):
@@ -97,8 +96,8 @@ class GripperAlignedPickupStation(PickupStation):
         beam_attribute 'assembly_wcf_pickup' will be set.
 
         """
-        from compas.geometry.transformations.transformation import Transformation
         from compas.geometry.primitives.frame import Frame
+        from compas.geometry.transformations.transformation import Transformation
 
         # Grasp
         gripper_tcp_in_ocf = process.assembly.get_beam_attribute(beam_id, 'gripper_tcp_in_ocf')

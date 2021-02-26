@@ -16,8 +16,13 @@ from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement
 from integral_timber_joints.process.state import ObjectState, copy_state_dict
-from integral_timber_joints.tools import Clamp, Gripper, GripperAlignedPickupStation, PickupStation, RobotWrist, StackedPickupStation, Tool, ToolChanger
 from integral_timber_joints.tools.beam_storage import BeamStorage
+from integral_timber_joints.tools.clamp import Clamp
+from integral_timber_joints.tools.gripper import Gripper
+from integral_timber_joints.tools.pickup_station import GripperAlignedPickupStation, PickupStation, StackedPickupStation
+from integral_timber_joints.tools.robot_wrist import RobotWrist
+from integral_timber_joints.tools.tool import Tool
+from integral_timber_joints.tools.tool_changer import ToolChanger
 
 
 class RobotClampAssemblyProcess(Network):
