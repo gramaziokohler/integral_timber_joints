@@ -4,3 +4,4 @@ compas_fab_pychoreo>=0.3.0
 jsonpickle
 trimesh
 pycddlib
+termcolor

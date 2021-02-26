@@ -43,8 +43,8 @@ class Movement(object):
         self.operator_stop_before = operator_stop_before  # type: str
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
-        self.planning_priority = planning_priority  # type: int 
-        self.movement_id = ""  # type: str # 
+        self.planning_priority = planning_priority  # type: int
+        self.movement_id = ""  # type: str #
         self.tag = "" # type str
 
     def to_data(self):
@@ -168,13 +168,13 @@ class OperatorLoadBeamMovement(Movement):
 class RoboticFreeMovement(RoboticMovement):
 
     def __str__(self):
-        return "Free Move to %s, target conf: %s" % (self.target_frame, self.target_configuration is not None)
+        return "Free Move to %s | tag %s | has target conf: %s" % (self.target_frame, self.tag, self.target_configuration is not None)
 
 
 class RoboticLinearMovement(RoboticMovement):
 
     def __str__(self):
-        return "Linear Move to %s, target conf: %s" % (self.target_frame, self.target_configuration is not None)
+        return "Linear Move to %s | tag %s | has target conf: %s" % (self.target_frame, self.tag, self.target_configuration is not None)
 
 
 class RoboticDigitalOutput(Movement):

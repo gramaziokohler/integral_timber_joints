@@ -1,4 +1,5 @@
 from copy import deepcopy
+from termcolor import cprint, colored
 
 from compas.datastructures import Mesh, Network
 from compas.geometry import Transformation, Translation
@@ -14,7 +15,7 @@ from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, EnvironmentModel, Joint
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
-from integral_timber_joints.process.movement import Movement
+from integral_timber_joints.process.movement import Movement, RoboticMovement
 from integral_timber_joints.process.state import ObjectState, copy_state_dict
 from integral_timber_joints.tools.beam_storage import BeamStorage
 from integral_timber_joints.tools.clamp import Clamp
@@ -1445,6 +1446,18 @@ class RobotClampAssemblyProcess(Network):
         """ Get an ordered list of Movements related to a beam"""
         return [movement for action in self.get_action_by_beam_id(beam_id) for movement in action.movements]
 
+    def get_movement_summary_by_beam_id(self, beam_id):
+        movements = self.get_movements_by_beam_id(beam_id)
+        print('=====')
+        print('Summary:')
+        for i, m in enumerate(movements):
+            print('---')
+            print('({}) {} \npriority {} | has start conf {} | has end conf {} | has traj {}'.format(
+                i, m, _colored_planning_priority(m.planning_priority),
+                _colored_is_none(self.movement_has_start_robot_config(m)), _colored_is_none(self.movement_has_end_robot_config(m)),
+                _colored_is_none(m.trajectory is not None if isinstance(m, RoboticMovement) else None)
+            ))
+
     def get_movement_start_state(self, movement):
         # type: (Movement) -> dict[str, ObjectState]
         """ return the start state before the movment """
@@ -1495,6 +1508,7 @@ class RobotClampAssemblyProcess(Network):
         """Returns the Action object in which the movement belongs to"""
         for action in self.actions:
             for _movement in action.movements:
+                # ? Does this really work? what if I change some attributes in the movement?
                 if movement is _movement:
                     return action
 
@@ -1509,3 +1523,13 @@ class RobotClampAssemblyProcess(Network):
         """Returns True if the movement's end_state.['robot'].kinematic_config is not None """
         state = self.get_movement_end_state(movement)
         return state['robot'].kinematic_config is not None
+
+def _colored_is_none(value):
+    if value is None:
+        return colored('None', 'yellow')
+    else:
+        return colored(value, 'green' if value else 'red')
+
+def _colored_planning_priority(p):
+    color_from_p = {1:'blue', 0:'magenta', -1:'white'}
+    return colored(p, color_from_p[p])
