@@ -23,8 +23,8 @@ def reset_dependency_graph(process):
     print("Dependency graph is reset.")
 
 
-def compute_action(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def compute_action(process, verbose = False):
+    # type: (RobotClampAssemblyProcess, bool) -> None
     """User triggered function to compute Actions from Assembly Sequence
     """
     # Make sure everything is computed and nothing is missing
@@ -32,15 +32,20 @@ def compute_action(process):
         process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
 
     # Call function to create actions
-    process.create_actions_from_sequence()
-    process.assign_tools_to_actions()
+    print ("Compute 1 of 4 - Create Actions")
+    process.create_actions_from_sequence(verbose=verbose)
+    print ("Compute 2 of 4 - Assign Tools")
+    process.assign_tools_to_actions(verbose=verbose)
     # process.optimize_actions_place_pick_gripper()
     # process.optimize_actions_place_pick_clamp()
-    process.create_movements_from_actions()
+    print ("Compute 3 of 4 - Create Movements")
+    process.create_movements_from_actions(verbose=verbose)
 
     # Save result to log file.
+    print ("Compute 4 of 4 - Export Movements Log")
     log_file_path = get_activedoc_path_no_ext() + "_process.log"
     process.debug_print_process_actions_movements(log_file_path)
+    print ("Compute Action Completed")
 
 
 def compute_states(process):
@@ -50,7 +55,7 @@ def compute_states(process):
 
     # Call function to create actions
     process.compute_initial_state()
-    process.compute_intermediate_states(verbose=True)
+    process.compute_intermediate_states(verbose=False)
 
     # Print out some information to user
     full_state_count = 0
