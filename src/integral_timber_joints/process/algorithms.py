@@ -401,7 +401,7 @@ def compute_intermediate_states(process, verbose=True):
             # Make a copy of the previous state
             current_state = deepcopy(current_state)
             if verbose:
-                print("Processing Seq %i Action %i Movement %i: %s" % (action.seq_n, action.act_n, mov_n, movement))
+                print("Processing Seq %i Action %i Movement %i: %s" % (action.seq_n, action.act_n, mov_n, movement.tag))
 
             # Make changes to objects according to movements
             if isinstance(movement, OperatorLoadBeamMovement):
