@@ -89,6 +89,9 @@ class Movement(object):
         self.end_state = data.get('end_state', {})
         self.movement_id = data.get('movement_id', "")
 
+    @property
+    def short_summary(self):
+        return '{}(#{}, tag {})'.format(self.__class__.__name__, self.movement_id, self.tag)
 
 class RoboticMovement(Movement):
     def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="", operator_stop_after="", speed_type="", target_configuration=None):
@@ -125,6 +128,11 @@ class RoboticMovement(Movement):
         self.trajectory = data.get('trajectory', None)
         self.speed_type = data.get('speed_type', "")
         self.target_configuration = data.get('target_configuration', None)
+
+    @property
+    def short_summary(self):
+        return '{}(#{}, tag {}, target conf {}, traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
+            int(self.target_configuration is not None), int(self.trajectory is not None))
 
 ######################################
 # Movement Classes that can be used

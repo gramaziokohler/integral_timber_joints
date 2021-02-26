@@ -1453,7 +1453,7 @@ class RobotClampAssemblyProcess(Network):
         for i, m in enumerate(movements):
             print('---')
             print('({}) {} \npriority {} | has start conf {} | has end conf {} | has traj {}'.format(
-                i, m, _colored_planning_priority(m.planning_priority),
+                i, m.short_summary, _colored_planning_priority(m.planning_priority),
                 _colored_is_none(self.movement_has_start_robot_config(m)), _colored_is_none(self.movement_has_end_robot_config(m)),
                 _colored_is_none(m.trajectory is not None if isinstance(m, RoboticMovement) else None)
             ))
