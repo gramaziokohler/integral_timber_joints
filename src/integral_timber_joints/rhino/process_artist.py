@@ -283,9 +283,9 @@ class ProcessArtist(object):
 
     def state_visualization_guids(self, object_id):
         # type: (str) -> list(guid)
-        if object_id not in self.state_visualization_guids:
-            self.state_visualization_guids[object_id] = []
-        return self.state_visualization_guids[object_id]
+        if object_id not in self._state_visualization_guids:
+            self._state_visualization_guids[object_id] = []
+        return self._state_visualization_guids[object_id]
         
     def tools_in_storage_guids(self, tool_id):
         # type: (str) -> list(guid)
