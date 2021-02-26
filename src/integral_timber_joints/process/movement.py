@@ -44,8 +44,8 @@ class Movement(object):
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
         self.planning_priority = planning_priority  # type: int
-        self.movement_id = ""  # type: str #
-        self.tag = tag # type str
+        self.movement_id = ""  # type: str
+        self.tag = tag  # type: str
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -92,6 +92,7 @@ class Movement(object):
 
 class RoboticMovement(Movement):
     def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="", operator_stop_after="", speed_type="", target_configuration=None, tag="Generic Robotic Movement"):
+        # type: (Frame, str, str, int, str, str, str, Configuration, str) -> RoboticMovement
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=planning_priority, tag=tag)
         self.target_frame = target_frame  # type: Frame
         self.attached_tool_id = attached_tool_id  # type: Optional[str]
@@ -137,6 +138,7 @@ class OperatorLoadBeamMovement(Movement):
     """
 
     def __init__(self, beam_id=None, grasp_face=None, target_frame=None, tag="Opeartor Load Beam to Pickup Location"):
+        # type: (str, int, Frame, str) -> OperatorLoadBeamMovement
         Movement.__init__(self, operator_stop_after="Confirm Beam placed in Pickup", planning_priority=-1, tag=tag)
         self.beam_id = beam_id
         self.grasp_face = grasp_face
@@ -168,19 +170,18 @@ class OperatorLoadBeamMovement(Movement):
 class RoboticFreeMovement(RoboticMovement):
 
     def __str__(self):
-        return "Free Move to %s"% (self.target_frame)
-
+        return "Free Move to %s" % (self.target_frame)
 
 
 class RoboticLinearMovement(RoboticMovement):
 
     def __str__(self):
-        return "Linear Move to %s"% (self.target_frame)
+        return "Linear Move to %s" % (self.target_frame)
 
 
 class RoboticDigitalOutput(Movement):
     def __init__(self, digital_output=None, tool_id=None, beam_id=None, operator_stop_before="", operator_stop_after="", tag=None):
-        # type: (DigitalOutput, str, str, str, str) -> None
+        # type: (DigitalOutput, str, str, str, str, str) -> RoboticDigitalOutput
         """ `tool_id` relates to the tool that is being operated.
         `beam_id` should be filled in for Open or Close Gripper movements that
         involved letting go or picking up a beam. This helps the state manage to figure
@@ -204,7 +205,7 @@ class RoboticDigitalOutput(Movement):
         if self.digital_output == DigitalOutput.CloseGripper:
             self.operator_stop_before = "Confirm safe to Close Gripper"
             self.tag = "Close Gripper"
-        #Use user specified tag if supplied
+        # Use user specified tag if supplied
         if tag is not None:
             self.tag = tag
 
@@ -247,8 +248,8 @@ class DigitalOutput(object):
 
 
 class ClampsJawMovement(Movement):
-    def __init__(self, jaw_positions=[], clamp_ids=[], speed_type="", planning_priority=-1, tag = "Clamp Jaw Move"):
-        Movement.__init__(self, planning_priority=planning_priority, tag = tag)
+    def __init__(self, jaw_positions=[], clamp_ids=[], speed_type="", planning_priority=-1, tag="Clamp Jaw Move"):
+        Movement.__init__(self, planning_priority=planning_priority, tag=tag)
         self.jaw_positions = jaw_positions  # type: list[float]
         self.clamp_ids = clamp_ids  # type: list[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
@@ -278,7 +279,7 @@ class ClampsJawMovement(Movement):
 
 class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="", tag = "Robot and Clamp Sync Move"):
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="", tag="Robot and Clamp Sync Move"):
         RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
         ClampsJawMovement.__init__(self, jaw_positions, clamp_ids, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
 
