@@ -331,7 +331,7 @@ def debug_print_process_actions_movements(process, file_path=None):
             else:
                 priority_string = '%s' % movement.planning_priority
 
-            line = "|  |- <%s> Movement %s (%s): %s\n" % (priority_string, j, movement.__class__.__name__, movement)
+            line = "|  |- <%s> Movement %s (%s): %s\n" % (priority_string, j, movement.__class__.__name__, movement.tag)
             if file_path is not None:
                 f.write(line)
             else:
