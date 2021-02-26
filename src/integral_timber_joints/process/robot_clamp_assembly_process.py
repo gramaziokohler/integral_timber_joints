@@ -29,7 +29,6 @@ try:
 except:
     pass
 
-
 class RobotClampAssemblyProcess(Network):
 
     from .algorithms import (assign_tools_to_actions, create_actions_from_sequence, create_movements_from_actions, debug_print_process_actions_movements,
@@ -1530,12 +1529,17 @@ class RobotClampAssemblyProcess(Network):
 
 
 def _colored_is_none(value):
-    if value is None:
-        return colored('None', 'yellow')
-    else:
-        return colored(value, 'green' if value else 'red')
-
+    try:
+        if value is None:
+            return colored('None', 'yellow')
+        else:
+            return colored(value, 'green' if value else 'red')
+    except:
+        return value
 
 def _colored_planning_priority(p):
     color_from_p = {1: 'blue', 0: 'magenta', -1: 'white'}
-    return colored(p, color_from_p[p])
+    try:
+        return colored(p, color_from_p[p])
+    except:
+        return p

@@ -39,13 +39,13 @@ class Movement(object):
 
     """
 
-    def __init__(self, operator_stop_before="", operator_stop_after="", planning_priority=0, tag="Generic Movement"):
+    def __init__(self, operator_stop_before="", operator_stop_after="", planning_priority=0, tag=None):
         self.operator_stop_before = operator_stop_before  # type: str
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
         self.planning_priority = planning_priority  # type: int
         self.movement_id = ""  # type: str
-        self.tag = tag  # type: str
+        self.tag = tag or "Generic Movement" # type: str
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -69,6 +69,7 @@ class Movement(object):
             'end_state': self.end_state,
             'planning_priority': self.planning_priority,
             'movement_id': self.movement_id,
+            'tag' : self.tag,
         }
         return data
 
@@ -88,22 +89,27 @@ class Movement(object):
         self.planning_priority = data.get('planning_priority', 0)
         self.end_state = data.get('end_state', {})
         self.movement_id = data.get('movement_id', "")
+        self.tag = data.get('tag', None)
 
     @property
     def short_summary(self):
-        return '{}(#{}, tag {})'.format(self.__class__.__name__, self.movement_id, self.tag)
+        return '{}(#{}, {})'.format(self.__class__.__name__, self.movement_id, self.tag)
 
 class RoboticMovement(Movement):
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="", operator_stop_after="", speed_type="", target_configuration=None, tag="Generic Robotic Movement"):
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="",
+        operator_stop_after="", speed_type="", target_configuration=None, tag=None):
         # type: (Frame, str, str, int, str, str, str, Configuration, str) -> RoboticMovement
-        Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=planning_priority, tag=tag)
+        Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after,
+            planning_priority=planning_priority, tag=tag)
         self.target_frame = target_frame  # type: Frame
         self.attached_tool_id = attached_tool_id  # type: Optional[str]
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
-        # type: Optional[Configuration] # Optional configuration for the target, when set, will be passed to state and eventually path planner.
+        # type: Optional[Configuration] # Optional configuration for the target, when set,
+        # will be passed to state and eventually path planner.
         self.target_configuration = target_configuration
+        self.tag = tag or "Generic Robotic Movement"
 
     @property
     def data(self):
@@ -132,7 +138,7 @@ class RoboticMovement(Movement):
 
     @property
     def short_summary(self):
-        return '{}(#{}, tag {}, target conf {}, traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
+        return '{}(#{}, {}, target conf {}, traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
             int(self.target_configuration is not None), int(self.trajectory is not None))
 
 ######################################
@@ -145,12 +151,13 @@ class OperatorLoadBeamMovement(Movement):
     Default: operator_stop_after = True
     """
 
-    def __init__(self, beam_id=None, grasp_face=None, target_frame=None, tag="Opeartor Load Beam to Pickup Location"):
+    def __init__(self, beam_id=None, grasp_face=None, target_frame=None, tag=None):
         # type: (str, int, Frame, str) -> OperatorLoadBeamMovement
         Movement.__init__(self, operator_stop_after="Confirm Beam placed in Pickup", planning_priority=-1, tag=tag)
         self.beam_id = beam_id
         self.grasp_face = grasp_face
         self.target_frame = target_frame  # type: Frame
+        self.tag = tag or "Opeartor Load Beam to Pickup Location"
 
     def __str__(self):
         return "Load Beam ('%s') for pickup at %s (Side %s face up)." % (self.beam_id, self.target_frame, self.grasp_face)
@@ -256,11 +263,12 @@ class DigitalOutput(object):
 
 
 class ClampsJawMovement(Movement):
-    def __init__(self, jaw_positions=[], clamp_ids=[], speed_type="", planning_priority=-1, tag="Clamp Jaw Move"):
+    def __init__(self, jaw_positions=[], clamp_ids=[], speed_type="", planning_priority=-1, tag=None):
         Movement.__init__(self, planning_priority=planning_priority, tag=tag)
         self.jaw_positions = jaw_positions  # type: list[float]
         self.clamp_ids = clamp_ids  # type: list[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
+        self.tag = tag or "Clamp Jaw Move"
 
     def __str__(self):
         return "Clamps %s Jaw Move to %s" % (self.clamp_ids, self.jaw_positions)
@@ -287,7 +295,8 @@ class ClampsJawMovement(Movement):
 
 class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="", tag="Robot and Clamp Sync Move"):
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="", tag=None):
+        tag = tag or "Robot and Clamp Sync Move"
         RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
         ClampsJawMovement.__init__(self, jaw_positions, clamp_ids, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
 
