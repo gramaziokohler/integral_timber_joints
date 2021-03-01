@@ -69,6 +69,7 @@ class Movement(object):
             'end_state': self.end_state,
             'planning_priority': self.planning_priority,
             'movement_id': self.movement_id,
+            'tag': self.tag,
         }
         return data
 
@@ -88,6 +89,7 @@ class Movement(object):
         self.planning_priority = data.get('planning_priority', 0)
         self.end_state = data.get('end_state', {})
         self.movement_id = data.get('movement_id', "")
+        self.tag = data.get('tag', "")
 
 
 class RoboticMovement(Movement):
