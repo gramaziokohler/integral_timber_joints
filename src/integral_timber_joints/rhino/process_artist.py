@@ -3,7 +3,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
 from compas.datastructures import Mesh
 from compas.geometry import Frame
-from compas_rhino.artists import RobotModelArtist, MeshArtist
+from compas_rhino.artists import MeshArtist, RobotModelArtist
 from compas_rhino.geometry import RhinoPlane
 from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
 from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
@@ -72,17 +72,28 @@ class ProcessKeyPosition(object):
 
     # pos_name, beam_pos, gripper_pos, clamp_pos
     pos_names_for_beam_with_clamps = [
-        ('clamp_attachapproach1',   'assembly_wcf_storage',         None,                                               'clamp_wcf_attachapproach1.open_clamp.open_gripper'),
-        ('clamp_attachapproach2',   'assembly_wcf_storage',         None,                                               'clamp_wcf_attachapproach2.open_clamp.open_gripper'),
-        ('beam_pickup_approach',    'assembly_wcf_pickup',          'assembly_wcf_pickupapproach.open_gripper',         'clamp_wcf_final.open_clamp.close_gripper'),
-        ('beam_pickup_pick',        'assembly_wcf_pickup',          'assembly_wcf_pickup.close_gripper',                'clamp_wcf_final.open_clamp.close_gripper'),
-        ('beam_pickup_retract',     'assembly_wcf_pickupretract',   'assembly_wcf_pickupretract.close_gripper',         'clamp_wcf_final.open_clamp.close_gripper'),
-        ('beam_inclampapproach',    'assembly_wcf_inclampapproach', 'assembly_wcf_inclampapproach.close_gripper',       'clamp_wcf_final.open_clamp.close_gripper'),
-        ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp.close_gripper',               'clamp_wcf_final.open_clamp.close_gripper'),
-        ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final.close_gripper',                 'clamp_wcf_final.close_clamp.close_gripper'),
-        ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract.open_gripper',           'clamp_wcf_final.close_clamp.close_gripper'),
-        ('clamp_detachretract1',    'assembly_wcf_final',           None,                                               'clamp_wcf_detachretract1.open_clamp.open_gripper'),
-        ('clamp_detachretract2',    'assembly_wcf_final',           None,                                               'clamp_wcf_detachretract2.open_clamp.open_gripper'),
+        ('clamp_attachapproach1',   'assembly_wcf_storage',         None,
+         'clamp_wcf_attachapproach1.open_clamp.open_gripper'),
+        ('clamp_attachapproach2',   'assembly_wcf_storage',         None,
+         'clamp_wcf_attachapproach2.open_clamp.open_gripper'),
+        ('beam_pickup_approach',    'assembly_wcf_pickup',
+         'assembly_wcf_pickupapproach.open_gripper',         'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_pickup_pick',        'assembly_wcf_pickup',
+         'assembly_wcf_pickup.close_gripper',                'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_pickup_retract',     'assembly_wcf_pickupretract',
+         'assembly_wcf_pickupretract.close_gripper',         'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_inclampapproach',    'assembly_wcf_inclampapproach',
+         'assembly_wcf_inclampapproach.close_gripper',       'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_inclamp',            'assembly_wcf_inclamp',
+         'assembly_wcf_inclamp.close_gripper',               'clamp_wcf_final.open_clamp.close_gripper'),
+        ('beam_final',              'assembly_wcf_final',
+         'assembly_wcf_final.close_gripper',                 'clamp_wcf_final.close_clamp.close_gripper'),
+        ('beam_finalretract',       'assembly_wcf_final',
+         'assembly_wcf_finalretract.open_gripper',           'clamp_wcf_final.close_clamp.close_gripper'),
+        ('clamp_detachretract1',    'assembly_wcf_final',           None,
+         'clamp_wcf_detachretract1.open_clamp.open_gripper'),
+        ('clamp_detachretract2',    'assembly_wcf_final',           None,
+         'clamp_wcf_detachretract2.open_clamp.open_gripper'),
     ]
 
     pos_names_for_beam_without_clamps = [
@@ -192,6 +203,7 @@ class ProcessArtist(object):
         'built': (61, 167, 219),
         'built_warning': (130, 20, 20),
         'neighbors': (0, 188, 212),
+        'env_model': (230, 153, 0),
     }
 
     key_positions = [
@@ -210,7 +222,7 @@ class ProcessArtist(object):
         self._interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
         self._state_visualization_guids = {}  # type: dict[str, list[str]]
         self._tools_in_storage_guids = {}  # type: dict[str, list[str]]
-        self._env_mesh_guids = {} # type: dict[str, list[str]]
+        self._env_mesh_guids = {}  # type: dict[str, list[str]]
 
         self.settings = {
             'color.vertex': (255, 255, 255),
@@ -314,7 +326,8 @@ class ProcessArtist(object):
         self._selected_beam_id = beam_id
         # update selected_key_position whether current_beam_has_clamps
         if beam_id is not None:
-            self.selected_key_position.current_beam_has_clamps = len(self.process.assembly.get_joint_ids_of_beam_clamps(beam_id)) > 0
+            self.selected_key_position.current_beam_has_clamps = len(
+                self.process.assembly.get_joint_ids_of_beam_clamps(beam_id)) > 0
 
     def select_next_beam(self):
         # type: () -> str
@@ -858,19 +871,18 @@ class ProcessArtist(object):
     # Env Mesh
     #############
 
-    def draw_all_env_mesh(self, delete_old = False, redraw = True):
+    def draw_all_env_mesh(self, delete_old=False, redraw=True):
         rs.EnableRedraw(False)
         if delete_old:
-            self.draw_all_env_mesh(redraw = False)
+            self.draw_all_env_mesh(redraw=False)
         rs.CurrentLayer(self.env_mesh_layer)
         for env_id, mesh in self.process.environment_models.items():
-            guids = self.draw_meshes_get_guids([mesh], env_id, redraw=False)
+            guids = self.draw_meshes_get_guids([mesh], env_id, redraw=False, color=self.color_meaning['env_model'])
             self.env_mesh_guids(env_id).extend(guids)
         if redraw:
             rs.EnableRedraw(True)
 
-
-    def delete_all_env_mesh(self, redraw = True):
+    def delete_all_env_mesh(self, redraw=True):
         rs.EnableRedraw(False)
         for env_id, guids in self._env_mesh_guids.items():
             purge_objects(guids, redraw=False)
@@ -878,9 +890,20 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
-    def hide_all_env_mesh(self):
+    def hide_all_env_mesh(self, redraw=True):
+        rs.EnableRedraw(False)
         for env_id in self._env_mesh_guids.keys():
             rs.HideObject(self.env_mesh_guids(env_id))
+        if redraw:
+            rs.EnableRedraw(True)
+
+    def show_all_env_mesh(self, redraw=True):
+        rs.EnableRedraw(False)
+        for env_id in self._env_mesh_guids.keys():
+            rs.ShowObject(self.env_mesh_guids(env_id))
+        if redraw:
+            rs.EnableRedraw(True)
+
     ######################
     # Robot
     ######################
@@ -889,7 +912,7 @@ class ProcessArtist(object):
     # State
     ######################
 
-    def draw_meshes_get_guids(self, meshes, name, disjoint=True, redraw=False):
+    def draw_meshes_get_guids(self, meshes, name, disjoint=True, redraw=False, color=None):
         """
         Draws a mesh to Rhino in a specific color and return the guids.
 
@@ -904,7 +927,7 @@ class ProcessArtist(object):
         for mesh in meshes:
             v, f = mesh.to_vertices_and_faces()
             # Redraw for individual call supressed here.
-            guid = draw_mesh(v, f, name=name, redraw=False, disjoint=disjoint)
+            guid = draw_mesh(v, f, name=name, redraw=False, disjoint=disjoint, color=color)
             guids.append(guid)
         if redraw:
             rs.EnableRedraw(True)
