@@ -495,9 +495,10 @@ def show_menu(process):
 
     while (True):
 
-        # Have artist paint all the tools in storage position
+        # Have artist paint all the tools in storage position and env mesh
         for tool_id in process.tool_ids:
             artist.draw_tool_in_storage(tool_id)
+        artist.draw_all_env_mesh(delete_old = True)
         rs.EnableRedraw(True)
 
         # Create Menu
@@ -561,6 +562,7 @@ def show_menu(process):
         # User cancel command by Escape
         if result is None or 'action' not in result:
             artist.hide_all_tools_in_storage()
+            artist.hide_all_env_mesh()
             rs.EnableRedraw(True)
             print('Exit Function')
             return Rhino.Commands.Result.Cancel
@@ -570,6 +572,7 @@ def show_menu(process):
         # User click Exit Button
         if action == 'Exit':
             artist.hide_all_tools_in_storage()
+            artist.hide_all_env_mesh()
             rs.EnableRedraw(True)
             print('Exit Function')
             return Rhino.Commands.Result.Cancel

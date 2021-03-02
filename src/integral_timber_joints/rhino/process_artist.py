@@ -3,7 +3,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
 from compas.datastructures import Mesh
 from compas.geometry import Frame
-from compas_rhino.artists import RobotModelArtist
+from compas_rhino.artists import RobotModelArtist, MeshArtist
 from compas_rhino.geometry import RhinoPlane
 from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
 from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
@@ -165,8 +165,8 @@ class ProcessArtist(object):
     """ Artist to draw Beams in Rhino
     Items are drawn in specific layers for quickly turning them on and off.
     Beam Brep : layer = itj::beams_brep         name = beam_id
-    Beam Mesh : layer =  itj::beams_mesh        name = beam_id 
-    Beam Sequence Tag - itj::beams_seqtag       
+    Beam Mesh : layer =  itj::beams_mesh        name = beam_id
+    Beam Sequence Tag - itj::beams_seqtag
     self.gripper_guids, clamp_guids, beam_guids, interactive_guids
     are dictionary that keep track of the objects drawn in Rhino.
     """
@@ -180,6 +180,7 @@ class ProcessArtist(object):
 
     state_visualization_layer = 'itj::state_visualization'
     tools_in_storage_layer = 'itj::tools::in_storage'
+    env_mesh_layer = 'itj::envmesh'
 
     color_meaning = {
         'normal': (0, 0, 0),
@@ -209,6 +210,7 @@ class ProcessArtist(object):
         self._interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
         self._state_visualization_guids = {}  # type: dict[str, list[str]]
         self._tools_in_storage_guids = {}  # type: dict[str, list[str]]
+        self._env_mesh_guids = {} # type: dict[str, list[str]]
 
         self.settings = {
             'color.vertex': (255, 255, 255),
@@ -286,13 +288,19 @@ class ProcessArtist(object):
         if object_id not in self._state_visualization_guids:
             self._state_visualization_guids[object_id] = []
         return self._state_visualization_guids[object_id]
-        
+
     def tools_in_storage_guids(self, tool_id):
         # type: (str) -> list(guid)
         if tool_id not in self._tools_in_storage_guids:
             self._tools_in_storage_guids[tool_id] = []
         return self._tools_in_storage_guids[tool_id]
-        
+
+    def env_mesh_guids(self, env_id):
+        # type: (str) -> list [guid]
+        if env_id not in self._env_mesh_guids:
+            self._env_mesh_guids[env_id] = []
+        return self._env_mesh_guids[env_id]
+
     ###########################################################
     # Functions to keep track of user selected interactive beam
     ###########################################################
@@ -389,8 +397,8 @@ class ProcessArtist(object):
 
     def interactive_beam_guid(self, beam_id, layer='itj::interactive::beams_mesh'):
         # type:(str, str) -> list(str)
-        ''' Returns the interactive beam's guid(s) 
-        Typically this is a list of one mesh that represent the beam. 
+        ''' Returns the interactive beam's guid(s)
+        Typically this is a list of one mesh that represent the beam.
         '''
         return self.interactive_guids_at_layer(beam_id, layer)
 
@@ -503,7 +511,7 @@ class ProcessArtist(object):
 
     def show_beam_at_one_position(self, beam_id, position=None):
         """ Show Beam only at the specified position.
-        Position is the position attribute name, if left None, selected_key_position will be used. 
+        Position is the position attribute name, if left None, selected_key_position will be used.
         """
         if position is None:
             position = self.selected_key_position.current_beam_pos
@@ -553,6 +561,7 @@ class ProcessArtist(object):
             yield 'itj::beam::' + beam_position
         yield self.state_visualization_layer
         yield self.tools_in_storage_layer
+        yield self.env_mesh_layer
 
     def empty_layers(self):
         # type:() -> None
@@ -577,6 +586,7 @@ class ProcessArtist(object):
 
         self._state_visualization_guids = {}
         self._tools_in_storage_guids = {}
+
     ######################
     # Drawing Gripper
     ######################
@@ -673,7 +683,7 @@ class ProcessArtist(object):
     def show_gripper_at_one_position(self, beam_id, position=None):
         """ Show Gripper only at the specified position.
 
-        `position` is the position attribute name, if left `None`, 
+        `position` is the position attribute name, if left `None`,
         selected_key_position saved in artist will be used.
         """
         if position is None:
@@ -769,13 +779,15 @@ class ProcessArtist(object):
 
         guids = self.clamp_guids_at_position(joint_id, clamp_position)
         if len(guids) > 0:
-            purge_objects(guids, redraw)
+            purge_objects(guids, redraw=False)
             del self.clamp_guids_at_position(joint_id, clamp_position)[:]
+        if redraw:
+            rs.EnableRedraw(True)
 
     def show_clamp_at_one_position(self, beam_id, position=None, clamping_this_beam=True):
         """ Show Gripper only at the specified position.
 
-        `position` is the position attribute name, if left `None`, 
+        `position` is the position attribute name, if left `None`,
         selected_key_position saved in artist will be used.
         """
         if position is None:
@@ -842,6 +854,33 @@ class ProcessArtist(object):
         for tool_id in self._tools_in_storage_guids.keys():
             self.delete_tool_in_storage(tool_id)
 
+    #############
+    # Env Mesh
+    #############
+
+    def draw_all_env_mesh(self, delete_old = False, redraw = True):
+        rs.EnableRedraw(False)
+        if delete_old:
+            self.draw_all_env_mesh(redraw = False)
+        rs.CurrentLayer(self.env_mesh_layer)
+        for env_id, mesh in self.process.environment_models.items():
+            guids = self.draw_meshes_get_guids([mesh], env_id, redraw=False)
+            self.env_mesh_guids(env_id).extend(guids)
+        if redraw:
+            rs.EnableRedraw(True)
+
+
+    def delete_all_env_mesh(self, redraw = True):
+        rs.EnableRedraw(False)
+        for env_id, guids in self._env_mesh_guids.items():
+            purge_objects(guids, redraw=False)
+            del self.env_mesh_guids(env_id)[:]
+        if redraw:
+            rs.EnableRedraw(True)
+
+    def hide_all_env_mesh(self):
+        for env_id in self._env_mesh_guids.keys():
+            rs.HideObject(self.env_mesh_guids(env_id))
     ######################
     # Robot
     ######################
@@ -851,7 +890,7 @@ class ProcessArtist(object):
     ######################
 
     def draw_meshes_get_guids(self, meshes, name, disjoint=True, redraw=False):
-        """ 
+        """
         Draws a mesh to Rhino in a specific color and return the guids.
 
         Layer is not handeled here to avoid unnecessary repeated calls and save time.
