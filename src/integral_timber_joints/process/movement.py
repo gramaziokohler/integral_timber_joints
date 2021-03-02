@@ -45,7 +45,7 @@ class Movement(object):
         self.end_state = {}  # type: dict[str, ObjectState]
         self.planning_priority = planning_priority  # type: int
         self.movement_id = ""  # type: str
-        self.tag = tag or "Generic Movement" # type: str
+        self.tag = tag or "Generic Movement"  # type: str
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -95,22 +95,34 @@ class Movement(object):
     def short_summary(self):
         return '{}(#{}, {})'.format(self.__class__.__name__, self.movement_id, self.tag)
 
+
 class RoboticMovement(Movement):
+    """ Generic class for movements related to Robot Arm movement.
+
+    `RoboticMovement.allowed_collision_matrix`
+    - List of Tuple[object_id, object_id] representing allowable collision between beams and tools
+
+    `RoboticMovement.target_configuration`
+    - Optional Robotic Configuration (J / E values) for the target,
+    When set, the configuration will become a constraint in the end-state for the path planning.
+    When None, the pathplanner should decide for the configuration using IK sampling.
+
+
+    """
+
     def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="",
-        operator_stop_after="", speed_type="", target_configuration=None, tag=None):
-        # type: (Frame, str, str, int, str, str, str, Configuration, str) -> RoboticMovement
+                 operator_stop_after="", speed_type="", target_configuration=None, allowed_collision_matrix=[], tag=None):
+        # type: (Frame, str, str, int, str, str, str, Configuration, list(tuple(str,str)), str) -> RoboticMovement
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after,
-            planning_priority=planning_priority, tag=tag)
+                          planning_priority=planning_priority, tag=tag)
         self.target_frame = target_frame  # type: Frame
         self.attached_tool_id = attached_tool_id  # type: Optional[str]
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
-        # type: Optional[Configuration] # Optional configuration for the target, when set,
-        # will be passed to state and eventually path planner.
-        self.target_configuration = target_configuration
+        self.target_configuration = target_configuration  # type: Optional[Configuration]
+        self.allowed_collision_matrix = allowed_collision_matrix  # type: list(tuple(str,str))
         self.tag = tag or "Generic Robotic Movement"
-        self.allowed_collision_matrix = [] # type: list(tuple(str,str))
 
     @property
     def data(self):
@@ -142,7 +154,7 @@ class RoboticMovement(Movement):
     @property
     def short_summary(self):
         return '{}(#{}, {}, target conf {}, traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
-            int(self.target_configuration is not None), int(self.trajectory is not None))
+                                                             int(self.target_configuration is not None), int(self.trajectory is not None))
 
 ######################################
 # Movement Classes that can be used
@@ -300,10 +312,13 @@ class ClampsJawMovement(Movement):
 
 class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="", tag=None):
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="",
+                 allowed_collision_matrix=[], tag=None):
         tag = tag or "Robot and Clamp Sync Move"
-        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
-        ClampsJawMovement.__init__(self, jaw_positions, clamp_ids, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
+        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority,
+                                 speed_type=speed_type, allowed_collision_matrix=allowed_collision_matrix, tag=tag)
+        ClampsJawMovement.__init__(self, jaw_positions, clamp_ids,
+                                   planning_priority=planning_priority, speed_type=speed_type, tag=tag)
 
     @property
     def data(self):
