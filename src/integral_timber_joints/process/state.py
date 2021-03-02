@@ -6,16 +6,16 @@ class ObjectState(object):
     """ Base class of a state object.
     Note that the State object should exist in a state dictionary where the key refers to an object id.
 
-    `ObjectState.current_frame` 
+    `ObjectState.current_frame`
     - A frame describing the loaction of an object. `None` can be used to represent an un-transformed state.
 
-    `ObjectState.kinematic_config` 
+    `ObjectState.kinematic_config`
     - A dictionary to describe the kinematic configuration of a RobotModel or ToolModel (such as Clamp and Gripper)
     - The dictionary uses `joint names` as keys and `values` in degrees or millimeters.
     - `None` can be used for Beams and Env Objects that does not have kinematic state
 
-    `ObjectState.attached_to_robot` 
-    - Bool value describing if an object is attached to the robot. 
+    `ObjectState.attached_to_robot`
+    - Bool value describing if an object is attached to the robot.
     - Note that the ToolChanger is always attached to the robot's flange. (Level 1)
     - Gripper or Clamp can be attached to a robot's ToolChanger. (Level 2)
     - Beam can only be attached to a Gripper or Clamp (Level 3)
@@ -55,9 +55,12 @@ class ObjectState(object):
         self.kinematic_config = data.get('kinematic_config', None)
         self.attached_to_robot = data.get('attached_to_robot', False)
 
+    def __repr__(self):
+        return self.__str__()
+
     def __str__(self):
-        return "State: current frame: {} | config: {} | attached to robot: {} | attached to joint: {}".format(
-            self.current_frame, self.kinematic_config, self.attached_to_robot, self.attached_to_joint)
+        return "State: current frame: {} | config: {} | attached to robot: {}".format(
+            self.current_frame, self.kinematic_config, self.attached_to_robot)
 
 
 def get_object_from_flange(object_states, object_id):
@@ -71,7 +74,7 @@ def get_object_from_flange(object_states, object_id):
 
 def copy_state_dict(target_state_dict, source_state_dict, clear=False, deep_copy=False):
     # type: (dict[str, ObjectState], dict[str, ObjectState], bool, bool) -> None
-    """Copy one state dictionary to another. 
+    """Copy one state dictionary to another.
     If `clear = True`, keys not present in the source_state_dict are removed.
 
     If `deep_copy = True`, deep copy is made for each object State """
