@@ -37,9 +37,12 @@ class Movement(object):
     - Optional human readable text describing the sementic meaning of the movement within the Action.
     - This text should make sense in the absence of the Action description.
 
+    `operator_stop_before` and `operator_stop_after`
+    - If set to a non empty String, a operator stop will be triggered before or after the action execution.
+    - If set to None, no stop will happen. (default)
     """
 
-    def __init__(self, operator_stop_before="", operator_stop_after="", planning_priority=0, tag=None):
+    def __init__(self, operator_stop_before=None, operator_stop_after=None, planning_priority=0, tag=None):
         self.operator_stop_before = operator_stop_before  # type: str
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
@@ -84,8 +87,8 @@ class Movement(object):
 
     @data.setter
     def data(self, data):
-        self.operator_stop_before = data.get('operator_stop_before', "")
-        self.operator_stop_after = data.get('operator_stop_after', "")
+        self.operator_stop_before = data.get('operator_stop_before', None)
+        self.operator_stop_after = data.get('operator_stop_after', None)
         self.planning_priority = data.get('planning_priority', 0)
         self.end_state = data.get('end_state', {})
         self.movement_id = data.get('movement_id', "")
@@ -110,8 +113,8 @@ class RoboticMovement(Movement):
 
     """
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="",
-                 operator_stop_after="", speed_type="", target_configuration=None, allowed_collision_matrix=[], tag=None):
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before=None,
+                 operator_stop_after=None, speed_type="", target_configuration=None, allowed_collision_matrix=[], tag=None):
         # type: (Frame, str, str, int, str, str, str, Configuration, list(tuple(str,str)), str) -> RoboticMovement
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after,
                           planning_priority=planning_priority, tag=tag)
@@ -210,8 +213,8 @@ class RoboticLinearMovement(RoboticMovement):
 
 
 class RoboticDigitalOutput(Movement):
-    def __init__(self, digital_output=None, tool_id=None, beam_id=None, operator_stop_before="", operator_stop_after="", tag=None):
-        # type: (DigitalOutput, str, str, str, str, str) -> RoboticDigitalOutput
+    def __init__(self, digital_output=None, tool_id=None, beam_id=None, operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
+        # type: (DigitalOutput, str, str, str, str, str, int) -> RoboticDigitalOutput
         """ `tool_id` relates to the tool that is being operated.
         `beam_id` should be filled in for Open or Close Gripper movements that
         involved letting go or picking up a beam. This helps the state manage to figure
@@ -220,26 +223,20 @@ class RoboticDigitalOutput(Movement):
         For Clamp Closing Gripper to attach to a fixed beam, `beam_id` should be left None.
         """
         Movement.__init__(self, operator_stop_before=operator_stop_before,
-                          operator_stop_after=operator_stop_after, planning_priority=-1)
+                          operator_stop_after=operator_stop_after, planning_priority=planning_priority)
         self.digital_output = digital_output
         self.tool_id = tool_id
         self.beam_id = beam_id
-        if self.digital_output == DigitalOutput.LockTool:
-            self.operator_stop_after = "Confirm QC Locked"
-            self.tag = "ToolChanger Lock Tool"
-        if self.digital_output == DigitalOutput.UnlockTool:
-            self.operator_stop_before = "Confirm safe to Unlock Tool."
-            self.tag = "ToolChanger Unlock Tool"
-        if self.digital_output == DigitalOutput.OpenGripper:
-            self.operator_stop_before = "Confirm safe to Open Gripper"
-            self.tag = "Open Gripper"
-        if self.digital_output == DigitalOutput.CloseGripper:
-            self.operator_stop_before = "Confirm safe to Close Gripper"
-            self.tag = "Close Gripper"
 
-        # Use user specified tag if supplied
-        if tag is not None:
-            self.tag = tag
+        # Default tags for IO actions
+        if self.digital_output == DigitalOutput.LockTool:
+            self.tag = tag or "ToolChanger Lock Tool"
+        elif self.digital_output == DigitalOutput.UnlockTool:
+            self.tag = tag or "ToolChanger Unlock Tool"
+        elif self.digital_output == DigitalOutput.OpenGripper:
+            self.tag = tag or "Open Gripper"
+        elif self.digital_output == DigitalOutput.CloseGripper:
+            self.tag = tag or "Close Gripper"
 
     def __str__(self):
         if self.digital_output == DigitalOutput.LockTool:

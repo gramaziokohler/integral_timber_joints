@@ -485,7 +485,7 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         # Lock tool and Open Clamp Jaw
         self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id,
                                                    operator_stop_after="Confirm ToolChanger Locked",
-                                                   tag="Toolchanger Lock %s" % self._tool_string))
+                                                   tag="Toolchanger Lock %s" % self._tool_string,))
         self.movements.append(ClampsJawMovement([process.clamp_appraoch_position], [self.tool_id],
                                                 speed_type='speed.clamp.rapid',
                                                 tag="%s Open Clamp Jaws to be released." % self._tool_string))
@@ -564,13 +564,15 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
                                                     tag="Linear Approach 2 of 2 to attach %s to structure." % self._tool_string,
                                                     allowed_collision_matrix=acm))  # Tool Final Frame at structure
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id,
-                                                   operator_stop_before="Confirm Gripper Pins Alignment", operator_stop_after="Confirm Gripper Closed Properly",
+                                                   operator_stop_before="Confirm Gripper Pins Alignment",
+                                                   operator_stop_after="Confirm Gripper Closed Properly",
                                                    tag="%s Close Gripper and attach to structure." % self._tool_string))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id,
                                                    tag="Toolchanger Unlock %s." % self._tool_string))
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachretract.copy(), speed_type='speed.toolchange.retract.notool',
                                                     tag="Linear Retract after attaching %s on structure" % self._tool_string,
-                                                    allowed_collision_matrix=[('robot', self.tool_id)]))
+                                                    allowed_collision_matrix=[('robot', self.tool_id)],
+                                                    operator_stop_after="Confirm Clamp stay sttached",))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -609,8 +611,9 @@ class BeamPickupAction(RobotAction, AttachBeamAction):
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickup.copy(), attached_tool_id=self.gripper_id,
                                                     speed_type='speed.gripper.approach',
                                                     tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id)))  # Tool Final Frame at structure
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.gripper_id, self.beam_id, operator_stop_before="Confirm Beam Pos in Gripper",
-                                                   tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.gripper_id, self.beam_id,
+                                                operator_stop_after="Confirm Beam Pos in Gripper",
+                                                tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickupretract.copy(), attached_tool_id=self.gripper_id,
                                                     attached_beam_id=self.beam_id, speed_type='speed.transfer.caution', operator_stop_after="Confirm Beam Held Firmly",
                                                     tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)))
