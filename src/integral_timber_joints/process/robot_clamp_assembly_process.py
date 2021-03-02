@@ -14,7 +14,7 @@ from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam, EnvironmentModel, Joint
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
-from integral_timber_joints.process.movement import Movement, RoboticMovement
+from integral_timber_joints.process.movement import Movement, RoboticLinearMovement, RoboticMovement, RoboticFreeMovement
 from integral_timber_joints.process.state import ObjectState, copy_state_dict
 from integral_timber_joints.tools.beam_storage import BeamStorage
 from integral_timber_joints.tools.clamp import Clamp
@@ -1455,10 +1455,10 @@ class RobotClampAssemblyProcess(Network):
         print('Summary:')
         for i, m in enumerate(movements):
             print('---')
-            print('({}) {} \npriority {} | has start conf {} | has end conf {} | has traj {}'.format(
-                i, m.short_summary, _colored_planning_priority(m.planning_priority),
+            print('({}) {} \npriority {} | has start conf {} | has end conf {}{}'.format(
+                i, _colored_movement_short_summary(m), _colored_planning_priority(m.planning_priority),
                 _colored_is_none(self.movement_has_start_robot_config(m)), _colored_is_none(self.movement_has_end_robot_config(m)),
-                _colored_is_none(m.trajectory is not None if isinstance(m, RoboticMovement) else None)
+                ' | has traj ' + _colored_is_none(m.trajectory) if isinstance(m, RoboticMovement) else ''
             ))
 
     def get_movement_start_state(self, movement):
@@ -1531,9 +1531,9 @@ class RobotClampAssemblyProcess(Network):
 def _colored_is_none(value):
     try:
         if value is None:
-            return colored('None', 'yellow')
+            return colored('None', 'red')
         else:
-            return colored(value, 'green' if value else 'red')
+            return colored(value is not None, 'green' if value is not None else 'red')
     except:
         return value
 
@@ -1543,3 +1543,14 @@ def _colored_planning_priority(p):
         return colored(p, color_from_p[p])
     except:
         return p
+
+def _colored_movement_short_summary(m):
+    try:
+        if isinstance(m, RoboticLinearMovement):
+            return colored(m.short_summary, 'white', 'on_blue')
+        elif isinstance(m, RoboticFreeMovement):
+            return colored(m.short_summary, 'white', 'on_yellow')
+        else:
+            return m.short_summary
+    except:
+        return m.short_summary
