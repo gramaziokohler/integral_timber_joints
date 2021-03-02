@@ -95,7 +95,8 @@ class Movement(object):
 class RoboticMovement(Movement):
     def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="", operator_stop_after="", speed_type="", target_configuration=None, tag="Generic Robotic Movement"):
         # type: (Frame, str, str, int, str, str, str, Configuration, str) -> RoboticMovement
-        Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=planning_priority, tag=tag)
+        Movement.__init__(self, operator_stop_before=operator_stop_before,
+                          operator_stop_after=operator_stop_after, planning_priority=planning_priority, tag=tag)
         self.target_frame = target_frame  # type: Frame
         self.attached_tool_id = attached_tool_id  # type: Optional[str]
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
@@ -103,6 +104,7 @@ class RoboticMovement(Movement):
         self.trajectory = None  # type: Optional[JointTrajectory]
         # type: Optional[Configuration] # Optional configuration for the target, when set, will be passed to state and eventually path planner.
         self.target_configuration = target_configuration
+        self.allowed_collision_matrix = [] # type: list(tuple(str,str))
 
     @property
     def data(self):
@@ -115,6 +117,7 @@ class RoboticMovement(Movement):
         data['trajectory'] = self.trajectory
         data['speed_type'] = self.speed_type
         data['target_configuration'] = self.target_configuration
+        data['allowed_collision_matrix'] = self.allowed_collision_matrix
         return data
 
     @data.setter
@@ -128,6 +131,7 @@ class RoboticMovement(Movement):
         self.trajectory = data.get('trajectory', None)
         self.speed_type = data.get('speed_type', "")
         self.target_configuration = data.get('target_configuration', None)
+        self.allowed_collision_matrix = data.get('allowed_collision_matrix', [])
 
 ######################################
 # Movement Classes that can be used
@@ -191,7 +195,8 @@ class RoboticDigitalOutput(Movement):
 
         For Clamp Closing Gripper to attach to a fixed beam, `beam_id` should be left None.
         """
-        Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=-1)
+        Movement.__init__(self, operator_stop_before=operator_stop_before,
+                          operator_stop_after=operator_stop_after, planning_priority=-1)
         self.digital_output = digital_output
         self.tool_id = tool_id
         self.beam_id = beam_id
@@ -207,6 +212,7 @@ class RoboticDigitalOutput(Movement):
         if self.digital_output == DigitalOutput.CloseGripper:
             self.operator_stop_before = "Confirm safe to Close Gripper"
             self.tag = "Close Gripper"
+
         # Use user specified tag if supplied
         if tag is not None:
             self.tag = tag
@@ -282,8 +288,10 @@ class ClampsJawMovement(Movement):
 class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
     def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="", tag="Robot and Clamp Sync Move"):
-        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
-        ClampsJawMovement.__init__(self, jaw_positions, clamp_ids, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
+        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id,
+                                 planning_priority=planning_priority, speed_type=speed_type, tag=tag)
+        ClampsJawMovement.__init__(self, jaw_positions, clamp_ids,
+                                   planning_priority=planning_priority, speed_type=speed_type, tag=tag)
 
     @property
     def data(self):
