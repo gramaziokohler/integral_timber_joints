@@ -37,15 +37,18 @@ class Movement(object):
     - Optional human readable text describing the sementic meaning of the movement within the Action.
     - This text should make sense in the absence of the Action description.
 
+    `operator_stop_before` and `operator_stop_after`
+    - If set to a non empty String, a operator stop will be triggered before or after the action execution.
+    - If set to None, no stop will happen. (default)
     """
 
-    def __init__(self, operator_stop_before="", operator_stop_after="", planning_priority=0, tag=None):
+    def __init__(self, operator_stop_before=None, operator_stop_after=None, planning_priority=0, tag=None):
         self.operator_stop_before = operator_stop_before  # type: str
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
         self.planning_priority = planning_priority  # type: int
         self.movement_id = ""  # type: str
-        self.tag = tag or "Generic Movement" # type: str
+        self.tag = tag or "Generic Movement"  # type: str
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -84,8 +87,8 @@ class Movement(object):
 
     @data.setter
     def data(self, data):
-        self.operator_stop_before = data.get('operator_stop_before', "")
-        self.operator_stop_after = data.get('operator_stop_after', "")
+        self.operator_stop_before = data.get('operator_stop_before', None)
+        self.operator_stop_after = data.get('operator_stop_after', None)
         self.planning_priority = data.get('planning_priority', 0)
         self.end_state = data.get('end_state', {})
         self.movement_id = data.get('movement_id', "")
@@ -95,20 +98,33 @@ class Movement(object):
     def short_summary(self):
         return '{}(#{}, {})'.format(self.__class__.__name__, self.movement_id, self.tag)
 
+
 class RoboticMovement(Movement):
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before="",
-        operator_stop_after="", speed_type="", target_configuration=None, tag=None):
-        # type: (Frame, str, str, int, str, str, str, Configuration, str) -> RoboticMovement
+    """ Generic class for movements related to Robot Arm movement.
+
+    `RoboticMovement.allowed_collision_matrix`
+    - List of Tuple[object_id, object_id] representing allowable collision between beams and tools
+
+    `RoboticMovement.target_configuration`
+    - Optional Robotic Configuration (J / E values) for the target,
+    When set, the configuration will become a constraint in the end-state for the path planning.
+    When None, the pathplanner should decide for the configuration using IK sampling.
+
+
+    """
+
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before=None,
+                 operator_stop_after=None, speed_type="", target_configuration=None, allowed_collision_matrix=[], tag=None):
+        # type: (Frame, str, str, int, str, str, str, Configuration, list(tuple(str,str)), str) -> RoboticMovement
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after,
-            planning_priority=planning_priority, tag=tag)
+                          planning_priority=planning_priority, tag=tag)
         self.target_frame = target_frame  # type: Frame
         self.attached_tool_id = attached_tool_id  # type: Optional[str]
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
-        # type: Optional[Configuration] # Optional configuration for the target, when set,
-        # will be passed to state and eventually path planner.
-        self.target_configuration = target_configuration
+        self.target_configuration = target_configuration  # type: Optional[Configuration]
+        self.allowed_collision_matrix = allowed_collision_matrix  # type: list(tuple(str,str))
         self.tag = tag or "Generic Robotic Movement"
 
     @property
@@ -122,6 +138,7 @@ class RoboticMovement(Movement):
         data['trajectory'] = self.trajectory
         data['speed_type'] = self.speed_type
         data['target_configuration'] = self.target_configuration
+        data['allowed_collision_matrix'] = self.allowed_collision_matrix
         return data
 
     @data.setter
@@ -135,11 +152,12 @@ class RoboticMovement(Movement):
         self.trajectory = data.get('trajectory', None)
         self.speed_type = data.get('speed_type', "")
         self.target_configuration = data.get('target_configuration', None)
+        self.allowed_collision_matrix = data.get('allowed_collision_matrix', [])
 
     @property
     def short_summary(self):
         return '{}(#{}, {}, target conf {}, traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
-            int(self.target_configuration is not None), int(self.trajectory is not None))
+                                                             int(self.target_configuration is not None), int(self.trajectory is not None))
 
 ######################################
 # Movement Classes that can be used
@@ -195,8 +213,8 @@ class RoboticLinearMovement(RoboticMovement):
 
 
 class RoboticDigitalOutput(Movement):
-    def __init__(self, digital_output=None, tool_id=None, beam_id=None, operator_stop_before="", operator_stop_after="", tag=None):
-        # type: (DigitalOutput, str, str, str, str, str) -> RoboticDigitalOutput
+    def __init__(self, digital_output=None, tool_id=None, beam_id=None, operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
+        # type: (DigitalOutput, str, str, str, str, str, int) -> RoboticDigitalOutput
         """ `tool_id` relates to the tool that is being operated.
         `beam_id` should be filled in for Open or Close Gripper movements that
         involved letting go or picking up a beam. This helps the state manage to figure
@@ -204,25 +222,21 @@ class RoboticDigitalOutput(Movement):
 
         For Clamp Closing Gripper to attach to a fixed beam, `beam_id` should be left None.
         """
-        Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after, planning_priority=-1)
+        Movement.__init__(self, operator_stop_before=operator_stop_before,
+                          operator_stop_after=operator_stop_after, planning_priority=planning_priority)
         self.digital_output = digital_output
         self.tool_id = tool_id
         self.beam_id = beam_id
+
+        # Default tags for IO actions
         if self.digital_output == DigitalOutput.LockTool:
-            self.operator_stop_after = "Confirm QC Locked"
-            self.tag = "ToolChanger Lock Tool"
-        if self.digital_output == DigitalOutput.UnlockTool:
-            self.operator_stop_before = "Confirm safe to Unlock Tool."
-            self.tag = "ToolChanger Unlock Tool"
-        if self.digital_output == DigitalOutput.OpenGripper:
-            self.operator_stop_before = "Confirm safe to Open Gripper"
-            self.tag = "Open Gripper"
-        if self.digital_output == DigitalOutput.CloseGripper:
-            self.operator_stop_before = "Confirm safe to Close Gripper"
-            self.tag = "Close Gripper"
-        # Use user specified tag if supplied
-        if tag is not None:
-            self.tag = tag
+            self.tag = tag or "ToolChanger Lock Tool"
+        elif self.digital_output == DigitalOutput.UnlockTool:
+            self.tag = tag or "ToolChanger Unlock Tool"
+        elif self.digital_output == DigitalOutput.OpenGripper:
+            self.tag = tag or "Open Gripper"
+        elif self.digital_output == DigitalOutput.CloseGripper:
+            self.tag = tag or "Close Gripper"
 
     def __str__(self):
         if self.digital_output == DigitalOutput.LockTool:
@@ -295,10 +309,13 @@ class ClampsJawMovement(Movement):
 
 class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="", tag=None):
+    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="",
+                 allowed_collision_matrix=[], tag=None):
         tag = tag or "Robot and Clamp Sync Move"
-        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
-        ClampsJawMovement.__init__(self, jaw_positions, clamp_ids, planning_priority=planning_priority, speed_type=speed_type, tag=tag)
+        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority,
+                                 speed_type=speed_type, allowed_collision_matrix=allowed_collision_matrix, tag=tag)
+        ClampsJawMovement.__init__(self, jaw_positions, clamp_ids,
+                                   planning_priority=planning_priority, speed_type=speed_type, tag=tag)
 
     @property
     def data(self):

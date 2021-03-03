@@ -5,6 +5,7 @@ try:
 except:
     pass
 
+from itertools import chain
 from integral_timber_joints.process.movement import (Movement,
                                                      RoboticMovement, ClampsJawMovement, RoboticFreeMovement,
                                                      RoboticLinearMovement, OperatorLoadBeamMovement, RoboticClampSyncLinearMovement,
@@ -88,6 +89,7 @@ class RobotIOAction(Action):
     Representing actions that affect the scene.
     """
     pass
+
 #########################################################
 # Base Classes for attaching and detaching objects
 # Do not use them directly
@@ -203,6 +205,7 @@ class DetachBeamAction(RobotIOAction):
         super(DetachBeamAction, type(self)).data.fset(self, data)
         self.beam_id = data['beam_id']
         self.gripper_id = data['gripper_id']
+
 ##############################
 # Actions for Tool Change
 ##############################
@@ -254,6 +257,25 @@ class PickToolFromStorageAction(RobotAction, AttachToolAction):
     def __str__(self):
         return "Pick %s from Storage" % (self._tool_string)
 
+
+class PlaceToolToStorageAction(RobotAction, DetachToolAction):
+    def __init__(self, seq_n=0, act_n=0, tool_type=None):
+        # type: (str, int , int, str) -> None
+        RobotAction.__init__(self)
+        DetachToolAction.__init__(self, tool_type)
+        self.seq_n = seq_n
+        self.act_n = act_n
+
+    def __str__(self):
+        if self.tool_id:
+            object_str = "%s ('%s')" % (self.tool_type, self.tool_id)
+        else:
+            object_str = "%s (?)" % (self.tool_type)
+        return "Place %s to Storage" % (object_str)
+
+
+class PickGripperFromStorageAction(PickToolFromStorageAction):
+
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         """ Movement for picking Clamp (and other tools) from Storage
@@ -272,10 +294,12 @@ class PickToolFromStorageAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(),
                                                     speed_type='speed.toolchange.approach.notool',
                                                     target_configuration=tool.tool_storage_configuration,
-                                                    tag="Linear Advance to Storage Frame of %s, to get tool." % self._tool_string))  # Tool Storage Final
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id, tag="Toolchanger Lock %s" % self._tool_string))
+                                                    tag="Linear Advance to Storage Frame of %s, to get tool." % self._tool_string,
+                                                    allowed_collision_matrix=[('robot', self.tool_id)]))  # Tool Storage Final
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id,
+                                                   tag="Toolchanger Lock %s" % self._tool_string))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id,
-                                                    tag="%s Open Gripper to release itself from storage pad." % self._tool_string))
+                                                   tag="%s Open Gripper to release itself from storage pad." % self._tool_string))
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.withtool',
                                                     tag="Linear Retract after getting %s from storage." % self._tool_string))  # Tool Storage Retract
@@ -284,20 +308,7 @@ class PickToolFromStorageAction(RobotAction, AttachToolAction):
         self.assign_movement_ids()
 
 
-class PlaceToolToStorageAction(RobotAction, DetachToolAction):
-    def __init__(self, seq_n=0, act_n=0, tool_type=None):
-        # type: (str, int , int, str) -> None
-        RobotAction.__init__(self)
-        DetachToolAction.__init__(self, tool_type)
-        self.seq_n = seq_n
-        self.act_n = act_n
-
-    def __str__(self):
-        if self.tool_id:
-            object_str = "%s ('%s')" % (self.tool_type, self.tool_id)
-        else:
-            object_str = "%s (?)" % (self.tool_type)
-        return "Place %s to Storage" % (object_str)
+class PlaceGripperToStorageAction(PlaceToolToStorageAction):
 
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
@@ -314,26 +325,21 @@ class PlaceToolToStorageAction(RobotAction, DetachToolAction):
         tool_pick_up_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_frame_wcf)
 
         self.movements.append(RoboticFreeMovement(tool_pick_up_frame_t0cf.copy(), attached_tool_id=self.tool_id, speed_type='speed.transit.rapid',
-                                                    tag="Free Move to reach Storage Approach Frame of %s, to place tool in storage." % self._tool_string)) # Tool Storage Approach
-        self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), attached_tool_id = self.tool_id,
-                                                    speed_type = 'speed.toolchange.approach.withtool',
-                                                    target_configuration = tool.tool_storage_configuration,
-                                                    tag = "Linear Advance to Storage Frame of %s, to place tool in storage." % self._tool_string))  # Tool Storage Final
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id, tag="%s Close Gripper to lock onto storage pad." % self._tool_string))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id, tag="Toolchanger Unlock %s" % self._tool_string))
-        self.movements.append(RoboticLinearMovement(tool_pick_up_frame_t0cf.copy(), speed_type = 'speed.toolchange.retract.notool',
-                                                            tag="Linear Retract from storage after placing %s in storage" % self._tool_string))  # Tool Storage Retract
+                                                  tag="Free Move to reach Storage Approach Frame of %s, to place tool in storage." % self._tool_string))  # Tool Storage Approach
+        self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), attached_tool_id=self.tool_id,
+                                                    speed_type='speed.toolchange.approach.withtool',
+                                                    target_configuration=tool.tool_storage_configuration,
+                                                    tag="Linear Advance to Storage Frame of %s, to place tool in storage." % self._tool_string))  # Tool Storage Final
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id,
+                                                   tag="%s Close Gripper to lock onto storage pad." % self._tool_string))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id,
+                                                   tag="Toolchanger Unlock %s" % self._tool_string))
+        self.movements.append(RoboticLinearMovement(tool_pick_up_frame_t0cf.copy(), speed_type='speed.toolchange.retract.notool',
+                                                    tag="Linear Retract from storage after placing %s in storage" % self._tool_string,
+                                                    allowed_collision_matrix=[('robot', self.tool_id)]))  # Tool Storage Retract
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
-
-
-class PickGripperFromStorageAction(PickToolFromStorageAction):
-    pass
-
-
-class PlaceGripperToStorageAction(PlaceToolToStorageAction):
-    pass
 
 
 class PickClampFromStorageAction(PickToolFromStorageAction):
@@ -342,33 +348,35 @@ class PickClampFromStorageAction(PickToolFromStorageAction):
         # type: (RobotClampAssemblyProcess) -> None
         """ Movement for picking Clamp (and other tools) from Storage
         """
-        self.movements=[]
-        tool=process.clamp(self.tool_id)  # type: Clamp
-        toolchanger=process.robot_toolchanger
+        self.movements = []
+        tool = process.clamp(self.tool_id)  # type: Clamp
+        toolchanger = process.robot_toolchanger
 
-        tool_storage_frame_wcf=tool.tool_storage_frame
-        tool_storage_frame_t0cf=toolchanger.set_current_frame_from_tcp(tool_storage_frame_wcf)
+        tool_storage_frame_wcf = tool.tool_storage_frame
+        tool_storage_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_storage_frame_wcf)
 
-        tool_pick_up_frame_wcf=tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
-        tool_pick_up_frame_t0cf=toolchanger.set_current_frame_from_tcp(tool_pick_up_frame_wcf)
+        tool_pick_up_frame_wcf = tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
+        tool_pick_up_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_frame_wcf)
 
         # Tool Changer Approach Storage
-        self.movements.append(RoboticFreeMovement(tool_pick_up_frame_t0cf.copy(), speed_type = 'speed.transit.rapid',
-                                                    tag="Free Move reach Storage Approach Frame of %s, to get clamp." % self._tool_string))  # Tool Storage Approach
-        self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), speed_type = 'speed.toolchange.approach.notool',
-                                                    target_configuration = tool.tool_storage_configuration,
-                                                    tag="Linear Advance to Storage Frame of %s, to get tool." % self._tool_string))  # Tool Storage Final
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id, tag="Toolchanger Lock %s" % self._tool_string))
+        self.movements.append(RoboticFreeMovement(tool_pick_up_frame_t0cf.copy(), speed_type='speed.transit.rapid',
+                                                  tag="Free Move reach Storage Approach Frame of %s, to get clamp." % self._tool_string))  # Tool Storage Approach
+        self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), speed_type='speed.toolchange.approach.notool',
+                                                    target_configuration=tool.tool_storage_configuration,
+                                                    tag="Linear Advance to Storage Frame of %s, to get tool." % self._tool_string,
+                                                    allowed_collision_matrix=[('robot', self.tool_id)]))  # Tool Storage Final
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id,
+                                                   tag="Toolchanger Lock %s" % self._tool_string))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id,
-                                                    tag="%s Open Gripper to release itself from storage pad." % self._tool_string))
+                                                   tag="%s Open Gripper to release itself from storage pad." % self._tool_string))
         # Retraction movement
-        tool_storage_retract_frame1_t0cf=toolchanger.set_current_frame_from_tcp(tool.tool_storage_retract_frame1)
-        tool_storage_retract_frame2_t0cf=toolchanger.set_current_frame_from_tcp(tool.tool_storage_retract_frame2)
-        self.movements.append(RoboticLinearMovement(tool_storage_retract_frame1_t0cf.copy(), attached_tool_id = self.tool_id,
-                                                    speed_type = 'speed.toolchange.retract.withtool',
+        tool_storage_retract_frame1_t0cf = toolchanger.set_current_frame_from_tcp(tool.tool_storage_retract_frame1)
+        tool_storage_retract_frame2_t0cf = toolchanger.set_current_frame_from_tcp(tool.tool_storage_retract_frame2)
+        self.movements.append(RoboticLinearMovement(tool_storage_retract_frame1_t0cf.copy(), attached_tool_id=self.tool_id,
+                                                    speed_type='speed.toolchange.retract.withtool',
                                                     tag="Linear Retract 1 of 2 after getting %s from storage." % self._tool_string))
-        self.movements.append(RoboticLinearMovement(tool_storage_retract_frame2_t0cf.copy(), attached_tool_id = self.tool_id,
-                                                    speed_type = 'speed.toolchange.retract.withtool',
+        self.movements.append(RoboticLinearMovement(tool_storage_retract_frame2_t0cf.copy(), attached_tool_id=self.tool_id,
+                                                    speed_type='speed.toolchange.retract.withtool',
                                                     tag="Linear Retract 2 of 2 after getting %s from storage." % self._tool_string))
 
         # Assign Unique Movement IDs to all movements
@@ -381,13 +389,13 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
         # type: (RobotClampAssemblyProcess) -> None
         """ Movement for placing Clamp to Storage.
         """
-        self.movements=[]
-        tool=process.clamp(self.tool_id)  # type: Clamp
-        toolchanger=process.robot_toolchanger
+        self.movements = []
+        tool = process.clamp(self.tool_id)  # type: Clamp
+        toolchanger = process.robot_toolchanger
 
         # Tool approaching storage
-        tool_storage_approach_frame1_t0cf=toolchanger.set_current_frame_from_tcp(tool.tool_storage_approach_frame1)
-        tool_storage_approach_frame2_t0cf=toolchanger.set_current_frame_from_tcp(tool.tool_storage_approach_frame2)
+        tool_storage_approach_frame1_t0cf = toolchanger.set_current_frame_from_tcp(tool.tool_storage_approach_frame1)
+        tool_storage_approach_frame2_t0cf = toolchanger.set_current_frame_from_tcp(tool.tool_storage_approach_frame2)
         self.movements.append(RoboticFreeMovement(tool_storage_approach_frame1_t0cf.copy(),
                                                   attached_tool_id=self.tool_id, speed_type='speed.transit.rapid',
                                                   tag="Free Move reach Storage Approach Frame of %s, to place clamp in storage." % self._tool_string))  # Tool Storage Approach
@@ -402,14 +410,17 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
         self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.approach.withtool',
                                                     tag="Linear Approach 2 of 2 to place %s in storage." % self._tool_string))  # Tool Storage Final
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id, tag="Close Gripper to lock %s onto storage pad." % self._tool_string))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id, tag="Toolchanger Unlock %s" % self._tool_string))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id,
+                                                   tag="Close Gripper to lock %s onto storage pad." % self._tool_string))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id,
+                                                   tag="Toolchanger Unlock %s" % self._tool_string))
 
         # Toolchanger retract
         tool_pick_up_frame_wcf = tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
         tool_pick_up_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_frame_wcf)
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_t0cf.copy(), speed_type='speed.toolchange.retract.notool',
-                                                    tag="Linear Retract from storage after placing %s in storage" % self._tool_string))  # Tool Storage Retract
+                                                    tag="Linear Retract from storage after placing %s in storage" % self._tool_string,
+                                                    allowed_collision_matrix=[('robot', self.tool_id)]))  # Tool Storage Retract
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -461,26 +472,35 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
 
         # Approach the clamp at the structure
         self.movements.append(RoboticFreeMovement(clamp_wcf_detachapproach, speed_type='speed.transit.rapid',
-                                    tag="Free Move to reach %s to detach it from structure." % self._tool_string))
+                                                  tag="Free Move to reach %s to detach it from structure." % self._tool_string))
 
         # Toolchanger engaging - confirmation of alignment necessary.
-        movement_toolchanger_engage = RoboticLinearMovement(clamp_wcf_final.copy(), speed_type='speed.toolchange.approach.clamp_on_structure',
-                                tag="Linear Advance to mate toolchanger of %s to detach it from structure." % self._tool_string)
-        movement_toolchanger_engage.operator_stop_before = "Confirm ToolChanger alignment"
-        self.movements.append(movement_toolchanger_engage)
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id, operator_stop_after="Confirm ToolChanger Locked", tag="Toolchanger Lock %s" % self._tool_string))
+        self.movements.append(RoboticLinearMovement(clamp_wcf_final.copy(), speed_type='speed.toolchange.approach.clamp_on_structure',
+                                                    tag="Linear Advance to mate toolchanger of %s to detach it from structure." % self._tool_string,
+                                                    operator_stop_before="Confirm ToolChanger alignment",
+                                                    allowed_collision_matrix=[('robot', self.tool_id)]))
+        # Additional ACM between clamp and the attached two beam (at the joint)
+        acm = (self.joint_id[0], self.tool_id), (self.joint_id[1], self.tool_id)
 
-        # Open Clamp Jaw
-        self.movements.append(ClampsJawMovement([process.clamp_appraoch_position], [self.tool_id], speed_type='speed.clamp.rapid', tag="%s Open Clamp Jaws to be released." % self._tool_string))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id, tag="%s Open Gripper to be released from structure." % self._tool_string))
+        # Lock tool and Open Clamp Jaw
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id,
+                                                   operator_stop_after="Confirm ToolChanger Locked",
+                                                   tag="Toolchanger Lock %s" % self._tool_string,))
+        self.movements.append(ClampsJawMovement([process.clamp_appraoch_position], [self.tool_id],
+                                                speed_type='speed.clamp.rapid',
+                                                tag="%s Open Clamp Jaws to be released." % self._tool_string))
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id,
+                                                   tag="%s Open Gripper to be released from structure." % self._tool_string))
 
         # Retract
         self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract1.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.clamp_on_structure',
-                                                    tag="Linear Retract 1 of 2 from storage after picking up %s from structure." % self._tool_string))  # Tool Retract Frame at structure
+                                                    tag="Linear Retract 1 of 2 from storage after picking up %s from structure." % self._tool_string,
+                                                    allowed_collision_matrix=acm))  # Tool Retract Frame at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract2.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.clamp_on_structure',
-                                                    tag="Linear Retract 2 of 2 from storage after picking up %s from structure." % self._tool_string))  # Tool Retract Frame at structure
+                                                    tag="Linear Retract 2 of 2 from storage after picking up %s from structure." % self._tool_string,
+                                                    allowed_collision_matrix=acm))  # Tool Retract Frame at structure
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -526,22 +546,33 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         clamp_wcf_final = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_final')
         clamp_wcf_attachretract = process.get_clamp_t0cf_at(self.joint_id, 'clamp_wcf_attachretract')
 
+        # Approach the clamp at the structure
         self.movements.append(RoboticFreeMovement(clamp_wcf_attachapproach1.copy(), attached_tool_id=self.tool_id,
                                                   speed_type='speed.transit.rapid',
-                                                    tag="Free Move to bring %s to structure." % self._tool_string)) # Tool Approach Frame where tool is at structure
+                                                  tag="Free Move to bring %s to structure." % self._tool_string))  # Tool Approach Frame where tool is at structure
+
+        # Additional ACM between clamp and the attached two beam (at the joint)
+        acm = (self.joint_id[0], self.tool_id), (self.joint_id[1], self.tool_id)
+
+        # Two Approach Moves
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachapproach2.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.approach.clamp_on_structure',
-                                                    tag="Linear Approach 1 of 2 to attach %s to structure." % self._tool_string))  # Tool Approach Frame where tool is at structure
+                                                    tag="Linear Approach 1 of 2 to attach %s to structure." % self._tool_string,
+                                                    allowed_collision_matrix=acm))  # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_final.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.approach.clamp_on_structure',
-                                                    tag="Linear Approach 2 of 2 to attach %s to structure." % self._tool_string))  # Tool Final Frame at structure
+                                                    tag="Linear Approach 2 of 2 to attach %s to structure." % self._tool_string,
+                                                    allowed_collision_matrix=acm))  # Tool Final Frame at structure
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id,
-                                                   operator_stop_before="Confirm Gripper Pins Alignment", operator_stop_after="Confirm Gripper Closed Properly",
-                                                    tag="%s Close Gripper and attach to structure." % self._tool_string))
+                                                   operator_stop_before="Confirm Gripper Pins Alignment",
+                                                   operator_stop_after="Confirm Gripper Closed Properly",
+                                                   tag="%s Close Gripper and attach to structure." % self._tool_string))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id,
-                                                    tag="Toolchanger Unlock %s." % self._tool_string))
+                                                   tag="Toolchanger Unlock %s." % self._tool_string))
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachretract.copy(), speed_type='speed.toolchange.retract.notool',
-                                                    tag="Linear Retract after attaching %s on structure" % self._tool_string))
+                                                    tag="Linear Retract after attaching %s on structure" % self._tool_string,
+                                                    allowed_collision_matrix=[('robot', self.tool_id)],
+                                                    operator_stop_after="Confirm Clamp stay sttached",))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -573,18 +604,19 @@ class BeamPickupAction(RobotAction, AttachBeamAction):
         assert assembly_wcf_pickupapproach is not None and assembly_wcf_pickup is not None and assembly_wcf_pickupretract is not None
 
         self.movements.append(RoboticFreeMovement(assembly_wcf_pickupapproach.copy(), attached_tool_id=self.gripper_id,
-                                                speed_type='speed.transit.rapid',
-                                                tag="Free Move to reach Pickup Approach Frame of Beam ('%s')" % (self.beam_id)))  # Tool Approach Frame where tool is at structure
+                                                  speed_type='speed.transit.rapid',
+                                                  tag="Free Move to reach Pickup Approach Frame of Beam ('%s')" % (self.beam_id)))  # Tool Approach Frame where tool is at structure
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id,
-                                                tag="Gripper ('%s') Open Gripper before gripping Beam ('%s')" % (self.gripper_id, self.beam_id)))
+                                                   tag="Gripper ('%s') Open Gripper before gripping Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickup.copy(), attached_tool_id=self.gripper_id,
-                                                speed_type='speed.gripper.approach',
-                                                tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id)))  # Tool Final Frame at structure
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.gripper_id, self.beam_id, operator_stop_before="Confirm Beam Pos in Gripper",
+                                                    speed_type='speed.gripper.approach',
+                                                    tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id)))  # Tool Final Frame at structure
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.gripper_id, self.beam_id,
+                                                operator_stop_after="Confirm Beam Pos in Gripper",
                                                 tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickupretract.copy(), attached_tool_id=self.gripper_id,
-                                                attached_beam_id=self.beam_id, speed_type='speed.transfer.caution', operator_stop_after="Confirm Beam Held Firmly",
-                                                tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)))
+                                                    attached_beam_id=self.beam_id, speed_type='speed.transfer.caution', operator_stop_after="Confirm Beam Held Firmly",
+                                                    tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -616,15 +648,22 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
         assert assembly_wcf_inclamp is not None and assembly_wcf_final is not None and assembly_wcf_finalretract is not None
 
         self.movements.append(RoboticFreeMovement(assembly_wcf_inclamp.copy(), attached_tool_id=self.gripper_id, attached_beam_id=self.beam_id, speed_type='speed.transfer.rapid',
-                                                tag="Free Move to bring Beam ('%s') to final location" % self.beam_id))
+                                                  tag="Free Move to bring Beam ('%s') to final location" % self.beam_id))
+
+        # Additional ACM between the attached beam, clamps and the neighbouring beams
+        neighbour_beam_ids = process.assembly.get_already_built_neighbors(self.beam_id)
+        acm = [(self.beam_id, clamp_id) for clamp_id in neighbour_beam_ids]
+
+        # Assembly linear move to final location
         self.movements.append(RoboticLinearMovement(assembly_wcf_final.copy(), attached_tool_id=self.gripper_id,
-                                                attached_beam_id=self.beam_id, planning_priority=1, speed_type='speed.assembly.noclamp',
-                                                tag="Linear Advance to Final Frame of Beam ('%s')" % (self.beam_id)))
+                                                    attached_beam_id=self.beam_id, planning_priority=1, speed_type='speed.assembly.noclamp',
+                                                    tag="Linear Advance to Final Frame of Beam ('%s')" % (self.beam_id),
+                                                    allowed_collision_matrix=acm))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id, self.beam_id,
-                                                operator_stop_before="Confirm Beam Temporary Support In Place", operator_stop_after="Confirm Gripper Cleared Beam",
-                                                tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)))
+                                                   operator_stop_before="Confirm Beam Temporary Support In Place", operator_stop_after="Confirm Gripper Cleared Beam",
+                                                   tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id, speed_type='speed.gripper.retract',
-                                                tag="Linear retract after placing Beam ('%s')" % self.beam_id))
+                                                    tag="Linear retract after placing Beam ('%s')" % self.beam_id))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -667,33 +706,42 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
         self.movements = []
         tool = process.tool(self.gripper_id)  # type: Clamp
 
-        assembly_wcf_inclampapproach = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_inclampapproach')
+        assembly_wcf_inclampapproach = process.get_gripper_t0cp_for_beam_at(
+            self.beam_id, 'assembly_wcf_inclampapproach')
         assembly_wcf_inclamp = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_inclamp')
         assembly_wcf_final = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_final')
         assembly_wcf_finalretract = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_finalretract')
         assert assembly_wcf_inclampapproach is not None and assembly_wcf_inclamp is not None and assembly_wcf_final is not None and assembly_wcf_finalretract is not None
 
+        # Transfer beam to the clamp(s)
         self.movements.append(RoboticFreeMovement(assembly_wcf_inclampapproach.copy(), attached_tool_id=self.gripper_id,
-                                                attached_beam_id=self.beam_id, speed_type='speed.transfer.rapid',
-                                                tag="Free Move to bring Beam ('%s') to approach clamps on structure." % self.beam_id))
+                                                  attached_beam_id=self.beam_id, speed_type='speed.transfer.rapid',
+                                                  tag="Free Move to bring Beam ('%s') to approach clamps on structure." % self.beam_id))
         self.movements.append(RoboticLinearMovement(assembly_wcf_inclamp.copy(), attached_tool_id=self.gripper_id,
-                                                attached_beam_id=self.beam_id, speed_type='speed.assembly.inclamp',
-                                                tag="Linear Advance to bring Beam ('%s') into clamp jaws" % self.beam_id))
+                                                    attached_beam_id=self.beam_id, speed_type='speed.assembly.inclamp',
+                                                    tag="Linear Advance to bring Beam ('%s') into clamp jaws" % self.beam_id))
         self.movements.append(ClampsJawMovement([process.clamp_inclamp_position] * len(self.clamp_ids), self.clamp_ids, speed_type='speed.clamp.rapid',
                                                 tag="Clamps (%s) close slightly to touch Beam ('%s')" % (self.clamp_ids, self.beam_id)))  # Extend the clamp arm
 
-        # A Robot Clamp Sync Move
+        # Additional ACM between the attached beam, clamps and the neighbouring beams
+        neighbour_beam_ids = process.assembly.get_already_built_neighbors(self.beam_id)
+        acm = [(self.beam_id, clamp_id) for clamp_id in chain(self.clamp_ids, neighbour_beam_ids)]
+
+        # Robot Clamp Sync Move to final location
         target_frame, attached_tool_id, attached_beam_id = assembly_wcf_final.copy(), self.gripper_id, self.beam_id
         jaw_positions, clamp_ids = [process.clamp_final_position] * len(self.clamp_ids), self.clamp_ids
         self.movements.append(RoboticClampSyncLinearMovement(target_frame, attached_tool_id, attached_beam_id,
-                                                jaw_positions, clamp_ids, planning_priority=1, speed_type='speed.assembly.clamping',
-                                                tag="Robot and Clamps (%s) syncronously move to clamp Beam ('%s')" % (self.clamp_ids, self.beam_id)))
+                                                             jaw_positions, clamp_ids, planning_priority=1, speed_type='speed.assembly.clamping',
+                                                             tag="Robot and Clamps (%s) syncronously move to clamp Beam ('%s')" % (
+                                                                 self.clamp_ids, self.beam_id),
+                                                             allowed_collision_matrix=acm))
 
+        # Open gripper and retract
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id, self.beam_id,
-                                                operator_stop_before="Confirm Beam Is Stable", operator_stop_after="Confirm Gripper Cleared Beam",
-                                                tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)))
+                                                   operator_stop_before="Confirm Beam Is Stable", operator_stop_after="Confirm Gripper Cleared Beam",
+                                                   tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id, speed_type='speed.gripper.retract',
-                                                tag="Linear retract after placing Beam ('%s')" % self.beam_id))
+                                                    tag="Linear retract after placing Beam ('%s')" % self.beam_id))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()

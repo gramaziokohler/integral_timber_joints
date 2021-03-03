@@ -25,6 +25,7 @@ from integral_timber_joints.tools.tool import Tool
 from integral_timber_joints.tools.tool_changer import ToolChanger
 
 try:
+    from typing import Dict, List, Optional, Tuple
     from termcolor import colored, cprint
 except:
     pass
