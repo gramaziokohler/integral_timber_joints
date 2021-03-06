@@ -1534,7 +1534,7 @@ def _colored_is_none(value):
         if value is None:
             return colored('None', 'red')
         else:
-            return colored(value is not None, 'green' if value is not None else 'red')
+            return colored(value, 'green' if value else 'red')
     except:
         return value
 

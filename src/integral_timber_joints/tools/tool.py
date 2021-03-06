@@ -1,5 +1,8 @@
+import os
 from copy import deepcopy
+import itertools
 
+from compas.files import URDF
 from compas.geometry import Frame, Transformation
 from compas.datastructures import Mesh
 
@@ -9,6 +12,7 @@ try:
 except:
     from compas.robots import RobotModel, ToolModel
 
+from compas.robots import MeshDescriptor
 from compas.robots.base_artist import BaseRobotModelArtist
 from compas_fab.robots import Configuration
 
@@ -41,7 +45,7 @@ class Tool (ToolModel):
     assume the tool changer's tip is the root.
 
     tool_storage_frame is the location (in WCF) where the tool is stored. Assuming the
-    tool is moved from the tool_coordinate_frame to the tool_storage_frame. Such as 
+    tool is moved from the tool_coordinate_frame to the tool_storage_frame. Such as
     tool.current_frame = tool.tool_storage_frame
     """
 
@@ -57,7 +61,7 @@ class Tool (ToolModel):
         super(Tool, self).__init__(None, tool_coordinate_frame, name=name)
 
         """ attribute dictionary allowing easy storage of custom data.
-        primitive data types and compas data will survive serialization. 
+        primitive data types and compas data will survive serialization.
         """
         self.attributes = {}
 
@@ -206,7 +210,7 @@ class Tool (ToolModel):
     def tool_storage_configuration(self, config):
         # type: (Configuration) -> None
         """ Set the robot configuration when the tool is in storage.
-        This is optional, when set, it will be passed to the end state of 
+        This is optional, when set, it will be passed to the end state of
         Movements that goes to tool_storage"""
         if config is None:
             self.attributes['tool_storage_configuration'] = None
@@ -257,6 +261,7 @@ class Tool (ToolModel):
 
     def tool_coordinate_frame_in_wcf(self, current_frame):
         return self.tool_coordinate_frame.transformed(Transformation.from_frame_to_frame(Frame.worldXY(), current_frame))
+
     # --------------------------------------------------------
     # State Setting Functions
     # --------------------------------------------------------
@@ -307,7 +312,7 @@ class Tool (ToolModel):
         if artist is None:
             artist = CompasRobotArtist(self)
 
-        # Grab all joint values and create a Configuration 
+        # Grab all joint values and create a Configuration
         # Note that we must use the artist to update the robot's kinematic configuration
         joint_state = self.current_configuration.joint_dict
         artist.update(joint_state)
@@ -331,9 +336,9 @@ class Tool (ToolModel):
         # Apply changes to current_frame and kinematic_state
         assert state.current_frame is not None
         self.current_frame = state.current_frame
-        
+
         if state.kinematic_config is not None:
-            self._set_kinematic_state(state.kinematic_config) 
+            self._set_kinematic_state(state.kinematic_config)
 
         # Draw meshes at the frame and revert the change to self.current_frame
         transformed_meshes = self.draw_visual() # type: List[Mesh]
@@ -348,6 +353,7 @@ class Tool (ToolModel):
             [mesh.transform(robot_world_transform) for mesh in transformed_meshes]
 
         return transformed_meshes
+
     # --------------------------------------------------------
     # String Representations
     # --------------------------------------------------------
@@ -363,6 +369,54 @@ class Tool (ToolModel):
     def copy(self):
         return deepcopy(self)
 
+    # --------------------------------------------------------
+    # URDF export/import
+    def _export_element(self, element, save_dir, mesh_subdir, address_dict):
+        shape = element.geometry.shape
+        if isinstance(shape, MeshDescriptor):
+            mesh = shape.geometry
+            try:
+                mesh_file_name = str(mesh.guid) + '.stl'
+                sub_path = os.path.join(mesh_subdir, mesh_file_name)
+                mesh.to_stl(os.path.join(save_dir, sub_path), binary=True)
+            except:
+                mesh_file_name = str(mesh.guid) + '.obj'
+                sub_path = os.path.join(mesh_subdir, mesh_file_name)
+                mesh.to_obj(os.path.join(save_dir, sub_path))
+            address_dict[shape.filename] = 'package://' + sub_path
+        return address_dict
+
+    def save_as_urdf(self, save_dir):
+        # modified from: https://github.com/compas-dev/compas_fab/blob/6e68dbd7440fa68a58606bb9100495583bc79980/src/compas_fab/backends/pybullet/client.py#L235
+        package_name = self.name or str(self.guid)
+        self.ensure_geometry()
+        assert os.path.exists(save_dir)
+        visual_mesh_subdir = os.path.join(package_name, 'meshes', 'visual')
+        collision_mesh_subdir = os.path.join(package_name, 'meshes', 'collision')
+        urdf_subdir = os.path.join(package_name, 'urdf')
+        os.makedirs(os.path.join(save_dir, visual_mesh_subdir), exist_ok=True)
+        os.makedirs(os.path.join(save_dir, collision_mesh_subdir), exist_ok=True)
+        os.makedirs(os.path.join(save_dir, urdf_subdir), exist_ok=True)
+
+        # * write meshes to cache
+        address_dict = {}
+        for link in self.links:
+            for element in link.visual:
+                self._export_element(element, save_dir, visual_mesh_subdir, address_dict)
+            for element in link.visual:
+                self._export_element(element, save_dir, collision_mesh_subdir, address_dict)
+
+        # * create urdf with new mesh locations
+        urdf = URDF.from_robot(self)
+        meshes = list(urdf.xml.root.iter('mesh'))
+        for mesh in meshes:
+            filename = mesh.attrib['filename']
+            mesh.attrib['filename'] = address_dict[filename]
+        # write urdf
+        robot_file_name = package_name + '.urdf'
+        robot_filepath = os.path.join(save_dir, urdf_subdir, robot_file_name)
+        urdf.to_file(robot_filepath, prettify=True)
+        return urdf
 
 if __name__ == "__main__":
     # t = Tool('T1', 'tool')
