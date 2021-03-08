@@ -877,8 +877,10 @@ class ProcessArtist(object):
             self.draw_all_env_mesh(redraw=False)
         rs.CurrentLayer(self.env_mesh_layer)
         for env_id, mesh in self.process.environment_models.items():
-            guids = self.draw_meshes_get_guids([mesh], env_id, redraw=False, color=self.color_meaning['env_model'])
-            self.env_mesh_guids(env_id).extend(guids)
+            # Draw the geometry only if it hasen't been drawn yet
+            if len(self.env_mesh_guids(env_id)) == 0:
+                guids = self.draw_meshes_get_guids([mesh], env_id, redraw=False, color=self.color_meaning['env_model'])
+                self.env_mesh_guids(env_id).extend(guids)
         if redraw:
             rs.EnableRedraw(True)
 
