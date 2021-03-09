@@ -375,6 +375,8 @@ class Tool (ToolModel):
         shape = element.geometry.shape
         if isinstance(shape, MeshDescriptor):
             mesh = shape.geometry
+            if shape.filename or shape.filename in address_dict:
+                shape.filename = str(mesh.guid)
             try:
                 mesh_file_name = str(mesh.guid) + '.stl'
                 sub_path = os.path.join(mesh_subdir, mesh_file_name)
@@ -386,7 +388,14 @@ class Tool (ToolModel):
             address_dict[shape.filename] = 'package://' + sub_path
         return address_dict
 
-    def save_as_urdf(self, save_dir):
+    def get_urdf_path(self, save_dir):
+        package_name = self.name or str(self.guid)
+        urdf_subdir = os.path.join(package_name, 'urdf')
+        robot_file_name = package_name + '.urdf'
+        robot_filepath = os.path.join(save_dir, urdf_subdir, robot_file_name)
+        return robot_filepath
+
+    def save_as_urdf(self, save_dir, scale=1.0):
         # modified from: https://github.com/compas-dev/compas_fab/blob/6e68dbd7440fa68a58606bb9100495583bc79980/src/compas_fab/backends/pybullet/client.py#L235
         package_name = self.name or str(self.guid)
         self.ensure_geometry()
@@ -398,8 +407,11 @@ class Tool (ToolModel):
         os.makedirs(os.path.join(save_dir, collision_mesh_subdir), exist_ok=True)
         os.makedirs(os.path.join(save_dir, urdf_subdir), exist_ok=True)
 
+        # TODO this alter the object!
+        self.scale(scale)
         # * write meshes to cache
         address_dict = {}
+        mesh_scale = '{} {} {}'.format(scale, scale, scale)
         for link in self.links:
             for element in link.visual:
                 self._export_element(element, save_dir, visual_mesh_subdir, address_dict)
@@ -411,12 +423,12 @@ class Tool (ToolModel):
         meshes = list(urdf.xml.root.iter('mesh'))
         for mesh in meshes:
             filename = mesh.attrib['filename']
+            print('file name: ', filename)
             mesh.attrib['filename'] = address_dict[filename]
+            mesh.attrib['scale'] = mesh_scale
         # write urdf
         robot_file_name = package_name + '.urdf'
-        robot_filepath = os.path.join(save_dir, urdf_subdir, robot_file_name)
-        urdf.to_file(robot_filepath, prettify=True)
-        return urdf
+        urdf.to_file(self.get_urdf_path(save_dir), prettify=True)
 
 if __name__ == "__main__":
     # t = Tool('T1', 'tool')
