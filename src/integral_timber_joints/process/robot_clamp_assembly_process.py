@@ -1528,13 +1528,22 @@ class RobotClampAssemblyProcess(Network):
         state = self.get_movement_end_state(movement)
         return state['robot'].kinematic_config is not None
 
+    def get_object_from_id(self, object_id):
+        if object_id.startswith('c') or object_id.startswith('g'):
+            return self.tool(object_id)
+        elif object_id.startswith('t'):
+            return self.robot_toolchanger
+        elif object_id.startswith('b'):
+            return self.assembly.beam(object_id)
+        elif object_id.startswith('robot'):
+            raise ValueError('robot object is not stored within the Process class.')
 
 def _colored_is_none(value):
     try:
         if value is None:
             return colored('None', 'red')
         else:
-            return colored(value is not None, 'green' if value is not None else 'red')
+            return colored(value, 'green' if value else 'red')
     except:
         return value
 
