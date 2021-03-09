@@ -30,6 +30,13 @@ def hotfix_triangulate_tools(json_path):
                 mesh_quads_to_triangles(mesh)
                 print (" - - Face# from %s -> %s" % (number_of_faces, mesh.number_of_faces()))
 
+    print ("Environment")
+    for key, mesh in process.environment_models.items():
+        print ("- %s" % key)
+        number_of_faces = mesh.number_of_faces()
+        mesh_quads_to_triangles(mesh)
+        print (" - - Face# from %s -> %s" % (number_of_faces, mesh.number_of_faces()))
+
     with open(json_path, 'w') as f:
         json.dump(process, f, cls=DataEncoder, indent=None, sort_keys=True)
 
