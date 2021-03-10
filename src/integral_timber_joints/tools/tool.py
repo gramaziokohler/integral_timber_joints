@@ -5,6 +5,7 @@ import itertools
 from compas.files import URDF
 from compas.geometry import Frame, Transformation
 from compas.datastructures import Mesh
+from compas.datastructures.mesh.triangulation import mesh_quads_to_triangles
 
 try:
     from compas.robots.model.robot import RobotModel
@@ -371,23 +372,6 @@ class Tool (ToolModel):
 
     # --------------------------------------------------------
     # URDF export/import
-    def _export_element(self, element, save_dir, mesh_subdir, address_dict):
-        shape = element.geometry.shape
-        if isinstance(shape, MeshDescriptor):
-            mesh = shape.geometry
-            if shape.filename or shape.filename in address_dict:
-                shape.filename = str(mesh.guid)
-            try:
-                mesh_file_name = str(mesh.guid) + '.stl'
-                sub_path = os.path.join(mesh_subdir, mesh_file_name)
-                mesh.to_stl(os.path.join(save_dir, sub_path), binary=True)
-            except:
-                mesh_file_name = str(mesh.guid) + '.obj'
-                sub_path = os.path.join(mesh_subdir, mesh_file_name)
-                mesh.to_obj(os.path.join(save_dir, sub_path))
-            address_dict[shape.filename] = 'package://' + sub_path
-        return address_dict
-
     def get_urdf_path(self, save_dir):
         package_name = self.name or str(self.guid)
         urdf_subdir = os.path.join(package_name, 'urdf')
@@ -395,7 +379,24 @@ class Tool (ToolModel):
         robot_filepath = os.path.join(save_dir, urdf_subdir, robot_file_name)
         return robot_filepath
 
-    def save_as_urdf(self, save_dir, scale=1.0):
+    def _export_element(self, element, save_dir, mesh_subdir, mesh_name, address_dict, triangulize=True):
+        shape = element.geometry.shape
+        if isinstance(shape, MeshDescriptor):
+            mesh = shape.geometry.copy()
+            if triangulize:
+                mesh_quads_to_triangles(mesh)
+            assert mesh_name not in address_dict
+            shape.filename = mesh_name #str(mesh.guid)
+            try:
+                sub_path = os.path.join(mesh_subdir, mesh_name + '.stl')
+                mesh.to_stl(os.path.join(save_dir, sub_path), binary=True)
+            except:
+                sub_path = os.path.join(mesh_subdir, mesh_name + '.obj')
+                mesh.to_obj(os.path.join(save_dir, sub_path))
+            address_dict[mesh_name] = 'package://' + sub_path.replace('\\', '/')
+        return address_dict
+
+    def save_as_urdf(self, save_dir, scale=1.0, triangulize=True):
         # modified from: https://github.com/compas-dev/compas_fab/blob/6e68dbd7440fa68a58606bb9100495583bc79980/src/compas_fab/backends/pybullet/client.py#L235
         package_name = self.name or str(self.guid)
         self.ensure_geometry()
@@ -412,20 +413,23 @@ class Tool (ToolModel):
         # * write meshes to cache
         address_dict = {}
         mesh_scale = '{} {} {}'.format(scale, scale, scale)
-        for link in self.links:
-            for element in link.visual:
-                self._export_element(element, save_dir, visual_mesh_subdir, address_dict)
-            for element in link.visual:
-                self._export_element(element, save_dir, collision_mesh_subdir, address_dict)
+        for link_id, link in enumerate(self.links):
+            for v_eid, element in enumerate(link.visual):
+                self._export_element(element, save_dir, visual_mesh_subdir, 'L{}_visual_{}'.format(link_id, v_eid),
+                    address_dict, triangulize)
+            for c_eid, element in enumerate(link.collision):
+                self._export_element(element, save_dir, collision_mesh_subdir, 'L{}_collision_{}'.format(link_id, c_eid),
+                    address_dict, triangulize)
 
         # * create urdf with new mesh locations
         urdf = URDF.from_robot(self)
         meshes = list(urdf.xml.root.iter('mesh'))
         for mesh in meshes:
             filename = mesh.attrib['filename']
-            print('file name: ', filename)
-            mesh.attrib['filename'] = address_dict[filename]
-            mesh.attrib['scale'] = mesh_scale
+            # TODO why sometimes filename is ''?
+            if filename in address_dict:
+                mesh.attrib['filename'] = address_dict[filename]
+                mesh.attrib['scale'] = mesh_scale
         # write urdf
         robot_file_name = package_name + '.urdf'
         urdf.to_file(self.get_urdf_path(save_dir), prettify=True)
