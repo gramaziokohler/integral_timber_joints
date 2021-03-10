@@ -619,11 +619,18 @@ class BeamPickupAction(RobotAction, AttachBeamAction):
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickup.copy(), attached_tool_id=self.gripper_id,
                                                     speed_type='speed.gripper.approach',
                                                     tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id)))  # Tool Final Frame at structure
+
+        # Opeartor load beam into jaw of gripper
+        grasp_face = process.assembly.get_beam_attribute(self.beam_id, 'gripper_grasp_face')
+        beam_pickup_frame_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_pickup')
+        self.movements.append(OperatorLoadBeamMovement(self.beam_id, grasp_face, beam_pickup_frame_wcf))
+
+        # Close Gripper and
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.gripper_id, self.beam_id,
-                                                operator_stop_after="Confirm Beam Pos in Gripper",
+                                                operator_stop_after="Confirm Beam Held",
                                                 tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickupretract.copy(), attached_tool_id=self.gripper_id,
-                                                    attached_beam_id=self.beam_id, speed_type='speed.transfer.caution', operator_stop_after="Confirm Beam Held Firmly",
+                                                    attached_beam_id=self.beam_id, speed_type='speed.transfer.caution',
                                                     tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)))
 
         # Assign Unique Movement IDs to all movements

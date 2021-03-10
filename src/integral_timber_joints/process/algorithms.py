@@ -46,9 +46,11 @@ def create_actions_from_sequence(process, verbose=True):
         beam = assembly.beam(beam_id)  # type: Beam
         if verbose:
             print("Beam %s" % beam_id)
-        actions.append(LoadBeamAction(seq_n, act_n(), beam_id))
-        if verbose:
-            print('|- ' + actions[-1].__str__())
+
+        # # Operation Load Beam (disabled because OperatorLoadBeamMovement() now exist within BeamPickupAction())
+        # actions.append(LoadBeamAction(seq_n, act_n(), beam_id))
+        # if verbose:
+        #     print('|- ' + actions[-1].__str__())
 
         # move clamps from storage to structure
         # joint_id_of_clamps = assembly.get_joints_of_beam_connected_to_already_built(beam_id)
@@ -117,7 +119,6 @@ def assign_tools_to_actions(process, verbose=True):
     """
     # Variables for a procedural simulation to ensure process consistancy
     tools_in_storage = [c for c in process.clamps] + [g for g in process.grippers]
-    beam_id_on_pickup_station = None  # type: Optional[str]
 
     tool_at_robot = None  # type: Optional[Tool]
     beam_id_at_robot = None  # type: Optional[str]
@@ -170,17 +171,10 @@ def assign_tools_to_actions(process, verbose=True):
             clamps_on_structure[action.joint_id] = tool
             tool_at_robot = None
 
-        if isinstance(action, LoadBeamAction):
-            if beam_id_on_pickup_station is not None:
-                raise Exception("Unable to load new beam (%s) becuase beam (%s) is still occupying pick-up station" % (action.beam_id, beam_id_on_pickup_station))
-            beam_id_on_pickup_station = action.beam_id
 
         if isinstance(action, BeamPickupAction):
             if tool_at_robot is None:
                 raise Exception("Unable to pick beam becuase No Tool is attached to robot")
-            if beam_id_on_pickup_station != action.beam_id:
-                raise Exception("Unable to pick beam becuase beam_id_on_pickup_station (%s) is inconsistant with action.beam_id (%s)" % (beam_id_on_pickup_station, action.beam_id))
-            beam_id_on_pickup_station = None
             beam_id_at_robot = action.beam_id
             gripper_id = tool_at_robot.name
             action.gripper_id = gripper_id
@@ -303,13 +297,16 @@ def create_movements_from_actions(process, verbose=True):
 
 
 def debug_print_process_actions_movements(process, file_path=None):
+    # type: (RobotClampAssemblyProcess, Optional[str]) -> None
     f = None
+    seq_number = None
     if file_path is not None:
         f = open(file_path, 'w')
     for i, action in enumerate(process.actions):
         # Print the separator between each beam
-        if isinstance(action, LoadBeamAction):
-            line = "\nBeam %s assembly\n" % action.beam_id
+        if action.seq_n != seq_number:
+            seq_number = action.seq_n
+            line = "\nBeam %s assembly\n" % process.assembly.sequence[seq_number]
             if file_path is not None:
                 f.write(line)
             else:
