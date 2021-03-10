@@ -1,7 +1,7 @@
 #from compas_fab.robots import Robot
 
 from compas.geometry import Frame, Point, Transformation, Vector
-from compas.geometry.transformations.translation import  Translation
+from compas.geometry.transformations.translation import Translation
 
 from compas.robots import Axis, Joint, Link
 # from compas.datastructures import Mesh
@@ -11,11 +11,12 @@ from integral_timber_joints.tools.gripper import Gripper
 
 
 class Clamp (Gripper):
-    """ Clamp object represents a robotic clamp that has both 
+    """ Clamp object represents a robotic clamp that has both
     gripper jaw and clamp jaw. This is a subclass of Gripper.
 
-    The object keep track of the RobotModel and the kinematic configuration. 
+    The object keep track of the RobotModel and the kinematic configuration.
     """
+
     def __init__(self, name,
                  type_name="Clamp",
                  tool_coordinate_frame=None,
@@ -171,7 +172,6 @@ class Clamp (Gripper):
         detachretract2_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.detachretract2_vector)
         return self.tool_storage_retract_frame1.transformed(Translation.from_vector(detachretract2_vector_wcf))
 
-
     # ----------------------------------
     # Functions for kinematic state
     # ----------------------------------
@@ -277,11 +277,11 @@ def Lap90ClampFactory(
     robot_model.detachretract2_vector = detachretract2_vector   # This vector is ref to t0cf
 
     #world_link = robot_model.add_link('world')
-    gripper_base = robot_model.add_link('gripper_base', mesh_gripper_base)
-    gripper_jaw_l = robot_model.add_link('gripper_jaw_l', mesh_gripper_jaw_l)
-    gripper_jaw_r = robot_model.add_link('gripper_jaw_r', mesh_gripper_jaw_r)
-    clamp_jaw_l = robot_model.add_link('clamp_jaw_l', mesh_clamp_jaw_l)
-    clamp_jaw_r = robot_model.add_link('clamp_jaw_r', mesh_clamp_jaw_r)
+    gripper_base = robot_model.add_link('gripper_base', visual_meshes=mesh_gripper_base, collision_meshes=mesh_gripper_base)
+    gripper_jaw_l = robot_model.add_link('gripper_jaw_l', visual_meshes=mesh_gripper_jaw_l, collision_meshes=mesh_gripper_jaw_l)
+    gripper_jaw_r = robot_model.add_link('gripper_jaw_r', visual_meshes=mesh_gripper_jaw_r, collision_meshes=mesh_gripper_jaw_r)
+    clamp_jaw_l = robot_model.add_link('clamp_jaw_l', visual_meshes=mesh_clamp_jaw_l, collision_meshes=mesh_clamp_jaw_l)
+    clamp_jaw_r = robot_model.add_link('clamp_jaw_r', visual_meshes=mesh_clamp_jaw_r, collision_meshes=mesh_clamp_jaw_r)
 
     #robot_model.add_joint('world_base_fixed_joint', Joint.FIXED, world_link, base_link)
     robot_model.add_joint('joint_gripper_jaw_l', Joint.PRISMATIC, gripper_base, gripper_jaw_l, axis=[0, -1, 0], limit=robot_model.gripper_jaw_limits)
@@ -337,9 +337,9 @@ def CL3Factory(
     robot_model.gripper_drill_lines = gripper_drill_lines
 
     #world_link = robot_model.add_link('world')
-    gripper_base = robot_model.add_link('gripper_base', base_mesh)
-    gripper_jaw = robot_model.add_link('gripper_jaw', gripper_jaw_mesh)
-    clamp_jaw = robot_model.add_link('clamp_jaw', clamp_jaw_mesh)
+    gripper_base = robot_model.add_link('gripper_base', visual_meshes=base_mesh, collision_meshes=base_mesh)
+    gripper_jaw = robot_model.add_link('gripper_jaw', visual_meshes=gripper_jaw_mesh, collision_meshes=gripper_jaw_mesh)
+    clamp_jaw = robot_model.add_link('clamp_jaw', visual_meshes=clamp_jaw_mesh, collision_meshes=clamp_jaw_mesh)
 
     #robot_model.add_joint('world_base_fixed_joint', Joint.FIXED, world_link, base_link)
     robot_model.add_joint('joint_gripper_jaw', Joint.PRISMATIC, gripper_base, gripper_jaw, axis=tool_coordinate_frame.zaxis, limit=robot_model.gripper_jaw_limits)

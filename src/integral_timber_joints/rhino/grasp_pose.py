@@ -1,5 +1,6 @@
 import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
+import scriptcontext as sc  # type: ignore
 from compas_rhino import artists
 from compas_rhino.utilities.objects import get_object_name
 
@@ -9,10 +10,10 @@ from integral_timber_joints.rhino.load import get_process, get_process_artist, p
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 
 
-def show_sequence_color(process, selected_beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> None
+def show_sequence_color(process):
+    # type: (RobotClampAssemblyProcess) -> None
     """Function to toggle (show/hide) visualization geometry and apply warning color
-    Based on which beam is selected, we show beam visualization differently. 
+    Based on which beam is selected, we show beam visualization differently.
 
     # Beams
     - Beams (seq) before the selection = Interactive beam is shown (Warning colors applied)
@@ -26,6 +27,7 @@ def show_sequence_color(process, selected_beam_id):
     """
     rs.EnableRedraw(False)
     artist = get_process_artist()
+    selected_beam_id = artist.selected_beam_id
     assembly = process.assembly
 
     # Loop through beams up to selected beam.
@@ -71,10 +73,63 @@ def show_sequence_color(process, selected_beam_id):
         if problem:
             print(beam_id, problem)
 
-        # Change gripper color based on problems
-        # To be implemented
+    rs.EnableRedraw(True)
+
+
+def compute_collision_show_color(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    artist = get_process_artist()
+    selected_beam_id = artist.selected_beam_id
+    assembly = process.assembly
+    rs.EnableRedraw(False)
+
+    # Check Collisions between gripper and other beams
+    gripper_meshes = artist.gripper_guids_at_position(selected_beam_id, artist.selected_key_position.current_gripper_pos)
+    rs.ObjectColor(gripper_meshes, artist.color_meaning.get('normal'))
+
+
+    other_beams_meshes = []
+    for neighbour_id in assembly.get_already_built_beams(selected_beam_id):
+        other_beams_meshes.extend(artist.interactive_beam_guid(neighbour_id))
+    rs.ObjectColor(other_beams_meshes, artist.color_meaning.get('normal'))
+
+
+    collisions = []
+    for gripper_mesh in gripper_meshes:
+        for other_beam in other_beams_meshes:
+            lines = Rhino.Geometry.Intersect.Intersection.MeshMeshFast(rs.coercemesh(gripper_mesh), rs.coercemesh(other_beam))
+            if len(lines) > 0 :
+                collisions.append((gripper_mesh, other_beam))
+    for x , y in collisions:
+        rs.ObjectColor(x, artist.color_meaning.get('warning', (200,100,0)))
+        rs.ObjectColor(y, artist.color_meaning.get('warning', (200,100,0)))
+    print ("collisions count :%s" % len(collisions))
+
+
+
+    # - between gripper and other clamps
+    clamp_meshes = []
+    for joint_id in assembly.get_joint_ids_of_beam_clamps(selected_beam_id):
+        clamp_meshes.extend(artist.clamp_guids_at_position(joint_id, artist.selected_key_position.current_clamp_pos))
+    rs.ObjectColor(clamp_meshes, artist.color_meaning.get('normal'))
+
+    collisions = []
+    for gripper_mesh in gripper_meshes:
+        for clamp_mesh in clamp_meshes:
+            lines = Rhino.Geometry.Intersect.Intersection.MeshMeshFast(rs.coercemesh(gripper_mesh), rs.coercemesh(clamp_mesh))
+            if len(lines) > 0 :
+                collisions.append((gripper_mesh, clamp_mesh))
+    for x , y in collisions:
+        rs.ObjectColor(x, artist.color_meaning.get('warning', (200,100,0)))
+        rs.ObjectColor(y, artist.color_meaning.get('warning', (200,100,0)))
+    print ("collisions count :%s" % len(collisions))
+
+    # - between clams and other not clamping beams
+
+    # Colour grpper and clamps if there are collisions
 
     rs.EnableRedraw(True)
+
 
 
 def show_normal_color_and_unhide(process):
@@ -130,7 +185,7 @@ def show_menu(process):
         # Increment the selected id
         artist.select_next_beam()
         artist.selected_key_position.final_position()
-        show_sequence_color(process, artist.selected_beam_id)
+        show_sequence_color(process)
 
     def select_previous_beam():
         """ Function invoked by user to change active element to the previous one.
@@ -142,7 +197,7 @@ def show_menu(process):
         # Decrement the selected id
         artist.select_previous_beam()
         artist.selected_key_position.final_position()
-        show_sequence_color(process, artist.selected_beam_id)
+        show_sequence_color(process)
 
     ###################################
     # Showing Different Key Position
@@ -164,6 +219,7 @@ def show_menu(process):
         artist.show_beam_at_one_position(artist.selected_beam_id)
         artist.show_gripper_at_one_position(artist.selected_beam_id)
         artist.show_clamp_at_one_position(artist.selected_beam_id)
+        show_sequence_color(process)
 
     ###################################
     # Changing Gripper Definitions
@@ -203,7 +259,7 @@ def show_menu(process):
         # Redraw Visualization
         artist.draw_beam_all_positions(beam_id, delete_old=True)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
-        show_sequence_color(process, beam_id)
+        show_sequence_color(process)
 
     def gripper_move_pos():
         """ Function invoked by user to move grasp pose.
@@ -212,7 +268,7 @@ def show_menu(process):
         process.adjust_gripper_pos(beam_id, +30)
         process.dependency.compute(beam_id, process.compute_all)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
-        show_sequence_color(process, beam_id)
+        show_sequence_color(process)
 
     def gripper_move_neg():
         """ Function invoked by user to move grasp pose.
@@ -221,7 +277,7 @@ def show_menu(process):
         process.adjust_gripper_pos(beam_id, -30)
         process.dependency.compute(beam_id, process.compute_all)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
-        show_sequence_color(process, beam_id)
+        show_sequence_color(process)
 
     def gripper_follow_ass_dir():
         """ Function invoked by user to change grasp face.
@@ -234,13 +290,13 @@ def show_menu(process):
         # Redraw Visualization
         artist.draw_beam_all_positions(beam_id, delete_old=True)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
-        show_sequence_color(process, beam_id)
+        show_sequence_color(process)
 
     def grasp_face():
         """ Function invoked by user to change grasp face.
         Uses get to select face 1 to 4.
 
-        This function recursively ask user until cancel is pressed or 
+        This function recursively ask user until cancel is pressed or
         """
         # Get current situation
         beam_id = artist.selected_beam_id
@@ -278,7 +334,9 @@ def show_menu(process):
                 # Redraw Visualization
                 artist.draw_beam_all_positions(beam_id, delete_old=True)
                 artist.draw_gripper_all_positions(beam_id, delete_old=True)
-                show_sequence_color(process, beam_id)
+                show_sequence_color(process)
+                compute_collision_show_color(process)
+
             else:
                 print("Selection is the same as before, grasp face unchanged.")
 
@@ -300,7 +358,7 @@ def show_menu(process):
         artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
         artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
         artist.draw_clamp_all_positions(beam_id, delete_old=True)
-        show_sequence_color(process, beam_id)
+        show_sequence_color(process)
 
     run_cmd = None  # Variable to remember the last command to allow easy rerun.
     while(True):
@@ -366,7 +424,6 @@ def show_menu(process):
             # Show color preview of the sequence at that point
             guid = go.Object(0).ObjectId
             beam_id = get_object_name(guid)
-            show_sequence_color(process, beam_id)
 
             # Unselect obejcts, otherwwise the function will loop infiniitely
             rs.UnselectAllObjects()
@@ -394,6 +451,8 @@ def show_menu(process):
                 # Reminder that Enter key can repeat
                 go.SetDefaultString("Press Enter to repeat.")
             artist.selected_beam_id = beam_id
+            show_sequence_color(process)
+
 
         print("Showing Beam(%s) (%i of %i) at Position(%s) (%i of %i)" % (
             artist.selected_beam_id,
@@ -407,7 +466,7 @@ def show_menu(process):
         artist.show_beam_at_one_position(artist.selected_beam_id)
         artist.show_gripper_at_one_position(artist.selected_beam_id)
         artist.show_clamp_at_one_position(artist.selected_beam_id)
-
+        compute_collision_show_color(process)
 
 ######################
 # Test
