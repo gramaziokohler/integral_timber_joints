@@ -66,6 +66,8 @@ def get_next_gripper_id(process):
 
 def add_clamp(process):
     # type: (RobotClampAssemblyProcess) -> None
+    artist = get_process_artist()
+
     # Ask user for a json file
     path = rs.OpenFileName("Open", "Clamp File (*.json)|*.json|All Files (*.*)|*.*||")
     if path:
@@ -78,6 +80,8 @@ def add_clamp(process):
             if name is not None:
                 tool.name = name
                 process.add_clamp(tool)
+
+                artist.draw_tool_in_storage(id)
                 print("Clamp added: %s " % tool)
 
 
@@ -104,8 +108,46 @@ def delete_clamp(process):
     artist.delete_tool_in_storage(id)
 
 
+def replace_clamp(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    artist = get_process_artist()
+
+    if len(process.clamps) == 0:
+        print("No clamps exist for you to replace.")
+        return
+
+    # List out current clamps for users to choose
+    print("Current Clamps:")
+    ids = []
+    for tool in process.clamps:
+        ids.append(tool.name)
+        print("- clamp_id: %s, type: %s" % (tool.name, tool.type_name))
+    # Ask user which clamp to delete
+    id = rs.GetString("Which clamp to replace? (id and storage frame are kept)", "Cancel", ["Cancel"] + ids)
+    old_tool = process.tool(id)
+
+    if id in ids:
+        path = rs.OpenFileName("Open", "Clamp File (*.json)|*.json|All Files (*.*)|*.*||")
+        with open(path, 'r') as f:
+            # Deserialize asert correctness and add to Process
+            new_tool = json.load(f, cls=DataDecoder)
+            assert isinstance(new_tool, Clamp)
+
+            # Copy over old attributes
+            new_tool.name = old_tool.name
+            new_tool.tool_storage_frame = old_tool.tool_storage_frame
+            new_tool.tool_storage_configuration = old_tool.tool_storage_configuration
+        artist.delete_tool_in_storage(id)
+        process.delete_clamp(id)
+        process.add_clamp(new_tool)
+        artist.draw_tool_in_storage(id)
+        print("%s is replaced by %s." % (old_tool, new_tool))
+
+
 def add_gripper(process):
     # type: (RobotClampAssemblyProcess) -> None
+    artist = get_process_artist()
+
     # Ask user for a json file
     path = rs.OpenFileName("Open", "Gripper File (*.json)|*.json|All Files (*.*)|*.*||")
     if path:
@@ -118,6 +160,7 @@ def add_gripper(process):
             if name is not None:
                 tool.name = name
                 process.add_gripper(tool)
+                artist.draw_tool_in_storage(id)
                 print("Clamp added: %s " % tool)
 
 
@@ -142,6 +185,42 @@ def delete_gripper(process):
 
     artist = get_process_artist()
     artist.delete_tool_in_storage(id)
+
+
+def replace_gripper(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    artist = get_process_artist()
+
+    if len(process.grippers) == 0:
+        print("No gripper exist for you to replace.")
+        return
+
+    # List out current gripper for users to choose
+    print("Current Grippers:")
+    ids = []
+    for tool in process.grippers:
+        ids.append(tool.name)
+        print("- gripper_id: %s, type: %s" % (tool.name, tool.type_name))
+    # Ask user which gripper to delete
+    id = rs.GetString("Which gripper to replace? (id and storage frame are kept)", "Cancel", ["Cancel"] + ids)
+    old_tool = process.tool(id)
+
+    if id in ids:
+        path = rs.OpenFileName("Open", "Gripper File (*.json)|*.json|All Files (*.*)|*.*||")
+        with open(path, 'r') as f:
+            # Deserialize asert correctness and add to Process
+            new_tool = json.load(f, cls=DataDecoder)
+            assert isinstance(new_tool, Gripper)
+
+            # Copy over old attributes
+            new_tool.name = old_tool.name
+            new_tool.tool_storage_frame = old_tool.tool_storage_frame
+            new_tool.tool_storage_configuration = old_tool.tool_storage_configuration
+        artist.delete_tool_in_storage(id)
+        process.delete_gripper(id)
+        process.add_gripper(new_tool)
+        artist.draw_tool_in_storage(id)
+        print("%s is replaced by %s." % (old_tool, new_tool))
 
 
 def replace_toolchanger(process):
@@ -498,7 +577,7 @@ def show_menu(process):
         # Have artist paint all the tools in storage position and env mesh
         for tool_id in process.tool_ids:
             artist.draw_tool_in_storage(tool_id)
-        artist.draw_all_env_mesh(delete_old = True)
+        artist.draw_all_env_mesh(delete_old=True)
         rs.EnableRedraw(True)
 
         # Create Menu
@@ -513,11 +592,13 @@ def show_menu(process):
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'AddClamp', 'action': add_clamp},
                     {'name': 'DeleteClamp', 'action': delete_clamp},
+                    {'name': 'ReplaceClamp', 'action': replace_clamp},
                 ]},
                 {'name': 'Gripper', 'message': 'Process have %i Gripper:' % len(list(process.grippers)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'AddGripper', 'action': add_gripper},
                     {'name': 'DeleteGripper', 'action': delete_gripper},
+                    {'name': 'ReplaceGripper', 'action': replace_gripper},
                 ]},
                 {'name': 'SetToolStorage', 'message': 'Setting Tool Storage', 'options': [
                     {'name': 'Back', 'action': 'Back'},
