@@ -488,7 +488,7 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
                                                     allowed_collision_matrix=[('tool_changer', self.tool_id)]
                                                     ))
         # Additional ACM between clamp and the attached two beam (at the joint)
-        acm = (self.joint_id[0], self.tool_id), (self.joint_id[1], self.tool_id)
+        acm = [(self.joint_id[0], self.tool_id), (self.joint_id[1], self.tool_id)]
 
         # Lock tool and Open Clamp Jaw
         self.movements.append(RoboticDigitalOutput(DigitalOutput.LockTool, self.tool_id,
@@ -560,7 +560,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
                                                   tag="Free Move to bring %s to structure." % self._tool_string))  # Tool Approach Frame where tool is at structure
 
         # Additional ACM between clamp and the attached two beam (at the joint)
-        acm = (self.joint_id[0], self.tool_id), (self.joint_id[1], self.tool_id)
+        acm = [(self.joint_id[0], self.tool_id), (self.joint_id[1], self.tool_id)]
 
         # Two Approach Moves
         self.movements.append(RoboticLinearMovement(clamp_wcf_attachapproach2.copy(), attached_tool_id=self.tool_id,
