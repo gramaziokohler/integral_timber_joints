@@ -1559,7 +1559,7 @@ def _colored_movement_short_summary(m):
         if isinstance(m, RoboticLinearMovement):
             return colored(m.short_summary, 'white', 'on_blue')
         elif isinstance(m, RoboticFreeMovement):
-            return colored(m.short_summary, 'white', 'on_yellow')
+            return colored(m.short_summary, 'yellow', 'on_cyan')
         else:
             return m.short_summary
     except:
