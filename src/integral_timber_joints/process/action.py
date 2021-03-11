@@ -667,7 +667,7 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
 
         # Additional ACM between the attached beam, clamps and the neighbouring beams
         neighbour_beam_ids = process.assembly.get_already_built_neighbors(self.beam_id)
-        acm = [(self.beam_id, clamp_id) for clamp_id in neighbour_beam_ids]
+        acm = [(self.beam_id, nbr_id) for nbr_id in neighbour_beam_ids] + [(self.beam_id, env_id) for env_id in process.environment_models.keys()]
 
         # Assembly linear move to final location
         self.movements.append(RoboticLinearMovement(assembly_wcf_final.copy(), attached_tool_id=self.gripper_id,
@@ -741,7 +741,7 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
 
         # Additional ACM between the attached beam, clamps and the neighbouring beams
         neighbour_beam_ids = process.assembly.get_already_built_neighbors(self.beam_id)
-        acm = [(self.beam_id, clamp_id) for clamp_id in chain(self.clamp_ids, neighbour_beam_ids)]
+        acm = [(self.beam_id, nbr_id) for nbr_id in chain(self.clamp_ids, neighbour_beam_ids)]  + [(self.beam_id, env_id) for env_id in process.environment_models.keys()]
 
         # Robot Clamp Sync Move to final location
         target_frame, attached_tool_id, attached_beam_id = assembly_wcf_final.copy(), self.gripper_id, self.beam_id

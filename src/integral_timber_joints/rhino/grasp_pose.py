@@ -371,6 +371,9 @@ def show_menu(process):
                 show_normal_color_and_unhide(process)
                 return Rhino.Commands.Result.Cancel
 
+            if go.Option().EnglishName == "ExitKeepGeo":
+                return Rhino.Commands.Result.Cancel
+
             if go.Option().EnglishName == "NextBeam":
                 run_cmd = select_next_beam
 
@@ -448,6 +451,7 @@ def show_menu(process):
                 go.AddOption("GraspFace")
                 go.AddOption("GraspFaceFollowAsemblyDirection")
                 go.AddOption("FlipClampAttachPosition")
+                go.AddOption("ExitKeepGeo")
                 # Reminder that Enter key can repeat
                 go.SetDefaultString("Press Enter to repeat.")
             artist.selected_beam_id = beam_id
