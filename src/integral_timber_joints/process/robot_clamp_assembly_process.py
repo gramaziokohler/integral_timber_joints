@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+
 from compas.datastructures import Mesh, Network
 from compas.geometry import Transformation, Translation
 from compas.geometry._core._algebra import dot_vectors
@@ -1462,6 +1463,13 @@ class RobotClampAssemblyProcess(Network):
                 ' | has traj ' + _colored_is_none(m.trajectory) if isinstance(m, RoboticMovement) else ''
             ))
 
+    def get_movement_by_movement_id(self, movement_id):
+        # type: (str) -> Movement
+        for movement in self.movements:
+            if movement.movement_id == movement_id:
+                return movement
+        return None
+
     def get_movement_start_state(self, movement):
         # type: (Movement) -> dict[str, ObjectState]
         """ return the start state before the movment """
@@ -1537,6 +1545,24 @@ class RobotClampAssemblyProcess(Network):
             return self.assembly.beam(object_id)
         elif object_id.startswith('robot'):
             raise ValueError('robot object is not stored within the Process class.')
+
+    def load_external_movements(self, process_folder_path):
+        # type: (str) -> list(Movement)
+        """Load External Movements from nearby folder if they exist, replace the movements
+        with new movements, returns the list of movements modified"""
+        import os
+        import json
+        from compas.utilities import DataDecoder
+
+        movements_modified = []
+        for movement in self.movements:
+            movement_path = os.path.join(process_folder_path, movement.filepath)
+            if os.path.exists(movement_path):
+                # print("Loading External Movement File: movement_path%s" % movement_path)
+                with open(movement_path, 'r') as f:
+                    movement.data = json.load(f, cls=DataDecoder).data
+                movements_modified.append(movement)
+        return movements_modified
 
 def _colored_is_none(value):
     try:

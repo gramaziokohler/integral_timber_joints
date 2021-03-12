@@ -278,17 +278,14 @@ class Tool (ToolModel):
         pass
 
     def get_state(self):
-        state_dict = self._get_kinematic_state()  # type: Dict[str, float]
-        state_dict["current_frame"] = self.current_frame.copy()
-        state_dict['is_visible'] = self.is_visible
-        state_dict['is_attached'] = self.is_attached
+        state = ObjectState()
+        state.kinematic_config = self._get_kinematic_state()
+        state.current_frame = self.current_frame.copy()
         return state_dict
 
-    def set_state(self, state_dict):
-        self._set_kinematic_state(state_dict)
-        self.current_frame = state_dict["current_frame"]
-        self.is_visible = state_dict['is_visible']
-        self.is_attached = state_dict['is_attached']
+    def set_state(self, state):
+        self.current_frame = state.current_frame
+        self._set_kinematic_state(state.kinematic_config)
 
     # --------------------------------------------------------
     # Visualization Function
