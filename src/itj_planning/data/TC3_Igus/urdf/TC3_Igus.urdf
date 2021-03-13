@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="TC3_Igus">
+  <link name="toolchanger_base">
+    <visual>
+      <geometry>
+        <mesh filename="package://TC3_Igus/meshes/visual/L0_visual_0.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="Material">
+        <color rgba="0.8 0.8 0.8 1.0"/>
+      </material>
+    </visual>
+    <visual>
+      <geometry>
+        <mesh filename="package://TC3_Igus/meshes/visual/L0_visual_1.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="Material">
+        <color rgba="0.8 0.8 0.8 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://TC3_Igus/meshes/collision/L0_collision_0.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+    <collision>
+      <geometry>
+        <mesh filename="package://TC3_Igus/meshes/collision/L0_collision_1.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
