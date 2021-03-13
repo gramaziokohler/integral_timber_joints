@@ -126,6 +126,7 @@ class RoboticMovement(Movement):
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
+        self.path_from_link = None # Optional[dictionary: robot link name[str] -> list(Frame)]
         self.target_configuration = target_configuration  # type: Optional[Configuration]
         self.allowed_collision_matrix = allowed_collision_matrix  # type: list(tuple(str,str))
         self.tag = tag or "Generic Robotic Movement"
@@ -139,6 +140,7 @@ class RoboticMovement(Movement):
         data['attached_tool_id'] = self.attached_tool_id
         data['attached_beam_id'] = self.attached_beam_id
         data['trajectory'] = self.trajectory
+        data['path_from_link'] = self.path_from_link
         data['speed_type'] = self.speed_type
         data['target_configuration'] = self.target_configuration
         data['allowed_collision_matrix'] = self.allowed_collision_matrix
@@ -153,6 +155,7 @@ class RoboticMovement(Movement):
         self.attached_tool_id = data['attached_tool_id']
         self.attached_beam_id = data['attached_beam_id']
         self.trajectory = data.get('trajectory', None)
+        self.path_from_link = data.get('path_from_link', None)
         self.speed_type = data.get('speed_type', "")
         self.target_configuration = data.get('target_configuration', None)
         self.allowed_collision_matrix = data.get('allowed_collision_matrix', [])
