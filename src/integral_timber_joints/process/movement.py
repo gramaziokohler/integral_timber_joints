@@ -49,6 +49,7 @@ class Movement(object):
         self.planning_priority = planning_priority  # type: int
         self.movement_id = ""  # type: str
         self.tag = tag or "Generic Movement"  # type: str
+        self.path_from_link = None # type: list[Frame]
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -73,17 +74,9 @@ class Movement(object):
             'planning_priority': self.planning_priority,
             'movement_id': self.movement_id,
             'tag': self.tag,
+            'path_from_link': self.path_from_link,
         }
         return data
-
-    @property
-    def filepath(self):
-        # type: () -> str
-        """ Returns the location of the json file when saved externally.
-        This is useful to save a movement containing computed trajectory and has a large file size
-        e.g.: 'movements\A2_M2.json'
-        """
-        return os.path.join("movements", "%s.json" % self.movement_id)
 
     @data.setter
     def data(self, data):
@@ -93,6 +86,16 @@ class Movement(object):
         self.end_state = data.get('end_state', {})
         self.movement_id = data.get('movement_id', "")
         self.tag = data.get('tag', "")
+        self.path_from_link = data.get('path_from_link', None)
+
+    @property
+    def filepath(self):
+        # type: () -> str
+        """ Returns the location of the json file when saved externally.
+        This is useful to save a movement containing computed trajectory and has a large file size
+        e.g.: 'movements\A2_M2.json'
+        """
+        return os.path.join("movements", "%s.json" % self.movement_id)
 
     @property
     def short_summary(self):
