@@ -118,6 +118,9 @@
       <tool_bar_item guid="416a4413-e196-4bc8-8d77-7f3e0f5da45e">
         <left_macro_id>c5a0b922-9dfa-49f4-9933-b8692e5f97e9</left_macro_id>
       </tool_bar_item>
+      <tool_bar_item guid="9ecbe4b0-88ec-4fc2-b307-41a00eebd2d1">
+        <left_macro_id>827773d6-344b-43bd-ac75-ecebecd4d04c</left_macro_id>
+      </tool_bar_item>
     </tool_bar>
   </tool_bars>
   <macros>
@@ -506,6 +509,24 @@
       <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
 -RunPythonScript "integral_timber_joints.rhino.visualize_trajectory.py"</script>
     </macro_item>
+    <macro_item guid="827773d6-344b-43bd-ac75-ecebecd4d04c" bitmap_id="da4b4ca7-6654-47c6-9b8d-92a21d55efa8">
+      <text>
+        <locale_1033>Macro 18</locale_1033>
+      </text>
+      <tooltip>
+        <locale_1033>Load Old Process</locale_1033>
+      </tooltip>
+      <help_text>
+        <locale_1033>Macro</locale_1033>
+      </help_text>
+      <button_text>
+        <locale_1033>MakeTwelvePieces</locale_1033>
+      </button_text>
+      <menu_text>
+        <locale_1033>Macro</locale_1033>
+      </menu_text>
+      <script>! _-RunPythonScript "integral_timber_joints.rhino.save_less.py"</script>
+    </macro_item>
   </macros>
   <bitmaps>
     <small_bitmap item_width="16" item_height="16">
@@ -513,9 +534,10 @@
       <bitmap_item guid="bb516986-50b1-4b5f-89c0-5d912078fba4" index="1" />
       <bitmap_item guid="09386721-d29a-4ff4-976b-c1cc28027091" index="2" />
       <bitmap_item guid="b70c11b4-c602-445d-9e48-4ce8b66740cf" index="3" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAABACAYAAAATffeWAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAbSURBVFhH7cGBAAAAAMOg+VPf4ARVAAAAAFcN
-EEAAAVx7TwUAAAAASUVORK5CYIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAABQCAYAAAAQq/UNAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAcSURBVFhH7cGBAAAAAMOg+VNf4QBVAAAAAACX
+GhRQAAHn9VY5AAAAAElFTkSuQmCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </small_bitmap>
@@ -524,9 +546,10 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="bb516986-50b1-4b5f-89c0-5d912078fba4" index="1" />
       <bitmap_item guid="09386721-d29a-4ff4-976b-c1cc28027091" index="2" />
       <bitmap_item guid="b70c11b4-c602-445d-9e48-4ce8b66740cf" index="3" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAABgCAYAAAAHBrJUAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAgSURBVGhD7cGBAAAAAMOg+VNf4AhVAAAAAAAA
-AAAAVw0kYAABg4MqngAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAAB4CAYAAADogzKiAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAiSURBVGhD7cGBAAAAAMOg+VPf4ARVAAAAAAAA
+AAAAAAAcNS14AAH/Szg0AAAAAElFTkSuQmCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </normal_bitmap>
@@ -535,9 +558,10 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="bb516986-50b1-4b5f-89c0-5d912078fba4" index="1" />
       <bitmap_item guid="09386721-d29a-4ff4-976b-c1cc28027091" index="2" />
       <bitmap_item guid="b70c11b4-c602-445d-9e48-4ce8b66740cf" index="3" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAACACAYAAABqZmsaAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAmSURBVHhe7cEBAQAAAIIg/69uSEAAAAAAAAAA
-AAAAAAAAAADAuRpAgAABcyRy5AAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAACgCAYAAABtym4sAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAqSURBVHhe7cEBAQAAAIIg/69uSEAAAAAAAAAA
+AAAAAAAAAAAAAAAAwLkaUKAAAd99Ae8AAAAASUVORK5CYIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </large_bitmap>
