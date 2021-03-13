@@ -8,7 +8,7 @@ from integral_timber_joints.assembly import Assembly
 # import integral_timber_joints.process as Process
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_activedoc_process_path, get_process, get_process_artist, process_is_none
-
+from copy import deepcopy
 
 def save_process_less(process):
     # type: (RobotClampAssemblyProcess) -> bool
@@ -40,20 +40,20 @@ def save_process_less(process):
         return
 
     # Make a copy of process and remove beams
-    process_copied = RobotClampAssemblyProcess.from_data(process.data)
+    process_copied = RobotClampAssemblyProcess.from_data(deepcopy(process.data))
     delete_beams_until(process_copied, beams_to_keep)
 
     # Recompute Actions Movements
-    process.create_actions_from_sequence(verbose=False)
-    process.assign_tools_to_actions(verbose=False)
+    process_copied.create_actions_from_sequence(verbose=False)
+    process_copied.assign_tools_to_actions(verbose=False)
     # I havent tried these optimization features so far but worth trying
     # process.optimize_actions_place_pick_gripper()
     # process.optimize_actions_place_pick_clamp()
-    process.create_movements_from_actions(verbose=False)
+    process_copied.create_movements_from_actions(verbose=False)
 
     # Compute States
-    process.compute_initial_state()
-    process.compute_intermediate_states(verbose=False)
+    process_copied.compute_initial_state()
+    process_copied.compute_intermediate_states(verbose=False)
 
     # Save in new location
     with open(new_json_path, 'w') as f:
