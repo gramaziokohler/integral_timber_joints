@@ -35,7 +35,7 @@ def ui_add_beam_from_lines(process):
     for guid in guids:
         rhinoline = RhinoCurve.from_guid(guid)  # RhinoLine is not implemented sigh... RhinoCurve is used.
         centerline = rhinoline.to_compas()
-        centerline_vector = Vector.from_start_end(centerline.start, centerline.end) 
+        centerline_vector = Vector.from_start_end(centerline.start, centerline.end)
         # Compute guide vector: For vertical lines, guide vector points to world X
         # Otherwise, guide vector points to Z,
 
@@ -72,6 +72,9 @@ def ui_add_beam_from_lines(process):
 
     print('Show Assembly color')
     # Draw newly added beams and neighbours affected by new joint
+    artist = get_process_artist()
+    for beam_id in set(affected_neighbours + new_beam_ids):
+        artist.redraw_interactive_beam(beam_id, force_update=True)
     show_assembly_color(process, set(affected_neighbours + new_beam_ids), redraw=True)
 
     print('%i Beams added to the assembly.' % len(new_beam_ids))
@@ -138,6 +141,8 @@ def ui_flip_beams(process):
         recompute_dependent_solutions(process, beam_id)
 
         # Update visualization of flipped beam and neighbors
+        for beam_id in earlier_neighbors + [beam_id]:
+            artist.redraw_interactive_beam(beam_id, force_update=True)
         show_assembly_color(process, earlier_neighbors + [beam_id], redraw=True)
 
         print('Beam flipped: %s (Neighbours: %s)' % (beam_id, earlier_neighbors))
