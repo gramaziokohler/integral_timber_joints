@@ -7,3 +7,9 @@
 [submodule "external/itj_design_study"]
 	path = external/itj_design_study
 	url = https://github.com/gramaziokohler/itj_design_study
+[submodule "external/abb_irb4600_40_255"]
+	path = external/abb_irb4600_40_255
+	url = https://github.com/yijiangh/abb_irb4600_40_255.git
+[submodule "external/rfl_description"]
+	path = external/rfl_description
+	url = https://github.com/yijiangh/rfl_description.git
