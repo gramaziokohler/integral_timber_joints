@@ -26,6 +26,8 @@ def color_from_object_id(object_id):
 ################################################
 
 def rfl_camera(scale=1e-3):
+    """Set the camera of the pybullet simulator to a particular pose.
+    """
     camera = {
         'location': np.array([14830.746366, 17616.580504, 9461.594828])*scale,
         'target' : np.array([24470.185559, 7976.896428, 2694.413294])*scale,
@@ -37,7 +39,20 @@ def rfl_camera(scale=1e-3):
 ################################################
 
 def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
-    from .stream import set_state
+    """[summary]
+
+    Parameters
+    ----------
+    client : [type]
+    robot : compas_fab Robot
+    process : [type]
+    m : Movement
+        the target movement to visualize
+    step_sim : bool, optional
+        Set to True if wish to step through the simulation conf-by-conf.
+        False will simulate in a smooth fashion, by default True
+    """
+    from itj_planning.stream import set_state
     if not has_gui() or not isinstance(m, RoboticMovement):
         return
     print('===')
@@ -48,12 +63,6 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
         cprint(m.short_summary, 'green')
         for jt_traj_pt in m.trajectory.points:
             client.set_robot_configuration(robot, jt_traj_pt)
-
-            # for name, attachments in client.pychoreo_attachments.items():
-            #     print('attached name: ', name)
-            #     for attachment in attachments:
-            #         print('Grasp pose: {}'.format(attachment.grasp_pose))
-
             if step_sim:
                 wait_if_gui('Step conf.')
             else:

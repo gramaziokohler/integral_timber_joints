@@ -21,14 +21,23 @@ from pybullet_planning import uniform_pose_generator
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 from compas_fab_pychoreo_examples.ik_solver import InverseKinematicsSolver, get_ik_fn_from_ikfast
 
-from .robot_setup import R11_INTER_CONF_VALS, MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
-from .robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
-from .utils import reverse_trajectory, merge_trajectories, FRAME_TOL
-from .state import set_state
+from itj_planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
+from itj_planning.robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
+from itj_planning.utils import reverse_trajectory, merge_trajectories, FRAME_TOL
+from itj_planning.state import set_state
+from itj_planning.utils import notify
 
 ##############################
 
 def fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP):
+    """Fill FK frames into `path_from_link` attribute to the given trajectory
+    Note that the `path_from_link` attribute will not be serialized if exported as json.
+
+    Returns
+    -------
+    Trajectory
+        updated trajectory
+    """
     if traj:
         tool_link_name = robot.get_end_effector_link_name(group=group)
         traj.path_from_link = defaultdict(list)
@@ -41,6 +50,12 @@ def fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP):
 ##############################
 
 def _get_sample_bare_arm_ik_fn(client, robot):
+    """get the IKFast ik function for the 6-axis ABB robot.
+
+    Returns
+    -------
+    IK function handle: pybullet pose -> list(float) of six values
+    """
     robot_uid = client.get_robot_pybullet_uid(robot)
     ik_base_link_name = robot.get_base_link_name(group=BARE_ARM_GROUP)
     ik_joint_names = robot.get_configurable_joint_names(group=BARE_ARM_GROUP)
@@ -74,13 +89,10 @@ def compute_linear_movement(client, robot, process, movement, options=None):
     # * custom limits
     ik_joint_names = robot.get_configurable_joint_names(group=BARE_ARM_GROUP)
     tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
-    # pb ids
-    ik_joints = joints_from_names(robot_uid, ik_joint_names)
     ik_tool_link = link_from_name(robot_uid, tool_link_name)
 
     gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
-    # gantry_joint_names = list(set(gantry_arm_joint_names) - set(ik_joint_names))
 
     # * construct IK function
     sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
@@ -129,9 +141,12 @@ def compute_linear_movement(client, robot, process, movement, options=None):
             if not start_t0cf_frame_temp.__eq__(start_t0cf_frame, tol=FRAME_TOL):
                 cprint('start conf FK inconsistent ({:.5f} m) with given current frame in start state.'.format(
                     distance_point_point(start_t0cf_frame_temp.point, start_t0cf_frame.point)), 'yellow')
-            # start_t0cf_frame = start_t0cf_frame_temp
-            # , overwriting with the FK one.
-            # start_state['robot'].current_frame = start_t0cf_frame_temp
+                # TODO this might impact feasibility, investigate further
+                # cprint('Overwriting with the FK-one.', 'yellow')
+                # start_t0cf_frame = start_t0cf_frame_temp
+                # overwrite_start_frame = copy(start_t0cf_frame_temp)
+                # overwrite_start_frame.point *= 1e3
+                # start_state['robot'].current_frame = overwrite_start_frame
         if end_conf is not None:
             client.set_robot_configuration(robot, end_conf)
             end_tool_pose = get_link_pose(robot_uid, ik_tool_link)
@@ -139,14 +154,16 @@ def compute_linear_movement(client, robot, process, movement, options=None):
             if not end_t0cf_frame_temp.__eq__(end_t0cf_frame, tol=FRAME_TOL):
                 cprint('end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
                     distance_point_point(end_t0cf_frame_temp.point, end_t0cf_frame.point)), 'yellow')
-            # end_t0cf_frame = end_t0cf_frame_temp
-            # , overwriting with the FK one
-            # end_state['robot'].current_frame = end_t0cf_frame_temp
+                # TODO this might impact feasibility, investigate further
+                # cprint('Overwriting with the FK-one.', 'yellow')
+                # end_t0cf_frame = end_t0cf_frame_temp
+                # overwrite_end_frame = copy(end_t0cf_frame_temp)
+                # overwrite_end_frame.point *= 1e3
+                # start_state['robot'].current_frame = overwrite_end_frame
 
     interp_frames = [start_t0cf_frame, end_t0cf_frame]
 
     sorted_gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
-    gantry_joints = joints_from_names(robot_uid, sorted_gantry_joint_names)
     gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
     gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint : GANTRY_Z_LIMIT})
 
@@ -154,7 +171,6 @@ def compute_linear_movement(client, robot, process, movement, options=None):
     samples_cnt = ik_failures = path_failures = 0
 
     # TODO custom limits
-
     if start_conf is None and end_conf is None:
         # * sample from a ball near the pose
         base_gen_fn = uniform_pose_generator(robot_uid, pose_from_frame(interp_frames[0], scale=1), reachable_range=reachable_range)
@@ -172,7 +188,7 @@ def compute_linear_movement(client, robot, process, movement, options=None):
             samples_cnt += 1
 
             arm_conf_vals = sample_ik_fn(pose_from_frame(interp_frames[0], scale=1))
-            # iterate through all 6-axis IK solution
+            # * iterate through all 6-axis IK solution
             for arm_conf_val in arm_conf_vals:
                 if arm_conf_val is None:
                     continue
@@ -180,7 +196,6 @@ def compute_linear_movement(client, robot, process, movement, options=None):
                     gantry_arm_joint_types, gantry_arm_joint_names)
                 if not client.check_collisions(robot, gantry_arm_conf, options=options):
                     # * Cartesian planning, only for the six-axis arm (aka sub_conf)
-                    # cart_conf_vals = plan_cartesian_motion(robot_uid, ik_joints[0], ik_tool_link, interp_poses, get_sub_conf=True)
                     for ci in range(2):
                         if debug:
                             print('\tcartesian trial #{}'.format(ci))
@@ -247,6 +262,7 @@ def compute_linear_movement(client, robot, process, movement, options=None):
             wait_for_user()
         if end_conf is not None and not end_conf.close_to(traj.points[-1], tol=1e-3):
             cprint('End conf not coincided - max diff {:.5f}'.format(end_conf.max_difference(traj.points[-1])), 'red')
+            notify('Warning! Go back to the command line now!')
             wait_for_user()
     else:
         cprint('No linear movement found for {}.'.format(movement.short_summary), 'red')
@@ -258,23 +274,61 @@ def compute_free_movement(client, robot, process, movement, options=None):
     assert isinstance(movement, RoboticFreeMovement)
     options = options or {}
     # * options
-    # sampling attempts, needed only if start/end conf not specified
     debug = options.get('debug', False)
+    # * sampling attempts, needed only if start/end conf not specified
+    gantry_attempts = options.get('gantry_attempts') or 500
+    reachable_range = options.get('reachable_range') or (0.2, 2.8)
 
     start_state = process.get_movement_start_state(movement)
     end_state = process.get_movement_end_state(movement)
     orig_start_conf = start_state['robot'].kinematic_config
     orig_end_conf = end_state['robot'].kinematic_config
-    # TODO investigate why this happens
-    if len(orig_start_conf.joint_names) == 0:
-        orig_start_conf.joint_names = orig_end_conf.joint_names
-    # print('orig start conf: ', orig_start_conf.joint_names, orig_end_conf.values)
-    # print('orig end conf: ', orig_end_conf.joint_names, orig_end_conf.values)
+
+    assert orig_end_conf is not None, 'End conf not provided in {}, which should never happen'.format(movement.short_summary)
 
     # * set start state
     set_state(client, robot, process, start_state)
     if debug:
         client._print_object_summary()
+
+    if orig_start_conf is None:
+        cprint('Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
+        notify('Warning! Go back to the command line now!')
+        wait_for_user('Please press Enter to confirm.')
+        # * sample from t0cp if no conf is provided for the robot
+        start_t0cf_frame = copy(start_state['robot'].current_frame)
+        start_t0cf_frame.point *= 1e-3
+        if start_t0cf_frame is not None:
+            flange_pose = pose_from_frame(start_t0cf_frame, scale=1)
+            robot_uid = client.get_robot_pybullet_uid(robot)
+            # joint names
+            sorted_gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
+            gantry_arm_joint_types = robot.get_joint_types_by_names(sorted_gantry_joint_names)
+            gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
+            # sampler
+            base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=reachable_range)
+            gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint : GANTRY_Z_LIMIT})
+            for _ in range(gantry_attempts):
+                # TODO a more formal gantry_base_from_world_base
+                x, y, yaw = next(base_gen_fn)
+                y *= -1
+                z, = gantry_z_sample_fn()
+                gantry_xyz_vals = [x,y,z]
+                client.set_robot_configuration(robot, Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names))
+                orig_start_conf = client.inverse_kinematics(robot, start_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
+                if orig_start_conf:
+                    break
+            else:
+                cprint('No robot IK conf can be found for {} after {} attempts, Underspecified problem, solve fails.'.format(
+                    movement.short_summary, gantry_attempts), 'red')
+                raise RuntimeError()
+        else:
+            cprint('No robot start frame is specified in {}, Underspecified problem, solve fails.'.format(movement.short_summary), 'red')
+            raise RuntimeError()
+
+    # TODO investigate why this happens
+    if len(orig_start_conf.joint_names) == 0:
+        orig_start_conf.joint_names = orig_end_conf.joint_names
 
     hotfix = True
     if 'Free Move to reach Pickup Approach' in movement.tag:
@@ -305,7 +359,7 @@ def compute_free_movement(client, robot, process, movement, options=None):
             draw_pose(pose_from_frame(frame))
         # wait_if_gui('hotfix cartesian')
 
-        options['diagnosis'] = True
+        # options['diagnosis'] = True
         samples_cnt = path_failures = 0
         for _ in range(10):
             with WorldSaver():
@@ -313,7 +367,6 @@ def compute_free_movement(client, robot, process, movement, options=None):
                     group=GANTRY_ARM_GROUP, options=options)
             samples_cnt += 1
             if cart_conf is not None:
-                solution_found = True
                 cprint('(hotfix retraction for free motion) Collision free! After {} path failure over {} samples.'.format(
                     path_failures, samples_cnt), 'green')
                 if not forward:
@@ -337,12 +390,6 @@ def compute_free_movement(client, robot, process, movement, options=None):
         start_conf = orig_start_conf
         end_conf = orig_end_conf
 
-    if start_conf is None or end_conf is None:
-        cprint('At least one of robot start/end conf is NOT specified in {}, return None'.format(movement.short_summary), 'red')
-        cprint('Start {} | End {}'.format(start_conf, end_conf), 'red')
-        wait_for_user()
-        return None
-
     # * custom limits
     custom_limits = get_gantry_robot_custom_limits(MAIN_ROBOT_ID)
     if 'custom_limits' not in options:
@@ -361,34 +408,3 @@ def compute_free_movement(client, robot, process, movement, options=None):
         traj = merge_trajectories(trajs)
 
     return fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP)
-
-
-##########################################
-# archived
-# auto sample IK for FreeMovements
-        # * sample from t0cp if no conf is provided for the robot
-        # cprint('No robot start/end conf is specified in {}, performing random IK solves.'.format(movement), 'yellow')
-        # start_t0cf_frame = start_state['robot'].current_frame
-        # end_t0cf_frame = end_state['robot'].current_frame
-        # if start_t0cf_frame is not None:
-        #     start_conf = client.inverse_kinematics(robot, start_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
-        # else:
-        #     if initial_conf is not None:
-        #         cprint('No robot start frame is specified in {}, using initial conf.'.format(movement), 'yellow')
-        #         start_conf = initial_conf
-        #     else:
-        #         cprint('Underspecified problem, solve fails.', 'red')
-        #         return None
-        # if end_t0cf_frame is not None:
-        #     end_conf = client.inverse_kinematics(robot, end_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
-        # else:
-        #     if initial_conf is not None:
-        #         cprint('No robot end frame is specified in {}, using initial conf.'.format(movement), 'yellow')
-        #         end_conf = initial_conf
-        #     else:
-        #         cprint('Underspecified problem, solve fails.', 'red')
-        #         return None
-        # if start_conf is None or end_conf is None:
-        #     cprint('IK solves for start and end conf fails.', 'red')
-        #     return None
-

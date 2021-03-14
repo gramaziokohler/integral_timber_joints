@@ -1,17 +1,15 @@
 from numpy import deg2rad, rad2deg
 from termcolor import cprint
+from plyer import notification
 
 from compas_fab.robots import Configuration, JointTrajectory, JointTrajectoryPoint, Duration
 
-# unit conversion
-MIL2M = 1e-3
-
-# in meter
+# in meter, used for frame comparison
 FRAME_TOL = 1e-4
 
 ##########################################
 
-def convert_robot_conf_unit(conf_vals, length_scale=MIL2M, angle_unit='rad', prismatic_ids=range(0,2), revoluted_ids=range(2,8)):
+def convert_robot_conf_unit(conf_vals, length_scale=1e-3, angle_unit='rad', prismatic_ids=range(0,2), revoluted_ids=range(2,8)):
     """angle_unit is the target angle unit to be converted into
     """
     if angle_unit == 'rad':
@@ -22,7 +20,7 @@ def convert_robot_conf_unit(conf_vals, length_scale=MIL2M, angle_unit='rad', pri
         raise ValueError
     return [conf_vals[i]*length_scale for i in prismatic_ids] + [angle_fn(conf_vals[i]) for i in revoluted_ids]
 
-def convert_rfl_robot_conf_unit(conf_vals, length_scale=MIL2M, angle_unit='rad'):
+def convert_rfl_robot_conf_unit(conf_vals, length_scale=1e-3, angle_unit='rad'):
     assert len(conf_vals) == 2+6 or len(conf_vals) == 3+6
     prismatic_id_until = 1 if len(conf_vals) == 8 else 2
     return convert_robot_conf_unit(conf_vals, length_scale, angle_unit,
@@ -57,13 +55,20 @@ def merge_trajectories(trajs):
 ##########################################
 
 def notify(msg=''):
+    """Send a desktop notification for a given msg.
+    See : https://pypi.org/project/plyer/
+
+    Parameters
+    ----------
+    msg : str, optional
+        message content, by default ''
+    """
     try:
-        from plyer import notification
         notification.notify(
-            title='pybullet planning',
+            title='itj_planning',
             message=msg,
             app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
-            timeout=10,  # seconds
+            timeout=2,  # seconds
         )
     except ImportError:
         cprint(msg, 'yellow')

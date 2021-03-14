@@ -1,70 +1,47 @@
 import os
 import json
-import sys
 from copy import deepcopy
 from termcolor import cprint
 
-from compas.datastructures import Mesh
 from compas.robots import RobotModel
 from compas_fab.robots import RobotSemantics
-from compas_fab.robots import CollisionMesh
 from compas.utilities import DataDecoder, DataEncoder
 
 from pybullet_planning import get_date
-
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement
 
 HERE = os.path.dirname(__file__)
-DATA_DIR = os.path.join(HERE, "data")
+EXTERNAL_DIR = os.path.abspath(os.path.join(HERE, '..', '..', 'external'))
+PLANNING_DATA_DIR = os.path.join(HERE, "data")
+DESIGN_STUDY_DIR = os.path.abspath(os.path.join(EXTERNAL_DIR, 'itj_design_study'))
 
-#######################################
-
-# TODO made a GH script for auto-gen URDF for static collision objects
-def parse_collision_mesh_from_path(dir_path, filename, scale=1e-3):
-    file_path = os.path.join(dir_path, filename)
-    obj_name = filename.split('.')[0]
-    if filename.endswith('.obj'):
-        mesh = Mesh.from_obj(file_path)
-    elif filename.endswith('.stl'):
-        mesh = Mesh.from_stl(file_path)
-    else:
-        return None
-    cm = CollisionMesh(mesh, obj_name)
-    cm.scale(scale)
-    return cm
-
-def parse_collision_meshes_from_dir(dir_path, scale=1e-3):
-    cms = []
-    for filename in sorted(os.listdir(dir_path)):
-        cm = parse_collision_mesh_from_path(dir_path, filename, scale)
-        if cm is not None:
-            cms.append(cm)
-    return cms
-
-########################################
-# ! DEPRECATED, these objects are parsed from Process json file
-ARCHIVED_DATA_DIR = os.path.join(HERE, "data", "_archive")
-
-def itj_rfl_obstacle_cms():
-    dir_path = os.path.abspath(os.path.join(ARCHIVED_DATA_DIR, 'itj_rfl_obstacles'))
-    return parse_collision_meshes_from_dir(dir_path)
+# TODO specific to RemodelFredPavilion now, change to parameter later
+DESIGN_DIR = os.path.join(DESIGN_STUDY_DIR, '210128_RemodelFredPavilion')
+TEMP_DESIGN_DIR = os.path.join(DESIGN_DIR, 'YJ_tmp')
 
 ###########################################
 
-def rfl_setup():
-    data_dir = os.path.abspath(os.path.join(HERE, "..", "..", "data", 'robots'))
+def rfl_setup(model_dir=EXTERNAL_DIR):
+    """construct RFL robot urdf path and a SRDF instance
+
+    Parameters
+    ----------
+    model_dir : str, optional
+        path to where the `rfl_description` is saved, by default EXTERNAL_DIR
+
+    Returns
+    -------
+    (urdf file path, RobotSemantics)
+    """
     # ! the original rfl.urdf use concave collision objects, over-conservative
-    # urdf_filename = os.path.join(data_dir, 'rfl_description', 'rfl_description', "urdf", "rfl.urdf")
-    urdf_filename = os.path.join(data_dir, 'rfl_description', 'rfl_description', "urdf", "rfl_pybullet.urdf")
-    srdf_filename = os.path.join(data_dir, 'rfl_description', 'rfl_description', "urdf", "rfl.srdf")
+    # urdf_filename = os.path.join(model_dir, 'rfl_description', 'rfl_description', "urdf", "rfl.urdf")
+    urdf_filename = os.path.join(model_dir, 'rfl_description', 'rfl_description', "urdf", "rfl_pybullet.urdf")
+    srdf_filename = os.path.join(model_dir, 'rfl_description', 'rfl_description', "urdf", "rfl.srdf")
     model = RobotModel.from_urdf_file(urdf_filename)
     semantics = RobotSemantics.from_srdf_file(srdf_filename, model)
     return urdf_filename, semantics
 
 ###########################################
-
-DESIGN_DIR = os.path.abspath(os.path.join(HERE, '..', '..', '..', 'itj_design_study', '210128_RemodelFredPavilion'))
-TEMP_DESIGN_DIR = os.path.abspath(os.path.join(HERE, '..', '..', '..', 'itj_design_study', '210128_RemodelFredPavilion', 'YJ_tmp'))
 
 def get_process_path(assembly_name, file_dir=DESIGN_DIR):
     if assembly_name.endswith('.json'):
@@ -75,6 +52,24 @@ def get_process_path(assembly_name, file_dir=DESIGN_DIR):
     return model_path
 
 def parse_process(process_name, parse_temp=False):
+    """parse a Process instance from a given process file name.
+
+    Parameters
+    ----------
+    process_name : str
+        Name of the process, e.g. 'twelve_pieces_process.json' or 'twelve_pieces_process'
+    parse_temp : bool, optional
+        True if parse the Process from the `TEMP_DESIGN_DIR` instead of the `DESIGN_DIR` folder, by default False
+
+    Returns
+    -------
+    Process
+
+    Raises
+    ------
+    FileNotFoundError
+        if file not found
+    """
     # * Load process from file
     file_path = get_process_path(process_name, file_dir=TEMP_DESIGN_DIR if parse_temp else DESIGN_DIR)
     if parse_temp and not os.path.exists(file_path):
@@ -89,7 +84,28 @@ def parse_process(process_name, parse_temp=False):
     cprint('Process json parsed from {}'.format(file_path), 'green')
     return process
 
-def save_process_and_movements(process_name, _process, _movements, overwrite=False, include_traj_in_process=False, indent=None, save_temp=True):
+def save_process_and_movements(process_name, _process, _movements,
+    overwrite=False, include_traj_in_process=False, indent=None, save_temp=True):
+    """[summary]
+
+    Parameters
+    ----------
+    process_name : str
+        Name of the process, e.g. 'twelve_pieces_process.json' or 'twelve_pieces_process'
+    _process : itj Process
+        [description]
+    _movements : list(tj Movement)
+        [description]
+    overwrite : bool, optional
+        if set True, a new timestamped folder will be created and new process and movements will saved there, avoid overwriting
+        existing files, by default False
+    include_traj_in_process : bool, optional
+        include the `trajectory` attribute in the movement or not, by default False
+    indent : int, optional
+        json indentation, by default None
+    save_temp : bool, optional
+        save an extra copy of the process in the `TEMP_DESIGN_DIR` folder, by default True
+    """
     process = deepcopy(_process)
     movements = deepcopy(_movements)
 
@@ -103,8 +119,6 @@ def save_process_and_movements(process_name, _process, _movements, overwrite=Fal
         os.makedirs(process_dir)
         os.makedirs(os.path.join(process_dir, 'movements'))
         process_file_path = os.path.join(process_dir, process_fname)
-        # process_fnames = os.path.basename(process_file_path).split('.json')
-        # process_file_path = os.path.join(process_dir, process_fnames[0] + ('' if overwrite else '_'+get_date()) + '.json')
 
     for m in movements:
         m_file_path = os.path.abspath(os.path.join(process_dir, m.filepath))

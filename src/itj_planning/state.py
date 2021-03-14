@@ -3,37 +3,57 @@ from termcolor import cprint
 from copy import copy, deepcopy
 from itertools import product
 
-from compas.geometry import Frame, distance_point_point, Transformation
+from compas.geometry import distance_point_point
 from compas.datastructures.mesh.triangulation import mesh_quads_to_triangles
-from compas_fab.robots import Configuration, JointTrajectoryPoint, JointTrajectory
-from compas_fab.robots import CollisionMesh, Duration, AttachedCollisionMesh
+from compas_fab.robots import Configuration
+from compas_fab.robots import CollisionMesh, AttachedCollisionMesh
 
-from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 
-from compas_fab_pychoreo.utils import divide_list_chunks, values_as_list
-from compas_fab_pychoreo.utils import wildcard_keys
-
 from pybullet_planning import GREY
-from pybullet_planning import link_from_name, get_link_pose, draw_pose, multiply, Pose, Euler, set_joint_positions, \
-    joints_from_names, LockRenderer, WorldSaver, wait_for_user, joint_from_name, wait_if_gui, load_pybullet, HideOutput
-from pybullet_planning import get_sample_fn, link_from_name, sample_tool_ik, interpolate_poses, get_joint_positions
-from pybullet_planning import plan_cartesian_motion, uniform_pose_generator, dump_body
+from pybullet_planning import LockRenderer, HideOutput, load_pybullet
+from pybullet_planning import get_sample_fn, link_from_name, joint_from_name, link_from_name, get_link_pose
+from pybullet_planning import uniform_pose_generator
 
-from .robot_setup import R11_INTER_CONF_VALS, MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
-from .robot_setup import get_gantry_control_joint_names, get_cartesian_control_joint_names, get_gantry_robot_custom_limits
-from .visualization import color_from_object_id
-from .parsing import DATA_DIR
-from .utils import FRAME_TOL
+from itj_planning.robot_setup import MAIN_ROBOT_ID, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
+from itj_planning.robot_setup import get_gantry_control_joint_names
+from itj_planning.visualization import color_from_object_id
+from itj_planning.parsing import PLANNING_DATA_DIR
+from itj_planning.utils import FRAME_TOL
 
 ##############################
 
 def set_state(client, robot, process, state_from_object, initialize=False, scale=1e-3, options=None):
+    """Set the pybullet client to a given state
+
+    Parameters
+    ----------
+    client : [type]
+        [description]
+    robot : [type]
+        [description]
+    process : [type]
+        [description]
+    state_from_object : dict(object_id : state)
+        state dictionary for objects in the scene
+    initialize : bool, optional
+        [description], by default False
+    scale : [type], optional
+        [description], by default 1e-3
+    options : [type], optional
+        [description], by default None
+
+    Raises
+    ------
+    RuntimeError
+        [description]
+    """
     options = options or {}
     gantry_attempts = options.get('gantry_attempts') or 500
     debug = options.get('debug', False)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
+    reachable_range = options.get('reachable_range') or (0.2, 2.8)
 
     # robot needed for creating attachments
     robot_uid = client.get_robot_pybullet_uid(robot)
@@ -92,9 +112,9 @@ def set_state(client, robot, process, state_from_object, initialize=False, scale
                     # add mesh to environment at origin
                     client.add_collision_mesh(cm)
                 else:
-                    urdf_path = obj.get_urdf_path(DATA_DIR)
+                    urdf_path = obj.get_urdf_path(PLANNING_DATA_DIR)
                     if reinit_tool or not os.path.exists(urdf_path):
-                        obj.save_as_urdf(DATA_DIR, scale=1e-3, triangulize=True)
+                        obj.save_as_urdf(PLANNING_DATA_DIR, scale=1e-3, triangulize=True)
                         cprint('Tool {} ({}) URDF generated to {}'.format(object_id, obj.name, urdf_path), 'green')
                     with HideOutput():
                         tool_robot = load_pybullet(urdf_path, fixed_base=False)
@@ -140,7 +160,7 @@ def set_state(client, robot, process, state_from_object, initialize=False, scale
                     # print('flange frame: {} | object frame {} | flange pose {}'.format(flange_frame, object_frame, flange_pose))
                     # TODO wrap this base sampling + 6-axis IK into inverse_kinematics for the client
                     # * sample from a ball near the pose
-                    base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=(0.2,2.8))
+                    base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=reachable_range)
                     for _ in range(gantry_attempts):
                         # TODO a more formal gantry_base_from_world_base
                         x, y, yaw = next(base_gen_fn)
