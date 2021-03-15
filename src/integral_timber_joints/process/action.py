@@ -374,15 +374,19 @@ class PickClampFromStorageAction(PickToolFromStorageAction):
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id,
                                                    tag="%s Open Gripper to release itself from storage pad." % self._tool_string))
         # Retraction movement
+        acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
         tool_storage_retract_frame1_t0cf = toolchanger.set_current_frame_from_tcp(tool.tool_storage_retract_frame1)
         tool_storage_retract_frame2_t0cf = toolchanger.set_current_frame_from_tcp(tool.tool_storage_retract_frame2)
         self.movements.append(RoboticLinearMovement(tool_storage_retract_frame1_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.withtool',
                                                     tag="Linear Retract 1 of 2 after getting %s from storage." % self._tool_string,
+                                                    allowed_collision_matrix=acm
                                                     ))
         self.movements.append(RoboticLinearMovement(tool_storage_retract_frame2_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.withtool',
-                                                    tag="Linear Retract 2 of 2 after getting %s from storage." % self._tool_string))
+                                                    tag="Linear Retract 2 of 2 after getting %s from storage." % self._tool_string,
+                                                    allowed_collision_matrix=acm
+                                                    ))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -667,7 +671,8 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
 
         # Additional ACM between the attached beam, clamps and the neighbouring beams
         neighbour_beam_ids = process.assembly.get_already_built_neighbors(self.beam_id)
-        acm = [(self.beam_id, nbr_id) for nbr_id in neighbour_beam_ids] + [(self.beam_id, env_id) for env_id in process.environment_models.keys()]
+        acm = [(self.beam_id, nbr_id) for nbr_id in neighbour_beam_ids] + \
+              [(self.beam_id, env_id) for env_id in process.environment_models.keys()]
 
         # Assembly linear move to final location
         self.movements.append(RoboticLinearMovement(assembly_wcf_final.copy(), attached_tool_id=self.gripper_id,
