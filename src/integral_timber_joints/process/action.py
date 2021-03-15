@@ -300,9 +300,16 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
                                                    tag="Toolchanger Lock %s" % self._tool_string))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.tool_id,
                                                    tag="%s Open Gripper to release itself from storage pad." % self._tool_string))
-        self.movements.append(RoboticLinearMovement(tool_pick_up_frame_t0cf.copy(), attached_tool_id=self.tool_id,
+
+        tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
+
+        tool_pick_up_retract_frame_wcf = tool.tool_pick_up_retract_frame_in_wcf(tool_storage_frame_wcf)
+        tool_pick_up_retract_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_retract_frame_wcf)
+
+        self.movements.append(RoboticLinearMovement(tool_pick_up_retract_frame_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.withtool',
                                                     tag="Linear Retract after getting %s from storage." % self._tool_string,
+                                                    allowed_collision_matrix=tool_env_acm,
                                                     ))
 
         # Assign Unique Movement IDs to all movements
@@ -322,23 +329,28 @@ class PlaceGripperToStorageAction(PlaceToolToStorageAction):
         tool_storage_frame_wcf = tool.tool_storage_frame
         tool_storage_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_storage_frame_wcf)
 
-        tool_pick_up_frame_wcf = tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
-        tool_pick_up_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_frame_wcf)
+        tool_pick_up_retract_frame_wcf = tool.tool_pick_up_retract_frame_in_wcf(tool_storage_frame_wcf)
+        tool_pick_up_retract_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_retract_frame_wcf)
 
-        self.movements.append(RoboticFreeMovement(tool_pick_up_frame_t0cf.copy(), attached_tool_id=self.tool_id, speed_type='speed.transit.rapid',
+        self.movements.append(RoboticFreeMovement(tool_pick_up_retract_frame_t0cf.copy(), attached_tool_id=self.tool_id, speed_type='speed.transit.rapid',
                                                   tag="Free Move to reach Storage Approach Frame of %s, to place tool in storage." % self._tool_string))  # Tool Storage Approach
+        tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
         self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.approach.withtool',
                                                     target_configuration=tool.tool_storage_configuration,
                                                     tag="Linear Advance to Storage Frame of %s, to place tool in storage." % self._tool_string,
+                                                    allowed_collision_matrix=tool_env_acm,
                                                     ))  # Tool Storage Final
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id,
                                                    tag="%s Close Gripper to lock onto storage pad." % self._tool_string))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id,
                                                    tag="Toolchanger Unlock %s" % self._tool_string))
+
+        tool_pick_up_frame_wcf = tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
+        tool_pick_up_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_frame_wcf)
         self.movements.append(RoboticLinearMovement(tool_pick_up_frame_t0cf.copy(), speed_type='speed.toolchange.retract.notool',
                                                     tag="Linear Retract from storage after placing %s in storage" % self._tool_string,
-                                                    allowed_collision_matrix=[('tool_changer', self.tool_id)]
+                                                    allowed_collision_matrix=[('tool_changer', self.tool_id)],
                                                     ))  # Tool Storage Retract
 
         # Assign Unique Movement IDs to all movements
@@ -376,13 +388,18 @@ class PickClampFromStorageAction(PickToolFromStorageAction):
         # Retraction movement
         tool_storage_retract_frame1_t0cf = toolchanger.set_current_frame_from_tcp(tool.tool_storage_retract_frame1)
         tool_storage_retract_frame2_t0cf = toolchanger.set_current_frame_from_tcp(tool.tool_storage_retract_frame2)
+        tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
+
         self.movements.append(RoboticLinearMovement(tool_storage_retract_frame1_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.withtool',
                                                     tag="Linear Retract 1 of 2 after getting %s from storage." % self._tool_string,
+                                                    allowed_collision_matrix=tool_env_acm
                                                     ))
         self.movements.append(RoboticLinearMovement(tool_storage_retract_frame2_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.withtool',
-                                                    tag="Linear Retract 2 of 2 after getting %s from storage." % self._tool_string))
+                                                    tag="Linear Retract 2 of 2 after getting %s from storage." % self._tool_string,
+                                                    allowed_collision_matrix=tool_env_acm
+                                                    ))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -404,18 +421,23 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
         self.movements.append(RoboticFreeMovement(tool_storage_approach_frame1_t0cf.copy(),
                                                   attached_tool_id=self.tool_id, speed_type='speed.transit.rapid',
                                                   tag="Free Move reach Storage Approach Frame of %s, to place clamp in storage." % self._tool_string))  # Tool Storage Approach
+
+        tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
         self.movements.append(RoboticLinearMovement(tool_storage_approach_frame2_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.approach.withtool',
                                                     target_configuration=tool.tool_storage_configuration,
-                                                    tag="Linear Approach 1 of 2 to place %s in storage." % self._tool_string))  # Tool Storage Approach
+                                                    tag="Linear Approach 1 of 2 to place %s in storage." % self._tool_string,
+                                                    allowed_collision_matrix=tool_env_acm
+                                                    ))  # Tool Storage Approach
 
         # Tool go to final
         tool_storage_frame_wcf = tool.tool_storage_frame
         tool_storage_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_storage_frame_wcf)
         self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.approach.withtool',
-                                                    tag="Linear Approach 2 of 2 to place %s in storage." % self._tool_string)
-                                                    )  # Tool Storage Final
+                                                    tag="Linear Approach 2 of 2 to place %s in storage." % self._tool_string,
+                                                    allowed_collision_matrix=tool_env_acm
+                                                    ))  # Tool Storage Final
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.tool_id,
                                                    tag="Close Gripper to lock %s onto storage pad." % self._tool_string))
         self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id,
