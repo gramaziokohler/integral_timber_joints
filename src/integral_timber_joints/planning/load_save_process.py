@@ -2,7 +2,7 @@ import json
 import argparse
 from termcolor import cprint
 from compas.utilities import DataDecoder, DataEncoder
-from itj_planning.parsing import get_process_path, parse_process, TEMP_DESIGN_DIR, DESIGN_DIR
+from integral_timber_joints.planning.parsing import get_process_path, parse_process, TEMP_DESIGN_DIR, DESIGN_DIR
 
 def main():
     parser = argparse.ArgumentParser()

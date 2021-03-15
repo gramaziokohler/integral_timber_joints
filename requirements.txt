@@ -5,3 +5,4 @@ jsonpickle
 trimesh
 pycddlib
 termcolor
+plyer

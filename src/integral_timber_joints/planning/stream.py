@@ -21,11 +21,11 @@ from pybullet_planning import uniform_pose_generator
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 from compas_fab_pychoreo_examples.ik_solver import InverseKinematicsSolver, get_ik_fn_from_ikfast
 
-from itj_planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
-from itj_planning.robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
-from itj_planning.utils import reverse_trajectory, merge_trajectories, FRAME_TOL
-from itj_planning.state import set_state
-from itj_planning.utils import notify
+from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
+from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
+from integral_timber_joints.planning.utils import reverse_trajectory, merge_trajectories, FRAME_TOL
+from integral_timber_joints.planning.state import set_state
+from integral_timber_joints.planning.utils import notify
 
 ##############################
 

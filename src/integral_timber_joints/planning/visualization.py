@@ -52,7 +52,7 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
         Set to True if wish to step through the simulation conf-by-conf.
         False will simulate in a smooth fashion, by default True
     """
-    from itj_planning.stream import set_state
+    from integral_timber_joints.planning.stream import set_state
     if not has_gui() or not isinstance(m, RoboticMovement):
         return
     print('===')

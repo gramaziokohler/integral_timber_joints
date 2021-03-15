@@ -4,9 +4,9 @@ from termcolor import cprint
 from compas_fab_pychoreo.client import PyChoreoClient
 from pybullet_planning import draw_pose, set_camera_pose, unit_pose, LockRenderer
 
-from itj_planning.utils import convert_rfl_robot_conf_unit
-from itj_planning.visualization import rfl_camera
-from itj_planning.parsing import rfl_setup
+from integral_timber_joints.planning.utils import convert_rfl_robot_conf_unit
+from integral_timber_joints.planning.visualization import rfl_camera
+from integral_timber_joints.planning.parsing import rfl_setup
 
 ############################################
 

@@ -11,7 +11,7 @@ from pybullet_planning import get_date
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement
 
 HERE = os.path.dirname(__file__)
-EXTERNAL_DIR = os.path.abspath(os.path.join(HERE, '..', '..', 'external'))
+EXTERNAL_DIR = os.path.abspath(os.path.join(HERE, '..', '..', '..', 'external'))
 PLANNING_DATA_DIR = os.path.join(HERE, "data")
 DESIGN_STUDY_DIR = os.path.abspath(os.path.join(EXTERNAL_DIR, 'itj_design_study'))
 

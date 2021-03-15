@@ -15,11 +15,11 @@ from pybullet_planning import LockRenderer, HideOutput, load_pybullet
 from pybullet_planning import get_sample_fn, link_from_name, joint_from_name, link_from_name, get_link_pose
 from pybullet_planning import uniform_pose_generator
 
-from itj_planning.robot_setup import MAIN_ROBOT_ID, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
-from itj_planning.robot_setup import get_gantry_control_joint_names
-from itj_planning.visualization import color_from_object_id
-from itj_planning.parsing import PLANNING_DATA_DIR
-from itj_planning.utils import FRAME_TOL
+from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
+from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names
+from integral_timber_joints.planning.visualization import color_from_object_id
+from integral_timber_joints.planning.parsing import PLANNING_DATA_DIR
+from integral_timber_joints.planning.utils import FRAME_TOL
 
 ##############################
 

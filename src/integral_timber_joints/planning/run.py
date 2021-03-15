@@ -12,12 +12,12 @@ from copy import copy, deepcopy
 
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
 
-from itj_planning.parsing import parse_process, save_process_and_movements
-from itj_planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
-from itj_planning.utils import notify
-from itj_planning.stream import set_state, compute_free_movement, compute_linear_movement
-from itj_planning.state import set_state
-from itj_planning.visualization import visualize_movement_trajectory
+from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements
+from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
+from integral_timber_joints.planning.utils import notify
+from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement
+from integral_timber_joints.planning.state import set_state
+from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement
 
