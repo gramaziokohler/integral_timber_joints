@@ -232,7 +232,7 @@ def compute_linear_movement(client, robot, process, movement, options=None):
             interp_frames = interp_frames[::-1]
 
         samples_cnt = 0
-        for ci in range(5):
+        for ci in range(100):
             if debug:
                 print('\tcartesian trial #{}'.format(ci))
             cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
