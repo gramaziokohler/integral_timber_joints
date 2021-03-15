@@ -147,12 +147,23 @@ class Beam(Network):
     @property
     def mesh(self):
         # type() -> Mesh
-        """Beam mesh in the ObjectCoordinateFrame (OCF). 
+        """Beam mesh in the ObjectCoordinateFrame (OCF).
         This mesh can be transformed to self.frame to be shown at final location.
         This can also be transformed to other frames for key position visualization.
         """
         assert self.cached_mesh is not None
         T = Transformation.from_frame_to_frame(self.frame, Frame.worldXY())
+        return self.cached_mesh.transformed(T)
+
+    @property
+    def mesh_at_current_frame(self):
+        # type() -> Mesh
+        """Beam mesh in current_frame
+        This mesh can be transformed to self.frame to be shown at final location.
+        This can also be transformed to other frames for key position visualization.
+        """
+        assert self.cached_mesh is not None
+        T = Transformation.from_frame_to_frame(self.frame, self.current_frame)
         return self.cached_mesh.transformed(T)
 
     # -----------------------
@@ -623,7 +634,7 @@ class Beam(Network):
         if not self.is_visible:
             return []
         # Create the transformation
-        T = Transformation.from_frame_to_frame(self.frame, self.current_location)
+        T = Transformation.from_frame_to_frame(self.frame, self.current_frame)
         # Create a copy of the mesh, transformed.
         transformed_mesh = self.cached_mesh.transformed(T)
         # Use a mesh artist to draw everything
