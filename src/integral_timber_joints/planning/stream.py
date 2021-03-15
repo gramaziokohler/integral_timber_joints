@@ -171,8 +171,8 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
         # * sample from a ball near the pose
         base_gen_fn = uniform_pose_generator(robot_uid, pose_from_frame(interp_frames[0], scale=1), reachable_range=reachable_range)
         for gi in range(gantry_attempts):
-            if debug:
-                cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
+            # if debug:
+            cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
             x, y, yaw = next(base_gen_fn)
             # TODO a more formal gantry_base_from_world_base
             y *= -1
@@ -247,16 +247,22 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
             cprint('Cartesian Path planning (w/ prespecified st/end conf) failure after {} attempts.'.format(
                 samples_cnt), 'yellow')
 
-    if not solution_found and diagnosis:
+    if cart_conf is None and diagnosis:
+        lockrenderer = options.get('lockrenderer', None)
+        if lockrenderer:
+            lockrenderer.restore()
+        wait_for_user()
         print('movement.allowed_collision_matrix: ', movement.allowed_collision_matrix)
         print('extra_disabled_collision_links: ', client.extra_disabled_collision_links)
         client._print_object_summary()
         d_options = options.copy()
         d_options['diagnosis'] = True
-        with WorldSaver():
-            client.check_collisions(robot, gantry_arm_conf, options=d_options)
-            client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-                group=GANTRY_ARM_GROUP, options=d_options)
+        # with WorldSaver():
+        client.check_collisions(robot, gantry_arm_conf, options=d_options)
+        client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
+            group=GANTRY_ARM_GROUP, options=d_options)
+        if lockrenderer:
+            lockrenderer = LockRenderer()
 
     if temp_name in client.extra_disabled_collision_links:
         del client.extra_disabled_collision_links[temp_name]
@@ -295,8 +301,6 @@ def compute_free_movement(client, robot, process, movement, options=None, diagno
 
     # * set start state
     set_state(client, robot, process, start_state)
-    if debug:
-        client._print_object_summary()
 
     if orig_start_conf is None:
         cprint('Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
@@ -416,10 +420,16 @@ def compute_free_movement(client, robot, process, movement, options=None, diagno
     #     trajs = [cart_conf, traj] if forward else [traj, cart_conf]
     #     traj = merge_trajectories(trajs)
 
-    if traj is not None and diagnosis:
+    if traj is None and diagnosis:
+        client._print_object_summary()
+        lockrenderer = options.get('lockrenderer', None)
+        if lockrenderer:
+            lockrenderer.restore()
         d_options = options.copy()
         d_options['diagnosis'] = True
         traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
             options=d_options)
+        if lockrenderer:
+            lockrenderer = LockRenderer()
 
     return fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP)

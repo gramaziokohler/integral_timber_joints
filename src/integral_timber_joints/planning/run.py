@@ -304,8 +304,9 @@ def main():
     # if args.debug:
     #     wait_for_user()
 
-    with LockRenderer(not (args.debug or args.diagnosis)):
-    # with LockRenderer():
+    # not (args.debug or args.diagnosis)
+    with LockRenderer() as lockrenderer:
+        options['lockrenderer'] = lockrenderer
         compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
             [MovementStatus.neither_done, MovementStatus.one_sided],
             options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
