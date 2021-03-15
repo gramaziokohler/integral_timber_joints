@@ -74,7 +74,7 @@ def _get_sample_bare_arm_ik_fn(client, robot):
 
 ##############################
 
-def compute_linear_movement(client, robot, process, movement, options=None):
+def compute_linear_movement(client, robot, process, movement, options=None, diagnosis=False):
     assert isinstance(movement, RoboticLinearMovement) or \
            isinstance(movement, RoboticClampSyncLinearMovement)
     robot_uid = client.get_robot_pybullet_uid(robot)
@@ -83,6 +83,7 @@ def compute_linear_movement(client, robot, process, movement, options=None):
     # sampling attempts
     options = options or {}
     gantry_attempts = options.get('gantry_attempts') or 10
+    cartesian_attempts = options.get('cartesian_attempts') or 5
     reachable_range = options.get('reachable_range') or (0.2, 2.8) # (0.68, 2.83)
     debug = options.get('debug', False)
 
@@ -124,11 +125,6 @@ def compute_linear_movement(client, robot, process, movement, options=None):
             client.extra_disabled_collision_links[temp_name].add(
                 ((parent_body, None), (child_body, None))
                 )
-    if debug:
-        print('movement.allowed_collision_matrix: ', movement.allowed_collision_matrix)
-        print('extra_disabled_collision_links: ', client.extra_disabled_collision_links)
-        client._print_object_summary()
-
     # TODO special check for CLampSyncMove:
     # you can disable (clamps - gripper) and (clamps - toolchanger) during the move,
     # but double check the end state (with jaw set to closed state) if they collide.
@@ -175,9 +171,9 @@ def compute_linear_movement(client, robot, process, movement, options=None):
         # * sample from a ball near the pose
         base_gen_fn = uniform_pose_generator(robot_uid, pose_from_frame(interp_frames[0], scale=1), reachable_range=reachable_range)
         for gi in range(gantry_attempts):
-            if debug:
-                cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
-            x, y, yaw = next(base_gen_fn)
+            # if debug:
+            cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
+            x, y, _ = next(base_gen_fn)
             # TODO a more formal gantry_base_from_world_base
             y *= -1
             z, = gantry_z_sample_fn()
@@ -196,9 +192,9 @@ def compute_linear_movement(client, robot, process, movement, options=None):
                     gantry_arm_joint_types, gantry_arm_joint_names)
                 if not client.check_collisions(robot, gantry_arm_conf, options=options):
                     # * Cartesian planning, only for the six-axis arm (aka sub_conf)
-                    for ci in range(2):
-                        if debug:
-                            print('\tcartesian trial #{}'.format(ci))
+                    for ci in range(cartesian_attempts):
+                        # if debug:
+                        print('\tcartesian trial #{}'.format(ci))
                         cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
                             group=GANTRY_ARM_GROUP, options=options)
                         if cart_conf is not None:
@@ -232,9 +228,9 @@ def compute_linear_movement(client, robot, process, movement, options=None):
             interp_frames = interp_frames[::-1]
 
         samples_cnt = 0
-        for ci in range(100):
-            if debug:
-                print('\tcartesian trial #{}'.format(ci))
+        for ci in range(cartesian_attempts):
+            # if debug:
+            print('\tcartesian trial #{}'.format(ci))
             cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
                 group=GANTRY_ARM_GROUP, options=options)
             samples_cnt += 1
@@ -250,6 +246,23 @@ def compute_linear_movement(client, robot, process, movement, options=None):
         else:
             cprint('Cartesian Path planning (w/ prespecified st/end conf) failure after {} attempts.'.format(
                 samples_cnt), 'yellow')
+
+    if cart_conf is None and diagnosis:
+        lockrenderer = options.get('lockrenderer', None)
+        if lockrenderer:
+            lockrenderer.restore()
+        wait_for_user()
+        print('movement.allowed_collision_matrix: ', movement.allowed_collision_matrix)
+        print('extra_disabled_collision_links: ', client.extra_disabled_collision_links)
+        client._print_object_summary()
+        d_options = options.copy()
+        d_options['diagnosis'] = True
+        # with WorldSaver():
+        client.check_collisions(robot, gantry_arm_conf, options=d_options)
+        client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
+            group=GANTRY_ARM_GROUP, options=d_options)
+        if lockrenderer:
+            lockrenderer = LockRenderer()
 
     if temp_name in client.extra_disabled_collision_links:
         del client.extra_disabled_collision_links[temp_name]
@@ -270,7 +283,7 @@ def compute_linear_movement(client, robot, process, movement, options=None):
 
 ##############################
 
-def compute_free_movement(client, robot, process, movement, options=None):
+def compute_free_movement(client, robot, process, movement, options=None, diagnosis=False):
     assert isinstance(movement, RoboticFreeMovement)
     options = options or {}
     # * options
@@ -288,8 +301,6 @@ def compute_free_movement(client, robot, process, movement, options=None):
 
     # * set start state
     set_state(client, robot, process, start_state)
-    if debug:
-        client._print_object_summary()
 
     if orig_start_conf is None:
         cprint('Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
@@ -310,7 +321,7 @@ def compute_free_movement(client, robot, process, movement, options=None):
             gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint : GANTRY_Z_LIMIT})
             for _ in range(gantry_attempts):
                 # TODO a more formal gantry_base_from_world_base
-                x, y, yaw = next(base_gen_fn)
+                x, y, _ = next(base_gen_fn)
                 y *= -1
                 z, = gantry_z_sample_fn()
                 gantry_xyz_vals = [x,y,z]
@@ -330,65 +341,66 @@ def compute_free_movement(client, robot, process, movement, options=None):
     if len(orig_start_conf.joint_names) == 0:
         orig_start_conf.joint_names = orig_end_conf.joint_names
 
-    hotfix = True
-    if 'Free Move to reach Pickup Approach' in movement.tag:
-        # * Start_conf -> (retraction) -> free motion -> end conf
-        forward = True
-        gantry_arm_conf = orig_start_conf
-    elif 'Free Move to reach Storage Approach Frame' in movement.tag:
-        # * Start_conf -> free motion -> (retraction) -> end conf
-        forward = False
-        gantry_arm_conf = orig_end_conf
-    else:
-        hotfix = False
+    # hotfix = True
+    # if 'Free Move to reach Pickup Approach' in movement.tag:
+    #     # * Start_conf -> (retraction) -> free motion -> end conf
+    #     forward = True
+    #     gantry_arm_conf = orig_start_conf
+    # elif 'Free Move to reach Storage Approach Frame' in movement.tag:
+    #     # * Start_conf -> free motion -> (retraction) -> end conf
+    #     forward = False
+    #     gantry_arm_conf = orig_end_conf
+    # else:
+    #     hotfix = False
 
-    if hotfix:
-        client.set_robot_configuration(robot, gantry_arm_conf)
-        tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
-        tool0_frame = client.get_link_frame_from_name(robot, tool_link_name)
-        VER_RETRACTION_DISTANCE = 280 * 1e-3 # meter
-        # HOR_RETRACTION_DISTANCE = 400 * 1e-3 # meter
-        ver_retract_tf = Transformation.from_frame(Frame([0, 0, VER_RETRACTION_DISTANCE], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]))
-        # hor_retract_tf = Transformation.from_frame(Frame([-HOR_RETRACTION_DISTANCE, 0, 0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]))
-        tool0_frame_ver_retract = tool0_frame.transformed(ver_retract_tf)
-        # tool0_frame_hor_retract = tool0_frame_ver_retract.transformed(hor_retract_tf)
+    # if hotfix:
+    #     client.set_robot_configuration(robot, gantry_arm_conf)
+    #     tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
+    #     tool0_frame = client.get_link_frame_from_name(robot, tool_link_name)
+    #     VER_RETRACTION_DISTANCE = 280 * 1e-3 # meter
+    #     # HOR_RETRACTION_DISTANCE = 400 * 1e-3 # meter
+    #     ver_retract_tf = Transformation.from_frame(Frame([0, 0, VER_RETRACTION_DISTANCE], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]))
+    #     # hor_retract_tf = Transformation.from_frame(Frame([-HOR_RETRACTION_DISTANCE, 0, 0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]))
+    #     tool0_frame_ver_retract = tool0_frame.transformed(ver_retract_tf)
+    #     # tool0_frame_hor_retract = tool0_frame_ver_retract.transformed(hor_retract_tf)
 
-        # interp_frames = [tool0_frame, tool0_frame_ver_retract, tool0_frame_hor_retract]
-        interp_frames = [tool0_frame, tool0_frame_ver_retract]
-        for frame in interp_frames:
-            draw_pose(pose_from_frame(frame))
-        # wait_if_gui('hotfix cartesian')
+    #     # interp_frames = [tool0_frame, tool0_frame_ver_retract, tool0_frame_hor_retract]
+    #     interp_frames = [tool0_frame, tool0_frame_ver_retract]
+    #     for frame in interp_frames:
+    #         draw_pose(pose_from_frame(frame))
+    #     # wait_if_gui('hotfix cartesian')
 
-        # options['diagnosis'] = True
-        samples_cnt = path_failures = 0
-        for _ in range(10):
-            with WorldSaver():
-                cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-                    group=GANTRY_ARM_GROUP, options=options)
-            samples_cnt += 1
-            if cart_conf is not None:
-                cprint('(hotfix retraction for free motion) Collision free! After {} path failure over {} samples.'.format(
-                    path_failures, samples_cnt), 'green')
-                if not forward:
-                    cart_conf = reverse_trajectory(cart_conf)
-                break
-            else:
-                path_failures += 1
-        else:
-            cprint('(hotfix retraction for free motion) Cartesian Path planning (w/ prespecified st/end conf) failure after {} attempts.'.format(
-                samples_cnt), 'yellow')
-            return None
-        if forward:
-            # * Start_conf -> (retraction) -> free motion -> end conf
-            start_conf = cart_conf.points[-1]
-            end_conf = orig_end_conf
-        else:
-            # * Start_conf -> free motion -> (retraction) -> end conf
-            start_conf = orig_start_conf
-            end_conf = cart_conf.points[0]
-    else:
-        start_conf = orig_start_conf
-        end_conf = orig_end_conf
+    #     # options['diagnosis'] = True
+    #     samples_cnt = path_failures = 0
+    #     for _ in range(10):
+    #         with WorldSaver():
+    #             cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
+    #                 group=GANTRY_ARM_GROUP, options=options)
+    #         samples_cnt += 1
+    #         if cart_conf is not None:
+    #             cprint('(hotfix retraction for free motion) Collision free! After {} path failure over {} samples.'.format(
+    #                 path_failures, samples_cnt), 'green')
+    #             if not forward:
+    #                 cart_conf = reverse_trajectory(cart_conf)
+    #             break
+    #         else:
+    #             path_failures += 1
+    #     else:
+    #         cprint('(hotfix retraction for free motion) Cartesian Path planning (w/ prespecified st/end conf) failure after {} attempts.'.format(
+    #             samples_cnt), 'yellow')
+    #         return None
+    #     if forward:
+    #         # * Start_conf -> (retraction) -> free motion -> end conf
+    #         start_conf = cart_conf.points[-1]
+    #         end_conf = orig_end_conf
+    #     else:
+    #         # * Start_conf -> free motion -> (retraction) -> end conf
+    #         start_conf = orig_start_conf
+    #         end_conf = cart_conf.points[0]
+    # else:
+
+    start_conf = orig_start_conf
+    end_conf = orig_end_conf
 
     # * custom limits
     custom_limits = get_gantry_robot_custom_limits(MAIN_ROBOT_ID)
@@ -397,14 +409,27 @@ def compute_free_movement(client, robot, process, movement, options=None):
 
     goal_constraints = robot.constraints_from_configuration(end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
     with LockRenderer():
-        traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP, options=options)
+        traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
+            options=options)
     if traj is None:
         cprint('No free movement found for {}.'.format(movement.short_summary), 'red')
     else:
         cprint('Free movement found for {}!'.format(movement.short_summary), 'green')
 
-    if hotfix and traj is not None:
-        trajs = [cart_conf, traj] if forward else [traj, cart_conf]
-        traj = merge_trajectories(trajs)
+    # if hotfix and traj is not None:
+    #     trajs = [cart_conf, traj] if forward else [traj, cart_conf]
+    #     traj = merge_trajectories(trajs)
+
+    if traj is None and diagnosis:
+        client._print_object_summary()
+        lockrenderer = options.get('lockrenderer', None)
+        if lockrenderer:
+            lockrenderer.restore()
+        d_options = options.copy()
+        d_options['diagnosis'] = True
+        traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
+            options=d_options)
+        if lockrenderer:
+            lockrenderer = LockRenderer()
 
     return fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP)
