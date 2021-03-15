@@ -187,6 +187,21 @@ class Tool (ToolModel):
             self.attributes['tool_pick_up_frame'] = frame.copy()
 
     @property
+    def tool_pick_up_retract_frame(self):
+        """ Get the tool_pick_up_retract_frame frame. In reference to the T0CP
+        This is the position of the robot before picking up the tool via toolchanger."""
+        return self.attributes.get('tool_pick_up_retract_frame', None)
+
+    @tool_pick_up_retract_frame.setter
+    def tool_pick_up_retract_frame(self, frame):
+        """ Set the tool_pick_up_frame frame. In reference to the T0CP
+        This is the position of the robot before picking up the tool via toolchanger."""
+        if frame is None:
+            self.attributes['tool_pick_up_retract_frame'] = None
+        else:
+            self.attributes['tool_pick_up_retract_frame'] = frame.copy()
+
+    @property
     def tool_storage_frame(self):
         """ Get the tool_storage_frame frame. In reference to WCF.
         This is the position where the tool is stored."""
@@ -259,6 +274,9 @@ class Tool (ToolModel):
 
     def tool_pick_up_frame_in_wcf(self, current_frame):
         return self.tool_pick_up_frame.transformed(Transformation.from_frame_to_frame(Frame.worldXY(), current_frame))
+
+    def tool_pick_up_retract_frame_in_wcf(self, current_frame):
+        return self.tool_pick_up_retract_frame.transformed(Transformation.from_frame_to_frame(Frame.worldXY(), current_frame))
 
     def tool_coordinate_frame_in_wcf(self, current_frame):
         return self.tool_coordinate_frame.transformed(Transformation.from_frame_to_frame(Frame.worldXY(), current_frame))

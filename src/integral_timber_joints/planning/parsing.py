@@ -1,0 +1,150 @@
+import os
+import json
+from copy import deepcopy
+from termcolor import cprint
+
+from compas.robots import RobotModel
+from compas_fab.robots import RobotSemantics
+from compas.utilities import DataDecoder, DataEncoder
+
+from pybullet_planning import get_date
+from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement
+
+HERE = os.path.dirname(__file__)
+EXTERNAL_DIR = os.path.abspath(os.path.join(HERE, '..', '..', '..', 'external'))
+PLANNING_DATA_DIR = os.path.join(HERE, "data")
+DESIGN_STUDY_DIR = os.path.abspath(os.path.join(EXTERNAL_DIR, 'itj_design_study'))
+
+# TODO specific to RemodelFredPavilion now, change to parameter later
+DESIGN_DIR = os.path.join(DESIGN_STUDY_DIR, '210128_RemodelFredPavilion')
+TEMP_DESIGN_DIR = os.path.join(DESIGN_DIR, 'YJ_tmp')
+
+###########################################
+
+def rfl_setup(model_dir=EXTERNAL_DIR):
+    """construct RFL robot urdf path and a SRDF instance
+
+    Parameters
+    ----------
+    model_dir : str, optional
+        path to where the `rfl_description` is saved, by default EXTERNAL_DIR
+
+    Returns
+    -------
+    (urdf file path, RobotSemantics)
+    """
+    # ! the original rfl.urdf use concave collision objects, over-conservative
+    # urdf_filename = os.path.join(model_dir, 'rfl_description', 'rfl_description', "urdf", "rfl.urdf")
+    urdf_filename = os.path.join(model_dir, 'rfl_description', 'rfl_description', "urdf", "rfl_pybullet.urdf")
+    srdf_filename = os.path.join(model_dir, 'rfl_description', 'rfl_description', "urdf", "rfl.srdf")
+    model = RobotModel.from_urdf_file(urdf_filename)
+    semantics = RobotSemantics.from_srdf_file(srdf_filename, model)
+    return urdf_filename, semantics
+
+###########################################
+
+def get_process_path(assembly_name, file_dir=DESIGN_DIR):
+    if assembly_name.endswith('.json'):
+        filename = os.path.basename(assembly_name)
+    else:
+        filename = '{}.json'.format(assembly_name)
+    model_path = os.path.abspath(os.path.join(file_dir, filename))
+    return model_path
+
+def parse_process(process_name, parse_temp=False):
+    """parse a Process instance from a given process file name.
+
+    Parameters
+    ----------
+    process_name : str
+        Name of the process, e.g. 'twelve_pieces_process.json' or 'twelve_pieces_process'
+    parse_temp : bool, optional
+        True if parse the Process from the `TEMP_DESIGN_DIR` instead of the `DESIGN_DIR` folder, by default False
+
+    Returns
+    -------
+    Process
+
+    Raises
+    ------
+    FileNotFoundError
+        if file not found
+    """
+    # * Load process from file
+    file_path = get_process_path(process_name, file_dir=TEMP_DESIGN_DIR if parse_temp else DESIGN_DIR)
+    if parse_temp and not os.path.exists(file_path):
+        cprint('No temp process file found, using the original one.', 'yellow')
+        file_path = get_process_path(process_name, file_dir=DESIGN_DIR)
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(file_path)
+
+    with open(file_path, 'r') as f:
+        process = json.load(f, cls=DataDecoder)
+        # type: RobotClampAssemblyProcess
+    cprint('Process json parsed from {}'.format(file_path), 'green')
+    return process
+
+def save_process_and_movements(process_name, _process, _movements,
+    overwrite=False, include_traj_in_process=False, indent=None, save_temp=True):
+    """[summary]
+
+    Parameters
+    ----------
+    process_name : str
+        Name of the process, e.g. 'twelve_pieces_process.json' or 'twelve_pieces_process'
+    _process : itj Process
+        [description]
+    _movements : list(tj Movement)
+        [description]
+    overwrite : bool, optional
+        if set True, a new timestamped folder will be created and new process and movements will saved there, avoid overwriting
+        existing files, by default False
+    include_traj_in_process : bool, optional
+        include the `trajectory` attribute in the movement or not, by default False
+    indent : int, optional
+        json indentation, by default None
+    save_temp : bool, optional
+        save an extra copy of the process in the `TEMP_DESIGN_DIR` folder, by default True
+    """
+    process = deepcopy(_process)
+    movements = deepcopy(_movements)
+
+    process_file_path = get_process_path(process_name, file_dir=DESIGN_DIR)
+    process_dir = os.path.dirname(process_file_path)
+    if not overwrite:
+        process_fname = os.path.basename(process_file_path)
+        time_stamp = get_date()
+        process_dir = os.path.join(process_dir, time_stamp)
+        # * make paths
+        os.makedirs(process_dir)
+        os.makedirs(os.path.join(process_dir, 'movements'))
+        process_file_path = os.path.join(process_dir, process_fname)
+
+    for m in movements:
+        m_file_path = os.path.abspath(os.path.join(process_dir, m.filepath))
+        with open(m_file_path, 'w') as f:
+            json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)
+    print('---')
+    cprint('#{} movements written to {}'.format(len(movements), os.path.abspath(DESIGN_DIR)), 'green')
+
+    if not include_traj_in_process:
+        for m in process.movements:
+            if isinstance(m, RoboticMovement):
+                m.trajectory = None
+
+    with open(process_file_path, 'w') as f:
+        json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
+    print('---')
+    cprint('Process written to {}'.format(process_file_path), 'green')
+
+    if save_temp:
+        if not os.path.exists(TEMP_DESIGN_DIR):
+            os.makedirs(TEMP_DESIGN_DIR)
+        temp_process_file_path = get_process_path(process_name, file_dir=TEMP_DESIGN_DIR)
+        with open(temp_process_file_path, 'w') as f:
+            json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
+        print('---')
+        cprint('(extra copy) Process written to {}'.format(temp_process_file_path), 'green')
+
+
+##########################################
