@@ -31,7 +31,7 @@ from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMov
 
 def print_title(x):
     print('\n\n')
-    cprint(x, 'green', 'on_red', attrs=['bold'])
+    cprint(x, 'blue', 'on_white', attrs=['bold'])
 
 ###########################################
 
