@@ -173,7 +173,7 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
         for gi in range(gantry_attempts):
             # if debug:
             cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
-            x, y, yaw = next(base_gen_fn)
+            x, y, _ = next(base_gen_fn)
             # TODO a more formal gantry_base_from_world_base
             y *= -1
             z, = gantry_z_sample_fn()

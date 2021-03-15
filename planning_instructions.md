@@ -18,6 +18,6 @@ Search `git submodule update + <your GUI tool>` will usually give you the right 
 ## Examples
 
 ```bash
-# from integral_timber_joints root dir
-python .\external\compas_fab_pychoreo\examples\itj\run.py -v
+# from any dir, with the proper conda env is activated
+python -m integral_timber_joints.planning.run --step_sim --watch --seq_i 2 --diagnosis --write
 ```
