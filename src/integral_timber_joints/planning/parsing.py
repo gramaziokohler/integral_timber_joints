@@ -17,7 +17,7 @@ DESIGN_STUDY_DIR = os.path.abspath(os.path.join(EXTERNAL_DIR, 'itj_design_study'
 
 # TODO specific to RemodelFredPavilion now, change to parameter later
 DESIGN_DIR = os.path.join(DESIGN_STUDY_DIR, '210128_RemodelFredPavilion')
-TEMP_DESIGN_DIR = os.path.join(DESIGN_DIR, 'YJ_tmp')
+TEMP_SUBDIR = 'YJ_tmp'
 
 ###########################################
 
@@ -43,23 +43,23 @@ def rfl_setup(model_dir=EXTERNAL_DIR):
 
 ###########################################
 
-def get_process_path(assembly_name, file_dir=DESIGN_DIR):
+def get_process_path(assembly_name, subdir='.'):
     if assembly_name.endswith('.json'):
         filename = os.path.basename(assembly_name)
     else:
         filename = '{}.json'.format(assembly_name)
-    model_path = os.path.abspath(os.path.join(file_dir, filename))
+    model_path = os.path.abspath(os.path.join(DESIGN_DIR, subdir, filename))
     return model_path
 
-def parse_process(process_name, parse_temp=False):
+def parse_process(process_name, subdir='.'):
     """parse a Process instance from a given process file name.
 
     Parameters
     ----------
     process_name : str
         Name of the process, e.g. 'twelve_pieces_process.json' or 'twelve_pieces_process'
-    parse_temp : bool, optional
-        True if parse the Process from the `TEMP_DESIGN_DIR` instead of the `DESIGN_DIR` folder, by default False
+    subdir : str, optional
+        subdirectory of the design, e.g. '.' (for original) or 'YJ_tmp'.
 
     Returns
     -------
@@ -71,10 +71,10 @@ def parse_process(process_name, parse_temp=False):
         if file not found
     """
     # * Load process from file
-    file_path = get_process_path(process_name, file_dir=TEMP_DESIGN_DIR if parse_temp else DESIGN_DIR)
-    if parse_temp and not os.path.exists(file_path):
+    file_path = get_process_path(process_name, subdir)
+    if not os.path.exists(file_path):
         cprint('No temp process file found, using the original one.', 'yellow')
-        file_path = get_process_path(process_name, file_dir=DESIGN_DIR)
+        file_path = get_process_path(process_name, '.')
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)
 
@@ -109,8 +109,8 @@ def save_process_and_movements(process_name, _process, _movements,
     process = deepcopy(_process)
     movements = deepcopy(_movements)
 
-    process_file_path = get_process_path(process_name, file_dir=DESIGN_DIR)
-    process_dir = os.path.dirname(process_file_path)
+    process_file_path = get_process_path(process_name, '.')
+    process_dir = DESIGN_DIR
     if not overwrite:
         process_fname = os.path.basename(process_file_path)
         time_stamp = get_date()
@@ -138,9 +138,10 @@ def save_process_and_movements(process_name, _process, _movements,
     cprint('Process written to {}'.format(process_file_path), 'green')
 
     if save_temp:
-        if not os.path.exists(TEMP_DESIGN_DIR):
-            os.makedirs(TEMP_DESIGN_DIR)
-        temp_process_file_path = get_process_path(process_name, file_dir=TEMP_DESIGN_DIR)
+        temp_dir = os.path.join(DESIGN_DIR, TEMP_SUBDIR)
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+        temp_process_file_path = get_process_path(process_name, TEMP_SUBDIR)
         with open(temp_process_file_path, 'w') as f:
             json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
         print('---')
