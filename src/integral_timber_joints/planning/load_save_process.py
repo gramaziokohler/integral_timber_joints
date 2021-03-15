@@ -2,17 +2,17 @@ import json
 import argparse
 from termcolor import cprint
 from compas.utilities import DataDecoder, DataEncoder
-from integral_timber_joints.planning.parsing import get_process_path, parse_process, TEMP_DESIGN_DIR, DESIGN_DIR
+from integral_timber_joints.planning.parsing import get_process_path, parse_process, TEMP_SUBDIR, DESIGN_DIR
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--problem', default='twelve_pieces_process.json', # pavilion.json
                         help='The name of the problem to solve')
-    parser.add_argument('--parse_temp', action='store_true',
-                        help='Parse and save the temp process file.')
+    parser.add_argument('--problem_subdir', default='.', # pavilion.json
+                        help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
     args = parser.parse_args()
     # * Load json
-    process = parse_process(args.problem, parse_temp=args.parse_temp)
+    process = parse_process(args.problem, subdir=args.problem_subdir)
     # * Compute Actions
     verbose = False
     process.create_actions_from_sequence(verbose=verbose)
@@ -26,9 +26,9 @@ def main():
     # * Compute States
     process.compute_initial_state()
     process.compute_intermediate_states(verbose=verbose)
-    # Save json to original location (optional)
+    # * Save json to original location
     print('---')
-    path = get_process_path(args.problem, file_dir=TEMP_DESIGN_DIR if args.parse_temp else DESIGN_DIR)
+    path = get_process_path(args.problem, subdir=args.problem_subdir)
     with open(path, 'w') as f:
         json.dump(process, f, cls=DataEncoder, indent=None, sort_keys=True)
     cprint('Process saved to %s' % path, 'green')

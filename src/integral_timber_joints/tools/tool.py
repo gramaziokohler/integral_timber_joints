@@ -415,7 +415,8 @@ class Tool (ToolModel):
         # modified from: https://github.com/compas-dev/compas_fab/blob/6e68dbd7440fa68a58606bb9100495583bc79980/src/compas_fab/backends/pybullet/client.py#L235
         package_name = self.name or str(self.guid)
         self.ensure_geometry()
-        assert os.path.exists(save_dir)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
         visual_mesh_subdir = os.path.join(package_name, 'meshes', 'visual')
         collision_mesh_subdir = os.path.join(package_name, 'meshes', 'collision')
         urdf_subdir = os.path.join(package_name, 'urdf')

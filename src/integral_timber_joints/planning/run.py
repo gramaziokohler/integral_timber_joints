@@ -13,7 +13,8 @@ from copy import copy, deepcopy
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements
-from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
+from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
+    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
 from integral_timber_joints.planning.utils import notify
 from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement
 from integral_timber_joints.planning.state import set_state
@@ -45,7 +46,7 @@ class MovementStatus(Enum):
 
 ###########################################
 
-def compute_movement(client, robot, process, movement, options=None):
+def compute_movement(client, robot, process, movement, options=None, diagnosis=False):
     if not isinstance(movement, RoboticMovement):
         return None
     cprint(movement.short_summary, 'cyan')
@@ -62,7 +63,7 @@ def compute_movement(client, robot, process, movement, options=None):
             'gantry_attempts' : 100,
             'reachable_range' : (0.2, 2.8), # circle radius for sampling gantry base when computing IK
             })
-        traj = compute_linear_movement(client, robot, process, movement, lm_options)
+        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticClampSyncLinearMovement):
         lm_options = options.copy()
         # * interpolation step size, in meter
@@ -72,7 +73,7 @@ def compute_movement(client, robot, process, movement, options=None):
             'gantry_attempts' : 200,
             'reachable_range' : (0.5, 3.0), # circle radius for sampling gantry base when computing IK
             })
-        traj = compute_linear_movement(client, robot, process, movement, lm_options)
+        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
         joint_resolutions = 1.0 if low_res else 0.05
         fm_options = options.copy()
@@ -83,7 +84,7 @@ def compute_movement(client, robot, process, movement, options=None):
             'resolutions' : joint_resolutions,
             'max_step' : 0.01,
             })
-        traj = compute_free_movement(client, robot, process, movement, fm_options)
+        traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis)
     else:
         raise ValueError()
 
@@ -187,7 +188,7 @@ def get_movement_status(process, m, movement_types):
             return MovementStatus.neither_done
 
 def compute_selected_movements(client, robot, process, beam_id, priority, movement_types, movement_statuses, options=None,
-        viz_upon_found=False, step_sim=False):
+        viz_upon_found=False, step_sim=False, diagnosis=False):
     """Compute trajectories for movements specified by a certain criteria.
 
     Parameters
@@ -221,7 +222,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
             print('-'*10)
             m_id = all_movements.index(m)
             print('({})'.format(m_id))
-            compute_movement(client, robot, process, m, options)
+            compute_movement(client, robot, process, m, options, diagnosis)
             altered_movements.append(m)
             if viz_upon_found:
                 with WorldSaver():
@@ -238,8 +239,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--problem', default='twelve_pieces_process.json', # pavilion.json
                         help='The name of the problem to solve')
+    parser.add_argument('--problem_subdir', default='.', # pavilion.json
+                        help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
-    parser.add_argument('-si', '--seq_i', default=0, help='individual step to plan.')
+    parser.add_argument('--seq_i', default=0, help='individual step to plan.')
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
     parser.add_argument('--debug', action='store_true', help='Debug mode')
@@ -248,7 +251,6 @@ def main():
     parser.add_argument('--disable_env', action='store_true', help='Disable environment collision geometry.')
     parser.add_argument('--view_states', action='store_true', help='Visualize states.')
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
-    parser.add_argument('--parse_temp', action='store_true', help='Parse temporary process file. Defaults to False.')
     parser.add_argument('--save_temp', action='store_true', help='Save a temporary process file. Defaults to False.')
     parser.add_argument('--viz_upon_found', action='store_true', help='Viz found traj immediately after found. Defaults to False.')
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
@@ -260,7 +262,7 @@ def main():
     seq_i = int(args.seq_i)
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
 
-    process = parse_process(args.problem, parse_temp=args.parse_temp)
+    process = parse_process(args.problem, subdir=args.problem_subdir)
     assembly = process.assembly
     beam_ids = [b for b in process.assembly.sequence]
     beam_id = beam_ids[seq_i]
@@ -279,7 +281,6 @@ def main():
 
     options = {
         'debug' : args.debug,
-        'diagnosis' : args.diagnosis,
         'low_res' : args.low_res,
     }
 
@@ -298,20 +299,20 @@ def main():
             wait_if_gui('End state')
         wait_for_user('Enter to exit.')
 
-    print_title('0) Before planning')
-    process.get_movement_summary_by_beam_id(beam_id)
-    if args.debug:
-        wait_for_user()
+    # print_title('0) Before planning')
+    # process.get_movement_summary_by_beam_id(beam_id)
+    # if args.debug:
+    #     wait_for_user()
 
     with LockRenderer(not (args.debug or args.diagnosis)):
     # with LockRenderer():
         compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
             [MovementStatus.neither_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim)
+            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
 
         compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
             [MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim)
+            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
 
         # since adjacent "neither_done" states will change to `one_sided` and get skipped
         # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
@@ -319,13 +320,13 @@ def main():
         # The movement statuses get changed on the fly.
         compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
             [MovementStatus.neither_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim)
+            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
 
         # Ideally, all the free motions should have both start and end conf specified.
-        # one_sided is used to sample the start conf if none is given (especially when `parse_temp` is not used).
+        # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
         compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
             [MovementStatus.both_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim)
+            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
 
     # * export computed movements
     if args.write:
