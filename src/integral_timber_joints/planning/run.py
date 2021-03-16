@@ -23,11 +23,11 @@ from integral_timber_joints.planning.visualization import visualize_movement_tra
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement
 
 # * Need now
-# TODO show diagnosis only when failed
+# TODO replay viz from file
 
 # * Next steps
-# TODO use linkstatistics joint weight and resolutions
 # TODO further smoothing transit/transfer trajectories
+# TODO use linkstatistics joint weight and resolutions
 # TODO backtrack in case of subsequent sampling cannot find a solution (linear movement with one end specified)
 
 def print_title(x):
