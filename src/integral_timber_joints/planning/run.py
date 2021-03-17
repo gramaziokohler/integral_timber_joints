@@ -11,12 +11,15 @@ from termcolor import cprint, colored
 from copy import copy, deepcopy
 
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
+from pybullet_planning import compute_inverse_kinematics
+import ikfast_abb_irb4600_40_255
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
-    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
+    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP, BARE_ARM_GROUP
 from integral_timber_joints.planning.utils import notify
-from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement
+from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement, \
+    _get_sample_bare_arm_ik_fn
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
@@ -61,8 +64,15 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'max_step' : 0.01, # interpolation step size, in meter
             'distance_threshold':0.002, # collision checking tolerance, in meter
             'gantry_attempts' : 100,
-            'cartesian_attempts' : 50,
+            'cartesian_attempts' : 10,
             'reachable_range' : (0.2, 2.8), # circle radius for sampling gantry base when computing IK
+            # -------------------
+            'planner_id' : 'IterativeIK',
+            'cartesian_move_group' : GANTRY_ARM_GROUP,
+            # -------------------
+            # 'planner_id' : 'LadderGraph',
+            # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
+            # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticClampSyncLinearMovement):
@@ -72,8 +82,15 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'max_step' : 0.02, # interpolation step size, in meter
             'distance_threshold':0.002, # collision checking tolerance, in meter
             'gantry_attempts' : 200,
-            'cartesian_attempts' : 50,
-            'reachable_range' : (0.5, 3.0), # circle radius for sampling gantry base when computing IK
+            'cartesian_attempts' : 10,
+            'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
+            # -------------------
+            'planner_id' : 'IterativeIK',
+            'cartesian_move_group' : GANTRY_ARM_GROUP,
+            # -------------------
+            # 'planner_id' : 'LadderGraph',
+            # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
+            # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
@@ -284,6 +301,7 @@ def main():
     options = {
         'debug' : args.debug,
         'low_res' : args.low_res,
+        # 'diagnosis' : args.diagnosis,
     }
 
     all_movements = process.get_movements_by_beam_id(beam_id)
@@ -307,7 +325,7 @@ def main():
     #     wait_for_user()
 
     # not (args.debug or args.diagnosis)
-    with LockRenderer() as lockrenderer:
+    with LockRenderer(not args.debug) as lockrenderer:
         options['lockrenderer'] = lockrenderer
         compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
             [MovementStatus.neither_done, MovementStatus.one_sided],

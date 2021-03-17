@@ -14,17 +14,16 @@ from integral_timber_joints.process.state import get_object_from_flange
 import ikfast_abb_irb4600_40_255
 from pybullet_planning import GREY
 from pybullet_planning import link_from_name, get_link_pose, draw_pose, multiply, \
-    joints_from_names, LockRenderer, WorldSaver, wait_for_user, joint_from_name, wait_if_gui
-from pybullet_planning import get_sample_fn, link_from_name, sample_tool_ik
-from pybullet_planning import uniform_pose_generator
+    joints_from_names, LockRenderer, WorldSaver, wait_for_user, joint_from_name, wait_if_gui, has_gui
+from pybullet_planning import link_from_name, sample_tool_ik
+from pybullet_planning import compute_inverse_kinematics
 
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
-from compas_fab_pychoreo_examples.ik_solver import InverseKinematicsSolver, get_ik_fn_from_ikfast
 
 from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
 from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
 from integral_timber_joints.planning.utils import reverse_trajectory, merge_trajectories, FRAME_TOL
-from integral_timber_joints.planning.state import set_state
+from integral_timber_joints.planning.state import set_state, gantry_base_generator
 from integral_timber_joints.planning.utils import notify
 
 ##############################
@@ -85,6 +84,7 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
     gantry_attempts = options.get('gantry_attempts') or 10
     cartesian_attempts = options.get('cartesian_attempts') or 5
     reachable_range = options.get('reachable_range') or (0.2, 2.8) # (0.68, 2.83)
+    cartesian_move_group = options.get('cartesian_move_group') or GANTRY_ARM_GROUP
     debug = options.get('debug', False)
 
     # * custom limits
@@ -158,45 +158,34 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
                 # start_state['robot'].current_frame = overwrite_end_frame
 
     interp_frames = [start_t0cf_frame, end_t0cf_frame]
-
-    sorted_gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
-    gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
-    gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint : GANTRY_Z_LIMIT})
-
     solution_found = False
     samples_cnt = ik_failures = path_failures = 0
 
     # TODO custom limits
     if start_conf is None and end_conf is None:
         # * sample from a ball near the pose
-        base_gen_fn = uniform_pose_generator(robot_uid, pose_from_frame(interp_frames[0], scale=1), reachable_range=reachable_range)
-        for gi in range(gantry_attempts):
+        gantry_base_gen_fn = gantry_base_generator(client, robot, interp_frames[0], reachable_range=reachable_range, scale=1.0)
+        for gi, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
             # if debug:
             cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
-            x, y, _ = next(base_gen_fn)
-            # TODO a more formal gantry_base_from_world_base
-            y *= -1
-            z, = gantry_z_sample_fn()
-            gantry_xyz_vals = [x,y,z]
-            gantry_conf = Configuration(gantry_xyz_vals,
-                    gantry_arm_joint_types[:3], gantry_arm_joint_names[:3])
-            client.set_robot_configuration(robot, gantry_conf)
             samples_cnt += 1
-
             arm_conf_vals = sample_ik_fn(pose_from_frame(interp_frames[0], scale=1))
             # * iterate through all 6-axis IK solution
-            for arm_conf_val in arm_conf_vals:
+            for ik_iter, arm_conf_val in enumerate(arm_conf_vals):
+                cprint('   -- IK iter {}'.format(ik_iter), 'magenta')
                 if arm_conf_val is None:
                     continue
-                gantry_arm_conf = Configuration(list(gantry_xyz_vals) + list(arm_conf_val),
+                gantry_arm_conf = Configuration(list(base_conf.values) + list(arm_conf_val),
                     gantry_arm_joint_types, gantry_arm_joint_names)
                 if not client.check_collisions(robot, gantry_arm_conf, options=options):
                     # * Cartesian planning, only for the six-axis arm (aka sub_conf)
                     for ci in range(cartesian_attempts):
                         # if debug:
+                        # TODO pybullet IK struggles for dual arm setting
+                        # see if we can create a x-y-z+6 axis subrobot clone
                         print('\tcartesian trial #{}'.format(ci))
                         cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-                            group=GANTRY_ARM_GROUP, options=options)
+                            group=cartesian_move_group, options=options)
                         if cart_conf is not None:
                             solution_found = True
                             cprint('Collision free! After {} ik, {} path failure over {} samples.'.format(
@@ -232,7 +221,7 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
             # if debug:
             print('\tcartesian trial #{}'.format(ci))
             cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-                group=GANTRY_ARM_GROUP, options=options)
+                group=cartesian_move_group, options=options)
             samples_cnt += 1
             if cart_conf is not None:
                 solution_found = True
@@ -244,31 +233,46 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
             else:
                 path_failures += 1
         else:
-            cprint('Cartesian Path planning (w/ prespecified st/end conf) failure after {} attempts.'.format(
-                samples_cnt), 'yellow')
+            lm_options = options.copy()
+            lm_options['planner_id'] = 'LadderGraph'
+            # lm_options['ik_function'] = lambda pose: compute_inverse_kinematics(ikfast_abb_irb4600_40_255.get_ik, pose, sampled=[])
+            lm_options['ik_function'] = _get_sample_bare_arm_ik_fn(client, robot)
+            # pose -> list(conf values)
+            cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
+                group=BARE_ARM_GROUP, options=lm_options)
+            if not cart_conf:
+                cprint('Cartesian Path planning (w/ prespecified st/end conf) failure after {} attempts of iterIK + 1 LadderGraph attemp.'.format(
+                    samples_cnt), 'yellow')
+            else:
+                cprint('Collision free! After {} path failure over {} samples on iterIK. LadderGraph nailed it.'.format(
+                    path_failures, samples_cnt), 'green')
 
     if cart_conf is None and diagnosis:
         lockrenderer = options.get('lockrenderer', None)
-        if lockrenderer:
+        if lockrenderer is not None:
             lockrenderer.restore()
-        wait_for_user()
         print('movement.allowed_collision_matrix: ', movement.allowed_collision_matrix)
         print('extra_disabled_collision_links: ', client.extra_disabled_collision_links)
         client._print_object_summary()
         d_options = options.copy()
         d_options['diagnosis'] = True
-        # with WorldSaver():
-        client.check_collisions(robot, gantry_arm_conf, options=d_options)
-        client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-            group=GANTRY_ARM_GROUP, options=d_options)
-        if lockrenderer:
+        in_collision = client.check_collisions(robot, gantry_arm_conf, options=d_options)
+
+        d_options['planner_id'] = 'LadderGraph'
+        d_options['ik_function'] = _get_sample_bare_arm_ik_fn(client, robot)
+        temp_cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
+            group=cartesian_move_group, options=d_options)
+
+        # print('in collision {} | cart conf {}'.format(in_collision, temp_cart_conf))
+        wait_if_gui('Diagnosis done.')
+        if lockrenderer is not None:
             lockrenderer = LockRenderer()
 
     if temp_name in client.extra_disabled_collision_links:
         del client.extra_disabled_collision_links[temp_name]
 
     traj = None
-    if solution_found:
+    if cart_conf:
         traj = cart_conf
         if start_conf is not None and not start_conf.close_to(traj.points[0], tol=1e-3):
             cprint('Start conf not coincided - max diff {:.5f}'.format(start_conf.max_difference(traj.points[0])), 'red')
@@ -310,22 +314,8 @@ def compute_free_movement(client, robot, process, movement, options=None, diagno
         start_t0cf_frame = copy(start_state['robot'].current_frame)
         start_t0cf_frame.point *= 1e-3
         if start_t0cf_frame is not None:
-            flange_pose = pose_from_frame(start_t0cf_frame, scale=1)
-            robot_uid = client.get_robot_pybullet_uid(robot)
-            # joint names
-            sorted_gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
-            gantry_arm_joint_types = robot.get_joint_types_by_names(sorted_gantry_joint_names)
-            gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
-            # sampler
-            base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=reachable_range)
-            gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint : GANTRY_Z_LIMIT})
-            for _ in range(gantry_attempts):
-                # TODO a more formal gantry_base_from_world_base
-                x, y, _ = next(base_gen_fn)
-                y *= -1
-                z, = gantry_z_sample_fn()
-                gantry_xyz_vals = [x,y,z]
-                client.set_robot_configuration(robot, Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names))
+            gantry_base_gen_fn = gantry_base_generator(client, robot, start_t0cf_frame, reachable_range=reachable_range, scale=1.0)
+            for _, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
                 orig_start_conf = client.inverse_kinematics(robot, start_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
                 if orig_start_conf:
                     break
@@ -340,64 +330,6 @@ def compute_free_movement(client, robot, process, movement, options=None, diagno
     # TODO investigate why this happens
     if len(orig_start_conf.joint_names) == 0:
         orig_start_conf.joint_names = orig_end_conf.joint_names
-
-    # hotfix = True
-    # if 'Free Move to reach Pickup Approach' in movement.tag:
-    #     # * Start_conf -> (retraction) -> free motion -> end conf
-    #     forward = True
-    #     gantry_arm_conf = orig_start_conf
-    # elif 'Free Move to reach Storage Approach Frame' in movement.tag:
-    #     # * Start_conf -> free motion -> (retraction) -> end conf
-    #     forward = False
-    #     gantry_arm_conf = orig_end_conf
-    # else:
-    #     hotfix = False
-
-    # if hotfix:
-    #     client.set_robot_configuration(robot, gantry_arm_conf)
-    #     tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
-    #     tool0_frame = client.get_link_frame_from_name(robot, tool_link_name)
-    #     VER_RETRACTION_DISTANCE = 280 * 1e-3 # meter
-    #     # HOR_RETRACTION_DISTANCE = 400 * 1e-3 # meter
-    #     ver_retract_tf = Transformation.from_frame(Frame([0, 0, VER_RETRACTION_DISTANCE], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]))
-    #     # hor_retract_tf = Transformation.from_frame(Frame([-HOR_RETRACTION_DISTANCE, 0, 0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]))
-    #     tool0_frame_ver_retract = tool0_frame.transformed(ver_retract_tf)
-    #     # tool0_frame_hor_retract = tool0_frame_ver_retract.transformed(hor_retract_tf)
-
-    #     # interp_frames = [tool0_frame, tool0_frame_ver_retract, tool0_frame_hor_retract]
-    #     interp_frames = [tool0_frame, tool0_frame_ver_retract]
-    #     for frame in interp_frames:
-    #         draw_pose(pose_from_frame(frame))
-    #     # wait_if_gui('hotfix cartesian')
-
-    #     # options['diagnosis'] = True
-    #     samples_cnt = path_failures = 0
-    #     for _ in range(10):
-    #         with WorldSaver():
-    #             cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-    #                 group=GANTRY_ARM_GROUP, options=options)
-    #         samples_cnt += 1
-    #         if cart_conf is not None:
-    #             cprint('(hotfix retraction for free motion) Collision free! After {} path failure over {} samples.'.format(
-    #                 path_failures, samples_cnt), 'green')
-    #             if not forward:
-    #                 cart_conf = reverse_trajectory(cart_conf)
-    #             break
-    #         else:
-    #             path_failures += 1
-    #     else:
-    #         cprint('(hotfix retraction for free motion) Cartesian Path planning (w/ prespecified st/end conf) failure after {} attempts.'.format(
-    #             samples_cnt), 'yellow')
-    #         return None
-    #     if forward:
-    #         # * Start_conf -> (retraction) -> free motion -> end conf
-    #         start_conf = cart_conf.points[-1]
-    #         end_conf = orig_end_conf
-    #     else:
-    #         # * Start_conf -> free motion -> (retraction) -> end conf
-    #         start_conf = orig_start_conf
-    #         end_conf = cart_conf.points[0]
-    # else:
 
     start_conf = orig_start_conf
     end_conf = orig_end_conf
@@ -415,10 +347,6 @@ def compute_free_movement(client, robot, process, movement, options=None, diagno
         cprint('No free movement found for {}.'.format(movement.short_summary), 'red')
     else:
         cprint('Free movement found for {}!'.format(movement.short_summary), 'green')
-
-    # if hotfix and traj is not None:
-    #     trajs = [cart_conf, traj] if forward else [traj, cart_conf]
-    #     traj = merge_trajectories(trajs)
 
     if traj is None and diagnosis:
         client._print_object_summary()
