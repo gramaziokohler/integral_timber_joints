@@ -161,7 +161,7 @@ def set_state(client, robot, process, state_from_object, initialize=False, scale
                     # TODO wrap this base sampling + 6-axis IK into inverse_kinematics for the client
                     # * sample from a ball near the pose
                     base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=reachable_range)
-                    for _ in range(gantry_attempts):
+                    for _ in range(5000):
                         # TODO a more formal gantry_base_from_world_base
                         x, y, yaw = next(base_gen_fn)
                         y *= -1
