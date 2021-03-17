@@ -60,8 +60,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         lm_options.update({
             'max_step' : 0.01, # interpolation step size, in meter
             'distance_threshold':0.002, # collision checking tolerance, in meter
-            'gantry_attempts' : 100,
-            'cartesian_attempts' : 50,
+            'gantry_attempts' : 200,
+            'cartesian_attempts' : 200,
             'reachable_range' : (0.2, 2.8), # circle radius for sampling gantry base when computing IK
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
@@ -72,7 +72,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'max_step' : 0.02, # interpolation step size, in meter
             'distance_threshold':0.002, # collision checking tolerance, in meter
             'gantry_attempts' : 200,
-            'cartesian_attempts' : 50,
+            'cartesian_attempts' : 200,
             'reachable_range' : (0.5, 3.0), # circle radius for sampling gantry base when computing IK
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
@@ -80,8 +80,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         joint_resolutions = 1.0 if low_res else 0.05
         fm_options = options.copy()
         fm_options.update({
-            'rrt_restarts' : 100,
-            'rrt_iterations' : 50,
+            'rrt_restarts' : 200,
+            'rrt_iterations' : 200,
             'smooth_iterations': 100,
             'resolutions' : joint_resolutions,
             'max_step' : 0.01,
