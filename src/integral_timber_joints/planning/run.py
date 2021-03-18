@@ -97,8 +97,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         joint_resolutions = 1.0 if low_res else 0.05
         fm_options = options.copy()
         fm_options.update({
-            'rrt_restarts' : 100,
-            'rrt_iterations' : 50,
+            'rrt_restarts' : 200,
+            'rrt_iterations' : 200,
             'smooth_iterations': 100,
             'resolutions' : joint_resolutions,
             'max_step' : 0.01,
