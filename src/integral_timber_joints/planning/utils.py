@@ -72,3 +72,7 @@ def notify(msg=''):
         )
     except ImportError:
         cprint(msg, 'yellow')
+
+def print_title(x):
+    print('\n\n')
+    cprint(x, 'blue', 'on_white', attrs=['bold'])

@@ -17,7 +17,7 @@ import ikfast_abb_irb4600_40_255
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
     R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP, BARE_ARM_GROUP
-from integral_timber_joints.planning.utils import notify
+from integral_timber_joints.planning.utils import notify, print_title
 from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement, \
     _get_sample_bare_arm_ik_fn
 from integral_timber_joints.planning.state import set_state
@@ -32,10 +32,6 @@ from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMov
 # TODO further smoothing transit/transfer trajectories
 # TODO use linkstatistics joint weight and resolutions
 # TODO backtrack in case of subsequent sampling cannot find a solution (linear movement with one end specified)
-
-def print_title(x):
-    print('\n\n')
-    cprint(x, 'blue', 'on_white', attrs=['bold'])
 
 ###########################################
 
