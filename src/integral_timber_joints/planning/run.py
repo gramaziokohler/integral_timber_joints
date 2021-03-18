@@ -11,28 +11,27 @@ from termcolor import cprint, colored
 from copy import copy, deepcopy
 
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
+from pybullet_planning import compute_inverse_kinematics
+import ikfast_abb_irb4600_40_255
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
-    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
-from integral_timber_joints.planning.utils import notify
-from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement
+    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP, BARE_ARM_GROUP
+from integral_timber_joints.planning.utils import notify, print_title
+from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement, \
+    _get_sample_bare_arm_ik_fn
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement
 
 # * Need now
-# TODO show diagnosis only when failed
+# TODO replay viz from file
 
 # * Next steps
-# TODO use linkstatistics joint weight and resolutions
 # TODO further smoothing transit/transfer trajectories
+# TODO use linkstatistics joint weight and resolutions
 # TODO backtrack in case of subsequent sampling cannot find a solution (linear movement with one end specified)
-
-def print_title(x):
-    print('\n\n')
-    cprint(x, 'blue', 'on_white', attrs=['bold'])
 
 ###########################################
 
@@ -60,9 +59,16 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         lm_options.update({
             'max_step' : 0.01, # interpolation step size, in meter
             'distance_threshold':0.002, # collision checking tolerance, in meter
-            'gantry_attempts' : 200,
-            'cartesian_attempts' : 200,
+            'gantry_attempts' : 500,  # gantry attempt matters more
+            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help
             'reachable_range' : (0.2, 2.8), # circle radius for sampling gantry base when computing IK
+            # -------------------
+            'planner_id' : 'IterativeIK',
+            'cartesian_move_group' : GANTRY_ARM_GROUP,
+            # -------------------
+            # 'planner_id' : 'LadderGraph',
+            # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
+            # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticClampSyncLinearMovement):
@@ -70,10 +76,17 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         # * interpolation step size, in meter
         lm_options.update({
             'max_step' : 0.02, # interpolation step size, in meter
-            'distance_threshold':0.002, # collision checking tolerance, in meter
-            'gantry_attempts' : 200,
-            'cartesian_attempts' : 200,
-            'reachable_range' : (0.5, 3.0), # circle radius for sampling gantry base when computing IK
+            'distance_threshold':0.0025, # collision checking tolerance, in meter
+            'gantry_attempts' : 500,  # gantry attempt matters more
+            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
+            'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
+            # -------------------
+            'planner_id' : 'IterativeIK',
+            'cartesian_move_group' : GANTRY_ARM_GROUP,
+            # -------------------
+            # 'planner_id' : 'LadderGraph',
+            # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
+            # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
@@ -98,10 +111,11 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         start_state['robot'].kinematic_config = traj.points[0]
         end_state = process.get_movement_end_state(movement)
         end_state['robot'].kinematic_config = traj.points[-1]
+        return movement
     else:
         notify('Planning fails! Go back to the command line now!')
         wait_for_user('Planning fails, press Enter to continue. Try exit and running again - may the Luck be with you next time :)')
-    return movement
+        return None
 
 def propagate_states(process, selected_movements, all_movements):
     for target_m in selected_movements:
@@ -123,7 +137,7 @@ def propagate_states(process, selected_movements, all_movements):
             back_end_conf = back_end_state['robot'].kinematic_config
             if back_end_conf is not None and \
                 not back_end_conf.close_to(target_start_conf, tol=1e-3):
-                    cprint('Start conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_start_conf)), 'red')
+                    cprint('Backward Prop: Start conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_start_conf)), 'red')
                     notify('Warning! Go back to the command line now!')
                     wait_for_user()
             # else:
@@ -141,7 +155,7 @@ def propagate_states(process, selected_movements, all_movements):
             # TODO check why there is discrepancy sometimes
             if forward_start_conf is not None and \
                 not forward_start_conf.close_to(target_end_conf, tol=1e-3):
-                    cprint('End conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_end_conf)), 'red')
+                    cprint('Forward Prop: End conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_end_conf)), 'red')
                     notify('Warning! Go back to the command line now!')
                     wait_for_user()
             print('\t- future (forward): ({}) {}'.format(colored(forward_id, 'green'), forward_m.short_summary))
@@ -190,7 +204,7 @@ def get_movement_status(process, m, movement_types):
             return MovementStatus.neither_done
 
 def compute_selected_movements(client, robot, process, beam_id, priority, movement_types, movement_statuses, options=None,
-        viz_upon_found=False, step_sim=False, diagnosis=False):
+        viz_upon_found=False, diagnosis=False):
     """Compute trajectories for movements specified by a certain criteria.
 
     Parameters
@@ -224,16 +238,36 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
             print('-'*10)
             m_id = all_movements.index(m)
             print('({})'.format(m_id))
-            compute_movement(client, robot, process, m, options, diagnosis)
+            updated_m = compute_movement(client, robot, process, m, options, diagnosis)
+            # if updated_m is None:
+            #     # TODO trace immediate neighnoring movements with traj
+            #     movements_to_recompute = []
+            #     back_id = m_id-1
+            #     while back_id > 0 :
+            #         if all_movements[back_id].planning_priority != -1:
+            #             if all_movements[back_id].trajectory:
+            #                 movements_to_recompute.append(all_movements[back_id])
+            #             break
+            #         back_id -= 1
+            #     forward_id = m_id+1
+            #     while forward_id < len(all_movements) :
+            #         if all_movements[forward_id].planning_priority != -1:
+            #             if all_movements[forward_id].trajectory:
+            #                 movements_to_recompute.append(all_movements[forward_id])
+            #             break
+            #         forward_id += 1
+            #     if movements_to_recompute:
+            #     return movements_to_recompute
             altered_movements.append(m)
             if viz_upon_found:
                 with WorldSaver():
-                    visualize_movement_trajectory(client, robot, process, m, step_sim=step_sim)
+                    visualize_movement_trajectory(client, robot, process, m, step_sim=True)
         # * propagate to -1 movements
         propagate_states(process, altered_movements, all_movements)
 
     print('\n\n')
     process.get_movement_summary_by_beam_id(beam_id)
+    return []
 
 #################################
 
@@ -284,6 +318,7 @@ def main():
     options = {
         'debug' : args.debug,
         'low_res' : args.low_res,
+        # 'diagnosis' : args.diagnosis,
     }
 
     all_movements = process.get_movements_by_beam_id(beam_id)
@@ -306,16 +341,19 @@ def main():
     # if args.debug:
     #     wait_for_user()
 
-    # not (args.debug or args.diagnosis)
-    with LockRenderer() as lockrenderer:
+    # max_attempts = 1
+    with LockRenderer(not args.debug) as lockrenderer:
         options['lockrenderer'] = lockrenderer
+        # TODO loop and backtrack
+        # for _ in range(max_attempts):
         compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
             [MovementStatus.neither_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
+            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
 
+        # TODO if fails remove the related movement's trajectory and try again
         compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
             [MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
+            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
 
         # since adjacent "neither_done" states will change to `one_sided` and get skipped
         # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
@@ -323,13 +361,13 @@ def main():
         # The movement statuses get changed on the fly.
         compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
             [MovementStatus.neither_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
+            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
 
         # Ideally, all the free motions should have both start and end conf specified.
         # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
         compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
             [MovementStatus.both_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
+            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
 
     # * export computed movements
     if args.write:

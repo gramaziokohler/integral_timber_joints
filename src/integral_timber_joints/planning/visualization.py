@@ -1,7 +1,7 @@
 import numpy as np
 from termcolor import cprint
 
-from pybullet_planning import GREY, BLUE, YELLOW, GREEN, draw_pose, has_gui, wait_if_gui, wait_for_duration
+from pybullet_planning import GREY, BLUE, YELLOW, GREEN, draw_pose, has_gui, wait_if_gui, wait_for_duration, LockRenderer
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement
 
 ################################################
@@ -53,27 +53,29 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
         False will simulate in a smooth fashion, by default True
     """
     from integral_timber_joints.planning.stream import set_state
-    if not has_gui() or not isinstance(m, RoboticMovement):
+    if not has_gui():
         return
     print('===')
     cprint('Viz:')
     start_state = process.get_movement_start_state(m)
-    set_state(client, robot, process, start_state)
-    if m.trajectory is not None:
-        cprint(m.short_summary, 'green')
-        for jt_traj_pt in m.trajectory.points:
-            client.set_robot_configuration(robot, jt_traj_pt)
-            if step_sim:
-                wait_if_gui('Step conf.')
-            else:
-                wait_for_duration(0.1)
-    else:
-        has_start_conf = process.movement_has_start_robot_config(m)
-        has_end_conf = process.movement_has_end_robot_config(m)
-        cprint('No traj found for {}\n -- has_start_conf {}, has_end_conf {}'.format(m.short_summary,
-            has_start_conf, has_end_conf), 'yellow')
+    with LockRenderer():
+        set_state(client, robot, process, start_state)
+    if isinstance(m, RoboticMovement):
+        if m.trajectory is not None:
+            cprint(m.short_summary, 'green')
+            for jt_traj_pt in m.trajectory.points:
+                client.set_robot_configuration(robot, jt_traj_pt)
+                if step_sim:
+                    wait_if_gui('Step conf.')
+                else:
+                    wait_for_duration(0.1)
+        else:
+            has_start_conf = process.movement_has_start_robot_config(m)
+            has_end_conf = process.movement_has_end_robot_config(m)
+            cprint('No traj found for {}\n -- has_start_conf {}, has_end_conf {}'.format(m.short_summary,
+                has_start_conf, has_end_conf), 'yellow')
     end_state = process.get_movement_end_state(m)
-    set_state(client, robot, process, end_state)
+    with LockRenderer():
+        set_state(client, robot, process, end_state)
     if step_sim:
         wait_if_gui('End state.')
-
