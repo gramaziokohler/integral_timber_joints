@@ -8,7 +8,7 @@ from compas_fab.robots import RobotSemantics
 from compas.utilities import DataDecoder, DataEncoder
 
 from pybullet_planning import get_date
-from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement
+from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RobotClampAssemblyProcess
 
 HERE = os.path.dirname(__file__)
 EXTERNAL_DIR = os.path.abspath(os.path.join(HERE, '..', '..', '..', 'external'))
@@ -51,7 +51,7 @@ def get_process_path(assembly_name, subdir='.'):
     model_path = os.path.abspath(os.path.join(DESIGN_DIR, subdir, filename))
     return model_path
 
-def parse_process(process_name, subdir='.'):
+def parse_process(process_name, subdir='.') -> RobotClampAssemblyProcess:
     """parse a Process instance from a given process file name.
 
     Parameters
