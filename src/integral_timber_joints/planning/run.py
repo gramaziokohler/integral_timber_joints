@@ -63,8 +63,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         lm_options.update({
             'max_step' : 0.01, # interpolation step size, in meter
             'distance_threshold':0.002, # collision checking tolerance, in meter
-            'gantry_attempts' : 200,
-            'cartesian_attempts' : 5,
+            'gantry_attempts' : 500,  # gantry attempt matters more
+            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help
             'reachable_range' : (0.2, 2.8), # circle radius for sampling gantry base when computing IK
             # -------------------
             'planner_id' : 'IterativeIK',
@@ -80,17 +80,17 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         # * interpolation step size, in meter
         lm_options.update({
             'max_step' : 0.02, # interpolation step size, in meter
-            'distance_threshold':0.002, # collision checking tolerance, in meter
-            'gantry_attempts' : 200,
-            'cartesian_attempts' : 1, # ladder graph only needs one shot
+            'distance_threshold':0.0025, # collision checking tolerance, in meter
+            'gantry_attempts' : 500,  # gantry attempt matters more
+            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
             'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
             # -------------------
-            # 'planner_id' : 'IterativeIK',
-            # 'cartesian_move_group' : GANTRY_ARM_GROUP,
+            'planner_id' : 'IterativeIK',
+            'cartesian_move_group' : GANTRY_ARM_GROUP,
             # -------------------
-            'planner_id' : 'LadderGraph',
-            'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
-            'cartesian_move_group' : BARE_ARM_GROUP,
+            # 'planner_id' : 'LadderGraph',
+            # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
+            # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
