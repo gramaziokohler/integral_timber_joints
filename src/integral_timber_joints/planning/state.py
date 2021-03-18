@@ -70,7 +70,7 @@ def set_state(client, robot, process, state_from_object, initialize=False, scale
         [description]
     """
     options = options or {}
-    gantry_attempts = options.get('gantry_attempts') or 500
+    gantry_attempts = options.get('gantry_attempts') or 1000
     debug = options.get('debug', False)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)

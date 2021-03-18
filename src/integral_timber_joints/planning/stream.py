@@ -160,6 +160,7 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
     interp_frames = [start_t0cf_frame, end_t0cf_frame]
     solution_found = False
     samples_cnt = ik_failures = path_failures = 0
+    planner_id = options.get('planner_id', 'IterativeIK')
 
     # TODO custom limits
     if start_conf is None and end_conf is None:
@@ -188,8 +189,8 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
                             group=cartesian_move_group, options=options)
                         if cart_conf is not None:
                             solution_found = True
-                            cprint('Collision free! After {} ik, {} path failure over {} samples.'.format(
-                                ik_failures, path_failures, samples_cnt), 'green')
+                            cprint('Plan found by {}! After {} ik, {} path failure over {} samples.'.format(
+                                planner_id, ik_failures, path_failures, samples_cnt), 'green')
                             break
                         else:
                             path_failures += 1
@@ -200,18 +201,18 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
             if solution_found:
                 break
         else:
-            cprint('Cartesian Path planning failure after {} attempts | {} due to IK, {} due to Cart.'.format(
-                samples_cnt, ik_failures, path_failures), 'yellow')
+            cprint('Cartesian Path planning failure ({}) after {} attempts | {} due to IK, {} due to Cart.'.format(
+                planner_id, samples_cnt, ik_failures, path_failures), 'yellow')
     else:
         # TODO make sure start/end conf coincides if provided
         if start_conf is not None and end_conf is not None:
             cprint('Both start/end confs are pre-specified, problem might be too stiff to be solved.', 'yellow')
         if start_conf:
-            cprint('One-sided Cartesian planning : start conf set, forward mode')
+            cprint('One-sided Cartesian planning : start conf set, forward mode', 'cyan')
             forward = True
             gantry_arm_conf = start_conf
         else:
-            cprint('One-sided Cartesian planning : end conf set, backward mode')
+            cprint('One-sided Cartesian planning : end conf set, backward mode', 'cyan')
             forward = False
             gantry_arm_conf = end_conf
             interp_frames = interp_frames[::-1]
@@ -225,14 +226,15 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
             samples_cnt += 1
             if cart_conf is not None:
                 solution_found = True
-                cprint('Collision free! After {} path failure over {} samples.'.format(
-                    path_failures, samples_cnt), 'green')
+                cprint('Plan found by {}! After {} path failure over {} samples.'.format(
+                    planner_id, path_failures, samples_cnt), 'green')
                 if not forward:
                     cart_conf = reverse_trajectory(cart_conf)
                 break
             else:
                 path_failures += 1
         else:
+            # fallback to ladder graph
             lm_options = options.copy()
             lm_options['planner_id'] = 'LadderGraph'
             # lm_options['ik_function'] = lambda pose: compute_inverse_kinematics(ikfast_abb_irb4600_40_255.get_ik, pose, sampled=[])
@@ -241,16 +243,17 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
             cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
                 group=BARE_ARM_GROUP, options=lm_options)
             if not cart_conf:
-                cprint('Cartesian Path planning (w/ prespecified st/end conf) failure after {} attempts of iterIK + 1 LadderGraph attemp.'.format(
-                    samples_cnt), 'yellow')
+                cprint('Cartesian Path planning (w/ prespecified st or end conf) failure after\n{} attempts of {} + 1 LadderGraph attempt.'.format(
+                    planner_id, samples_cnt), 'yellow')
             else:
-                cprint('Collision free! After {} path failure over {} samples on iterIK. LadderGraph nailed it.'.format(
-                    path_failures, samples_cnt), 'green')
+                cprint('Plan found by LadderGraph! After {} path failure (by {}) over {} samples.'.format(
+                    path_failures, planner_id, samples_cnt), 'green')
 
     if cart_conf is None and diagnosis:
         lockrenderer = options.get('lockrenderer', None)
         if lockrenderer is not None:
             lockrenderer.restore()
+        print('Start diagnosis.')
         print('movement.allowed_collision_matrix: ', movement.allowed_collision_matrix)
         print('extra_disabled_collision_links: ', client.extra_disabled_collision_links)
         client._print_object_summary()
@@ -275,10 +278,10 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
     if cart_conf:
         traj = cart_conf
         if start_conf is not None and not start_conf.close_to(traj.points[0], tol=1e-3):
-            cprint('Start conf not coincided - max diff {:.5f}'.format(start_conf.max_difference(traj.points[0])), 'red')
+            cprint('LinearMovement: Start conf not coincided - max diff {:.5f}'.format(start_conf.max_difference(traj.points[0])), 'red')
             wait_for_user()
         if end_conf is not None and not end_conf.close_to(traj.points[-1], tol=1e-3):
-            cprint('End conf not coincided - max diff {:.5f}'.format(end_conf.max_difference(traj.points[-1])), 'red')
+            cprint('LinearMovement: End conf not coincided - max diff {:.5f}'.format(end_conf.max_difference(traj.points[-1])), 'red')
             notify('Warning! Go back to the command line now!')
             wait_for_user()
     else:
@@ -353,6 +356,7 @@ def compute_free_movement(client, robot, process, movement, options=None, diagno
         lockrenderer = options.get('lockrenderer', None)
         if lockrenderer:
             lockrenderer.restore()
+        print('Start diagnosis.')
         d_options = options.copy()
         d_options['diagnosis'] = True
         traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
