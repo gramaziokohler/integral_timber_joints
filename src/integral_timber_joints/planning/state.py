@@ -23,6 +23,27 @@ from integral_timber_joints.planning.utils import FRAME_TOL
 
 ##############################
 
+def gantry_base_generator(client, robot, flange_frame, reachable_range=(0.2,2.5), scale=1.0):
+    robot_uid = client.get_robot_pybullet_uid(robot)
+    flange_pose = pose_from_frame(flange_frame, scale=scale)
+
+    sorted_gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
+    gantry_arm_joint_types = robot.get_joint_types_by_names(sorted_gantry_joint_names)
+    gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
+
+    gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint : GANTRY_Z_LIMIT})
+    base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=reachable_range)
+
+    while True:
+        # TODO a more formal gantry_base_from_world_base
+        x, y, _ = next(base_gen_fn)
+        y *= -1
+        z, = gantry_z_sample_fn()
+        gantry_xyz_vals = [x,y,z]
+        gantry_base_conf = Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names)
+        client.set_robot_configuration(robot, gantry_base_conf)
+        yield gantry_base_conf
+
 def set_state(client, robot, process, state_from_object, initialize=False, scale=1e-3, options=None):
     """Set the pybullet client to a given state
 
@@ -49,7 +70,7 @@ def set_state(client, robot, process, state_from_object, initialize=False, scale
         [description]
     """
     options = options or {}
-    gantry_attempts = options.get('gantry_attempts') or 500
+    gantry_attempts = options.get('gantry_attempts') or 5000
     debug = options.get('debug', False)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
@@ -58,10 +79,6 @@ def set_state(client, robot, process, state_from_object, initialize=False, scale
     # robot needed for creating attachments
     robot_uid = client.get_robot_pybullet_uid(robot)
     flange_link_name = robot.get_end_effector_link_name(group=GANTRY_ARM_GROUP)
-    sorted_gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
-    gantry_arm_joint_types = robot.get_joint_types_by_names(sorted_gantry_joint_names)
-    gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
-    gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint : GANTRY_Z_LIMIT})
 
     with LockRenderer(not debug):
         # * Do robot first
@@ -155,25 +172,18 @@ def set_state(client, robot, process, state_from_object, initialize=False, scale
                     object_frame = deepcopy(state_from_object[object_id].current_frame)
                     flange_frame.point *= scale
                     object_frame.point *= scale
-                    flange_pose = pose_from_frame(flange_frame, scale=1)
 
-                    # print('flange frame: {} | object frame {} | flange pose {}'.format(flange_frame, object_frame, flange_pose))
-                    # TODO wrap this base sampling + 6-axis IK into inverse_kinematics for the client
                     # * sample from a ball near the pose
-                    base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=reachable_range)
-                    for _ in range(5000):
-                        # TODO a more formal gantry_base_from_world_base
-                        x, y, yaw = next(base_gen_fn)
-                        y *= -1
-                        z, = gantry_z_sample_fn()
-                        gantry_xyz_vals = [x,y,z]
-                        client.set_robot_configuration(robot, Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names))
-                        conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
-                            options={'avoid_collisions' : False})
-                        if conf is not None:
-                            break
-                    else:
-                        raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, gantry_attempts))
+                    gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0)
+                    with HideOutput():
+                        for _, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
+                            # TODO a more formal gantry_base_from_world_base
+                            conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
+                                options={'avoid_collisions' : False})
+                            if conf is not None:
+                                break
+                        else:
+                            raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, gantry_attempts))
                     client.set_robot_configuration(robot, conf)
                     # wait_if_gui('Conf set for attachment')
 
