@@ -208,7 +208,7 @@ def get_movement_status(process, m, movement_types):
             return MovementStatus.neither_done
 
 def compute_selected_movements(client, robot, process, beam_id, priority, movement_types, movement_statuses, options=None,
-        viz_upon_found=False, step_sim=False, diagnosis=False):
+        viz_upon_found=False, diagnosis=False):
     """Compute trajectories for movements specified by a certain criteria.
 
     Parameters
@@ -265,7 +265,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
             altered_movements.append(m)
             if viz_upon_found:
                 with WorldSaver():
-                    visualize_movement_trajectory(client, robot, process, m, step_sim=step_sim)
+                    visualize_movement_trajectory(client, robot, process, m, step_sim=True)
         # * propagate to -1 movements
         propagate_states(process, altered_movements, all_movements)
 
@@ -352,12 +352,12 @@ def main():
         # for _ in range(max_attempts):
         compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
             [MovementStatus.neither_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
+            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
 
         # TODO if fails remove the related movement's trajectory and try again
         compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
             [MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
+            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
 
         # since adjacent "neither_done" states will change to `one_sided` and get skipped
         # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
@@ -365,13 +365,13 @@ def main():
         # The movement statuses get changed on the fly.
         compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
             [MovementStatus.neither_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
+            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
 
         # Ideally, all the free motions should have both start and end conf specified.
         # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
         compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
             [MovementStatus.both_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, step_sim=args.step_sim, diagnosis=args.diagnosis)
+            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
 
     # * export computed movements
     if args.write:

@@ -208,11 +208,11 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
         if start_conf is not None and end_conf is not None:
             cprint('Both start/end confs are pre-specified, problem might be too stiff to be solved.', 'yellow')
         if start_conf:
-            cprint('One-sided Cartesian planning : start conf set, forward mode', 'cyan')
+            cprint('One-sided Cartesian planning : start conf set, forward mode', 'blue')
             forward = True
             gantry_arm_conf = start_conf
         else:
-            cprint('One-sided Cartesian planning : end conf set, backward mode', 'cyan')
+            cprint('One-sided Cartesian planning : end conf set, backward mode', 'blue')
             forward = False
             gantry_arm_conf = end_conf
             interp_frames = interp_frames[::-1]
@@ -246,6 +246,8 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
                 cprint('Cartesian Path planning (w/ prespecified st or end conf) failure after\n{} attempts of {} + 1 LadderGraph attempt.'.format(
                     planner_id, samples_cnt), 'yellow')
             else:
+                if not forward:
+                    cart_conf = reverse_trajectory(cart_conf)
                 cprint('Plan found by LadderGraph! After {} path failure (by {}) over {} samples.'.format(
                     path_failures, planner_id, samples_cnt), 'green')
 
@@ -261,8 +263,8 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
         d_options['diagnosis'] = True
         in_collision = client.check_collisions(robot, gantry_arm_conf, options=d_options)
 
-        d_options['planner_id'] = 'LadderGraph'
-        d_options['ik_function'] = _get_sample_bare_arm_ik_fn(client, robot)
+        # d_options['planner_id'] = 'LadderGraph'
+        # d_options['ik_function'] = _get_sample_bare_arm_ik_fn(client, robot)
         temp_cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
             group=cartesian_move_group, options=d_options)
 
