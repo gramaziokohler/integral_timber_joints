@@ -24,7 +24,7 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
     distance_threshold = options.get('distance_threshold', 0.0)
     # buffering distance, If the distance between objects exceeds this maximum distance, no points may be returned.
     max_distance = options.get('max_distance', 0.0)
-    option_disabled_link_names = options.get('extra_disabled_collisions') or set()
+    option_disabled_link_names = options.get('extra_disabled_collisions', set())
 
     # * update state
     set_state(client, robot, process, state_from_object, options=options)
