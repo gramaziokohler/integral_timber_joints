@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 import pybullet
 from termcolor import cprint
 from copy import copy, deepcopy
@@ -6,9 +7,9 @@ from itertools import product
 from collections import defaultdict
 
 from compas.geometry import Frame, distance_point_point, Transformation
-from compas_fab.robots import Configuration
+from compas_fab.robots import Configuration, Robot
 
-from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement
+from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement
 from integral_timber_joints.process.state import get_object_from_flange
 
 import ikfast_abb_irb4600_40_255
@@ -20,6 +21,7 @@ from pybullet_planning import uniform_pose_generator
 
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 from compas_fab_pychoreo_examples.ik_solver import InverseKinematicsSolver, get_ik_fn_from_ikfast
+from compas_fab_pychoreo.client import PyChoreoClient
 
 from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
 from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
@@ -29,7 +31,8 @@ from integral_timber_joints.planning.utils import notify
 
 ##############################
 
-def fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP):
+
+def fill_in_tool_path(client: PyChoreoClient, robot: Robot, traj, group=GANTRY_ARM_GROUP):
     """Fill FK frames into `path_from_link` attribute to the given trajectory
     Note that the `path_from_link` attribute will not be serialized if exported as json.
 
@@ -49,7 +52,8 @@ def fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP):
 
 ##############################
 
-def _get_sample_bare_arm_ik_fn(client, robot):
+
+def _get_sample_bare_arm_ik_fn(client: PyChoreoClient, robot: Robot):
     """get the IKFast ik function for the 6-axis ABB robot.
 
     Returns
@@ -63,6 +67,7 @@ def _get_sample_bare_arm_ik_fn(client, robot):
     ik_base_link = link_from_name(robot_uid, ik_base_link_name)
     ik_joints = joints_from_names(robot_uid, ik_joint_names)
     ikfast_fn = ikfast_abb_irb4600_40_255.get_ik
+
     def get_sample_ik_fn(robot, ik_fn, robot_base_link, ik_joints, tool_from_root=None):
         def sample_ik_fn(world_from_tcp):
             if tool_from_root:
@@ -74,9 +79,10 @@ def _get_sample_bare_arm_ik_fn(client, robot):
 
 ##############################
 
-def compute_linear_movement(client, robot, process, movement, options=None, diagnosis=False):
+
+def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
     assert isinstance(movement, RoboticLinearMovement) or \
-           isinstance(movement, RoboticClampSyncLinearMovement)
+        isinstance(movement, RoboticClampSyncLinearMovement)
     robot_uid = client.get_robot_pybullet_uid(robot)
 
     # * options
@@ -84,7 +90,7 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
     options = options or {}
     gantry_attempts = options.get('gantry_attempts') or 10
     cartesian_attempts = options.get('cartesian_attempts') or 5
-    reachable_range = options.get('reachable_range') or (0.2, 2.8) # (0.68, 2.83)
+    reachable_range = options.get('reachable_range') or (0.2, 2.8)  # (0.68, 2.83)
     debug = options.get('debug', False)
 
     # * custom limits
@@ -124,7 +130,7 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
         for parent_body, child_body in product(o1_bodies, o2_bodies):
             client.extra_disabled_collision_links[temp_name].add(
                 ((parent_body, None), (child_body, None))
-                )
+            )
     # TODO special check for CLampSyncMove:
     # you can disable (clamps - gripper) and (clamps - toolchanger) during the move,
     # but double check the end state (with jaw set to closed state) if they collide.
@@ -161,7 +167,7 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
 
     sorted_gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
     gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
-    gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint : GANTRY_Z_LIMIT})
+    gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint: GANTRY_Z_LIMIT})
 
     solution_found = False
     samples_cnt = ik_failures = path_failures = 0
@@ -177,9 +183,9 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
             # TODO a more formal gantry_base_from_world_base
             y *= -1
             z, = gantry_z_sample_fn()
-            gantry_xyz_vals = [x,y,z]
+            gantry_xyz_vals = [x, y, z]
             gantry_conf = Configuration(gantry_xyz_vals,
-                    gantry_arm_joint_types[:3], gantry_arm_joint_names[:3])
+                                        gantry_arm_joint_types[:3], gantry_arm_joint_names[:3])
             client.set_robot_configuration(robot, gantry_conf)
             samples_cnt += 1
 
@@ -189,14 +195,14 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
                 if arm_conf_val is None:
                     continue
                 gantry_arm_conf = Configuration(list(gantry_xyz_vals) + list(arm_conf_val),
-                    gantry_arm_joint_types, gantry_arm_joint_names)
+                                                gantry_arm_joint_types, gantry_arm_joint_names)
                 if not client.check_collisions(robot, gantry_arm_conf, options=options):
                     # * Cartesian planning, only for the six-axis arm (aka sub_conf)
                     for ci in range(cartesian_attempts):
                         # if debug:
                         print('\tcartesian trial #{}'.format(ci))
                         cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-                            group=GANTRY_ARM_GROUP, options=options)
+                                                                 group=GANTRY_ARM_GROUP, options=options)
                         if cart_conf is not None:
                             solution_found = True
                             cprint('Collision free! After {} ik, {} path failure over {} samples.'.format(
@@ -232,7 +238,7 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
             # if debug:
             print('\tcartesian trial #{}'.format(ci))
             cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-                group=GANTRY_ARM_GROUP, options=options)
+                                                     group=GANTRY_ARM_GROUP, options=options)
             samples_cnt += 1
             if cart_conf is not None:
                 solution_found = True
@@ -260,7 +266,7 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
         # with WorldSaver():
         client.check_collisions(robot, gantry_arm_conf, options=d_options)
         client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-            group=GANTRY_ARM_GROUP, options=d_options)
+                                     group=GANTRY_ARM_GROUP, options=d_options)
         if lockrenderer:
             lockrenderer = LockRenderer()
 
@@ -283,7 +289,8 @@ def compute_linear_movement(client, robot, process, movement, options=None, diag
 
 ##############################
 
-def compute_free_movement(client, robot, process, movement, options=None, diagnosis=False):
+
+def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
     assert isinstance(movement, RoboticFreeMovement)
     options = options or {}
     # * options
@@ -318,13 +325,13 @@ def compute_free_movement(client, robot, process, movement, options=None, diagno
             gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
             # sampler
             base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=reachable_range)
-            gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint : GANTRY_Z_LIMIT})
+            gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint: GANTRY_Z_LIMIT})
             for _ in range(gantry_attempts):
                 # TODO a more formal gantry_base_from_world_base
                 x, y, _ = next(base_gen_fn)
                 y *= -1
                 z, = gantry_z_sample_fn()
-                gantry_xyz_vals = [x,y,z]
+                gantry_xyz_vals = [x, y, z]
                 client.set_robot_configuration(robot, Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names))
                 orig_start_conf = client.inverse_kinematics(robot, start_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
                 if orig_start_conf:
@@ -405,12 +412,12 @@ def compute_free_movement(client, robot, process, movement, options=None, diagno
     # * custom limits
     custom_limits = get_gantry_robot_custom_limits(MAIN_ROBOT_ID)
     if 'custom_limits' not in options:
-        options.update({'custom_limits' : custom_limits})
+        options.update({'custom_limits': custom_limits})
 
     goal_constraints = robot.constraints_from_configuration(end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
     with LockRenderer():
         traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
-            options=options)
+                                  options=options)
     if traj is None:
         cprint('No free movement found for {}.'.format(movement.short_summary), 'red')
     else:
@@ -428,7 +435,7 @@ def compute_free_movement(client, robot, process, movement, options=None, diagno
         d_options = options.copy()
         d_options['diagnosis'] = True
         traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
-            options=d_options)
+                                  options=d_options)
         if lockrenderer:
             lockrenderer = LockRenderer()
 
