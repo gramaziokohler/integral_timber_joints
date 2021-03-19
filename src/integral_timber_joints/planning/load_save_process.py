@@ -15,6 +15,15 @@ def main():
     process = parse_process(args.problem, subdir=args.problem_subdir)
     # * Compute Actions
     verbose = False
+    recompute_action_states(process, verbose)
+
+    print('---')
+    path = get_process_path(args.problem, subdir=args.problem_subdir)
+    with open(path, 'w') as f:
+        json.dump(process, f, cls=DataEncoder, indent=None, sort_keys=True)
+    cprint('Process saved to %s' % path, 'green')
+
+def recompute_action_states(process, verbose = False):
     process.create_actions_from_sequence(verbose=verbose)
     process.assign_tools_to_actions(verbose=verbose)
     # I havent tried these optimization features so far but worth trying
@@ -27,11 +36,7 @@ def main():
     process.compute_initial_state()
     process.compute_intermediate_states(verbose=verbose)
     # * Save json to original location
-    print('---')
-    path = get_process_path(args.problem, subdir=args.problem_subdir)
-    with open(path, 'w') as f:
-        json.dump(process, f, cls=DataEncoder, indent=None, sort_keys=True)
-    cprint('Process saved to %s' % path, 'green')
+
 
 if __name__ == '__main__':
     main()
