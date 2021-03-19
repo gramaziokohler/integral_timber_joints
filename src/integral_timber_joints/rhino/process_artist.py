@@ -709,7 +709,7 @@ class ProcessArtist(object):
                 rs.ShowObject(self.gripper_guids_at_position(beam_id, gripper_position))
                 # Change color for shown object
                 if color is not None:
-                    rs.ObjectColor(self.gripper_guids_at_position(beam_id, gripper_position), artist.color_meaning.get(color))
+                    rs.ObjectColor(self.gripper_guids_at_position(beam_id, gripper_position), self.color_meaning.get(color))
             else:
                 rs.HideObject(self.gripper_guids_at_position(beam_id, gripper_position))
 
@@ -819,7 +819,7 @@ class ProcessArtist(object):
                     rs.ShowObject(self.clamp_guids_at_position(joint_id, clamp_position))
                     # Change color for shown object
                     if color is not None:
-                        rs.ObjectColor(self.clamp_guids_at_position(joint_id, clamp_position), artist.color_meaning.get(color))
+                        rs.ObjectColor(self.clamp_guids_at_position(joint_id, clamp_position), self.color_meaning.get(color))
                 else:
                     rs.HideObject(self.clamp_guids_at_position(joint_id, clamp_position))
 
