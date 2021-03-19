@@ -1,3 +1,4 @@
+from external.pybullet_planning.src.pybullet_planning.interfaces.kinematics.ik_utils import is_pose_close
 import os
 import sys
 import pybullet
@@ -232,31 +233,31 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 group=cartesian_move_group, options=options)
             samples_cnt += 1
             if cart_conf is not None:
-                solution_found = True
-                cprint('Plan found by {}! After {} path failure over {} samples.'.format(
-                    planner_id, path_failures, samples_cnt), 'green')
-                if not forward:
-                    cart_conf = reverse_trajectory(cart_conf)
+                success_planner = planner_id
+                # cprint('Plan found by {}! After {} path failure over {} samples.'.format(
+                #     planner_id, path_failures, samples_cnt), 'green')
                 break
             else:
                 path_failures += 1
         else:
-            # fallback to ladder graph
+            # * fallback to ladder graph
             lm_options = options.copy()
             lm_options['planner_id'] = 'LadderGraph'
-            # lm_options['ik_function'] = lambda pose: compute_inverse_kinematics(ikfast_abb_irb4600_40_255.get_ik, pose, sampled=[])
             lm_options['ik_function'] = _get_sample_bare_arm_ik_fn(client, robot)
             # pose -> list(conf values)
             cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
                 group=BARE_ARM_GROUP, options=lm_options)
-            if not cart_conf:
-                cprint('Cartesian Path planning (w/ prespecified st or end conf) failure after\n{} attempts of {} + 1 LadderGraph attempt.'.format(
-                    planner_id, samples_cnt), 'yellow')
-            else:
-                if not forward:
-                    cart_conf = reverse_trajectory(cart_conf)
-                cprint('Plan found by LadderGraph! After {} path failure (by {}) over {} samples.'.format(
-                    path_failures, planner_id, samples_cnt), 'green')
+            if cart_conf:
+                success_planner = 'LadderGraph'
+
+        if not cart_conf:
+            cprint('Cartesian Path planning (w/ prespecified st or end conf) failure after\n{} attempts of {} + 1 LadderGraph attempt.'.format(
+                planner_id, samples_cnt), 'yellow')
+        else:
+            if not forward:
+                cart_conf = reverse_trajectory(cart_conf)
+            cprint('Plan found by {}! After {} path failure (by {}) over {} samples.'.format(
+                success_planner, path_failures, planner_id, samples_cnt), 'green')
 
     if cart_conf is None and diagnosis:
         lockrenderer = options.get('lockrenderer', None)
@@ -288,10 +289,23 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
         traj = cart_conf
         if start_conf is not None and not start_conf.close_to(traj.points[0], tol=1e-3):
             cprint('LinearMovement: Start conf not coincided - max diff {:.5f}'.format(start_conf.max_difference(traj.points[0])), 'red')
+            notify('Warning! Go back to the command line now!')
+            with WorldSaver():
+                client.set_robot_configuration(robot, start_conf)
+                p1 = get_link_pose(robot_uid, ik_tool_link)
+                client.set_robot_configuration(robot, traj.points[0])
+                p2 = get_link_pose(robot_uid, ik_tool_link)
+                cprint('FK frame close: {} | {} vs. {}'.format(is_pose_close(p1, p2), p1, p2))
             wait_for_user()
         if end_conf is not None and not end_conf.close_to(traj.points[-1], tol=1e-3):
             cprint('LinearMovement: End conf not coincided - max diff {:.5f}'.format(end_conf.max_difference(traj.points[-1])), 'red')
             notify('Warning! Go back to the command line now!')
+            with WorldSaver():
+                client.set_robot_configuration(robot, end_conf)
+                p1 = get_link_pose(robot_uid, ik_tool_link)
+                client.set_robot_configuration(robot, traj.points[-1])
+                p2 = get_link_pose(robot_uid, ik_tool_link)
+                cprint('FK frame close: {} | {} vs. {}'.format(is_pose_close(p1, p2), p1, p2))
             wait_for_user()
     else:
         cprint('No linear movement found for {}.'.format(movement.short_summary), 'red')

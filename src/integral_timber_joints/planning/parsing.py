@@ -113,10 +113,12 @@ def save_process_and_movements(process_name, _process, _movements,
     process_dir = DESIGN_DIR
     if not overwrite:
         process_fname = os.path.basename(process_file_path)
-        time_stamp = get_date()
-        process_dir = os.path.join(process_dir, time_stamp)
+        # time_stamp = get_date()
+        save_dir = 'results'
+        process_dir = os.path.join(process_dir, save_dir)
         # * make paths
-        os.makedirs(process_dir)
+        if not os.path.exists(process_dir):
+            os.makedirs(process_dir)
         os.makedirs(os.path.join(process_dir, 'movements'))
         process_file_path = os.path.join(process_dir, process_fname)
 
