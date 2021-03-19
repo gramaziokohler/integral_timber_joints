@@ -426,7 +426,6 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
         tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
         self.movements.append(RoboticLinearMovement(tool_storage_approach_frame2_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.approach.withtool',
-                                                    target_configuration=tool.tool_storage_configuration,
                                                     tag="Linear Approach 1 of 2 to place %s in storage." % self._tool_string,
                                                     allowed_collision_matrix=tool_env_acm
                                                     ))  # Tool Storage Approach
@@ -436,6 +435,7 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
         tool_storage_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_storage_frame_wcf)
         self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.approach.withtool',
+                                                    target_configuration=tool.tool_storage_configuration,
                                                     tag="Linear Approach 2 of 2 to place %s in storage." % self._tool_string,
                                                     allowed_collision_matrix=tool_env_acm
                                                     ))  # Tool Storage Final
@@ -757,17 +757,21 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
         self.movements.append(RoboticFreeMovement(assembly_wcf_inclampapproach.copy(), attached_tool_id=self.gripper_id,
                                                   attached_beam_id=self.beam_id, speed_type='speed.transfer.rapid',
                                                   tag="Free Move to bring Beam ('%s') to approach clamps on structure." % self.beam_id))
+
+        acm = [(self.beam_id, clamp_id) for clamp_id in self.clamp_ids]
+        # Linear movement into clamp jaws
         self.movements.append(RoboticLinearMovement(assembly_wcf_inclamp.copy(), attached_tool_id=self.gripper_id,
                                                     attached_beam_id=self.beam_id, speed_type='speed.assembly.inclamp',
-                                                    tag="Linear Advance to bring Beam ('%s') into clamp jaws" % self.beam_id))
+                                                    tag="Linear Advance to bring Beam ('%s') into clamp jaws" % self.beam_id,
+                                                    allowed_collision_matrix=acm))
         self.movements.append(ClampsJawMovement([process.clamp_inclamp_position] * len(self.clamp_ids), self.clamp_ids, speed_type='speed.clamp.rapid',
                                                 tag="Clamps (%s) close slightly to touch Beam ('%s')" % (self.clamp_ids, self.beam_id)))  # Extend the clamp arm
 
         # Additional ACM between the attached beam, clamps and the neighbouring beams
         neighbour_beam_ids = process.assembly.get_already_built_neighbors(self.beam_id)
         acm = [(self.beam_id, nbr_id) for nbr_id in chain(self.clamp_ids, neighbour_beam_ids)] + \
-              [(self.beam_id, env_id) for env_id in process.environment_models.keys()] + \
-              [(self.gripper_id, clamp_id) for clamp_id in self.clamp_ids]
+              [(self.beam_id, env_id) for env_id in process.environment_models.keys()] #+ \
+              #[(self.gripper_id, clamp_id) for clamp_id in self.clamp_ids]
 
         # Robot Clamp Sync Move to final location
         target_frame, attached_tool_id, attached_beam_id = assembly_wcf_final.copy(), self.gripper_id, self.beam_id
