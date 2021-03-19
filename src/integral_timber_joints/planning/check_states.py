@@ -66,10 +66,11 @@ def main():
 
     options = {
         # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
-        'distance_threshold' : 0.0,
+        'distance_threshold' : 0.001,
         # * buffering distance, If the distance between objects exceeds this maximum distance, no points may be returned.
         'max_distance' : 0.0,
         'diagnosis' : True,
+        'frame_jump_tolerance' : 0.022,
         'debug' : args.debug,
     }
 
