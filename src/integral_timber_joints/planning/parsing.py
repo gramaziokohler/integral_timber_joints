@@ -119,8 +119,11 @@ def save_process_and_movements(process_name, _process, _movements,
         # * make paths
         if not os.path.exists(process_dir):
             os.makedirs(process_dir)
-        os.makedirs(os.path.join(process_dir, 'movements'))
         process_file_path = os.path.join(process_dir, process_fname)
+
+    movement_dir = os.path.join(process_dir, 'movements')
+    if not os.path.exists(movement_dir):
+        os.makedirs(movement_dir)
 
     for m in movements:
         m_file_path = os.path.abspath(os.path.join(process_dir, m.filepath))
