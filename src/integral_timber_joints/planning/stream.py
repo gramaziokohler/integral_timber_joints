@@ -80,6 +80,29 @@ def _get_sample_bare_arm_ik_fn(client: PyChoreoClient, robot: Robot):
 
 ##############################
 
+def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', conf2_tag='', jt_tol=1e-3):
+    if not conf1.close_to(conf2, tol=jt_tol):
+        with WorldSaver():
+            client.set_robot_configuration(robot, conf1)
+            p1 = get_link_pose(robot_uid, ik_tool_link)
+            client.set_robot_configuration(robot, conf2)
+            p2 = get_link_pose(robot_uid, ik_tool_link)
+            pose_close = is_pose_close(p1, p2)
+        if not pose_close:
+            cprint('FK frame close: {} | ({},{}) vs. ({},{})'.format(pose_close,
+                ['{:.3f}'.format(v) for v in p1[0]], ['{:.3f}'.format(v) for v in p1[1]],
+                ['{:.3f}'.format(v) for v in p2[0]], ['{:.3f}'.format(v) for v in p2[1]])
+                )
+            cprint('LinearMovement: {} not coincided with {} - max diff {:.5f}'.format(
+                conf1_tag, conf2_tag, conf1.max_difference(conf2)), 'red')
+            notify('Warning! Go back to the command line now!')
+            wait_for_user()
+            return False
+        else:
+            return True
+    return True
+
+##############################
 
 def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
     assert isinstance(movement, RoboticLinearMovement) or \
@@ -287,32 +310,15 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     traj = None
     if cart_conf:
         traj = cart_conf
-        if start_conf is not None and not start_conf.close_to(traj.points[0], tol=1e-3):
-            cprint('LinearMovement: Start conf not coincided - max diff {:.5f}'.format(start_conf.max_difference(traj.points[0])), 'red')
-            notify('Warning! Go back to the command line now!')
-            with WorldSaver():
-                client.set_robot_configuration(robot, start_conf)
-                p1 = get_link_pose(robot_uid, ik_tool_link)
-                client.set_robot_configuration(robot, traj.points[0])
-                p2 = get_link_pose(robot_uid, ik_tool_link)
-                cprint('FK frame close: {} | {} vs. {}'.format(is_pose_close(p1, p2), p1, p2))
-            wait_for_user()
-        if end_conf is not None and not end_conf.close_to(traj.points[-1], tol=1e-3):
-            cprint('LinearMovement: End conf not coincided - max diff {:.5f}'.format(end_conf.max_difference(traj.points[-1])), 'red')
-            notify('Warning! Go back to the command line now!')
-            with WorldSaver():
-                client.set_robot_configuration(robot, end_conf)
-                p1 = get_link_pose(robot_uid, ik_tool_link)
-                client.set_robot_configuration(robot, traj.points[-1])
-                p2 = get_link_pose(robot_uid, ik_tool_link)
-                cprint('FK frame close: {} | {} vs. {}'.format(is_pose_close(p1, p2), p1, p2))
-            wait_for_user()
+        if start_conf is not None:
+            check_cartesian_conf_agreement(client, robot, start_conf, traj.points[0], conf1_tag='given start conf', conf2_tag='traj[0]')
+        if end_conf is not None:
+            check_cartesian_conf_agreement(client, robot, end_conf, traj.points[-1], conf1_tag='given end conf', conf2_tag='traj[-1]')
     else:
         cprint('No linear movement found for {}.'.format(movement.short_summary), 'red')
     return fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP)
 
 ##############################
-
 
 def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
     assert isinstance(movement, RoboticFreeMovement)
@@ -329,6 +335,10 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     orig_end_conf = end_state['robot'].kinematic_config
 
     assert orig_end_conf is not None, 'End conf not provided in {}, which should never happen'.format(movement.short_summary)
+
+    # fill in joint names if needed
+    if orig_start_conf and len(orig_start_conf.joint_names) == 0:
+        orig_start_conf.joint_names = orig_end_conf.joint_names
 
     # * set start state
     set_state(client, robot, process, start_state)
@@ -353,10 +363,6 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         else:
             cprint('No robot start frame is specified in {}, Underspecified problem, solve fails.'.format(movement.short_summary), 'red')
             raise RuntimeError()
-
-    # TODO investigate why this happens
-    if len(orig_start_conf.joint_names) == 0:
-        orig_start_conf.joint_names = orig_end_conf.joint_names
 
     start_conf = orig_start_conf
     end_conf = orig_end_conf
