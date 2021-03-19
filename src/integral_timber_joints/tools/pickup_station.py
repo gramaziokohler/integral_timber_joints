@@ -1,4 +1,4 @@
-
+from compas_fab.robots import Configuration
 
 class PickupStation (object):
 
@@ -8,6 +8,8 @@ class PickupStation (object):
 
         # Vector for the robot to move (in WCF) after picking up beams
         self.pickup_retract_vector = pickup_retract_vector
+        # Optional configuration for a static pickup robot configuration. This will be applied to all gripper types.
+        self.beam_pickup_configuration = None #type: Configuration
 
         self.collision_meshes = []
 
@@ -30,6 +32,7 @@ class PickupStation (object):
         data = {}
         data['alignment_frame'] = self.alignment_frame
         data['pickup_retract_vector'] = self.pickup_retract_vector
+        data['beam_pickup_configuration'] = self.beam_pickup_configuration
         data['collision_meshes'] = self.collision_meshes
         data['align_face_X0'] = self.align_face_X0
         data['align_face_Y0'] = self.align_face_Y0
@@ -40,6 +43,7 @@ class PickupStation (object):
     def data(self, data):
         self.alignment_frame = data.get('alignment_frame', None)
         self.pickup_retract_vector = data.get('pickup_retract_vector', None)
+        self.beam_pickup_configuration = data.get('beam_pickup_configuration', None)
         self.collision_meshes = data.get('collision_meshes', [])
         self.align_face_X0 = data.get('align_face_X0', True)
         self.align_face_Y0 = data.get('align_face_Y0', True)
@@ -78,10 +82,13 @@ class StackedPickupStation (PickupStation):
 
 
 class GripperAlignedPickupStation(PickupStation):
-    """Gripper aligned Pickup station have a consistent gripper location. 
+    """Gripper aligned Pickup station have a consistent gripper location.
     The location of the beam changes in response to grasp pose.
 
     """
+
+
+
 
     def compute_pickup_frame(self, process, beam_id):
         # type: (integral_timber_joints.process.RobotClampAssemblyProcess, str) -> None

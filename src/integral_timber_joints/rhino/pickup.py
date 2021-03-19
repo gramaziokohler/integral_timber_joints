@@ -16,6 +16,7 @@ from integral_timber_joints.rhino.load import get_process, get_process_artist, p
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, StackedPickupStation, GripperAlignedPickupStation
 from integral_timber_joints.tools.beam_storage import BeamStorage
+from compas_fab.robots.configuration import Configuration
 
 
 def create_pickup_station(process):
@@ -155,6 +156,18 @@ def create_beam_storage(process):
     print('BeamStorage Defined')
 
 
+def set_pickup_robot_config(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    # Ask user to pick a Configuration json
+    path = rs.OpenFileName("Open a Configuration json, representing the pick up location robot config.", "Configuration File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            configuration = json.load(f, cls=DataDecoder)  # type: Configuration
+            assert isinstance(configuration, Configuration)
+            process.pickup_station.beam_pickup_configuration = configuration
+            print("Pickup station Beam Pickup Configuration is successfully loaded from %s" % path)
+
+
 def not_implemented(process):
     #
     print('This function is not implemented')
@@ -190,6 +203,8 @@ def show_menu(process):
                 {'name': 'DefineStackedPickupStation', 'action': create_stacked_pickup_station
                  },
                 {'name': 'DefineBeamStorage', 'action': create_beam_storage
+                 },
+                {'name': 'SetPickupRobotConfig', 'action': set_pickup_robot_config
                  },
                 {'name': 'Import', 'action': import_pickup_station
                  },
