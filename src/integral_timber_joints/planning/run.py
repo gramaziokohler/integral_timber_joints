@@ -22,6 +22,7 @@ from integral_timber_joints.planning.stream import set_state, compute_free_movem
     _get_sample_bare_arm_ik_fn
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
+from integral_timber_joints.planning.load_save_process import recompute_action_states
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement
 
@@ -280,6 +281,7 @@ def main():
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--seq_i', default=0, help='individual step to plan.')
     parser.add_argument('--write', action='store_true', help='Write output json.')
+    parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
     parser.add_argument('--debug', action='store_true', help='Debug mode')
     parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode')
@@ -298,7 +300,12 @@ def main():
     seq_i = int(args.seq_i)
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
 
+    # Load process and recompute actions and states
     process = parse_process(args.problem, subdir=args.problem_subdir)
+    if args.recompute_action_states:
+        cprint('Recomputing Actions and States', 'cyan')
+        recompute_action_states(process, False)
+
     assembly = process.assembly
     beam_ids = [b for b in process.assembly.sequence]
     beam_id = beam_ids[seq_i]
@@ -318,6 +325,8 @@ def main():
     options = {
         'debug' : args.debug,
         'low_res' : args.low_res,
+        'distance_threshold' : 0.0012,
+        'frame_jump_tolerance' : 0.0012,
         # 'diagnosis' : args.diagnosis,
     }
 
