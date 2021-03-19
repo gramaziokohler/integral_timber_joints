@@ -279,7 +279,7 @@ def main():
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
-    parser.add_argument('--seq_i', default=0, help='individual step to plan.')
+    parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan.')
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
