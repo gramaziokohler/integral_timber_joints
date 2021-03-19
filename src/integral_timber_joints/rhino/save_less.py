@@ -60,7 +60,7 @@ def save_process_less(process):
         process_copied.compute_initial_state()
         process_copied.compute_intermediate_states(verbose=False)
     else :
-        process.actions = []
+        process_copied.actions = []
 
 
 
