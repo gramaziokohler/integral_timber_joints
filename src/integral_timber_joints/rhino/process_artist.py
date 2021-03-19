@@ -693,11 +693,13 @@ class ProcessArtist(object):
             purge_objects(guids, redraw)
             del self.gripper_guids_at_position(beam_id, gripper_position)[:]
 
-    def show_gripper_at_one_position(self, beam_id, position=None):
+    def show_gripper_at_one_position(self, beam_id, position=None, color = None):
         """ Show Gripper only at the specified position.
 
         `position` is the position attribute name, if left `None`,
         selected_key_position saved in artist will be used.
+
+        `color` is a string as used in artist.color_meaning.get(color)
         """
         if position is None:
             position = self.selected_key_position.current_gripper_pos
@@ -705,6 +707,9 @@ class ProcessArtist(object):
         for gripper_position in ProcessKeyPosition.gripper_positions:
             if gripper_position == position:
                 rs.ShowObject(self.gripper_guids_at_position(beam_id, gripper_position))
+                # Change color for shown object
+                if color is not None:
+                    rs.ObjectColor(self.gripper_guids_at_position(beam_id, gripper_position), artist.color_meaning.get(color))
             else:
                 rs.HideObject(self.gripper_guids_at_position(beam_id, gripper_position))
 
@@ -797,11 +802,13 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
-    def show_clamp_at_one_position(self, beam_id, position=None, clamping_this_beam=True):
+    def show_clamp_at_one_position(self, beam_id, position=None, clamping_this_beam=True, color = None):
         """ Show Gripper only at the specified position.
 
         `position` is the position attribute name, if left `None`,
         selected_key_position saved in artist will be used.
+
+        `color` is a string as used in artist.color_meaning.get(color)
         """
         if position is None:
             position = self.selected_key_position.current_clamp_pos
@@ -810,6 +817,9 @@ class ProcessArtist(object):
             for clamp_position in ProcessKeyPosition.clamp_positions:
                 if clamp_position == position:
                     rs.ShowObject(self.clamp_guids_at_position(joint_id, clamp_position))
+                    # Change color for shown object
+                    if color is not None:
+                        rs.ObjectColor(self.clamp_guids_at_position(joint_id, clamp_position), artist.color_meaning.get(color))
                 else:
                     rs.HideObject(self.clamp_guids_at_position(joint_id, clamp_position))
 
