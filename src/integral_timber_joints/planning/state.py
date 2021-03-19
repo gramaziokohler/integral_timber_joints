@@ -80,6 +80,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     debug = options.get('debug', False)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
+    frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL*1e3)
     reachable_range = options.get('reachable_range') or (0.2, 2.8)
 
     # robot needed for creating attachments
@@ -98,11 +99,12 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             if robot_state.current_frame is None:
                 robot_state.current_frame = FK_tool_frame
             else:
-                if not robot_state.current_frame.__eq__(FK_tool_frame, tol=FRAME_TOL*1e3):
-                    msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point))
-                    cprint(msg, 'yellow')
-                    cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
-                    wait_for_user()
+                if not robot_state.current_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance):
+                    if (1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
+                        msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point))
+                        cprint(msg, 'yellow')
+                        cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
+                        wait_for_user()
                     robot_state.current_frame = FK_tool_frame
 
             if initialize:

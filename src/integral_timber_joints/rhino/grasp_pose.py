@@ -63,8 +63,8 @@ def show_sequence_color(process):
 
         # Show gripper and clamp
         if seq == selected_seq_num:
-            artist.show_gripper_at_one_position(beam_id)
-            artist.show_clamp_at_one_position(beam_id)
+            artist.show_gripper_at_one_position(beam_id, color='normal')
+            artist.show_clamp_at_one_position(beam_id, color='normal')
         else:
             artist.hide_gripper_all_positions(beam_id)
             artist.hide_clamp_all_positions(beam_id)
@@ -83,45 +83,61 @@ def compute_collision_show_color(process):
     assembly = process.assembly
     rs.EnableRedraw(False)
 
-    # Check Collisions between gripper and other beams
+    # Get Mesh - Current Beam
+    current_beam_meshes = []
+    current_beam_meshes.extend(artist.interactive_beam_guid(selected_beam_id))
+
+    # Get Meshes - Gripper
     gripper_meshes = artist.gripper_guids_at_position(selected_beam_id, artist.selected_key_position.current_gripper_pos)
-    rs.ObjectColor(gripper_meshes, artist.color_meaning.get('normal'))
 
+    # Get Meshes - Clamps
+    clamp_meshes = []
+    for joint_id in assembly.get_joint_ids_of_beam_clamps(selected_beam_id):
+        clamp_meshes.extend(artist.clamp_guids_at_position(joint_id, artist.selected_key_position.current_clamp_pos))
 
+    # Get Meshes - Already Assembled Beams
     other_beams_meshes = []
     for neighbour_id in assembly.get_already_built_beams(selected_beam_id):
         other_beams_meshes.extend(artist.interactive_beam_guid(neighbour_id))
-    rs.ObjectColor(other_beams_meshes, artist.color_meaning.get('normal'))
 
+    # Get Meshes - Already Assembled Beams but not neighbour
+    other_non_neighbour_beams_meshes = []
+    for neighbour_id in set(assembly.get_already_built_beams(selected_beam_id)) - set(assembly.get_already_built_neighbors(selected_beam_id)):
+        other_non_neighbour_beams_meshes.extend(artist.interactive_beam_guid(neighbour_id))
 
+    # Get Meshes - EnvModel
+    env_meshes = []
+    for env_id, env_model in process.environment_models.items():
+        env_meshes.extend(artist.env_mesh_guids(env_id))
+    rs.HideObjects(env_meshes)
+
+    # Check Collisions between gripper vs other beams
     collisions = []
     for gripper_mesh in gripper_meshes:
         for other_beam in other_beams_meshes:
             lines = Rhino.Geometry.Intersect.Intersection.MeshMeshFast(rs.coercemesh(gripper_mesh), rs.coercemesh(other_beam))
             if len(lines) > 0 :
                 collisions.append((gripper_mesh, other_beam))
-    for x , y in collisions:
-        rs.ObjectColor(x, artist.color_meaning.get('warning', (200,100,0)))
-        rs.ObjectColor(y, artist.color_meaning.get('warning', (200,100,0)))
-    print ("collisions count :%s" % len(collisions))
 
-
-
-    # - between gripper and other clamps
-    clamp_meshes = []
-    for joint_id in assembly.get_joint_ids_of_beam_clamps(selected_beam_id):
-        clamp_meshes.extend(artist.clamp_guids_at_position(joint_id, artist.selected_key_position.current_clamp_pos))
-    rs.ObjectColor(clamp_meshes, artist.color_meaning.get('normal'))
-
-    collisions = []
+    # Check Collisions between gripper vs clamps
     for gripper_mesh in gripper_meshes:
         for clamp_mesh in clamp_meshes:
             lines = Rhino.Geometry.Intersect.Intersection.MeshMeshFast(rs.coercemesh(gripper_mesh), rs.coercemesh(clamp_mesh))
             if len(lines) > 0 :
                 collisions.append((gripper_mesh, clamp_mesh))
-    for x , y in collisions:
-        rs.ObjectColor(x, artist.color_meaning.get('warning', (200,100,0)))
-        rs.ObjectColor(y, artist.color_meaning.get('warning', (200,100,0)))
+
+    # Check Collisions between gripper, clamp vs environment
+    for tool_mesh in gripper_meshes + clamp_meshes:
+        for env_mesh in env_meshes:
+            lines = Rhino.Geometry.Intersect.Intersection.MeshMeshFast(rs.coercemesh(tool_mesh), rs.coercemesh(env_mesh))
+            if len(lines) > 0 :
+                collisions.append((tool_mesh, env_mesh))
+
+    # Colour collision objects in collisions
+    for rhino_object in set().union(*collisions):
+        rs.ObjectColor(rhino_object, artist.color_meaning.get('warning', (200,100,0)))
+        rs.ShowObject(rhino_object)
+
     print ("collisions count :%s" % len(collisions))
 
     # - between clams and other not clamping beams
@@ -467,9 +483,10 @@ def show_menu(process):
             artist.selected_key_position.total_pos_number,
         ))
 
-        artist.show_beam_at_one_position(artist.selected_beam_id)
-        artist.show_gripper_at_one_position(artist.selected_beam_id)
-        artist.show_clamp_at_one_position(artist.selected_beam_id)
+        # artist.show_beam_at_one_position(artist.selected_beam_id)
+        # artist.show_gripper_at_one_position(artist.selected_beam_id)
+        # artist.show_clamp_at_one_position(artist.selected_beam_id)
+        show_sequence_color(process)
         compute_collision_show_color(process)
 
 ######################
