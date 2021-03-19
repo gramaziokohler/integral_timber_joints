@@ -1,3 +1,4 @@
+from external.pybullet_planning.src.pybullet_planning.interfaces.env_manager.user_io import wait_for_user
 import os
 from termcolor import cprint
 from copy import copy, deepcopy
@@ -75,7 +76,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
         [description]
     """
     options = options or {}
-    gantry_attempts = options.get('gantry_attempts') or 5000
+    ik_gantry_attempts = options.get('ik_gantry_attempts') or 5000
     debug = options.get('debug', False)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
@@ -98,8 +99,12 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 robot_state.current_frame = FK_tool_frame
             else:
                 if not robot_state.current_frame.__eq__(FK_tool_frame, tol=FRAME_TOL*1e3):
-                    msg = 'Robot FK tool pose and current frame diverge: {:.3f} (mm)'.format(distance_point_point(robot_state.current_frame.point, FK_tool_frame.point))
+                    msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point))
                     cprint(msg, 'yellow')
+                    cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
+                    wait_for_user()
+                    robot_state.current_frame = FK_tool_frame
+
             if initialize:
                 # update tool_changer's current_frame
                 # ! change if tool_changer has a non-trivial grasp pose
@@ -181,14 +186,14 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # * sample from a ball near the pose
                     gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0)
                     with HideOutput():
-                        for _, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
+                        for _, base_conf in zip(range(ik_gantry_attempts), gantry_base_gen_fn):
                             # TODO a more formal gantry_base_from_world_base
                             conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
                                                              options={'avoid_collisions': False})
                             if conf is not None:
                                 break
                         else:
-                            raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, gantry_attempts))
+                            raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, ik_gantry_attempts))
                     client.set_robot_configuration(robot, conf)
                     # wait_if_gui('Conf set for attachment')
 

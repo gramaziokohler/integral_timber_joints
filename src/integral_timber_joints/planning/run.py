@@ -336,10 +336,10 @@ def main():
             wait_if_gui('End state')
         wait_for_user('Enter to exit.')
 
-    # print_title('0) Before planning')
-    # process.get_movement_summary_by_beam_id(beam_id)
-    # if args.debug:
-    #     wait_for_user()
+    print_title('0) Before planning')
+    process.get_movement_summary_by_beam_id(beam_id)
+    if args.debug:
+        wait_for_user()
 
     # max_attempts = 1
     with LockRenderer(not args.debug) as lockrenderer:
