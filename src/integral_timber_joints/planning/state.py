@@ -78,6 +78,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     options = options or {}
     ik_gantry_attempts = options.get('ik_gantry_attempts') or 5000
     debug = options.get('debug', False)
+    verbose = options.get('verbose', True)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
     frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL*1e3)
@@ -101,10 +102,11 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             else:
                 if not robot_state.current_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance):
                     if (1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
-                        msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point))
-                        cprint(msg, 'yellow')
-                        cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
-                        wait_for_user()
+                        if verbose:
+                            msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point))
+                            cprint(msg, 'yellow')
+                            cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
+                            wait_for_user()
                     robot_state.current_frame = FK_tool_frame
 
             if initialize:
@@ -197,7 +199,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                         else:
                             raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, ik_gantry_attempts))
                     client.set_robot_configuration(robot, conf)
-                    # wait_if_gui('Conf set for attachment')
 
                     # * create attachments
                     wildcard = '^{}$'.format(object_id)
