@@ -65,6 +65,10 @@ def compute_states(process):
     print("Total: %i of %i intermediate states computed. for %i objects." % (full_state_count, len(process.intermediate_states), len(process.initial_state)))
 
 
+def remove_actions(process):
+    process.actions = []
+    print ("Actions and states Removed")
+
 def not_implemented(process):
     #
     print('This function is not implemented')
@@ -90,6 +94,8 @@ def show_menu(process):
                 {'name': 'ComputeActions', 'action': compute_action
                  },
                 {'name': 'ComputeStates', 'action': compute_states
+                 },
+                {'name': 'RemoveActionsAndStates', 'action': remove_actions
                  },
             ]
 

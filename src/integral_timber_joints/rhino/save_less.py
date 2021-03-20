@@ -39,21 +39,30 @@ def save_process_less(process):
         print("File Not Saved")
         return
 
+    # Ask user if recompute actions
+    recompute_actions_states = rs.GetString("Recompute Actions and States?", "No", ["No", "Yes"])
+
     # Make a copy of process and remove beams
     process_copied = RobotClampAssemblyProcess.from_data(deepcopy(process.data))
     delete_beams_until(process_copied, beams_to_keep)
 
-    # Recompute Actions Movements
-    process_copied.create_actions_from_sequence(verbose=False)
-    process_copied.assign_tools_to_actions(verbose=False)
-    # I havent tried these optimization features so far but worth trying
-    # process.optimize_actions_place_pick_gripper()
-    # process.optimize_actions_place_pick_clamp()
-    process_copied.create_movements_from_actions(verbose=False)
 
-    # Compute States
-    process_copied.compute_initial_state()
-    process_copied.compute_intermediate_states(verbose=False)
+    if recompute_actions_states == "Yes":
+        # Recompute Actions Movements
+        process_copied.create_actions_from_sequence(verbose=False)
+        process_copied.assign_tools_to_actions(verbose=False)
+        # I havent tried these optimization features so far but worth trying
+        # process.optimize_actions_place_pick_gripper()
+        # process.optimize_actions_place_pick_clamp()
+        process_copied.create_movements_from_actions(verbose=False)
+
+        # Compute States
+        process_copied.compute_initial_state()
+        process_copied.compute_intermediate_states(verbose=False)
+    else :
+        process_copied.actions = []
+
+
 
     # Save in new location
     with open(new_json_path, 'w') as f:

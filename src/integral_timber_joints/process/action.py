@@ -641,7 +641,8 @@ class BeamPickupAction(RobotAction, AttachBeamAction):
                                                    tag="Gripper ('%s') Open Gripper before gripping Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickup.copy(), attached_tool_id=self.gripper_id,
                                                     speed_type='speed.gripper.approach',
-                                                    tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id)))  # Tool Final Frame at structure
+                                                    tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id),
+                                                    target_configuration=process.pickup_station.beam_pickup_configuration))  # Tool Final Frame at structure
 
         # Opeartor load beam into jaw of gripper
         grasp_face = process.assembly.get_beam_attribute(self.beam_id, 'gripper_grasp_face')
