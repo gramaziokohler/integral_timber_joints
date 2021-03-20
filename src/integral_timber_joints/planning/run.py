@@ -374,8 +374,6 @@ def main():
     # set_random_seed(seed)
     # set_numpy_seed(seed)
 
-    # * Connect to path planning backend and initialize robot parameters
-    client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
     options = {
         'debug' : args.debug,
         'low_res' : args.low_res,
@@ -384,7 +382,9 @@ def main():
         'verbose' : args.verbose,
     }
 
-    # Load process and recompute actions and states
+    # * Connect to path planning backend and initialize robot parameters
+    client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
+    # * Load process and recompute actions and states
     process = parse_process(args.problem, subdir=args.problem_subdir)
     if args.recompute_action_states:
         cprint('Recomputing Actions and States', 'cyan')
@@ -393,22 +393,22 @@ def main():
 
     beam_ids = list(process.assembly.sequence) if args.seq_i < 0 else [process.assembly.sequence[args.seq_i]]
     beam_attempts = 5
-    for beam_id in beam_ids:
+    for s_i, beam_id in enumerate(beam_ids):
         print('-'*20)
+        print('({}) Beam#{}'.format(s_i, beam_id))
         for i in range(beam_attempts):
             print('-- iter #{}'.format(i))
             if compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options):
                 cprint('Beam #{} plan found after {} iters!'.format(beam_id, i+1), 'cyan')
                 break
-
+            client.disconnect()
+            client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
             process = parse_process(args.problem, subdir=args.problem_subdir)
             set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=False)
         else:
             cprint('Beam #{} plan not found after {} attempts.'.format(beam_id, beam_attempts), 'red')
 
-
     print('Total time:', elapsed_time(initial_time))
-
     client.disconnect()
 
 if __name__ == '__main__':
