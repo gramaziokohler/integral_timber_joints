@@ -130,7 +130,7 @@ def save_process_and_movements(process_name, _process, _movements,
         with open(m_file_path, 'w') as f:
             json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)
     print('---')
-    cprint('#{} movements written to {}'.format(len(movements), os.path.abspath(DESIGN_DIR)), 'green')
+    cprint('#{} movements written to {}'.format(len(movements), os.path.abspath(movement_dir)), 'green')
 
     if not include_traj_in_process:
         for m in process.movements:

@@ -9,17 +9,17 @@ from enum import Enum, unique
 
 from termcolor import cprint, colored
 from copy import copy, deepcopy
+from compas.utilities import DataEncoder
 
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time
 import ikfast_abb_irb4600_40_255
 
-from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements
+from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
     R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP, BARE_ARM_GROUP
 from integral_timber_joints.planning.utils import notify, print_title
-from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement, \
-    _get_sample_bare_arm_ik_fn
+from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 from integral_timber_joints.planning.load_save_process import recompute_action_states
@@ -389,10 +389,14 @@ def main():
     if args.recompute_action_states:
         cprint('Recomputing Actions and States', 'cyan')
         recompute_action_states(process, False)
+        result_path = get_process_path(args.problem, subdir='results')
+        with open(result_path, 'w') as f:
+            json.dump(process, f, cls=DataEncoder, indent=None, sort_keys=True)
+        cprint('Recomputed process saved to %s' % result_path, 'green')
     set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=args.reinit_tool)
 
     beam_ids = list(process.assembly.sequence) if args.seq_i < 0 else [process.assembly.sequence[args.seq_i]]
-    beam_attempts = 5
+    beam_attempts = 10
     for s_i, beam_id in enumerate(beam_ids):
         print('-'*20)
         print('({}) Beam#{}'.format(s_i, beam_id))
@@ -403,7 +407,7 @@ def main():
                 break
             client.disconnect()
             client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
-            process = parse_process(args.problem, subdir=args.problem_subdir)
+            process = parse_process(args.problem, subdir='results')
             set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=False)
         else:
             cprint('Beam #{} plan not found after {} attempts.'.format(beam_id, beam_attempts), 'red')
