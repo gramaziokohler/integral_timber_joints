@@ -1,4 +1,3 @@
-from external.pybullet_planning.src.pybullet_planning.interfaces.kinematics.ik_utils import is_pose_close
 import os
 import sys
 import pybullet
@@ -17,7 +16,7 @@ import ikfast_abb_irb4600_40_255
 from pybullet_planning import GREY
 from pybullet_planning import link_from_name, get_link_pose, draw_pose, multiply, \
     joints_from_names, LockRenderer, WorldSaver, wait_for_user, joint_from_name, wait_if_gui, has_gui
-from pybullet_planning import link_from_name, sample_tool_ik
+from pybullet_planning import link_from_name, sample_tool_ik, is_pose_close
 from pybullet_planning import compute_inverse_kinematics
 
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
@@ -80,7 +79,11 @@ def _get_sample_bare_arm_ik_fn(client: PyChoreoClient, robot: Robot):
 
 ##############################
 
-def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', conf2_tag='', jt_tol=1e-3):
+def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', conf2_tag='', jt_tol=1e-3, verbose=True):
+    robot_uid = client.get_robot_pybullet_uid(robot)
+    tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
+    ik_tool_link = link_from_name(robot_uid, tool_link_name)
+
     if not conf1.close_to(conf2, tol=jt_tol):
         with WorldSaver():
             client.set_robot_configuration(robot, conf1)
@@ -89,14 +92,15 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
             p2 = get_link_pose(robot_uid, ik_tool_link)
             pose_close = is_pose_close(p1, p2)
         if not pose_close:
-            cprint('FK frame close: {} | ({},{}) vs. ({},{})'.format(pose_close,
-                ['{:.3f}'.format(v) for v in p1[0]], ['{:.3f}'.format(v) for v in p1[1]],
-                ['{:.3f}'.format(v) for v in p2[0]], ['{:.3f}'.format(v) for v in p2[1]])
-                )
-            cprint('LinearMovement: {} not coincided with {} - max diff {:.5f}'.format(
+            if verbose:
+                cprint('FK frame close: {} | ({},{}) vs. ({},{})'.format(pose_close,
+                    ['{:.3f}'.format(v) for v in p1[0]], ['{:.3f}'.format(v) for v in p1[1]],
+                    ['{:.3f}'.format(v) for v in p2[0]], ['{:.3f}'.format(v) for v in p2[1]])
+                    )
+                cprint('LinearMovement: {} not coincided with {} - max diff {:.5f}'.format(
                 conf1_tag, conf2_tag, conf1.max_difference(conf2)), 'red')
-            notify('Warning! Go back to the command line now!')
-            wait_for_user()
+                notify('Warning! Go back to the command line now!')
+                wait_for_user()
             return False
         else:
             return True
@@ -117,6 +121,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     reachable_range = options.get('reachable_range') or (0.2, 2.8) # (0.68, 2.83)
     cartesian_move_group = options.get('cartesian_move_group') or GANTRY_ARM_GROUP
     debug = options.get('debug', False)
+    verbose = options.get('verbose', True)
 
     # * custom limits
     ik_joint_names = robot.get_configurable_joint_names(group=BARE_ARM_GROUP)
@@ -140,7 +145,10 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     end_conf = end_state['robot'].kinematic_config
 
     # * set start state
-    set_state(client, robot, process, start_state)
+    try:
+        set_state(client, robot, process, start_state)
+    except RuntimeError:
+        return None
 
     start_t0cf_frame = copy(start_state['robot'].current_frame)
     start_t0cf_frame.point *= 1e-3
@@ -166,8 +174,9 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             start_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             start_t0cf_frame_temp = frame_from_pose(start_tool_pose, scale=1)
             if not start_t0cf_frame_temp.__eq__(start_t0cf_frame, tol=FRAME_TOL):
-                cprint('start conf FK inconsistent ({:.5f} m) with given current frame in start state.'.format(
-                    distance_point_point(start_t0cf_frame_temp.point, start_t0cf_frame.point)), 'yellow')
+                if verbose:
+                    cprint('start conf FK inconsistent ({:.5f} m) with given current frame in start state.'.format(
+                        distance_point_point(start_t0cf_frame_temp.point, start_t0cf_frame.point)), 'yellow')
                 # TODO this might impact feasibility, investigate further
                 # cprint('Overwriting with the FK-one.', 'yellow')
                 # start_t0cf_frame = start_t0cf_frame_temp
@@ -179,8 +188,9 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             end_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             end_t0cf_frame_temp = frame_from_pose(end_tool_pose, scale=1)
             if not end_t0cf_frame_temp.__eq__(end_t0cf_frame, tol=FRAME_TOL):
-                cprint('end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
-                    distance_point_point(end_t0cf_frame_temp.point, end_t0cf_frame.point)), 'yellow')
+                if verbose:
+                    cprint('end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
+                        distance_point_point(end_t0cf_frame_temp.point, end_t0cf_frame.point)), 'yellow')
                 # TODO this might impact feasibility, investigate further
                 # cprint('Overwriting with the FK-one.', 'yellow')
                 # end_t0cf_frame = end_t0cf_frame_temp
@@ -198,13 +208,14 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
         # * sample from a ball near the pose
         gantry_base_gen_fn = gantry_base_generator(client, robot, interp_frames[0], reachable_range=reachable_range, scale=1.0)
         for gi, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
-            # if debug:
-            cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
+            if verbose:
+                cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
             samples_cnt += 1
             arm_conf_vals = sample_ik_fn(pose_from_frame(interp_frames[0], scale=1))
             # * iterate through all 6-axis IK solution
             for ik_iter, arm_conf_val in enumerate(arm_conf_vals):
-                cprint('   -- IK iter {}'.format(ik_iter), 'magenta')
+                if verbose:
+                    cprint('   -- IK iter {}'.format(ik_iter), 'magenta')
                 if arm_conf_val is None:
                     continue
                 gantry_arm_conf = Configuration(list(base_conf.values) + list(arm_conf_val),
@@ -215,12 +226,14 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                         # if debug:
                         # TODO pybullet IK struggles for dual arm setting
                         # see if we can create a x-y-z+6 axis subrobot clone
-                        print('\tcartesian trial #{}'.format(ci))
+                        if verbose:
+                            print('\tcartesian trial #{}'.format(ci))
                         cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
                             group=cartesian_move_group, options=options)
                         if cart_conf is not None:
                             solution_found = True
-                            cprint('Plan found by {}! After {} ik, {} path failure over {} samples.'.format(
+                            if verbose:
+                                cprint('Plan found by {}! After {} ik, {} path failure over {} samples.'.format(
                                 planner_id, ik_failures, path_failures, samples_cnt), 'green')
                             break
                         else:
@@ -232,26 +245,30 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             if solution_found:
                 break
         else:
-            cprint('Cartesian Path planning failure ({}) after {} attempts | {} due to IK, {} due to Cart.'.format(
-                planner_id, samples_cnt, ik_failures, path_failures), 'yellow')
+            if verbose:
+                cprint('Cartesian Path planning failure ({}) after {} attempts | {} due to IK, {} due to Cart.'.format(
+                    planner_id, samples_cnt, ik_failures, path_failures), 'yellow')
     else:
         # TODO make sure start/end conf coincides if provided
         if start_conf is not None and end_conf is not None:
-            cprint('Both start/end confs are pre-specified, problem might be too stiff to be solved.', 'yellow')
+            if verbose:
+                cprint('Both start/end confs are pre-specified, problem might be too stiff to be solved.', 'yellow')
         if start_conf:
-            cprint('One-sided Cartesian planning : start conf set, forward mode', 'blue')
+            if verbose:
+                cprint('One-sided Cartesian planning : start conf set, forward mode', 'blue')
             forward = True
             gantry_arm_conf = start_conf
         else:
-            cprint('One-sided Cartesian planning : end conf set, backward mode', 'blue')
+            if verbose:
+                cprint('One-sided Cartesian planning : end conf set, backward mode', 'blue')
             forward = False
             gantry_arm_conf = end_conf
             interp_frames = interp_frames[::-1]
 
         samples_cnt = 0
         for ci in range(cartesian_attempts):
-            # if debug:
-            print('\tcartesian trial #{}'.format(ci))
+            if verbose:
+                print('\tcartesian trial #{}'.format(ci))
             cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
                 group=cartesian_move_group, options=options)
             samples_cnt += 1
@@ -274,13 +291,15 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 success_planner = 'LadderGraph'
 
         if not cart_conf:
-            cprint('Cartesian Path planning (w/ prespecified st or end conf) failure after\n{} attempts of {} + 1 LadderGraph attempt.'.format(
-                planner_id, samples_cnt), 'yellow')
+            if verbose:
+                cprint('Cartesian Path planning (w/ prespecified st or end conf) failure after\n{} attempts of {} + 1 LadderGraph attempt.'.format(
+                    planner_id, samples_cnt), 'yellow')
         else:
             if not forward:
                 cart_conf = reverse_trajectory(cart_conf)
-            cprint('Plan found by {}! After {} path failure (by {}) over {} samples.'.format(
-                success_planner, path_failures, planner_id, samples_cnt), 'green')
+            if verbose:
+                cprint('Plan found by {}! After {} path failure (by {}) over {} samples.'.format(
+                    success_planner, path_failures, planner_id, samples_cnt), 'green')
 
     if cart_conf is None and diagnosis:
         lockrenderer = options.get('lockrenderer', None)
@@ -311,11 +330,14 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     if cart_conf:
         traj = cart_conf
         if start_conf is not None:
-            check_cartesian_conf_agreement(client, robot, start_conf, traj.points[0], conf1_tag='given start conf', conf2_tag='traj[0]')
+            check_cartesian_conf_agreement(client, robot, start_conf, traj.points[0],
+                conf1_tag='given start conf', conf2_tag='traj[0]', verbose=verbose)
         if end_conf is not None:
-            check_cartesian_conf_agreement(client, robot, end_conf, traj.points[-1], conf1_tag='given end conf', conf2_tag='traj[-1]')
+            check_cartesian_conf_agreement(client, robot, end_conf, traj.points[-1],
+                conf1_tag='given end conf', conf2_tag='traj[-1]', verbose=verbose)
     else:
-        cprint('No linear movement found for {}.'.format(movement.short_summary), 'red')
+        if verbose:
+            cprint('No linear movement found for {}.'.format(movement.short_summary), 'red')
     return fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP)
 
 ##############################
@@ -325,6 +347,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     options = options or {}
     # * options
     debug = options.get('debug', False)
+    verbose = options.get('verbose', True)
     # * sampling attempts, needed only if start/end conf not specified
     gantry_attempts = options.get('gantry_attempts') or 500
     reachable_range = options.get('reachable_range') or (0.2, 2.8)
@@ -341,12 +364,16 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         orig_start_conf.joint_names = orig_end_conf.joint_names
 
     # * set start state
-    set_state(client, robot, process, start_state)
+    try:
+        set_state(client, robot, process, start_state)
+    except RuntimeError:
+        return None
 
     if orig_start_conf is None:
-        cprint('Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
-        notify('Warning! Go back to the command line now!')
-        wait_for_user('Please press Enter to confirm.')
+        cprint('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
+        if verbose:
+            notify('Warning! Go back to the command line now!')
+            wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
         start_t0cf_frame = copy(start_state['robot'].current_frame)
         start_t0cf_frame.point *= 1e-3
@@ -357,12 +384,16 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                 if orig_start_conf:
                     break
             else:
+                # if verbose:
                 cprint('No robot IK conf can be found for {} after {} attempts, Underspecified problem, solve fails.'.format(
                     movement.short_summary, gantry_attempts), 'red')
-                raise RuntimeError()
+                # raise RuntimeError()
+                return None
         else:
+            # if verbose:
             cprint('No robot start frame is specified in {}, Underspecified problem, solve fails.'.format(movement.short_summary), 'red')
-            raise RuntimeError()
+            # raise RuntimeError()
+            return None
 
     start_conf = orig_start_conf
     end_conf = orig_end_conf
@@ -376,10 +407,11 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     with LockRenderer():
         traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
                                   options=options)
-    if traj is None:
-        cprint('No free movement found for {}.'.format(movement.short_summary), 'red')
-    else:
-        cprint('Free movement found for {}!'.format(movement.short_summary), 'green')
+    if verbose:
+        if traj is None:
+            cprint('No free movement found for {}.'.format(movement.short_summary), 'red')
+        else:
+            cprint('Free movement found for {}!'.format(movement.short_summary), 'green')
 
     if traj is None and diagnosis:
         client._print_object_summary()

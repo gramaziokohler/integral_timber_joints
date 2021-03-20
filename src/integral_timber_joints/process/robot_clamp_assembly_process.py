@@ -1561,6 +1561,8 @@ class RobotClampAssemblyProcess(Network):
                 # print("Loading External Movement File: movement_path%s" % movement_path)
                 with open(movement_path, 'r') as f:
                     movement.data = json.load(f, cls=DataDecoder).data
+                # if isinstance(movement, RoboticMovement):
+                #     print('Has traj: {} | end state conf: {}'.format(movement.trajectory is not None, movement.end_state['robot'].kinematic_config))
                 movements_modified.append(movement)
         return movements_modified
 
