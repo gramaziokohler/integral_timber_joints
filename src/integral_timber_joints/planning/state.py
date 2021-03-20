@@ -1,4 +1,3 @@
-from external.pybullet_planning.src.pybullet_planning.interfaces.env_manager.user_io import wait_for_user
 import os
 from termcolor import cprint
 from copy import copy, deepcopy
@@ -13,7 +12,7 @@ from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 from compas_fab_pychoreo.client import PyChoreoClient
 
 from pybullet_planning import GREY
-from pybullet_planning import LockRenderer, HideOutput, load_pybullet
+from pybullet_planning import LockRenderer, HideOutput, load_pybullet, wait_for_user
 from pybullet_planning import get_sample_fn, link_from_name, joint_from_name, link_from_name, get_link_pose
 from pybullet_planning import uniform_pose_generator
 

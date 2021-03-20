@@ -348,7 +348,8 @@ def main():
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
-    parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan. Set value to -1 to run all.')
+    parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan.')
+    parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
@@ -386,19 +387,32 @@ def main():
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
     # * Load process and recompute actions and states
     process = parse_process(args.problem, subdir=args.problem_subdir)
+    result_path = get_process_path(args.problem, subdir='results')
+    if len(process.movements) == 0:
+        cprint('No movements found in process, trigger recompute actions.', 'red')
+        args.recompute_action_states = True
     if args.recompute_action_states:
         cprint('Recomputing Actions and States', 'cyan')
         recompute_action_states(process, False)
-        result_path = get_process_path(args.problem, subdir='results')
-        with open(result_path, 'w') as f:
-            json.dump(process, f, cls=DataEncoder, indent=None, sort_keys=True)
-        cprint('Recomputed process saved to %s' % result_path, 'green')
+
+    process.load_external_movements(os.path.dirname(result_path))
+    with open(result_path, 'w') as f:
+        json.dump(process, f, cls=DataEncoder, indent=None, sort_keys=True)
+    cprint('Recomputed process saved to %s' % result_path, 'green')
+
     set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=args.reinit_tool)
 
-    beam_ids = list(process.assembly.sequence) if args.seq_i < 0 else [process.assembly.sequence[args.seq_i]]
+    full_seq_len = len(process.assembly.sequence)
+    assert args.seq_i < full_seq_len and args.seq_i >= 0
+    if args.batch_run:
+        beam_ids = [process.assembly.sequence[si] for si in range(args.seq_i, full_seq_len)]
+    else:
+        # only one
+        beam_ids = [process.assembly.sequence[args.seq_i]]
     beam_attempts = 10
-    for s_i, beam_id in enumerate(beam_ids):
+    for beam_id in beam_ids:
         print('-'*20)
+        s_i = process.assembly.sequence.index(beam_id)
         print('({}) Beam#{}'.format(s_i, beam_id))
         for i in range(beam_attempts):
             print('-- iter #{}'.format(i))

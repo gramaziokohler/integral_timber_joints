@@ -1,4 +1,3 @@
-from external.pybullet_planning.src.pybullet_planning.interfaces.kinematics.ik_utils import is_pose_close
 import os
 import sys
 import pybullet
@@ -17,7 +16,7 @@ import ikfast_abb_irb4600_40_255
 from pybullet_planning import GREY
 from pybullet_planning import link_from_name, get_link_pose, draw_pose, multiply, \
     joints_from_names, LockRenderer, WorldSaver, wait_for_user, joint_from_name, wait_if_gui, has_gui
-from pybullet_planning import link_from_name, sample_tool_ik
+from pybullet_planning import link_from_name, sample_tool_ik, is_pose_close
 from pybullet_planning import compute_inverse_kinematics
 
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
@@ -371,8 +370,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         return None
 
     if orig_start_conf is None:
+        cprint('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
         if verbose:
-            cprint('Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
             notify('Warning! Go back to the command line now!')
             wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
