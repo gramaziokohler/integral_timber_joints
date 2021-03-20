@@ -81,6 +81,10 @@ def _get_sample_bare_arm_ik_fn(client: PyChoreoClient, robot: Robot):
 ##############################
 
 def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', conf2_tag='', jt_tol=1e-3):
+    robot_uid = client.get_robot_pybullet_uid(robot)
+    tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
+    ik_tool_link = link_from_name(robot_uid, tool_link_name)
+
     if not conf1.close_to(conf2, tol=jt_tol):
         with WorldSaver():
             client.set_robot_configuration(robot, conf1)

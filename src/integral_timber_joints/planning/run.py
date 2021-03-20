@@ -11,7 +11,7 @@ from termcolor import cprint, colored
 from copy import copy, deepcopy
 
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
-from pybullet_planning import compute_inverse_kinematics
+from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time
 import ikfast_abb_irb4600_40_255
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements
@@ -46,7 +46,7 @@ class MovementStatus(Enum):
 
 ###########################################
 
-def compute_movement(client, robot, process, movement, options=None, diagnosis=False):
+def compute_movement(client, robot, process, movement, options=None, diagnosis=False, verbose=False):
     if not isinstance(movement, RoboticMovement):
         return None
     cprint(movement.short_summary, 'cyan')
@@ -114,11 +114,12 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         end_state['robot'].kinematic_config = traj.points[-1]
         return movement
     else:
-        notify('Planning fails! Go back to the command line now!')
-        wait_for_user('Planning fails, press Enter to continue. Try exit and running again - may the Luck be with you next time :)')
+        if verbose:
+            notify('Planning fails! Go back to the command line now!')
+        # wait_for_user('Planning fails, press Enter to continue. Try exit and running again - may the Luck be with you next time :)')
         return None
 
-def propagate_states(process, selected_movements, all_movements):
+def propagate_states(process, selected_movements, all_movements, verbose=True):
     for target_m in selected_movements:
         if not isinstance(target_m, RoboticMovement) or target_m.trajectory is None:
             continue
@@ -127,8 +128,9 @@ def propagate_states(process, selected_movements, all_movements):
         target_end_state = process.get_movement_end_state(target_m)
         target_start_conf = target_start_state['robot'].kinematic_config
         target_end_conf = target_end_state['robot'].kinematic_config
-        print('~'*5)
-        print('\tPropagate states for ({}) : {}'.format(m_id, target_m.short_summary))
+        if verbose:
+            print('~'*5)
+            print('\tPropagate states for ({}) : {}'.format(m_id, target_m.short_summary))
         # * backward fill all adjacent (-1) movements
         back_id = m_id-1
         while back_id > 0 and all_movements[back_id].planning_priority == -1:
@@ -136,13 +138,13 @@ def propagate_states(process, selected_movements, all_movements):
             back_start_state = process.get_movement_start_state(back_m)
             back_end_state = process.get_movement_end_state(back_m)
             back_end_conf = back_end_state['robot'].kinematic_config
-            if back_end_conf is not None and \
-                not back_end_conf.close_to(target_start_conf, tol=1e-3):
-                    cprint('Backward Prop: Start conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_start_conf)), 'red')
-                    notify('Warning! Go back to the command line now!')
-                    wait_for_user()
-            # else:
-            print('\t- past (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
+            if verbose:
+                if back_end_conf is not None and \
+                    not back_end_conf.close_to(target_start_conf, tol=1e-3):
+                        cprint('Backward Prop: Start conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_start_conf)), 'red')
+                        # notify('Warning! Go back to the command line now!')
+                        # wait_for_user()
+                print('\t- past (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
             back_end_state['robot'].kinematic_config = target_start_conf
             back_start_state['robot'].kinematic_config = target_start_conf
             back_id -= 1
@@ -153,20 +155,20 @@ def propagate_states(process, selected_movements, all_movements):
             forward_start_state = process.get_movement_start_state(forward_m)
             forward_end_state = process.get_movement_end_state(forward_m)
             forward_start_conf = forward_start_state['robot'].kinematic_config
-            # TODO check why there is discrepancy sometimes
-            if forward_start_conf is not None and \
-                not forward_start_conf.close_to(target_end_conf, tol=1e-3):
-                    cprint('Forward Prop: End conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_end_conf)), 'red')
-                    notify('Warning! Go back to the command line now!')
-                    wait_for_user()
-            print('\t- future (forward): ({}) {}'.format(colored(forward_id, 'green'), forward_m.short_summary))
+            if verbose:
+                if forward_start_conf is not None and \
+                    not forward_start_conf.close_to(target_end_conf, tol=1e-3):
+                        cprint('Forward Prop: End conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_end_conf)), 'red')
+                        # notify('Warning! Go back to the command line now!')
+                        # wait_for_user()
+                print('\t- future (forward): ({}) {}'.format(colored(forward_id, 'green'), forward_m.short_summary))
             forward_start_state['robot'].kinematic_config = target_end_conf
             forward_end_state['robot'].kinematic_config = target_end_conf
             forward_id += 1
     # end loop selected_movements
     return all_movements
 
-def get_movement_status(process, m, movement_types):
+def get_movement_status(process, m, movement_types, verbose=True):
     """get the movement's current status, see the `MovementStatus` class
 
     Parameters
@@ -191,7 +193,7 @@ def get_movement_status(process, m, movement_types):
             has_start_conf and has_end_conf and not has_traj:
         cprint('{} has both start, end conf specified, but no traj computed. This is BAD!!'.format(m.short_summary), 'yellow')
         notify('Warning! Go back to the command line now!')
-        wait_for_user()
+        # wait_for_user()
     # imply(has_traj, has_start_conf and has_end_conf)
     assert not has_traj or (has_start_conf and has_end_conf)
     if has_traj:
@@ -205,7 +207,7 @@ def get_movement_status(process, m, movement_types):
             return MovementStatus.neither_done
 
 def compute_selected_movements(client, robot, process, beam_id, priority, movement_types, movement_statuses, options=None,
-        viz_upon_found=False, diagnosis=False):
+        viz_upon_found=False, diagnosis=False, verbose=True):
     """Compute trajectories for movements specified by a certain criteria.
 
     Parameters
@@ -228,127 +230,40 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
     step_sim : bool, optional
         step conf-by-conf if viz_upon_found == True, by default False
     """
-    print('='*20)
-    print_title('* compute {} (priority {}, status {})'.format([mt.__name__ for mt in movement_types], priority,
-        movement_statuses))
+    if verbose:
+        print('='*20)
+        print_title('* compute {} (priority {}, status {})'.format([mt.__name__ for mt in movement_types], priority,
+            movement_statuses))
     all_movements = process.get_movements_by_beam_id(beam_id)
     selected_movements = process.get_movements_by_planning_priority(beam_id, priority)
     for m in selected_movements:
         altered_movements = []
         if get_movement_status(process, m, movement_types) in movement_statuses:
-            print('-'*10)
             m_id = all_movements.index(m)
-            print('({})'.format(m_id))
-            updated_m = compute_movement(client, robot, process, m, options, diagnosis)
-            # if updated_m is None:
-            #     # TODO trace immediate neighnoring movements with traj
-            #     movements_to_recompute = []
-            #     back_id = m_id-1
-            #     while back_id > 0 :
-            #         if all_movements[back_id].planning_priority != -1:
-            #             if all_movements[back_id].trajectory:
-            #                 movements_to_recompute.append(all_movements[back_id])
-            #             break
-            #         back_id -= 1
-            #     forward_id = m_id+1
-            #     while forward_id < len(all_movements) :
-            #         if all_movements[forward_id].planning_priority != -1:
-            #             if all_movements[forward_id].trajectory:
-            #                 movements_to_recompute.append(all_movements[forward_id])
-            #             break
-            #         forward_id += 1
-            #     if movements_to_recompute:
-            #     return movements_to_recompute
+            if verbose:
+                print('-'*10)
+                print('({})'.format(m_id))
+            compute_movement(client, robot, process, m, options, diagnosis)
             altered_movements.append(m)
             if viz_upon_found:
                 with WorldSaver():
                     visualize_movement_trajectory(client, robot, process, m, step_sim=True)
         # * propagate to -1 movements
         propagate_states(process, altered_movements, all_movements)
-
-    print('\n\n')
-    process.get_movement_summary_by_beam_id(beam_id)
+    if verbose:
+        print('\n\n')
+        process.get_movement_summary_by_beam_id(beam_id)
     return []
 
 #################################
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--problem', default='twelve_pieces_process.json', # pavilion.json
-                        help='The name of the problem to solve')
-    parser.add_argument('--problem_subdir', default='.', # pavilion.json
-                        help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
-    parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
-    parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan.')
-    parser.add_argument('--write', action='store_true', help='Write output json.')
-    parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
-    parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
-    parser.add_argument('--debug', action='store_true', help='Debug mode')
-    parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode')
-    parser.add_argument('--step_sim', action='store_true', help='Pause after each conf viz.')
-    parser.add_argument('--disable_env', action='store_true', help='Disable environment collision geometry.')
-    parser.add_argument('--view_states', action='store_true', help='Visualize states.')
-    parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
-    parser.add_argument('--save_temp', action='store_true', help='Save a temporary process file. Defaults to False.')
-    parser.add_argument('--viz_upon_found', action='store_true', help='Viz found traj immediately after found. Defaults to False.')
-    parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
-    args = parser.parse_args()
-    print('Arguments:', args)
-    print('='*10)
-
-    # * Connect to path planning backend and initialize robot parameters
-    seq_i = int(args.seq_i)
-    client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
-
-    # Load process and recompute actions and states
-    process = parse_process(args.problem, subdir=args.problem_subdir)
-    if args.recompute_action_states:
-        cprint('Recomputing Actions and States', 'cyan')
-        recompute_action_states(process, False)
-
-    assembly = process.assembly
-    beam_ids = [b for b in process.assembly.sequence]
-    beam_id = beam_ids[seq_i]
-    cprint('Beam #{} | previous beams: {}'.format(beam_id, assembly.get_already_built_beams(beam_id)), 'cyan')
-
-    # set all other unused robot
-    full_start_conf = to_rlf_robot_full_conf(R11_INTER_CONF_VALS, R12_INTER_CONF_VALS)
-    client.set_robot_configuration(robot, full_start_conf)
-    # wait_if_gui('Pre Initial state.')
-
-    process.initial_state['robot'].kinematic_config = process.robot_initial_config
-    set_state(client, robot, process, process.initial_state, initialize=True,
-        options={'debug' : False, 'include_env' : not args.disable_env, 'reinit_tool' : args.reinit_tool})
-    # * collision sanity check
-    assert not client.check_collisions(robot, full_start_conf, options={'diagnosis':True})
-
-    options = {
-        'debug' : args.debug,
-        'low_res' : args.low_res,
-        'distance_threshold' : 0.0012,
-        'frame_jump_tolerance' : 0.0012,
-        # 'diagnosis' : args.diagnosis,
-    }
-
+def compute_movements_for_beam_id(client, robot, process, beam_id, args, options=None):
     all_movements = process.get_movements_by_beam_id(beam_id)
 
-    if args.view_states:
-        wait_if_gui('Initial state.')
-        for i, m in enumerate(all_movements):
-            start_state = process.get_movement_start_state(m)
-            end_state = process.get_movement_end_state(m)
-            print('----')
-            cprint('({}) {}'.format(i, m.short_summary), 'cyan')
-            set_state(client, robot, process, start_state, options=options)
-            wait_if_gui('Start state')
-            set_state(client, robot, process, end_state, options=options)
-            wait_if_gui('End state')
-        wait_for_user('Enter to exit.')
-
-    print_title('0) Before planning')
-    process.get_movement_summary_by_beam_id(beam_id)
-    if args.debug:
-        wait_for_user()
+    if args.verbose:
+        print_title('0) Before planning')
+        process.get_movement_summary_by_beam_id(beam_id)
+        # wait_for_user()
 
     # max_attempts = 1
     with LockRenderer(not args.debug) as lockrenderer:
@@ -382,8 +297,6 @@ def main():
     if args.write:
         save_process_and_movements(args.problem, process, all_movements, overwrite=False, include_traj_in_process=False, save_temp=args.save_temp)
 
-    notify('A plan has been found!')
-
     # * final visualization
     if args.watch:
         print('='*20)
@@ -391,6 +304,83 @@ def main():
         set_state(client, robot, process, process.initial_state)
         for m in all_movements:
             visualize_movement_trajectory(client, robot, process, m, step_sim=args.step_sim)
+
+    if args.verbose:
+        notify('A plan has been found for beam id {}!'.format(beam_id))
+
+#################################
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--problem', default='twelve_pieces_process.json', # pavilion.json
+                        help='The name of the problem to solve')
+    parser.add_argument('--problem_subdir', default='.', # pavilion.json
+                        help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
+    parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
+    parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan. Set value to -1 to run all.')
+    parser.add_argument('--write', action='store_true', help='Write output json.')
+    parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
+    parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
+    parser.add_argument('--debug', action='store_true', help='Debug mode')
+    parser.add_argument('--verbose', action='store_false', help='Print out verbose. Defaults to True.')
+    parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode')
+    parser.add_argument('--step_sim', action='store_true', help='Pause after each conf viz.')
+    parser.add_argument('--disable_env', action='store_true', help='Disable environment collision geometry.')
+    parser.add_argument('--view_states', action='store_true', help='Visualize states.')
+    parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
+    parser.add_argument('--save_temp', action='store_true', help='Save a temporary process file. Defaults to False.')
+    parser.add_argument('--viz_upon_found', action='store_true', help='Viz found traj immediately after found. Defaults to False.')
+    parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
+    parser.add_argument('--seed', default=0, help='Random seed.')
+    args = parser.parse_args()
+    print('Arguments:', args)
+    print('='*10)
+
+    initial_time = time.time()
+    # * random seed setup
+    # seed = hash(time.time())
+    # seed = args.seed
+    # set_random_seed(seed)
+    # set_numpy_seed(seed)
+
+    # * Connect to path planning backend and initialize robot parameters
+    client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
+
+    # Load process and recompute actions and states
+    process = parse_process(args.problem, subdir=args.problem_subdir)
+    if args.recompute_action_states:
+        cprint('Recomputing Actions and States', 'cyan')
+        recompute_action_states(process, False)
+
+    # set all other unused robot
+    full_start_conf = to_rlf_robot_full_conf(R11_INTER_CONF_VALS, R12_INTER_CONF_VALS)
+    client.set_robot_configuration(robot, full_start_conf)
+    # wait_if_gui('Pre Initial state.')
+    process.initial_state['robot'].kinematic_config = process.robot_initial_config
+    try:
+        set_state(client, robot, process, process.initial_state, initialize=True,
+            options={'debug' : False, 'include_env' : not args.disable_env, 'reinit_tool' : args.reinit_tool})
+    except:
+        cprint('Recomputing Actions and States', 'cyan')
+        recompute_action_states(process, False)
+        set_state(client, robot, process, process.initial_state, initialize=True,
+            options={'debug' : False, 'include_env' : not args.disable_env, 'reinit_tool' : args.reinit_tool})
+    # * collision sanity check
+    assert not client.check_collisions(robot, full_start_conf, options={'diagnosis':True})
+
+    options = {
+        'debug' : args.debug,
+        'low_res' : args.low_res,
+        'distance_threshold' : 0.0012,
+        'frame_jump_tolerance' : 0.0012,
+        # 'diagnosis' : args.diagnosis,
+    }
+
+    beam_ids = list(process.assembly.sequence) if args.seq_i < 0 else [process.assembly.sequence[args.seq_i]]
+    for beam_id in beam_ids:
+        compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options)
+
+    print('Total time:', elapsed_time(initial_time))
 
     client.disconnect()
 
