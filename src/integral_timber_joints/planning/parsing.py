@@ -81,7 +81,7 @@ def parse_process(process_name, subdir='.') -> RobotClampAssemblyProcess:
     with open(file_path, 'r') as f:
         process = json.load(f, cls=DataDecoder)
         # type: RobotClampAssemblyProcess
-    cprint('Process json parsed from {}'.format(file_path), 'green')
+    cprint('Process json parsed from {}'.format(file_path), 'blue')
     return process
 
 def save_process_and_movements(process_name, _process, _movements,
