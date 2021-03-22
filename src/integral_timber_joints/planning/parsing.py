@@ -84,6 +84,15 @@ def parse_process(process_name, subdir='.') -> RobotClampAssemblyProcess:
     cprint('Process json parsed from {}'.format(file_path), 'blue')
     return process
 
+def save_process(_process, save_path, include_traj_in_process=False, indent=None):
+    process = deepcopy(_process)
+    if not include_traj_in_process:
+        for m in process.movements:
+            if isinstance(m, RoboticMovement):
+                m.trajectory = None
+    with open(save_path, 'w') as f:
+        json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
+
 def save_process_and_movements(process_name, _process, _movements,
     overwrite=False, include_traj_in_process=False, indent=None, save_temp=True):
     """[summary]
