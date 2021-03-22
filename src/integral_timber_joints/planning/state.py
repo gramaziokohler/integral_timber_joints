@@ -91,6 +91,9 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
         # * Do robot first
         robot_state = state_from_object['robot']
         if robot_state.kinematic_config is not None:
+            if not robot_state.kinematic_config.joint_names:
+                # cprint('Warning: robot conf joint_names not set : {}'.format(robot_state.kinematic_config), 'yellow')
+                robot_state.kinematic_config.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
             client.set_robot_configuration(robot, robot_state.kinematic_config)
             tool_link = link_from_name(robot_uid, flange_link_name)
             # in millimeter
