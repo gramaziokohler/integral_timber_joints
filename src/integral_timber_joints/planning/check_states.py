@@ -1,3 +1,4 @@
+import os, time
 import argparse
 from termcolor import cprint
 from itertools import product, combinations
@@ -8,7 +9,7 @@ from pybullet_planning import get_distance, draw_collision_diagnosis, expand_lin
     link_from_name, pairwise_link_collision_info, get_name, get_link_name
 from compas_fab_pychoreo.client import PyChoreoClient
 
-from integral_timber_joints.planning.parsing import parse_process
+from integral_timber_joints.planning.parsing import parse_process, get_process_path
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
     R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
 from integral_timber_joints.planning.state import set_state
@@ -40,6 +41,7 @@ def main():
                         help='The name of the problem to solve')
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
+    parser.add_argument('--plan_summary', action='store_true', help='Give a summary of currently found plans.')
     parser.add_argument('--start_from_id', type=int, default=0, help='sequence index to start from, default to 0 (i.e. check all).')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
@@ -49,6 +51,36 @@ def main():
     print('='*10)
 
     process = parse_process(args.problem, subdir=args.problem_subdir)
+
+    result_path = get_process_path(args.problem, subdir='results')
+    if args.plan_summary:
+        ext_movement_path = os.path.dirname(result_path)
+        cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
+        unfound_beams = []
+        # process.load_external_movements(ext_movement_path)
+        for i, beam_id in enumerate(process.assembly.sequence):
+            print('='*10)
+            cprint('({}) Beam #{}:'.format(i, beam_id), 'cyan')
+            b_movements = process.get_movements_by_beam_id(beam_id)
+            all_found = True
+            for movement in b_movements:
+                movement_path = os.path.join(ext_movement_path, movement.filepath)
+                if not os.path.exists(movement_path):
+                    cprint('{} not found | {}'.format(movement.movement_id, movement.short_summary), 'red')
+                    all_found = False
+            if all_found:
+                if len(b_movements) > 0:
+                    cprint('({}) Beam #{} all found!'.format(i, beam_id), 'green')
+                    movement_path = os.path.join(ext_movement_path, b_movements[-1].filepath)
+                    print("   created: %s" % time.ctime(os.path.getctime(movement_path)))
+                    print("   last modified: %s" % time.ctime(os.path.getmtime(movement_path)))
+                else:
+                    cprint('({}) Beam #{} empty movement list!'.format(i, beam_id), 'yellowjk')
+            else:
+                unfound_beams.append((i, beam_id))
+        print('Unfound beams: {}'.format(unfound_beams))
+        return
+
     assert args.start_from_id >= 0 and args.start_from_id < len(process.assembly.sequence), 'start_from_id out of range!'
 
     # * Connect to path planning backend and initialize robot parameters
