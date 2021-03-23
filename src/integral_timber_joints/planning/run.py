@@ -93,14 +93,15 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
-        joint_resolutions = 1.0 if low_res else 0.05
+        joint_resolutions = 1.0 if low_res else 0.05 # 0.05
         fm_options = options.copy()
         fm_options.update({
-            'rrt_restarts' : 200,
+            'rrt_restarts' : 20,
             'rrt_iterations' : 200,
             'smooth_iterations': 100,
             'resolutions' : joint_resolutions,
             'max_step' : 0.01,
+            'max_distance' : 0.0, # buffering distance
             })
         traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis)
     else:
@@ -118,7 +119,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     else:
         if verbose:
             notify('Planning fails! Go back to the command line now!')
-            wait_for_user('Planning fails, press Enter to continue. Try exit and running again - may the Luck be with you next time :)')
+            # wait_for_user('Planning fails, press Enter to continue. Try exit and running again - may the Luck be with you next time :)')
         return False
 
 def propagate_states(process, selected_movements, all_movements, options=None):
@@ -257,17 +258,17 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 return False
         # * propagate to -1 movements
         propagate_states(process, altered_movements, all_movements, options=options)
-    if verbose:
-        print('\n\n')
-        process.get_movement_summary_by_beam_id(beam_id)
+    # if verbose:
+    #     print('\n\n')
+    #     process.get_movement_summary_by_beam_id(beam_id)
     return True
 
 #################################
 
 def compute_movements_for_beam_id(client, robot, process, beam_id, args, options=None):
-    if args.verbose:
-        print_title('0) Before planning')
-        process.get_movement_summary_by_beam_id(beam_id)
+    # if args.verbose:
+    #     print_title('0) Before planning')
+    #     process.get_movement_summary_by_beam_id(beam_id)
         # wait_for_user()
 
     with LockRenderer(not args.debug) as lockrenderer:

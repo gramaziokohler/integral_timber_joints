@@ -100,7 +100,7 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
                 cprint('LinearMovement: {} not coincided with {} - max diff {:.5f}'.format(
                 conf1_tag, conf2_tag, conf1.max_difference(conf2)), 'red')
                 notify('Warning! Go back to the command line now!')
-                wait_for_user()
+                # wait_for_user()
             return False
         else:
             return True
@@ -373,7 +373,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         cprint('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
         if verbose:
             notify('Warning! Go back to the command line now!')
-            wait_for_user('Please press Enter to confirm.')
+            # wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
         start_t0cf_frame = copy(start_state['robot'].current_frame)
         start_t0cf_frame.point *= 1e-3
