@@ -277,7 +277,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         # TODO have to find a way to recover movements
         all_movements = process.get_movements_by_beam_id(beam_id)
 
-        with HideOutput(args.verbose):
+        with HideOutput(): #args.verbose
             if not args.free_motion_only:
                 if not compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
                     [MovementStatus.neither_done, MovementStatus.one_sided],
