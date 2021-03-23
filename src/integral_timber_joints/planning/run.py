@@ -11,11 +11,11 @@ from termcolor import cprint, colored
 from copy import copy, deepcopy
 from compas.utilities import DataEncoder
 
-from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
+from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver, HideOutput
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time
 import ikfast_abb_irb4600_40_255
 
-from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path
+from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
     R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP, BARE_ARM_GROUP
 from integral_timber_joints.planning.utils import notify, print_title
@@ -276,32 +276,35 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         # TODO have to find a way to recover movements
         all_movements = process.get_movements_by_beam_id(beam_id)
 
-        if not compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
-            [MovementStatus.neither_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
-            return False
+        with HideOutput(args.verbose):
+            if not args.free_motion_only:
+                if not compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
+                    [MovementStatus.neither_done, MovementStatus.one_sided],
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
+                    return False
 
-        # TODO if fails remove the related movement's trajectory and try again
-        if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-            [MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
-            return False
+                # TODO if fails remove the related movement's trajectory and try again
+                if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                    [MovementStatus.one_sided],
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
+                    return False
 
-        # since adjacent "neither_done" states will change to `one_sided` and get skipped
-        # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
-        # Thus, when solving `neither_done`, we solve for both `neither_done` and `one_sided` sequentially
-        # The movement statuses get changed on the fly.
-        if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-            [MovementStatus.neither_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
-            return False
+                # since adjacent "neither_done" states will change to `one_sided` and get skipped
+                # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
+                # Thus, when solving `neither_done`, we solve for both `neither_done` and `one_sided` sequentially
+                # The movement statuses get changed on the fly.
+                if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                    [MovementStatus.neither_done, MovementStatus.one_sided],
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
+                    return False
 
-        # Ideally, all the free motions should have both start and end conf specified.
-        # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
-        if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
-            [MovementStatus.both_done, MovementStatus.one_sided],
-            options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
-            return False
+            # Ideally, all the free motions should have both start and end conf specified.
+            # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
+            if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
+                [MovementStatus.both_done, MovementStatus.one_sided] if not args.free_motion_only else \
+                    [MovementStatus.both_done, MovementStatus.one_sided, MovementStatus.has_traj],
+                options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
+                return False
 
     # * export computed movements
     if args.write:
@@ -350,8 +353,11 @@ def main():
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan.')
     parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
+    parser.add_argument('--free_motion_only', action='store_true', help='Only compute free motions.')
+    #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
+    parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
     parser.add_argument('--debug', action='store_true', help='Debug mode')
     parser.add_argument('--verbose', action='store_false', help='Print out verbose. Defaults to True.')
@@ -395,9 +401,12 @@ def main():
         cprint('Recomputing Actions and States', 'cyan')
         recompute_action_states(process, False)
 
-    process.load_external_movements(os.path.dirname(result_path))
-    with open(result_path, 'w') as f:
-        json.dump(process, f, cls=DataEncoder, indent=None, sort_keys=True)
+    if args.load_external_movements:
+        ext_movement_path = os.path.dirname(result_path)
+        cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
+        process.load_external_movements(ext_movement_path)
+
+    save_process(process, result_path)
     cprint('Recomputed process saved to %s' % result_path, 'green')
 
     set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=args.reinit_tool)
