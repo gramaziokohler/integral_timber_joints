@@ -227,6 +227,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         list of `MovementStatus` to filter, e.g. [RoboticLiearMovement, ...]
     movement_statuses : list(MovementStatus.xx)
         list of `MovementStatus` to filter, e.g. [MovementStatus.one_sided, ...]
+        None if no filter is applied.
     options : dict, optional
         planning options, by default None
     viz_upon_found : bool, optional
@@ -235,15 +236,21 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         step conf-by-conf if viz_upon_found == True, by default False
     """
     verbose = options.get('verbose', False)
+    movement_id_filter = options.get('movement_id_filter', [])
     if verbose:
         print('='*20)
         print_title('* compute {} (priority {}, status {})'.format([mt.__name__ for mt in movement_types], priority,
             movement_statuses))
+
     all_movements = process.get_movements_by_beam_id(beam_id)
-    selected_movements = process.get_movements_by_planning_priority(beam_id, priority)
+    if len(movement_id_filter) > 0:
+        selected_movements = [process.get_movement_by_movement_id(mid) for mid in movement_id_filter]
+    else:
+        selected_movements = process.get_movements_by_planning_priority(beam_id, priority)
+
     for m in selected_movements:
         altered_movements = []
-        if get_movement_status(process, m, movement_types) in movement_statuses:
+        if movement_statuses is None or get_movement_status(process, m, movement_types) in movement_statuses :
             m_id = all_movements.index(m)
             if verbose:
                 print('-'*10)
@@ -263,6 +270,8 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
     #     process.get_movement_summary_by_beam_id(beam_id)
     return True
 
+    # TODO return altered movements
+
 #################################
 
 def compute_movements_for_beam_id(client, robot, process, beam_id, args, options=None):
@@ -278,34 +287,41 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         all_movements = process.get_movements_by_beam_id(beam_id)
 
         with HideOutput(): #args.verbose
-            if not args.free_motion_only:
-                if not compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
-                    [MovementStatus.neither_done, MovementStatus.one_sided],
+            if args.id_only is None:
+                if not args.free_motion_only:
+                    if not compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
+                        [MovementStatus.neither_done, MovementStatus.one_sided],
+                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
+                        return False
+
+                    # TODO if fails remove the related movement's trajectory and try again
+                    if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                        [MovementStatus.one_sided],
+                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
+                        return False
+
+                    # since adjacent "neither_done" states will change to `one_sided` and get skipped
+                    # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
+                    # Thus, when solving `neither_done`, we solve for both `neither_done` and `one_sided` sequentially
+                    # The movement statuses get changed on the fly.
+                    if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                        [MovementStatus.neither_done, MovementStatus.one_sided],
+                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
+                        return False
+
+                # Ideally, all the free motions should have both start and end conf specified.
+                # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
+                if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
+                    [MovementStatus.both_done, MovementStatus.one_sided] if not args.free_motion_only else \
+                        [MovementStatus.both_done, MovementStatus.one_sided, MovementStatus.has_traj],
                     options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
                     return False
-
-                # TODO if fails remove the related movement's trajectory and try again
-                if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-                    [MovementStatus.one_sided],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
+            else:
+                cprint('Computing only for {}'.format(args.id_only), 'yellow')
+                options['movement_id_filter'] = [args.id_only]
+                if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
+                    None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
                     return False
-
-                # since adjacent "neither_done" states will change to `one_sided` and get skipped
-                # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
-                # Thus, when solving `neither_done`, we solve for both `neither_done` and `one_sided` sequentially
-                # The movement statuses get changed on the fly.
-                if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-                    [MovementStatus.neither_done, MovementStatus.one_sided],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
-                    return False
-
-            # Ideally, all the free motions should have both start and end conf specified.
-            # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
-            if not compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
-                [MovementStatus.both_done, MovementStatus.one_sided] if not args.free_motion_only else \
-                    [MovementStatus.both_done, MovementStatus.one_sided, MovementStatus.has_traj],
-                options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis):
-                return False
 
     # * export computed movements
     if args.write:
@@ -355,6 +371,7 @@ def main():
     parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan.')
     parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
     parser.add_argument('--free_motion_only', action='store_true', help='Only compute free motions.')
+    parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
@@ -402,13 +419,16 @@ def main():
         cprint('Recomputing Actions and States', 'cyan')
         recompute_action_states(process, False)
 
+    # force load external if only planning for the free motions
+    args.load_external_movements = args.load_external_movements or args.free_motion_only or args.id_only is not None
     if args.load_external_movements:
         ext_movement_path = os.path.dirname(result_path)
         cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
         process.load_external_movements(ext_movement_path)
 
-    save_process(process, result_path)
-    cprint('Recomputed process saved to %s' % result_path, 'green')
+    if args.recompute_action_states:
+        save_process(process, result_path)
+        cprint('Recomputed process saved to %s' % result_path, 'green')
 
     set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=args.reinit_tool)
 
