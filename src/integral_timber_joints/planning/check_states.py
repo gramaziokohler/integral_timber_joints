@@ -7,11 +7,13 @@ from compas_fab.robots import Robot
 from pybullet_planning import wait_if_gui, wait_for_user, has_gui
 from pybullet_planning import get_distance, draw_collision_diagnosis, expand_links, get_all_links, \
     link_from_name, pairwise_link_collision_info, get_name, get_link_name
+
 from compas_fab_pychoreo.client import PyChoreoClient
+from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
 
 from integral_timber_joints.planning.parsing import parse_process, get_process_path
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
-    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
+    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.utils import print_title
 
@@ -42,7 +44,10 @@ def main():
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
     parser.add_argument('--plan_summary', action='store_true', help='Give a summary of currently found plans.')
-    parser.add_argument('--start_from_id', type=int, default=0, help='sequence index to start from, default to 0 (i.e. check all).')
+    parser.add_argument('--verify_plan', action='store_true', help='Collision check found trajectories.')
+    parser.add_argument('--seq_i', type=int, default=0, help='sequence index to start from, default to 0 (i.e. check all).')
+    parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
+    parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     parser.add_argument('--debug', action='store_true', help='debug mode.')
@@ -81,7 +86,10 @@ def main():
         print('Unfound beams: {}'.format(unfound_beams))
         return
 
-    assert args.start_from_id >= 0 and args.start_from_id < len(process.assembly.sequence), 'start_from_id out of range!'
+    if args.verify_plan:
+        ext_movement_path = os.path.dirname(result_path)
+        cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
+        process.load_external_movements(ext_movement_path)
 
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer)
@@ -107,12 +115,22 @@ def main():
         'debug' : args.debug,
     }
 
-    for seq_i in range(args.start_from_id, len(process.assembly.sequence)):
-        beam_id = process.assembly.sequence[seq_i]
-        print('='*20)
-        cprint('(Seq#{}) Beam {}'.format(seq_i, beam_id), 'yellow')
+    full_seq_len = len(process.assembly.sequence)
+    assert args.seq_i >= 0 and args.seq_i < full_seq_len, 'seq_i out of range!'
+    if args.batch_run or args.id_only:
+        beam_ids = [process.assembly.sequence[si] for si in range(args.seq_i, full_seq_len)]
+    else:
+        beam_ids = [process.assembly.sequence[args.seq_i]]
+
+    for beam_id in beam_ids:
+        seq_i = process.assembly.sequence.index(beam_id)
+        if not args.id_only:
+            print('='*20)
+            cprint('(Seq#{}) Beam {}'.format(seq_i, beam_id), 'yellow')
         all_movements = process.get_movements_by_beam_id(beam_id)
         for i, m in enumerate(all_movements):
+            if args.id_only and m.movement_id != args.id_only:
+                continue
             if isinstance(m, RoboticMovement):
                 start_state = process.get_movement_start_state(m)
                 end_state = process.get_movement_end_state(m)
@@ -134,6 +152,19 @@ def main():
                 in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
                 cprint('Start State in collision: {}.'.format(in_collision), 'red' if in_collision else 'green')
                 print('#'*20)
+
+                if args.verify_plan:
+                    pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
+                    if m.trajectory:
+                        # TODO add joint flip check
+                        for jpt in m.trajectory.points:
+                            if not jpt.joint_names:
+                                jpt.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+                            in_collision = pychore_collision_fn.check_collisions(robot, jpt, options=options)
+                        cprint('Trajectory in collision: {}.'.format(in_collision), 'red' if in_collision else 'green')
+                    else:
+                        print('No trajectory found!', 'red')
+                        wait_for_user()
 
                 cprint('End State:', 'blue')
                 in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
