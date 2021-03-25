@@ -13,6 +13,7 @@ from pybullet_planning import get_distance, draw_collision_diagnosis, expand_lin
 
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
+from compas_fab_pychoreo.utils import compare_configurations
 
 from integral_timber_joints.planning.parsing import parse_process, get_process_path
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
@@ -54,6 +55,7 @@ def main():
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     parser.add_argument('--debug', action='store_true', help='debug mode.')
+    parser.add_argument('--traj_collision', action='store_false', help='check trajectory collisions.')
     args = parser.parse_args()
     print('Arguments:', args)
     print('='*10)
@@ -107,6 +109,12 @@ def main():
     # * collision sanity check for the initial conf
     assert not client.check_collisions(robot, full_start_conf, options={'diagnosis':True})
 
+    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+    joint_types = robot.get_joint_types_by_names(joint_names)
+    joint_jump_threshold = {jt_name : 0.1 \
+            if jt_type in [Joint.REVOLUTE, Joint.CONTINUOUS] else 0.1 \
+            for jt_name, jt_type in zip(joint_names, joint_types)}
+
     options = {
         # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
         'distance_threshold' : 0.0012,
@@ -129,10 +137,6 @@ def main():
 
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
 
-    # * joint flip parameters
-    revolute_joint_diff_tol = np.pi/6 # rad
-    prismatic_joint_diff_tol = 0.05 # meter
-
     for beam_id in beam_ids:
         seq_i = process.assembly.sequence.index(beam_id)
         if not args.id_only:
@@ -142,9 +146,14 @@ def main():
         for i, m in enumerate(all_movements):
             if args.id_only and m.movement_id != args.id_only:
                 continue
+            start_state = process.get_movement_start_state(m)
+            end_state = process.get_movement_end_state(m)
+            start_conf = start_state['robot'].kinematic_config
+            start_conf.joint_names = joint_names
+            end_conf = end_state['robot'].kinematic_config
+            end_conf.joint_names = joint_names
+
             if isinstance(m, RoboticMovement):
-                start_state = process.get_movement_start_state(m)
-                end_state = process.get_movement_end_state(m)
 
                 # movement-specific ACM
                 temp_name = '_tmp'
@@ -167,29 +176,22 @@ def main():
                 if args.verify_plan:
                     pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
                     if m.trajectory:
-                        prev_conf = start_state['robot'].kinematic_config
-                        prev_conf.joint_names = joint_names
-                        for conf_id, jpt in enumerate(m.trajectory.points):
+                        prev_conf = start_conf
+                        in_collision = False
+                        joint_flip = False
+                        for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
                             if not jpt.joint_names:
                                 jpt.joint_names = joint_names
-                            in_collision = pychore_collision_fn.check_collisions(robot, jpt, options=options)
-
-                            # joint flip check
-                            for i, diff in enumerate(jpt.iter_differences(prev_conf)):
-                                # cprint('Joint #{} diff: {}'.format(joint_names[i], diff), 'yellow')
-                                if jpt.types[i] in [Joint.REVOLUTE, Joint.CONTINUOUS]:
-                                    if abs(diff) > revolute_joint_diff_tol:
-                                        cprint('({}) Joint #{} (revolution) jump: {:.4f} | tol: {:.4f}'.format(conf_id, joint_names[i],
-                                            abs(diff), revolute_joint_diff_tol), 'red')
-                                        # wait_for_user()
-                                else:
-                                    if abs(diff) > prismatic_joint_diff_tol:
-                                        cprint('({}) Joint #{} (prismatic) jump: {:.4f} | tol: {:.4f}'.format(conf_id, joint_names[i],
-                                            abs(diff), prismatic_joint_diff_tol), 'yellow')
-                                        # wait_for_user()
+                            if args.traj_collision:
+                                in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
+                            joint_flip |= compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True)
+                            if joint_flip:
+                                print('Up | traj point #{}'.format(conf_id))
+                                print('='*10)
                             prev_conf = jpt
-
-                        cprint('Trajectory in collision: {}.'.format(in_collision), 'red' if in_collision else 'green')
+                        cprint('Trajectory in trouble: {}.'.format(in_collision or joint_flip), 'red' if in_collision or joint_flip else 'green')
+                        if in_collision or joint_flip:
+                            wait_for_user()
                     else:
                         print('No trajectory found!', 'red')
                         wait_for_user()
@@ -201,8 +203,15 @@ def main():
 
                 if temp_name in client.extra_disabled_collision_links:
                     del client.extra_disabled_collision_links[temp_name]
+            else:
+                # check joint consistency
+                joint_flip = compare_configurations(start_conf, end_conf, joint_jump_threshold, verbose=True)
+                if joint_flip:
+                    print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
+                    cprint('Joint conf not consistent!'.format(m.short_summary), 'red')
+                    wait_for_user()
 
-    wait_for_user('Congrats, check state done! Enter to exit.')
+    cprint('Congrats, check state done!', 'green')
 
     client.disconnect()
 

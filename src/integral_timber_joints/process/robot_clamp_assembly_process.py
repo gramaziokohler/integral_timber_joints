@@ -1468,7 +1468,9 @@ class RobotClampAssemblyProcess(Network):
         for movement in self.movements:
             if movement.movement_id == movement_id:
                 return movement
-        return None
+        else:
+            raise ValueError('No movement with id {} found!'.format(movement_id))
+        # return None
 
     def get_movement_start_state(self, movement):
         # type: (Movement) -> dict[str, ObjectState]

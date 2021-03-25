@@ -22,6 +22,7 @@ from pybullet_planning import compute_inverse_kinematics
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 from compas_fab_pychoreo_examples.ik_solver import InverseKinematicsSolver, get_ik_fn_from_ikfast
 from compas_fab_pychoreo.client import PyChoreoClient
+from compas_fab_pychoreo.utils import compare_configurations
 
 from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
 from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
@@ -79,12 +80,14 @@ def _get_sample_bare_arm_ik_fn(client: PyChoreoClient, robot: Robot):
 
 ##############################
 
-def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', conf2_tag='', jt_tol=1e-3, verbose=True):
+def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', conf2_tag='', options=None, verbose=True):
+    options = options or {}
     robot_uid = client.get_robot_pybullet_uid(robot)
     tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
     ik_tool_link = link_from_name(robot_uid, tool_link_name)
+    jump_threshold = options.get('jump_threshold', {})
 
-    if not conf1.close_to(conf2, tol=jt_tol):
+    if not compare_configurations(conf1, conf2, jump_threshold, fallback_tol=1e-3, verbose=verbose):
         with WorldSaver():
             client.set_robot_configuration(robot, conf1)
             p1 = get_link_pose(robot_uid, ik_tool_link)
@@ -170,6 +173,8 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
 
     with WorldSaver():
         if start_conf is not None:
+            if not start_conf.joint_names:
+                start_conf.joint_names = gantry_arm_joint_names
             client.set_robot_configuration(robot, start_conf)
             start_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             start_t0cf_frame_temp = frame_from_pose(start_tool_pose, scale=1)
@@ -184,6 +189,8 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 # overwrite_start_frame.point *= 1e3
                 # start_state['robot'].current_frame = overwrite_start_frame
         if end_conf is not None:
+            if not end_conf.joint_names:
+                end_conf.joint_names = gantry_arm_joint_names
             client.set_robot_configuration(robot, end_conf)
             end_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             end_t0cf_frame_temp = frame_from_pose(end_tool_pose, scale=1)
@@ -331,10 +338,10 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
         traj = cart_conf
         if start_conf is not None:
             check_cartesian_conf_agreement(client, robot, start_conf, traj.points[0],
-                conf1_tag='given start conf', conf2_tag='traj[0]', verbose=verbose)
+                conf1_tag='given start conf', conf2_tag='traj[0]', options=options, verbose=verbose)
         if end_conf is not None:
             check_cartesian_conf_agreement(client, robot, end_conf, traj.points[-1],
-                conf1_tag='given end conf', conf2_tag='traj[-1]', verbose=verbose)
+                conf1_tag='given end conf', conf2_tag='traj[-1]', options=options, verbose=verbose)
     else:
         if verbose:
             cprint('No linear movement found for {}.'.format(movement.short_summary), 'red')

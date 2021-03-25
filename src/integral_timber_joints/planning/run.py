@@ -11,13 +11,14 @@ from termcolor import cprint, colored
 from copy import copy, deepcopy
 from compas.utilities import DataEncoder
 
+from compas.robots import Joint
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver, HideOutput
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get_random_seed
-import ikfast_abb_irb4600_40_255
+from compas_fab_pychoreo.utils import compare_configurations
 
-from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
+from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
-    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP, BARE_ARM_GROUP
+    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP
 from integral_timber_joints.planning.utils import notify, print_title
 from integral_timber_joints.planning.stream import set_state, compute_free_movement, compute_linear_movement
 from integral_timber_joints.planning.state import set_state
@@ -136,6 +137,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
 def propagate_states(process, selected_movements, all_movements, options=None):
     verbose = options.get('verbose', False)
     altered_movements = []
+    # movements that needs to be recomputed
+    impact_movements = []
     for target_m in selected_movements:
         if not isinstance(target_m, RoboticMovement) or target_m.trajectory is None:
             continue
@@ -146,45 +149,64 @@ def propagate_states(process, selected_movements, all_movements, options=None):
         target_end_conf = target_end_state['robot'].kinematic_config
         if verbose:
             print('~'*5)
-            print('\tPropagate states for ({}) : {}'.format(m_id, target_m.short_summary))
+            print('\tPropagate states for ({}) : {}'.format(colored(m_id, 'cyan'), target_m.short_summary))
         # * backward fill all adjacent (-1) movements
         back_id = m_id-1
-        while back_id > 0 and all_movements[back_id].planning_priority == -1:
+        while back_id > 0:
             back_m = all_movements[back_id]
-            back_start_state = process.get_movement_start_state(back_m)
             back_end_state = process.get_movement_end_state(back_m)
             back_end_conf = back_end_state['robot'].kinematic_config
-            if verbose:
-                if back_end_conf is not None and \
-                    not back_end_conf.close_to(target_start_conf, tol=1e-3):
-                        cprint('Backward Prop: Start conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_start_conf)), 'red')
-                        # notify('Warning! Go back to the command line now!')
-                        # wait_for_user()
-                print('\t- past (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
-            back_end_state['robot'].kinematic_config = target_start_conf
-            back_start_state['robot'].kinematic_config = target_start_conf
-            back_id -= 1
-            altered_movements.append(back_m)
+            if back_m.planning_priority == -1:
+                back_start_state = process.get_movement_start_state(back_m)
+                if verbose:
+                    if back_end_conf is not None and \
+                        not back_end_conf.close_to(target_start_conf, tol=1e-3):
+                            cprint('Backward Prop: Start conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_start_conf)), 'red')
+                            # notify('Warning! Go back to the command line now!')
+                            # wait_for_user()
+                    print('\t- Altered (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
+                back_end_state['robot'].kinematic_config = target_start_conf
+                back_start_state['robot'].kinematic_config = target_start_conf
+                altered_movements.append(back_m)
+                back_id -= 1
+            elif get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done]:
+                back_m.trajectory = None
+                back_end_state['robot'].kinematic_config = target_start_conf
+                impact_movements.append(back_m)
+                print('\t$ Impacted (backward): ({}) {}'.format(colored(back_id, 'yellow'), back_m.short_summary))
+                break
+            else:
+                break
         # * forward fill all adjacent (-1) movements
         forward_id = m_id+1
-        while forward_id < len(all_movements) and all_movements[forward_id].planning_priority == -1:
+        while forward_id < len(all_movements):
             forward_m = all_movements[forward_id]
             forward_start_state = process.get_movement_start_state(forward_m)
-            forward_end_state = process.get_movement_end_state(forward_m)
             forward_start_conf = forward_start_state['robot'].kinematic_config
-            if verbose:
-                if forward_start_conf is not None and \
-                    not forward_start_conf.close_to(target_end_conf, tol=1e-3):
-                        cprint('Forward Prop: End conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_end_conf)), 'red')
-                        # notify('Warning! Go back to the command line now!')
-                        # wait_for_user()
-                print('\t- future (forward): ({}) {}'.format(colored(forward_id, 'green'), forward_m.short_summary))
-            forward_start_state['robot'].kinematic_config = target_end_conf
-            forward_end_state['robot'].kinematic_config = target_end_conf
-            forward_id += 1
-            altered_movements.append(forward_m)
+            if all_movements[forward_id].planning_priority == -1:
+                forward_end_state = process.get_movement_end_state(forward_m)
+                if verbose:
+                    if forward_start_conf is not None and \
+                        not forward_start_conf.close_to(target_end_conf, tol=1e-3):
+                            cprint('Forward Prop: End conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_end_conf)), 'red')
+                            # notify('Warning! Go back to the command line now!')
+                            # wait_for_user()
+                    print('\t- Altered (forward): ({}) {}'.format(colored(forward_id, 'green'), forward_m.short_summary))
+                forward_start_state['robot'].kinematic_config = target_end_conf
+                forward_end_state['robot'].kinematic_config = target_end_conf
+                altered_movements.append(forward_m)
+                forward_id += 1
+            # TODO movement type too restrictive?
+            elif get_movement_status(process, forward_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done]:
+                forward_m.trajectory = None
+                forward_start_state['robot'].kinematic_config = target_end_conf
+                impact_movements.append(forward_m)
+                print('\t$ Impacted (forward): ({}) {}'.format(colored(forward_id, 'yellow'), forward_m.short_summary))
+                break
+            else:
+                break
     # end loop selected_movements
-    return altered_movements
+    return altered_movements, impact_movements
 
 def get_movement_status(process, m, movement_types, verbose=True):
     """get the movement's current status, see the `MovementStatus` class
@@ -201,7 +223,8 @@ def get_movement_status(process, m, movement_types, verbose=True):
     -------
     MovementStatus.xxx
     """
-    if not isinstance(m, RoboticMovement) or all([not isinstance(m, mt) for mt in movement_types]):
+    # if not isinstance(m, RoboticMovement):
+    if all([not isinstance(m, mt) for mt in movement_types]):
         return MovementStatus.incorrect_type
     has_start_conf = process.movement_has_start_robot_config(m)
     has_end_conf = process.movement_has_end_robot_config(m)
@@ -225,7 +248,7 @@ def get_movement_status(process, m, movement_types, verbose=True):
             return MovementStatus.neither_done
 
 def compute_selected_movements(client, robot, process, beam_id, priority, movement_types, movement_statuses, options=None,
-        viz_upon_found=False, diagnosis=False, write_now=False):
+        viz_upon_found=False, diagnosis=False, write_now=False, plan_impacted=False):
     """Compute trajectories for movements specified by a certain criteria.
 
     Parameters
@@ -279,12 +302,33 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 # break
                 return []
         # * propagate to -1 movements
-        altered_movements.extend(propagate_states(process, altered_movements, all_movements, options=options))
+        altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options)
+        altered_movements.extend(altered_new_movements)
+
+        if plan_impacted:
+            print('+'*10)
+            cprint('Plan impacted movements:', 'yellow')
+            for impact_m in impact_movements:
+                if isinstance(impact_m, RoboticLinearMovement):
+                    assert get_movement_status(process, impact_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
+                imp_m_id = all_movements.index(impact_m)
+                if verbose:
+                    print('-'*10)
+                    print('({})'.format(imp_m_id))
+                if compute_movement(client, robot, process, impact_m, options, diagnosis):
+                    altered_movements.append(impact_m)
+                    if viz_upon_found:
+                        with WorldSaver():
+                            visualize_movement_trajectory(client, robot, process, impact_m, step_sim=True)
+                else:
+                    # break
+                    return []
 
         # * export computed movements
         if write_now:
             save_process_and_movements(problem_name, process, altered_movements, overwrite=False,
                 include_traj_in_process=False)
+
     # if verbose:
     #     print('\n\n')
     #     process.get_movement_summary_by_beam_id(beam_id)
@@ -355,8 +399,30 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             else:
                 cprint('Computing only for {}'.format(args.id_only), 'yellow')
                 options['movement_id_filter'] = [args.id_only]
-                altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
-                    None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.write)
+                chosen_m = process.get_movement_by_movement_id(args.id_only)
+                # * if linear movement and has both end specified, ask user keep start or end
+                chosen_m.trajectory = None
+                if get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.both_done]:
+                    keep_end = int(input("Keep start or end conf? Enter 0 for start, 1 for end. 2 for abandoning both."))
+                    if keep_end == 0:
+                        # keep start
+                        end_state = process.get_movement_end_state(chosen_m)
+                        end_state['robot'].kinematic_config = None
+                    elif keep_end == 1:
+                        start_state = process.get_movement_start_state(chosen_m)
+                        start_state['robot'].kinematic_config = None
+                    elif keep_end == 2:
+                        start_state = process.get_movement_start_state(chosen_m)
+                        start_state['robot'].kinematic_config = None
+                        end_state = process.get_movement_end_state(chosen_m)
+                        end_state['robot'].kinematic_config = None
+                        assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.neither_done]
+                    if keep_end != 2:
+                        assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
+
+                altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
+                    None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
+                    write_now=args.write, plan_impacted=True)
                 if not altered_ms:
                     return False
 
@@ -425,15 +491,6 @@ def main():
     print('='*10)
 
     initial_time = time.time()
-    options = {
-        'debug' : args.debug,
-        'low_res' : args.low_res,
-        'distance_threshold' : 0.0012,
-        'frame_jump_tolerance' : 0.0012,
-        'verbose' : args.verbose,
-        'problem_name' : args.problem,
-        'use_stored_seed' : args.use_stored_seed,
-    }
 
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
@@ -457,6 +514,23 @@ def main():
     # if args.recompute_action_states:
     #     save_process(process, result_path)
     #     cprint('Recomputed process saved to %s' % result_path, 'green')
+
+    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+    joint_types = robot.get_joint_types_by_names(joint_names)
+    # 0.1 rad = 5.7 deg
+    joint_jump_threshold = {jt_name : 0.1 \
+            if jt_type in [Joint.REVOLUTE, Joint.CONTINUOUS] else 0.1 \
+            for jt_name, jt_type in zip(joint_names, joint_types)}
+    options = {
+        'debug' : args.debug,
+        'low_res' : args.low_res,
+        'distance_threshold' : 0.0012,
+        'frame_jump_tolerance' : 0.0012,
+        'verbose' : args.verbose,
+        'problem_name' : args.problem,
+        'use_stored_seed' : args.use_stored_seed,
+        'jump_threshold' : joint_jump_threshold,
+    }
 
     set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=args.reinit_tool)
 
