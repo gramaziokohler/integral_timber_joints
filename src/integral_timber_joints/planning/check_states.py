@@ -2,8 +2,11 @@ import os, time
 import argparse
 from termcolor import cprint
 from itertools import product, combinations
+import numpy as np
 
 from compas_fab.robots import Robot
+from compas.robots import Joint
+
 from pybullet_planning import wait_if_gui, wait_for_user, has_gui
 from pybullet_planning import get_distance, draw_collision_diagnosis, expand_links, get_all_links, \
     link_from_name, pairwise_link_collision_info, get_name, get_link_name
@@ -117,10 +120,18 @@ def main():
 
     full_seq_len = len(process.assembly.sequence)
     assert args.seq_i >= 0 and args.seq_i < full_seq_len, 'seq_i out of range!'
-    if args.batch_run or args.id_only:
+    if args.batch_run:
         beam_ids = [process.assembly.sequence[si] for si in range(args.seq_i, full_seq_len)]
+    elif args.id_only:
+        beam_ids = [process.get_beam_id_from_movement_id(args.id_only)]
     else:
         beam_ids = [process.assembly.sequence[args.seq_i]]
+
+    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+
+    # * joint flip parameters
+    revolute_joint_diff_tol = np.pi/6 # rad
+    prismatic_joint_diff_tol = 0.05 # meter
 
     for beam_id in beam_ids:
         seq_i = process.assembly.sequence.index(beam_id)
@@ -156,11 +167,28 @@ def main():
                 if args.verify_plan:
                     pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
                     if m.trajectory:
-                        # TODO add joint flip check
-                        for jpt in m.trajectory.points:
+                        prev_conf = start_state['robot'].kinematic_config
+                        prev_conf.joint_names = joint_names
+                        for conf_id, jpt in enumerate(m.trajectory.points):
                             if not jpt.joint_names:
-                                jpt.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+                                jpt.joint_names = joint_names
                             in_collision = pychore_collision_fn.check_collisions(robot, jpt, options=options)
+
+                            # joint flip check
+                            for i, diff in enumerate(jpt.iter_differences(prev_conf)):
+                                # cprint('Joint #{} diff: {}'.format(joint_names[i], diff), 'yellow')
+                                if jpt.types[i] in [Joint.REVOLUTE, Joint.CONTINUOUS]:
+                                    if abs(diff) > revolute_joint_diff_tol:
+                                        cprint('({}) Joint #{} (revolution) jump: {:.4f} | tol: {:.4f}'.format(conf_id, joint_names[i],
+                                            abs(diff), revolute_joint_diff_tol), 'red')
+                                        # wait_for_user()
+                                else:
+                                    if abs(diff) > prismatic_joint_diff_tol:
+                                        cprint('({}) Joint #{} (prismatic) jump: {:.4f} | tol: {:.4f}'.format(conf_id, joint_names[i],
+                                            abs(diff), prismatic_joint_diff_tol), 'yellow')
+                                        # wait_for_user()
+                            prev_conf = jpt
+
                         cprint('Trajectory in collision: {}.'.format(in_collision), 'red' if in_collision else 'green')
                     else:
                         print('No trajectory found!', 'red')

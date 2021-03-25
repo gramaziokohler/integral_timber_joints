@@ -1,4 +1,5 @@
 import os
+import time
 
 from compas.geometry.primitives.frame import Frame
 from compas_fab.robots import Configuration
@@ -117,8 +118,8 @@ class RoboticMovement(Movement):
     """
 
     def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before=None,
-                 operator_stop_after=None, speed_type="", target_configuration=None, allowed_collision_matrix=[], tag=None):
-        # type: (Frame, str, str, int, str, str, str, Configuration, list(tuple(str,str)), str) -> RoboticMovement
+                 operator_stop_after=None, speed_type="", target_configuration=None, allowed_collision_matrix=[], tag=None, seed=None):
+        # type: (Frame, str, str, int, str, str, str, Configuration, list(tuple(str,str)), str, int) -> RoboticMovement
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after,
                           planning_priority=planning_priority, tag=tag)
         self.target_frame = target_frame  # type: Frame
@@ -130,6 +131,7 @@ class RoboticMovement(Movement):
         self.target_configuration = target_configuration  # type: Optional[Configuration]
         self.allowed_collision_matrix = allowed_collision_matrix  # type: list(tuple(str,str))
         self.tag = tag or "Generic Robotic Movement"
+        self.seed = seed # or hash(time.time())
 
     @property
     def data(self):
@@ -144,6 +146,7 @@ class RoboticMovement(Movement):
         data['speed_type'] = self.speed_type
         data['target_configuration'] = self.target_configuration
         data['allowed_collision_matrix'] = self.allowed_collision_matrix
+        data['seed'] = self.seed
         return data
 
     @data.setter
@@ -159,11 +162,12 @@ class RoboticMovement(Movement):
         self.speed_type = data.get('speed_type', "")
         self.target_configuration = data.get('target_configuration', None)
         self.allowed_collision_matrix = data.get('allowed_collision_matrix', [])
+        self.seed = data.get('seed', None)
 
     @property
     def short_summary(self):
-        return '{}(#{}, {}, target conf {}, traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
-                                                             int(self.target_configuration is not None), int(self.trajectory is not None))
+        return '{}(#{}, {}, traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
+                                                             int(self.trajectory is not None))
 
 ######################################
 # Movement Classes that can be used

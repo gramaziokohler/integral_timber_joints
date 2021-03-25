@@ -1524,6 +1524,16 @@ class RobotClampAssemblyProcess(Network):
                 if movement is _movement:
                     return action
 
+    def get_beam_id_of_movement(self, movement):
+        # (Movement) -> str
+        action = self.get_action_of_movement(movement)
+        return self.assembly.sequence[action.seq_n]
+
+    def get_beam_id_from_movement_id(self, movement_id):
+        # (str) -> str
+        movement = self.get_movement_by_movement_id(movement_id)
+        return self.get_beam_id_of_movement(movement)
+
     def movement_has_start_robot_config(self, movement):
         # type: (Movement) -> bool
         """Returns True if the movement's start_state.['robot'].kinematic_config is not None """

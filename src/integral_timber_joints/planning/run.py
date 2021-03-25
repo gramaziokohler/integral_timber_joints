@@ -12,7 +12,7 @@ from copy import copy, deepcopy
 from compas.utilities import DataEncoder
 
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver, HideOutput
-from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time
+from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get_random_seed
 import ikfast_abb_irb4600_40_255
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
@@ -53,8 +53,19 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     # * low_res mode is used to quickly get a feeling of the planning problem
     low_res = options.get('low_res', False)
     verbose = options.get('verbose', True)
+    use_stored_seed = options.get('use_stored_seed', False)
     if verbose:
         cprint(movement.short_summary, 'cyan')
+
+    # set seed stored in the movement
+    if use_stored_seed:
+        seed = movement.seed
+        assert seed is not None, 'No meaningful seed saved in the movement.'
+    else:
+        seed = get_random_seed()
+        movement.seed = seed
+    set_random_seed(seed)
+    set_numpy_seed(seed)
 
     traj = None
     if isinstance(movement, RoboticLinearMovement):
@@ -153,7 +164,7 @@ def propagate_states(process, selected_movements, all_movements, options=None):
             back_end_state['robot'].kinematic_config = target_start_conf
             back_start_state['robot'].kinematic_config = target_start_conf
             back_id -= 1
-            altered_movements.append(back_start_state)
+            altered_movements.append(back_m)
         # * forward fill all adjacent (-1) movements
         forward_id = m_id+1
         while forward_id < len(all_movements) and all_movements[forward_id].planning_priority == -1:
@@ -171,7 +182,7 @@ def propagate_states(process, selected_movements, all_movements, options=None):
             forward_start_state['robot'].kinematic_config = target_end_conf
             forward_end_state['robot'].kinematic_config = target_end_conf
             forward_id += 1
-            altered_movements.append(forward_end_state)
+            altered_movements.append(forward_m)
     # end loop selected_movements
     return altered_movements
 
@@ -408,18 +419,12 @@ def main():
     parser.add_argument('--save_temp', action='store_true', help='Save a temporary process file. Defaults to False.')
     parser.add_argument('--viz_upon_found', action='store_true', help='Viz found traj immediately after found. Defaults to False.')
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
-    parser.add_argument('--seed', default=0, help='Random seed.')
+    parser.add_argument('--use_stored_seed', action='store_true', help='Use stored seed. Defaults to False.')
     args = parser.parse_args()
     print('Arguments:', args)
     print('='*10)
 
     initial_time = time.time()
-    # * random seed setup
-    # seed = hash(time.time())
-    # seed = args.seed
-    # set_random_seed(seed)
-    # set_numpy_seed(seed)
-
     options = {
         'debug' : args.debug,
         'low_res' : args.low_res,
@@ -427,6 +432,7 @@ def main():
         'frame_jump_tolerance' : 0.0012,
         'verbose' : args.verbose,
         'problem_name' : args.problem,
+        'use_stored_seed' : args.use_stored_seed,
     }
 
     # * Connect to path planning backend and initialize robot parameters
@@ -458,9 +464,12 @@ def main():
     assert args.seq_i < full_seq_len and args.seq_i >= 0
     if args.batch_run:
         beam_ids = [process.assembly.sequence[si] for si in range(args.seq_i, full_seq_len)]
+    elif args.id_only:
+        beam_ids = [process.get_beam_id_from_movement_id(args.id_only)]
     else:
         # only one
         beam_ids = [process.assembly.sequence[args.seq_i]]
+
     beam_attempts = 10
     for beam_id in beam_ids:
         print('-'*20)
