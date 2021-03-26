@@ -94,16 +94,17 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
             client.set_robot_configuration(robot, conf2)
             p2 = get_link_pose(robot_uid, ik_tool_link)
             pose_close = is_pose_close(p1, p2)
-        if not pose_close:
-            if verbose:
-                cprint('FK frame close: {} | ({},{}) vs. ({},{})'.format(pose_close,
-                    ['{:.3f}'.format(v) for v in p1[0]], ['{:.3f}'.format(v) for v in p1[1]],
-                    ['{:.3f}'.format(v) for v in p2[0]], ['{:.3f}'.format(v) for v in p2[1]])
-                    )
-                cprint('LinearMovement: {} not coincided with {} - max diff {:.5f}'.format(
-                conf1_tag, conf2_tag, conf1.max_difference(conf2)), 'red')
-                notify('Warning! Go back to the command line now!')
-                # wait_for_user()
+        if verbose:
+            cprint('LinearMovement: {} not coincided with {} - max diff {:.5f}'.format(
+            conf1_tag, conf2_tag, conf1.max_difference(conf2)), 'red')
+            if not pose_close:
+                if verbose:
+                    cprint('FK frame close: {} | ({},{}) vs. ({},{})'.format(pose_close,
+                        ['{:.3f}'.format(v) for v in p1[0]], ['{:.3f}'.format(v) for v in p1[1]],
+                        ['{:.3f}'.format(v) for v in p2[0]], ['{:.3f}'.format(v) for v in p2[1]])
+                        )
+            notify('Warning! Go back to the command line now!')
+            # wait_for_user()
         return False
     else:
         return True
