@@ -115,6 +115,9 @@ def save_process_and_movements(process_name, _process, _movements,
     save_temp : bool, optional
         save an extra copy of the process in the `TEMP_DESIGN_DIR` folder, by default True
     """
+    if not _movements:
+        return
+
     process = deepcopy(_process)
     movements = deepcopy(_movements)
 

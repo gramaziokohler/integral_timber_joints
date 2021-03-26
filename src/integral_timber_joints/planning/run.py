@@ -343,7 +343,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
 
         total_altered_movements.extend(altered_movements)
         # * export computed movements
-        if write_now:
+        if write_now and altered_movements:
             save_process_and_movements(problem_name, process, altered_movements, overwrite=False,
                 include_traj_in_process=False)
 
@@ -376,11 +376,14 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                         return False
                     else:
                         altered_movements.extend(altered_ms)
+                        if args.save_now:
+                            save_process_and_movements(args.problem, process, altered_ms, overwrite=False,
+                                include_traj_in_process=False, save_temp=args.save_temp)
 
                     # TODO if fails remove the related movement's trajectory and try again
                     success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
                         [MovementStatus.one_sided],
-                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
+                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
                     if not success:
                         return False
                     else:
@@ -392,7 +395,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     # The movement statuses get changed on the fly.
                     success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
                         [MovementStatus.neither_done, MovementStatus.one_sided],
-                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
+                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
                     if not success:
                         return False
                     else:
@@ -403,14 +406,14 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
                     [MovementStatus.both_done, MovementStatus.one_sided] if not args.free_motion_only else \
                         [MovementStatus.both_done, MovementStatus.one_sided, MovementStatus.has_traj],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=False)
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
                 if not success:
                     return False
                 else:
                     altered_movements.extend(altered_ms)
 
                 # * export computed movements
-                if args.write:
+                if not args.save_now and args.write:
                     save_process_and_movements(args.problem, process, altered_movements, overwrite=False,
                         include_traj_in_process=False, save_temp=args.save_temp)
             else:
@@ -491,6 +494,7 @@ def main():
     parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
+    parser.add_argument('--save_now', action='store_true', help='Save immediately upon found.')
     parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
