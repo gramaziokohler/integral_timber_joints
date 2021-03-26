@@ -134,7 +134,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             # wait_for_user('Planning fails, press Enter to continue. Try exit and running again - may the Luck be with you next time :)')
         return False
 
-def propagate_states(process, selected_movements, all_movements, options=None):
+def propagate_states(process, selected_movements, all_movements, options=None, plan_impacted=False):
     options = options or {}
     verbose = options.get('verbose', False)
     jump_threshold = options.get('jump_threshold', {})
@@ -157,7 +157,10 @@ def propagate_states(process, selected_movements, all_movements, options=None):
         while back_id > 0:
             back_m = all_movements[back_id]
             back_end_state = process.get_movement_end_state(back_m)
-            back_end_conf = back_end_state['robot'].kinematic_config
+            if isinstance(back_m, RoboticMovement) and back_m.trajectory:
+                back_end_conf = back_m.trajectory.points[-1]
+            else:
+                back_end_conf = back_end_state['robot'].kinematic_config
             # print('----')
             # print('Back: {}'.format(back_m.short_summary))
             # print(compare_configurations(back_end_conf, target_start_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose))
@@ -177,8 +180,9 @@ def propagate_states(process, selected_movements, all_movements, options=None):
                 back_id -= 1
             elif get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
                 compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
-                back_m.trajectory = None
-                back_end_state['robot'].kinematic_config = target_start_conf
+                if plan_impacted:
+                    back_m.trajectory = None
+                    back_end_state['robot'].kinematic_config = target_start_conf
                 impact_movements.append(back_m)
                 print('\t$ Impacted (backward): ({}) {}'.format(colored(back_id, 'yellow'), back_m.short_summary))
                 break
@@ -313,7 +317,8 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 # break
                 return False, []
         # * propagate to -1 movements
-        altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options)
+        altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options,
+            plan_impacted=plan_impacted)
         altered_movements.extend(altered_new_movements)
 
         if plan_impacted and impact_movements:

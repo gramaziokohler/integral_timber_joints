@@ -87,7 +87,7 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
     ik_tool_link = link_from_name(robot_uid, tool_link_name)
     jump_threshold = options.get('jump_threshold', {})
 
-    if not compare_configurations(conf1, conf2, jump_threshold, fallback_tol=1e-3, verbose=verbose):
+    if compare_configurations(conf1, conf2, jump_threshold, fallback_tol=1e-3, verbose=verbose):
         with WorldSaver():
             client.set_robot_configuration(robot, conf1)
             p1 = get_link_pose(robot_uid, ik_tool_link)
