@@ -16,7 +16,7 @@ from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSav
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get_random_seed
 from compas_fab_pychoreo.utils import compare_configurations
 
-from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path
+from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
 from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
     R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP
 from integral_timber_joints.planning.utils import notify, print_title
@@ -290,6 +290,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
     else:
         selected_movements = process.get_movements_by_planning_priority(beam_id, priority)
 
+    total_altered_movements = []
     for m in selected_movements:
         altered_movements = []
         if movement_statuses is None or get_movement_status(process, m, movement_types) in movement_statuses :
@@ -304,7 +305,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                         visualize_movement_trajectory(client, robot, process, m, step_sim=True)
             else:
                 # break
-                return []
+                return False, []
         # * propagate to -1 movements
         altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options)
         altered_movements.extend(altered_new_movements)
@@ -326,8 +327,9 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                             visualize_movement_trajectory(client, robot, process, impact_m, step_sim=True)
                 else:
                     # break
-                    return []
+                    return False, []
 
+        total_altered_movements.extend(altered_movements)
         # * export computed movements
         if write_now:
             save_process_and_movements(problem_name, process, altered_movements, overwrite=False,
@@ -336,9 +338,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
     # if verbose:
     #     print('\n\n')
     #     process.get_movement_summary_by_beam_id(beam_id)
-    return altered_movements
-
-    # TODO return altered movements
+    return True, total_altered_movements
 
 #################################
 
@@ -357,19 +357,19 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         with HideOutput(): #args.verbose
             if args.id_only is None:
                 if not args.free_motion_only:
-                    altered_ms = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
+                    success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
                         [MovementStatus.neither_done, MovementStatus.one_sided],
                         options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
-                    if not altered_ms:
+                    if not success:
                         return False
                     else:
                         altered_movements.extend(altered_ms)
 
                     # TODO if fails remove the related movement's trajectory and try again
-                    altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                    success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
                         [MovementStatus.one_sided],
                         options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
-                    if not altered_ms:
+                    if not success:
                         return False
                     else:
                         altered_movements.extend(altered_ms)
@@ -378,28 +378,29 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
                     # Thus, when solving `neither_done`, we solve for both `neither_done` and `one_sided` sequentially
                     # The movement statuses get changed on the fly.
-                    altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                    success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
                         [MovementStatus.neither_done, MovementStatus.one_sided],
                         options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
-                    if not altered_ms:
+                    if not success:
                         return False
                     else:
                         altered_movements.extend(altered_ms)
+
+                # Ideally, all the free motions should have both start and end conf specified.
+                # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
+                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
+                    [MovementStatus.both_done, MovementStatus.one_sided] if not args.free_motion_only else \
+                        [MovementStatus.both_done, MovementStatus.one_sided, MovementStatus.has_traj],
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=False)
+                if not success:
+                    return False
+                else:
+                    altered_movements.extend(altered_ms)
 
                 # * export computed movements
                 if args.write:
                     save_process_and_movements(args.problem, process, altered_movements, overwrite=False,
                         include_traj_in_process=False, save_temp=args.save_temp)
-
-                altered_movements = []
-                # Ideally, all the free motions should have both start and end conf specified.
-                # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
-                altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
-                    [MovementStatus.both_done, MovementStatus.one_sided] if not args.free_motion_only else \
-                        [MovementStatus.both_done, MovementStatus.one_sided, MovementStatus.has_traj],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.write)
-                if not altered_ms:
-                    return False
             else:
                 cprint('Computing only for {}'.format(args.id_only), 'yellow')
                 options['movement_id_filter'] = [args.id_only]
@@ -426,10 +427,10 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
                     plan_impacted = True
 
-                altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
+                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
                     None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
                     write_now=args.write, plan_impacted=plan_impacted)
-                if not altered_ms:
+                if not success:
                     return False
 
     # * final visualization
@@ -517,14 +518,14 @@ def main():
         cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
         process.load_external_movements(ext_movement_path)
 
-    # if args.recompute_action_states:
-    #     save_process(process, result_path)
-    #     cprint('Recomputed process saved to %s' % result_path, 'green')
+    if args.recompute_action_states:
+        save_process(process, result_path)
+        cprint('Recomputed process saved to %s' % result_path, 'green')
 
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     joint_types = robot.get_joint_types_by_names(joint_names)
     # 0.1 rad = 5.7 deg
-    joint_jump_threshold = {jt_name : 0.1 \
+    joint_jump_threshold = {jt_name : np.pi/6 \
             if jt_type in [Joint.REVOLUTE, Joint.CONTINUOUS] else 0.1 \
             for jt_name, jt_type in zip(joint_names, joint_types)}
     options = {
@@ -550,17 +551,21 @@ def main():
         # only one
         beam_ids = [process.assembly.sequence[args.seq_i]]
 
-    beam_attempts = 10
+    beam_attempts = 10 if args.batch_run else 50
     for beam_id in beam_ids:
         print('-'*20)
         s_i = process.assembly.sequence.index(beam_id)
         print('({}) Beam#{}'.format(s_i, beam_id))
         for i in range(beam_attempts):
+            print('\n\n\n')
+            print('#'*20)
             print('-- iter #{}'.format(i))
             if compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options):
                 cprint('Beam #{} plan found after {} iters!'.format(beam_id, i+1), 'cyan')
                 break
             client.disconnect()
+
+            print('\n\n\n')
             client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
             process = parse_process(args.problem, subdir='results')
             set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=False)

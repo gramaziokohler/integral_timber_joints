@@ -187,6 +187,8 @@ def main():
                             if args.traj_collision:
                                 in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
                             # TODO check in-between polylines of attached tool and obstacles
+                            # https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA/edit#heading=h.e7a8kr2734k2
+
                             if compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True):
                                 print('Up | traj point #{}'.format(conf_id))
                                 print('='*10)
