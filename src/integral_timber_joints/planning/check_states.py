@@ -226,7 +226,8 @@ def main():
     else:
         cprint('Movements that requires care and love:', 'yellow')
         for fm in movement_need_fix:
-            print(fm.short_summary)
+            cprint(fm.short_summary)
+    print('='*20)
 
     client.disconnect()
 

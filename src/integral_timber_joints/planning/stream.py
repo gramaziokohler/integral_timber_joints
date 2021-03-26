@@ -104,10 +104,9 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
                 conf1_tag, conf2_tag, conf1.max_difference(conf2)), 'red')
                 notify('Warning! Go back to the command line now!')
                 # wait_for_user()
-            return False
-        else:
-            return True
-    return True
+        return False
+    else:
+        return True
 
 ##############################
 

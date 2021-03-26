@@ -158,21 +158,25 @@ def propagate_states(process, selected_movements, all_movements, options=None):
             back_m = all_movements[back_id]
             back_end_state = process.get_movement_end_state(back_m)
             back_end_conf = back_end_state['robot'].kinematic_config
+            # print('----')
+            # print('Back: {}'.format(back_m.short_summary))
+            # print(compare_configurations(back_end_conf, target_start_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose))
+            # print(get_movement_status(process, back_m, [RoboticMovement]))
+
             if back_m.planning_priority == -1:
-                back_start_state = process.get_movement_start_state(back_m)
                 if verbose:
-                    if back_end_conf is not None and \
-                        not back_end_conf.close_to(target_start_conf, tol=1e-3):
-                            cprint('Backward Prop: Start conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_start_conf)), 'red')
+                    if back_end_conf and compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
+                        cprint('Backward Prop: Start conf not coincided', 'red')
                             # notify('Warning! Go back to the command line now!')
                             # wait_for_user()
                     print('\t- Altered (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
                 back_end_state['robot'].kinematic_config = target_start_conf
-                back_start_state['robot'].kinematic_config = target_start_conf
+                # back_start_state = process.get_movement_start_state(back_m)
+                # back_start_state['robot'].kinematic_config = target_start_conf
                 altered_movements.append(back_m)
                 back_id -= 1
             elif get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
-                compare_configurations(back_end_state['robot'].kinematic_config, target_start_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose):
+                compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
                 back_m.trajectory = None
                 back_end_state['robot'].kinematic_config = target_start_conf
                 impact_movements.append(back_m)
@@ -184,26 +188,28 @@ def propagate_states(process, selected_movements, all_movements, options=None):
         forward_id = m_id+1
         while forward_id < len(all_movements):
             forward_m = all_movements[forward_id]
-            forward_start_state = process.get_movement_start_state(forward_m)
-            forward_start_conf = forward_start_state['robot'].kinematic_config
+            if isinstance(forward_m, RoboticMovement) and forward_m.trajectory:
+                forward_start_conf = forward_m.trajectory.points[0]
+            else:
+                forward_start_state = process.get_movement_start_state(forward_m)
+                forward_start_conf = forward_start_state['robot'].kinematic_config
             if all_movements[forward_id].planning_priority == -1:
-                forward_end_state = process.get_movement_end_state(forward_m)
                 if verbose:
-                    if forward_start_conf is not None and \
-                        not forward_start_conf.close_to(target_end_conf, tol=1e-3):
-                            cprint('Forward Prop: End conf not coincided - max diff {}'.format(back_end_conf.max_difference(target_end_conf)), 'red')
-                            # notify('Warning! Go back to the command line now!')
-                            # wait_for_user()
+                    if forward_start_conf and compare_configurations(forward_start_conf, target_end_conf, jump_threshold,
+                        verbose=False):
+                        cprint('Forward Prop: End conf not coincided', 'red')
+                        # notify('Warning! Go back to the command line now!')
+                        # wait_for_user()
                     print('\t- Altered (forward): ({}) {}'.format(colored(forward_id, 'green'), forward_m.short_summary))
-                forward_start_state['robot'].kinematic_config = target_end_conf
+                forward_end_state = process.get_movement_end_state(forward_m)
                 forward_end_state['robot'].kinematic_config = target_end_conf
                 altered_movements.append(forward_m)
                 forward_id += 1
             # TODO movement type too restrictive?
             elif get_movement_status(process, forward_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
-                compare_configurations(forward_start_state['robot'].kinematic_config, target_end_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose):
+                compare_configurations(forward_start_conf, target_end_conf, jump_threshold, fallback_tol=1e-3, verbose=False):
                 forward_m.trajectory = None
-                forward_start_state['robot'].kinematic_config = target_end_conf
+                # forward_start_state['robot'].kinematic_config = target_end_conf
                 impact_movements.append(forward_m)
                 print('\t$ Impacted (forward): ({}) {}'.format(colored(forward_id, 'yellow'), forward_m.short_summary))
                 break
@@ -310,16 +316,17 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options)
         altered_movements.extend(altered_new_movements)
 
-        if plan_impacted:
+        if plan_impacted and impact_movements:
             print('+'*10)
             cprint('Plan impacted movements:', 'yellow')
             for impact_m in impact_movements:
-                if isinstance(impact_m, RoboticLinearMovement):
-                    assert get_movement_status(process, impact_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
                 imp_m_id = all_movements.index(impact_m)
                 if verbose:
                     print('-'*10)
                     print('({})'.format(imp_m_id))
+                if isinstance(impact_m, RoboticLinearMovement) and \
+                    get_movement_status(process, impact_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]:
+                    cprint('{}: cannot be planned. Needs to call planner separately.'.format(impact_m.short_summary), 'red')
                 if compute_movement(client, robot, process, impact_m, options, diagnosis):
                     altered_movements.append(impact_m)
                     if viz_upon_found:
