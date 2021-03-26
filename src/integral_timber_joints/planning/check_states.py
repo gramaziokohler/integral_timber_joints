@@ -161,6 +161,9 @@ def main():
             joint_flip = False
             no_traj = False
 
+            print('-'*10)
+            print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
+
             if isinstance(m, RoboticMovement):
                 # movement-specific ACM
                 temp_name = '_tmp'
@@ -171,9 +174,6 @@ def main():
                         client.extra_disabled_collision_links[temp_name].add(
                             ((parent_body, None), (child_body, None))
                         )
-
-                print('-'*10)
-                print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
 
                 cprint('Start State:', 'blue')
                 in_collision |= check_state_collisions_among_objects(client, robot, process, start_state, options=options)
@@ -198,12 +198,12 @@ def main():
                                 joint_flip |= True
                             prev_conf = jpt
                         cprint('Trajectory in trouble: {}.'.format(in_collision or joint_flip), 'red' if in_collision or joint_flip else 'green')
-                        if in_collision or joint_flip:
-                            wait_for_user()
+                        # if in_collision or joint_flip:
+                        #     wait_for_user()
                     else:
                         no_traj = True
                         cprint('No trajectory found!', 'red')
-                        wait_for_user()
+                        # wait_for_user()
                     print('#'*20)
 
                 cprint('End State:', 'blue')
@@ -218,14 +218,12 @@ def main():
                 if start_conf and end_conf:
                     joint_flip |= compare_configurations(start_conf, end_conf, joint_jump_threshold, verbose=True)
                     if joint_flip:
-                        print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
                         cprint('Joint conf not consistent!'.format(m.short_summary), 'red')
-                        wait_for_user()
+                        # wait_for_user()
                 else:
                     no_traj = True
-                    print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
                     print('Start found: {} | End conf found: {}.'.format(start_conf is not None, end_conf is not None), 'yellow')
-                    wait_for_user()
+                    # wait_for_user()
 
             if in_collision or joint_flip or no_traj:
                 movement_need_fix.append(m)

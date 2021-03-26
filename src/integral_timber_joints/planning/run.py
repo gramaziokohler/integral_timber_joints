@@ -206,7 +206,8 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
                 forward_start_state = process.get_movement_start_state(forward_m)
                 forward_start_conf = forward_start_state['robot'].kinematic_config
             forward_end_state = process.get_movement_end_state(forward_m)
-            if all_movements[forward_id].planning_priority == -1:
+            # if all_movements[forward_id].planning_priority == -1:
+            if not isinstance(forward_m, RoboticMovement):
                 if verbose:
                     if forward_start_conf and compare_configurations(forward_start_conf, target_end_conf, jump_threshold,
                         verbose=False):
@@ -217,8 +218,10 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
                 forward_end_state['robot'].kinematic_config = target_end_conf
                 altered_movements.append(forward_m)
                 forward_id += 1
-            elif get_movement_status(process, forward_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
-                compare_configurations(forward_start_conf, target_end_conf, jump_threshold, fallback_tol=1e-3, verbose=False):
+            # elif get_movement_status(process, forward_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
+            #     compare_configurations(forward_start_conf, target_end_conf, jump_threshold, fallback_tol=1e-3, verbose=False):
+            elif forward_m.trajectory is None or forward_start_conf is None or \
+                compare_configurations(forward_start_conf, target_end_conf, jump_threshold, verbose=False):
                 if plan_impacted:
                     forward_m.trajectory = None
                     # turn it one-sided
@@ -335,6 +338,8 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 end_state = process.get_movement_end_state(m)
                 end_state['robot'].kinematic_config = traj.points[-1]
                 altered_movements.append(m)
+        else:
+            continue
 
         # * propagate to -1 movements
         altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options,
@@ -364,6 +369,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                     return False, []
             impact_altered_movements, _ = propagate_states(process, impact_updated_movements, all_movements, options=options,
                 plan_impacted=plan_impacted)
+            altered_movements.extend(impact_updated_movements)
             altered_movements.extend(impact_altered_movements)
 
         total_altered_movements.extend(altered_movements)
@@ -430,9 +436,10 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
                     [MovementStatus.both_done, MovementStatus.one_sided] if not args.free_motion_only else \
-                        [MovementStatus.both_done, MovementStatus.one_sided, MovementStatus.has_traj],
+                        [MovementStatus.both_done, MovementStatus.one_sided], #, MovementStatus.has_traj],
                     options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
                 if not success:
+                    print('No success for free motions')
                     return False
                 else:
                     altered_movements.extend(altered_ms)
@@ -446,8 +453,8 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 options['movement_id_filter'] = [args.id_only]
                 chosen_m = process.get_movement_by_movement_id(args.id_only)
                 # * if linear movement and has both end specified, ask user keep start or end
-                plan_impacted = False
-                if not args.propagate_only and get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.both_done]:
+                if not args.propagate_only and get_movement_status(process, chosen_m, [RoboticLinearMovement]) \
+                    in [MovementStatus.has_traj, MovementStatus.both_done]:
                     chosen_m.trajectory = None
                     keep_end = int(input("Keep start or end conf? Enter 0 for start, 1 for end. 2 for abandoning both."))
                     if keep_end == 0:
@@ -465,12 +472,10 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.neither_done]
                     if keep_end != 2:
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
-                    plan_impacted = True
-                plan_impacted |= args.propagate_only
 
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
                     None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
-                    write_now=args.write, plan_impacted=plan_impacted)
+                    write_now=args.write, plan_impacted=args.plan_impacted)
                 if not success:
                     return False
 
@@ -518,6 +523,7 @@ def main():
     parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
     parser.add_argument('--free_motion_only', action='store_true', help='Only compute free motions.')
     parser.add_argument('--propagate_only', action='store_true', help='Only do state propagation and impacted movement planning.')
+    parser.add_argument('--plan_impacted', action='store_true', help='impacted movement planning.')
     parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
