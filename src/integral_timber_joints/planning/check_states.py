@@ -151,12 +151,15 @@ def main():
             start_state = process.get_movement_start_state(m)
             end_state = process.get_movement_end_state(m)
             start_conf = start_state['robot'].kinematic_config
-            start_conf.joint_names = joint_names
+            if start_conf:
+                start_conf.joint_names = joint_names
             end_conf = end_state['robot'].kinematic_config
-            end_conf.joint_names = joint_names
+            if end_conf:
+                end_conf.joint_names = joint_names
 
             in_collision = False
             joint_flip = False
+            no_traj = False
 
             if isinstance(m, RoboticMovement):
                 # movement-specific ACM
@@ -189,7 +192,7 @@ def main():
                             # TODO check in-between polylines of attached tool and obstacles
                             # https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA/edit#heading=h.e7a8kr2734k2
 
-                            if compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True):
+                            if prev_conf and compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True):
                                 print('Up | traj point #{}'.format(conf_id))
                                 print('='*10)
                                 joint_flip |= True
@@ -198,7 +201,8 @@ def main():
                         if in_collision or joint_flip:
                             wait_for_user()
                     else:
-                        print('No trajectory found!', 'red')
+                        no_traj = True
+                        cprint('No trajectory found!', 'red')
                         wait_for_user()
                     print('#'*20)
 
@@ -211,13 +215,19 @@ def main():
                     del client.extra_disabled_collision_links[temp_name]
             else:
                 # check joint consistency
-                joint_flip |= compare_configurations(start_conf, end_conf, joint_jump_threshold, verbose=True)
-                if joint_flip:
+                if start_conf and end_conf:
+                    joint_flip |= compare_configurations(start_conf, end_conf, joint_jump_threshold, verbose=True)
+                    if joint_flip:
+                        print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
+                        cprint('Joint conf not consistent!'.format(m.short_summary), 'red')
+                        wait_for_user()
+                else:
+                    no_traj = True
                     print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
-                    cprint('Joint conf not consistent!'.format(m.short_summary), 'red')
+                    print('Start found: {} | End conf found: {}.'.format(start_conf is not None, end_conf is not None), 'yellow')
                     wait_for_user()
 
-            if in_collision or joint_flip:
+            if in_collision or joint_flip or no_traj:
                 movement_need_fix.append(m)
 
     print('='*20)
