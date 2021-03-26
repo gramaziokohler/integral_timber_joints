@@ -166,7 +166,8 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
             # print(compare_configurations(back_end_conf, target_start_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose))
             # print(get_movement_status(process, back_m, [RoboticMovement]))
 
-            if back_m.planning_priority == -1:
+            # if back_m.planning_priority == -1:
+            if not isinstance(back_m, RoboticMovement):
                 if verbose:
                     if back_end_conf and compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
                         cprint('Backward Prop: Start conf not coincided', 'red')
@@ -178,11 +179,11 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
                 # back_start_state['robot'].kinematic_config = target_start_conf
                 altered_movements.append(back_m)
                 back_id -= 1
-            elif get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
-                compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
+            # get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
+            elif back_end_conf is None or compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
                 if plan_impacted:
                     back_m.trajectory = None
-                    back_end_state['robot'].kinematic_config = target_start_conf
+                back_end_state['robot'].kinematic_config = target_start_conf
                 impact_movements.append(back_m)
                 print('\t$ Impacted (backward): ({}) {}'.format(colored(back_id, 'yellow'), back_m.short_summary))
                 break
@@ -197,7 +198,8 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
             else:
                 forward_start_state = process.get_movement_start_state(forward_m)
                 forward_start_conf = forward_start_state['robot'].kinematic_config
-            if all_movements[forward_id].planning_priority == -1:
+            # if all_movements[forward_id].planning_priority == -1:
+            if not isinstance(forward_m, RoboticMovement):
                 if verbose:
                     if forward_start_conf and compare_configurations(forward_start_conf, target_end_conf, jump_threshold,
                         verbose=False):
@@ -210,9 +212,11 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
                 altered_movements.append(forward_m)
                 forward_id += 1
             # TODO movement type too restrictive?
-            elif get_movement_status(process, forward_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
-                compare_configurations(forward_start_conf, target_end_conf, jump_threshold, fallback_tol=1e-3, verbose=False):
-                forward_m.trajectory = None
+            # elif get_movement_status(process, forward_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
+            elif compare_configurations(forward_start_conf, target_end_conf, jump_threshold, fallback_tol=1e-3, verbose=False):
+                if plan_impacted:
+                    forward_m.trajectory = None
+                # * no need to update start state, since it's fetched from previous state automatically
                 # forward_start_state['robot'].kinematic_config = target_end_conf
                 impact_movements.append(forward_m)
                 print('\t$ Impacted (forward): ({}) {}'.format(colored(forward_id, 'yellow'), forward_m.short_summary))
