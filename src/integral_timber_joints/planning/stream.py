@@ -337,6 +337,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     if cart_conf:
         traj = cart_conf
         if start_conf is not None:
+            # TODO if return None?
             check_cartesian_conf_agreement(client, robot, start_conf, traj.points[0],
                 conf1_tag='given start conf', conf2_tag='traj[0]', options=options, verbose=verbose)
         if end_conf is not None:

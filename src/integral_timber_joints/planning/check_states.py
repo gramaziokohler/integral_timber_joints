@@ -137,6 +137,8 @@ def main():
 
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
 
+
+    movement_need_fix = []
     for beam_id in beam_ids:
         seq_i = process.assembly.sequence.index(beam_id)
         if not args.id_only:
@@ -153,8 +155,10 @@ def main():
             end_conf = end_state['robot'].kinematic_config
             end_conf.joint_names = joint_names
 
-            if isinstance(m, RoboticMovement):
+            in_collision = False
+            joint_flip = False
 
+            if isinstance(m, RoboticMovement):
                 # movement-specific ACM
                 temp_name = '_tmp'
                 for o1_name, o2_name in m.allowed_collision_matrix:
@@ -169,7 +173,7 @@ def main():
                 print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
 
                 cprint('Start State:', 'blue')
-                in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
+                in_collision |= check_state_collisions_among_objects(client, robot, process, start_state, options=options)
                 cprint('Start State in collision: {}.'.format(in_collision), 'red' if in_collision else 'green')
                 print('#'*20)
 
@@ -177,17 +181,16 @@ def main():
                     pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
                     if m.trajectory:
                         prev_conf = start_conf
-                        in_collision = False
-                        joint_flip = False
                         for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
                             if not jpt.joint_names:
                                 jpt.joint_names = joint_names
                             if args.traj_collision:
                                 in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
-                            joint_flip |= compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True)
-                            if joint_flip:
+                            # TODO check in-between polylines of attached tool and obstacles
+                            if compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True):
                                 print('Up | traj point #{}'.format(conf_id))
                                 print('='*10)
+                                joint_flip |= True
                             prev_conf = jpt
                         cprint('Trajectory in trouble: {}.'.format(in_collision or joint_flip), 'red' if in_collision or joint_flip else 'green')
                         if in_collision or joint_flip:
@@ -195,9 +198,10 @@ def main():
                     else:
                         print('No trajectory found!', 'red')
                         wait_for_user()
+                    print('#'*20)
 
                 cprint('End State:', 'blue')
-                in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
+                in_collision |= check_state_collisions_among_objects(client, robot, process, end_state, options=options)
                 cprint('End State in collision: {}.'.format(in_collision), 'red' if in_collision else 'green')
                 print('#'*20)
 
@@ -205,13 +209,22 @@ def main():
                     del client.extra_disabled_collision_links[temp_name]
             else:
                 # check joint consistency
-                joint_flip = compare_configurations(start_conf, end_conf, joint_jump_threshold, verbose=True)
+                joint_flip |= compare_configurations(start_conf, end_conf, joint_jump_threshold, verbose=True)
                 if joint_flip:
                     print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
                     cprint('Joint conf not consistent!'.format(m.short_summary), 'red')
                     wait_for_user()
 
-    cprint('Congrats, check state done!', 'green')
+            if in_collision or joint_flip:
+                movement_need_fix.append(m)
+
+    print('='*20)
+    if len(movement_need_fix) == 0:
+        cprint('Congrats, check state done!', 'green')
+    else:
+        cprint('Movements that requires care and love:', 'yellow')
+        for fm in movement_need_fix:
+            print(fm.short_summary)
 
     client.disconnect()
 

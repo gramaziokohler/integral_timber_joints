@@ -135,7 +135,9 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         return False
 
 def propagate_states(process, selected_movements, all_movements, options=None):
+    options = options or {}
     verbose = options.get('verbose', False)
+    jump_threshold = options.get('jump_threshold', {})
     altered_movements = []
     # movements that needs to be recomputed
     impact_movements = []
@@ -169,7 +171,8 @@ def propagate_states(process, selected_movements, all_movements, options=None):
                 back_start_state['robot'].kinematic_config = target_start_conf
                 altered_movements.append(back_m)
                 back_id -= 1
-            elif get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done]:
+            elif get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
+                compare_configurations(back_end_state['robot'].kinematic_config, target_start_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose):
                 back_m.trajectory = None
                 back_end_state['robot'].kinematic_config = target_start_conf
                 impact_movements.append(back_m)
@@ -197,7 +200,8 @@ def propagate_states(process, selected_movements, all_movements, options=None):
                 altered_movements.append(forward_m)
                 forward_id += 1
             # TODO movement type too restrictive?
-            elif get_movement_status(process, forward_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done]:
+            elif get_movement_status(process, forward_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
+                compare_configurations(forward_start_state['robot'].kinematic_config, target_end_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose):
                 forward_m.trajectory = None
                 forward_start_state['robot'].kinematic_config = target_end_conf
                 impact_movements.append(forward_m)
@@ -402,6 +406,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 chosen_m = process.get_movement_by_movement_id(args.id_only)
                 # * if linear movement and has both end specified, ask user keep start or end
                 chosen_m.trajectory = None
+                plan_impacted = False
                 if get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.both_done]:
                     keep_end = int(input("Keep start or end conf? Enter 0 for start, 1 for end. 2 for abandoning both."))
                     if keep_end == 0:
@@ -419,10 +424,11 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.neither_done]
                     if keep_end != 2:
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
+                    plan_impacted = True
 
                 altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
                     None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
-                    write_now=args.write, plan_impacted=True)
+                    write_now=args.write, plan_impacted=plan_impacted)
                 if not altered_ms:
                     return False
 
