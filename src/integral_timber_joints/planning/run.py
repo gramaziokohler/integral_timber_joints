@@ -113,7 +113,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'smooth_iterations': 100,
             'resolutions' : joint_resolutions,
             'max_step' : 0.01,
-            'max_distance' : 0.0, # buffering distance
+            # 'max_distance' : 0.0, # buffering distance
             })
         traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis)
     else:
@@ -505,6 +505,7 @@ def main():
     parser.add_argument('--viz_upon_found', action='store_true', help='Viz found traj immediately after found. Defaults to False.')
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
     parser.add_argument('--use_stored_seed', action='store_true', help='Use stored seed. Defaults to False.')
+    parser.add_argument('--max_distance', default=0.0, type=float, help='Buffering distance for collision checking, larger means safer. Defaults to 0.')
     args = parser.parse_args()
     print('Arguments:', args)
     print('='*10)
@@ -549,6 +550,7 @@ def main():
         'problem_name' : args.problem,
         'use_stored_seed' : args.use_stored_seed,
         'jump_threshold' : joint_jump_threshold,
+        'max_distance' : args.max_distance,
     }
 
     set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=args.reinit_tool)
