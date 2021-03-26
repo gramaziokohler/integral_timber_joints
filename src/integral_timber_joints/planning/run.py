@@ -170,7 +170,8 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
             # print(compare_configurations(back_end_conf, target_start_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose))
             # print(get_movement_status(process, back_m, [RoboticMovement]))
 
-            if back_m.planning_priority == -1:
+            # if back_m.planning_priority == -1:
+            if not isinstance(back_m, RoboticMovement):
                 if verbose:
                     if back_end_conf and compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
                         cprint('Backward Prop: Start conf not coincided', 'red')
@@ -180,11 +181,11 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
                 back_end_state['robot'].kinematic_config = target_start_conf
                 altered_movements.append(back_m)
                 back_id -= 1
-            elif get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
-                compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
+            # get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
+            elif back_end_conf is None or compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
+                back_end_state['robot'].kinematic_config = target_start_conf
                 if plan_impacted:
                     back_m.trajectory = None
-                    back_end_state['robot'].kinematic_config = target_start_conf
                     back_start_state = process.get_movement_start_state(back_m)
                     # turn it one-sided
                     back_start_state['robot'].kinematic_config = None
