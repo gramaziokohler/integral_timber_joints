@@ -149,16 +149,16 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
         target_end_state = process.get_movement_end_state(target_m)
         target_start_conf = target_start_state['robot'].kinematic_config
         target_end_conf = target_end_state['robot'].kinematic_config
-        if target_start_conf and not target_start_conf.joint_names:
+        if not target_start_conf.joint_names:
             target_start_conf.joint_names = joint_names
-        if target_end_conf and not target_end_conf.joint_names:
+        if not target_end_conf.joint_names:
             target_end_conf.joint_names = joint_names
         if verbose:
             print('~'*5)
             print('\tPropagate states for ({}) : {}'.format(colored(m_id, 'cyan'), target_m.short_summary))
         # * backward fill all adjacent (-1) movements
         back_id = m_id-1
-        while back_id > 0:
+        while back_id >= 0:
             back_m = all_movements[back_id]
             back_end_state = process.get_movement_end_state(back_m)
             if isinstance(back_m, RoboticMovement) and back_m.trajectory:
@@ -166,8 +166,8 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
             else:
                 back_end_conf = back_end_state['robot'].kinematic_config
             # print('----')
-            # print('Back: {}'.format(back_m.short_summary))
-            # print(compare_configurations(back_end_conf, target_start_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose))
+            # print('Back: {} | back_end_conf {}'.format(back_m.short_summary, back_end_conf))
+            # # print(compare_configurations(back_end_conf, target_start_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose))
             # print(get_movement_status(process, back_m, [RoboticMovement]))
 
             # if back_m.planning_priority == -1:
@@ -182,7 +182,9 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
                 altered_movements.append(back_m)
                 back_id -= 1
             # get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
-            elif back_end_conf is None or compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
+            elif back_m.trajectory is None or back_end_conf is None or \
+                compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
+
                 back_end_state['robot'].kinematic_config = target_start_conf
                 if plan_impacted:
                     back_m.trajectory = None
@@ -327,6 +329,11 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                     # break
                     return False, []
             else:
+                traj = m.trajectory
+                start_state = process.get_movement_start_state(m)
+                start_state['robot'].kinematic_config = traj.points[0]
+                end_state = process.get_movement_end_state(m)
+                end_state['robot'].kinematic_config = traj.points[-1]
                 altered_movements.append(m)
 
         # * propagate to -1 movements
