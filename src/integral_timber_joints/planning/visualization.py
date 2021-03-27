@@ -53,6 +53,7 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
         False will simulate in a smooth fashion, by default True
     """
     from integral_timber_joints.planning.stream import set_state
+    from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
     if not has_gui():
         return
     print('===')
@@ -64,6 +65,8 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
         if m.trajectory is not None:
             cprint(m.short_summary, 'green')
             for jt_traj_pt in m.trajectory.points:
+                if not jt_traj_pt.joint_names:
+                    jt_traj_pt.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
                 client.set_robot_configuration(robot, jt_traj_pt)
                 if step_sim:
                     wait_if_gui('Step conf.')

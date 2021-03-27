@@ -94,7 +94,7 @@ def save_process(_process, save_path, include_traj_in_process=False, indent=None
         json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
 
 def save_process_and_movements(process_name, _process, _movements,
-    overwrite=False, include_traj_in_process=False, indent=None, save_temp=True):
+    overwrite=False, include_traj_in_process=False, indent=None, save_temp=False):
     """[summary]
 
     Parameters
@@ -115,6 +115,9 @@ def save_process_and_movements(process_name, _process, _movements,
     save_temp : bool, optional
         save an extra copy of the process in the `TEMP_DESIGN_DIR` folder, by default True
     """
+    if not _movements:
+        return
+
     process = deepcopy(_process)
     movements = deepcopy(_movements)
 

@@ -1468,7 +1468,9 @@ class RobotClampAssemblyProcess(Network):
         for movement in self.movements:
             if movement.movement_id == movement_id:
                 return movement
-        return None
+        else:
+            raise ValueError('No movement with id {} found!'.format(movement_id))
+        # return None
 
     def get_movement_start_state(self, movement):
         # type: (Movement) -> dict[str, ObjectState]
@@ -1524,6 +1526,16 @@ class RobotClampAssemblyProcess(Network):
                 if movement is _movement:
                     return action
 
+    def get_beam_id_of_movement(self, movement):
+        # (Movement) -> str
+        action = self.get_action_of_movement(movement)
+        return self.assembly.sequence[action.seq_n]
+
+    def get_beam_id_from_movement_id(self, movement_id):
+        # (str) -> str
+        movement = self.get_movement_by_movement_id(movement_id)
+        return self.get_beam_id_of_movement(movement)
+
     def movement_has_start_robot_config(self, movement):
         # type: (Movement) -> bool
         """Returns True if the movement's start_state.['robot'].kinematic_config is not None """
@@ -1546,16 +1558,30 @@ class RobotClampAssemblyProcess(Network):
         elif object_id.startswith('robot'):
             raise ValueError('robot object is not stored within the Process class.')
 
-    def load_external_movements(self, process_folder_path):
-        # type: (str) -> list(Movement)
+    # TODO load specific movement_id and neighbors
+    def load_external_movements(self, process_folder_path, movement_id=None):
+        # type: (str, str) -> list(Movement)
         """Load External Movements from nearby folder if they exist, replace the movements
-        with new movements, returns the list of movements modified"""
+        with new movements, returns the list of movements modified.
+        If movement_id is None, all movements will be parsed. Otherwise only the given movement
+        and its neighbors will be parsed."""
         import os
         import json
         from compas.utilities import DataDecoder
+        if movement_id:
+            target_movement = self.get_movement_by_movement_id(movement_id)
+            target_movements = [target_movement]
+            m_id = self.movements.index(target_movement)
+            if m_id-1>=0:
+                target_movements.append(self.movements[m_id-1])
+            if m_id+1<len(self.movements):
+                target_movements.append(self.movements[m_id+1])
+            print(target_movements)
+        else:
+            target_movements = self.movements
 
         movements_modified = []
-        for movement in self.movements:
+        for movement in target_movements:
             movement_path = os.path.join(process_folder_path, movement.filepath)
             if os.path.exists(movement_path):
                 # print("Loading External Movement File: movement_path%s" % movement_path)
