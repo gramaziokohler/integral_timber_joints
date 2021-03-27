@@ -344,7 +344,8 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options,
             plan_impacted=plan_impacted)
         altered_movements.extend(altered_new_movements)
-        altered_movements.extend(impact_movements)
+        if plan_impacted:
+            altered_movements.extend(impact_movements)
 
         if plan_impacted and len(impact_movements) > 0:
             print('+'*10)
@@ -605,7 +606,7 @@ def main():
         # only one
         beam_ids = [process.assembly.sequence[args.seq_i]]
 
-    beam_attempts = 10 if args.batch_run else 1
+    beam_attempts = 10 if args.batch_run else 100
     for beam_id in beam_ids:
         print('-'*20)
         s_i = process.assembly.sequence.index(beam_id)
