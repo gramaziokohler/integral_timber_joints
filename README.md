@@ -72,8 +72,8 @@ git submodule update --init --recursive
 Run this the following in terminal from the root folder of this repo. 
 
 ```bash
-pip install -e .\external\pybullet_planning
 pip install -e .\external\compas_fab_pychoreo
+pip install -e .\external\compas_fab_pychoreo\external\pybullet_planning
 pip install -e .
 ```
 

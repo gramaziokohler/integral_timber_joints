@@ -9,7 +9,7 @@ from compas.robots import Joint
 
 from pybullet_planning import wait_if_gui, wait_for_user, has_gui
 from pybullet_planning import get_distance, draw_collision_diagnosis, expand_links, get_all_links, \
-    link_from_name, pairwise_link_collision_info, get_name, get_link_name
+    link_from_name, pairwise_link_collision_info, get_name, get_link_name, WorldSaver
 
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
@@ -137,7 +137,6 @@ def main():
 
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
 
-
     movement_need_fix = []
     for beam_id in beam_ids:
         seq_i = process.assembly.sequence.index(beam_id)
@@ -181,16 +180,17 @@ def main():
                 print('#'*20)
 
                 if args.verify_plan:
-                    pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
+                    # pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
                     if m.trajectory:
+                        print(client._print_object_summary())
                         prev_conf = start_conf
                         for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
                             if not jpt.joint_names:
                                 jpt.joint_names = joint_names
                             if args.traj_collision:
-                                in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
-                            # TODO check in-between polylines of attached tool and obstacles
-                            # https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA/edit#heading=h.e7a8kr2734k2
+                                # with WorldSaver():
+                                # in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
+                                in_collision |= client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
 
                             if prev_conf and compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True):
                                 print('Up | traj point #{}'.format(conf_id))
@@ -199,7 +199,7 @@ def main():
                             prev_conf = jpt
                         cprint('Trajectory in trouble: {}.'.format(in_collision or joint_flip), 'red' if in_collision or joint_flip else 'green')
                         # if in_collision or joint_flip:
-                        #     wait_for_user()
+                        wait_for_user()
                     else:
                         no_traj = True
                         cprint('No trajectory found!', 'red')
