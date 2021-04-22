@@ -17,7 +17,15 @@ Search `git submodule update + <your GUI tool>` will usually give you the right 
 
 ## Examples
 
+Run planning:
+
 ```bash
 # from any dir, with the proper conda env is activated
 python -m integral_timber_joints.planning.run --step_sim --watch --seq_i 2 --diagnosis --write
+```
+
+Checking states:
+
+```
+python -m integral_timber_joints.planning.check_states  --problem_subdir results -p pavilion_process.json --verify_plan --id_only A181_M0 --viewer
 ```

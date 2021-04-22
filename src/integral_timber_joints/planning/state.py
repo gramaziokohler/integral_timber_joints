@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from termcolor import cprint
 from copy import copy, deepcopy
 from itertools import product
@@ -27,7 +28,8 @@ from typing import Dict
 ##############################
 
 
-def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Frame, reachable_range=(0.2, 2.5), scale=1.0):
+def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Frame,
+        reachable_range=(0., 2.5), scale=1.0, spherical_sampling=True):
     robot_uid = client.get_robot_pybullet_uid(robot)
     flange_pose = pose_from_frame(flange_frame, scale=scale)
 
@@ -43,6 +45,10 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
         x, y, _ = next(base_gen_fn)
         y *= -1
         z, = gantry_z_sample_fn()
+        # TODO
+        # if spherical_sampling:
+        #     if np.linalg.norm():
+
         gantry_xyz_vals = [x, y, z]
         gantry_base_conf = Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names)
         client.set_robot_configuration(robot, gantry_base_conf)

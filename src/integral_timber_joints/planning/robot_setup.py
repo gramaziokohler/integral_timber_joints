@@ -13,6 +13,7 @@ from integral_timber_joints.planning.parsing import rfl_setup
 MAIN_ROBOT_ID = 'robot11'
 BARE_ARM_GROUP = 'robot11'
 GANTRY_ARM_GROUP = 'robot11_eaXYZ'
+GANTRY_GROUP = 'robot11_gantry'
 
 # a preset configuration, only used in initializing the state
 # this set the other unused robot to the right configurations

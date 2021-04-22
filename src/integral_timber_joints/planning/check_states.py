@@ -180,7 +180,7 @@ def main():
                 print('#'*20)
 
                 if args.verify_plan:
-                    # pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
+                    pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
                     if m.trajectory:
                         print(client._print_object_summary())
                         prev_conf = start_conf
@@ -189,7 +189,7 @@ def main():
                                 jpt.joint_names = joint_names
                             if args.traj_collision:
                                 # with WorldSaver():
-                                # in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
+                                in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
                                 in_collision |= client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
 
                             if prev_conf and compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True):
@@ -198,8 +198,8 @@ def main():
                                 joint_flip |= True
                             prev_conf = jpt
                         cprint('Trajectory in trouble: {}.'.format(in_collision or joint_flip), 'red' if in_collision or joint_flip else 'green')
-                        # if in_collision or joint_flip:
-                        wait_for_user()
+                        if in_collision or joint_flip:
+                            wait_for_user()
                     else:
                         no_traj = True
                         cprint('No trajectory found!', 'red')
