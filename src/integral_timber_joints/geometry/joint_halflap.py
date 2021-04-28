@@ -5,11 +5,11 @@ import math
 
 import compas
 from compas.datastructures import Mesh
-from compas.geometry import Box, Frame, Point, Vector, distance_point_point, intersection_line_line
-from compas.geometry import intersection_segment_segment
+from compas.geometry import Box, Frame, Point, Vector, distance_point_point, intersection_line_line, intersection_segment_segment
 
-from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.beam import Beam
+from integral_timber_joints.geometry.joint import Joint
+from integral_timber_joints.geometry.utils import *
 
 
 class Joint_halflap(Joint):
@@ -36,36 +36,35 @@ class Joint_halflap(Joint):
     @property
     def data(self):
         data = {
-            'face_id'       : self.face_id,
-            'distance'      : self.distance,
-            'angle'         : self.angle,
-            'length'        : self.length,
-            'width'         : self.width,
-            'height'        : self.height,
-            'thru_x_neg'    : self.thru_x_neg,
-            'thru_x_pos'    : self.thru_x_pos,
-            'name'       : self.name,
-            }
+            'face_id': self.face_id,
+            'distance': self.distance,
+            'angle': self.angle,
+            'length': self.length,
+            'width': self.width,
+            'height': self.height,
+            'thru_x_neg': self.thru_x_neg,
+            'thru_x_pos': self.thru_x_pos,
+            'name': self.name,
+        }
         return data
 
     @classmethod
-    def from_data(cls,data):
+    def from_data(cls, data):
         """Construct a Joint object from structured data.
         This class method must be overridden by an inherited class.
         """
         joint = cls()
-        joint.face_id       = data['face_id']
-        joint.distance      = data['distance']
-        joint.angle         = data['angle']
-        joint.length        = data['length']
-        joint.width         = data['width']
-        joint.height        = data['height']
-        joint.thru_x_neg    = data['thru_x_neg']
-        joint.thru_x_pos    = data['thru_x_pos']
-        joint.name          = data['name']
+        joint.face_id = data['face_id']
+        joint.distance = data['distance']
+        joint.angle = data['angle']
+        joint.length = data['length']
+        joint.width = data['width']
+        joint.height = data['height']
+        joint.thru_x_neg = data['thru_x_neg']
+        joint.thru_x_pos = data['thru_x_pos']
+        joint.name = data['name']
         return joint
 
-    
     def get_feature_mesh(self, BeamRef):
         # type: (Beam) -> Mesh
         """Compute the negative mesh volume of the joint.
@@ -88,42 +87,26 @@ class Joint_halflap(Joint):
         # Get face_frame from Beam (the parent Beam)
         face_frame = BeamRef.reference_side_wcf(self.face_id)  # type: compas.datastructures.Mesh
 
-        # Compute beam boolean box location
-        box_frame_origin = face_frame.to_world_coordinates([(self.distance), self.height / 2 - OVERSIZE / 2, self.length / 2])
-        box_frame = Frame(box_frame_origin, face_frame.xaxis, face_frame.yaxis)
-
         # The 8 corners of a box:
-        # With respect to the local Z axis, the vertices of the bottom
-        # face are listed first in clockwise direction, starting at the bottom left corner.
-        # The vertices of the top face are listed in counterclockwise direction.
+        # Refer to notes in mesh_box_from_vertices()
 
-        angled_length = self.length / math.cos(math.radians(self.angle - 90))
         vertices = []
         vertices.append(Point(self.distance, 0, -self.height))  # point on -x -y -z
         vertices.append(Point(self.distance + self.angled_lead, self.width, -self.height))  # point on -x +y -z
         vertices.append(Point(self.distance + self.angled_lead + self.angled_length, self.width, -self.height))  # point on +x +y -z
         vertices.append(Point(self.distance + self.angled_length, 0, -self.height))  # point on -x +y -z
 
-        # moving the trim box to -X and +X direction for easier boolean
-        vector_0_1 = Vector.from_start_end(vertices[0], vertices[1]).unitized().scaled(OVERSIZE)
-        vector_2_3 = Vector.from_start_end(vertices[2], vertices[3]).unitized().scaled(OVERSIZE)
-        if self.thru_x_neg:
-            vertices[0] = vertices[0] - vector_0_1
-        if self.thru_x_pos:
-            vertices[1] = vertices[1] + vector_0_1
-        if self.thru_x_pos:
-            vertices[2] = vertices[2] - vector_2_3
-        if self.thru_x_neg:
-            vertices[3] = vertices[3] + vector_2_3
-
         # add the last 4 points related to the height and tolerance
         vertices.append(vertices[0] + Point(0, 0, self.height + OVERSIZE))  # relative to point 0
-        vertices.append(vertices[3] + Point(0, 0, self.height + OVERSIZE))  # relative to point 3
-        vertices.append(vertices[2] + Point(0, 0, self.height + OVERSIZE))  # relative to point 2
         vertices.append(vertices[1] + Point(0, 0, self.height + OVERSIZE))  # relative to point 1
+        vertices.append(vertices[2] + Point(0, 0, self.height + OVERSIZE))  # relative to point 2
+        vertices.append(vertices[3] + Point(0, 0, self.height + OVERSIZE))  # relative to point 3
 
-        box = Box(Frame.worldXY(), 1, 1, 1)
-        boolean_box_mesh = Mesh.from_vertices_and_faces(vertices, box.faces)
+        # create mesh and add offset
+        boolean_box_mesh = mesh_box_from_vertices(vertices)
+        mesh_move_vertex_from_neighbor(boolean_box_mesh, [0, 3, 7, 4], [1, 2, 6, 5], OVERSIZE)
+        mesh_move_vertex_from_neighbor(boolean_box_mesh, [1, 2, 6, 5], [0, 3, 7, 4], OVERSIZE)
+
         boolean_box_mesh = face_frame.to_world_coordinates(boolean_box_mesh)
 
         # Draw boolean box and assign to self.mesh
@@ -275,32 +258,27 @@ def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0, dist_
 
 
 if __name__ == "__main__":
-    import compas
-    import tempfile
     import os
+    import tempfile
+
+    import compas
 
     # #Test to create Joint_90lap object. Serialize and deserialize.
     # #j.data and q.data should have the same value
-
     # #Create Joint object
     # from compas.geometry import Frame
     # joint = Joint_90lap(180,1,50,100,100)
     # print (joint.data)
-
     # #Save Joint to Json
     # joint.to_json(os.path.join(tempfile.gettempdir(), "joint.json"),pretty=True)
-
     # #Load saved Joint Object
     # loaded_joint = Joint_90lap.from_json(os.path.join(tempfile.gettempdir(), "joint.json"))
-
     # #Assert that the two Joint objects are different objects
     # assert (joint is not loaded_joint)
-
     # print("Test 1: Comparing two beam data dictionary:")
     # assert (joint.data == loaded_joint.data)
     # if (joint.data == loaded_joint.data):
     #     print("Correct")
     # else:
     #     print("Incorrect")
-
     # print (joint.data)
