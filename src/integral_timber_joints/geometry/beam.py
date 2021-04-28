@@ -18,9 +18,10 @@ import math
 
 import compas
 from compas.datastructures import Mesh, Network, mesh_bounding_box
-from compas.geometry import Box, Plane, Point, Transformation, Translation, distance_point_plane, is_point_on_plane
+from compas.geometry import Box, Point, Transformation, Translation, distance_point_plane, is_point_on_plane
 from compas.geometry.primitives.frame import Frame
 from compas.geometry.primitives.line import Line
+from compas.geometry.primitives.plane import Plane
 from compas.geometry.primitives.vector import Vector
 
 from integral_timber_joints.geometry.joint import Joint
@@ -309,7 +310,8 @@ class Beam(Network):
             raise IndexError('face_id index out of range')
 
     def get_face_plane(self, plane_id):
-        """Computes the plane of each face of a beam
+        # type: (int) -> Plane
+        """Computes the plane of each face of a beam in WCF
         ----------
         plane_id: (int) ID of plane
 
@@ -478,6 +480,7 @@ class Beam(Network):
         raise IndexError("edge_id only accepts (int) 1 - 4 if wrap_edge_id = False")
 
     def reference_edge_wcf(self, edge_id, wrap_edge_id=True):
+        # type: (int, bool) -> Line
         """Returns the reference edge as defined in BTLx 1.1.
         For example Reference Edge 1 corrispond to the X axis of Reference Side 1.
         Line is drawn from beam start side to beam end side.
@@ -577,33 +580,49 @@ class Beam(Network):
         # First mesh in the list is the uncut beam mesh
         self.cached_mesh = self.draw_uncut_mesh()
 
+        ####################################
+        # compas_trimesh implementation
+        ####################################
+
         # if len(beam_features) > 0:
+        #     negative_meshes.append(self.cached_mesh)
+
         #     # Compute the negative meshes from the features
         #     for feature in beam_features:
         #         negative_mesh = feature.get_feature_mesh(self)
+        #         from compas.datastructures import Mesh, mesh_offset
         #         negative_meshes.append(negative_mesh)
 
         #     # Calls trimesh to perform boolean
         #     from compas.rpc import Proxy
-        #     boolean_proxy = Proxy(package='compas_cgal.booleans')
-        #     self.cached_mesh.quads_to_triangles()
-        #     for mesh in negative_meshes:
-        #         mesh.quads_to_triangles()
-        #         V, F = boolean_proxy.boolean_difference(self.cached_mesh.to_vertices_and_faces(), mesh.to_vertices_and_faces())
-        #         self.cached_mesh = Mesh.from_vertices_and_faces(V, F)
+        #     trimesh_proxy = Proxy(package='compas_trimesh')
+        #     result = trimesh_proxy.trimesh_subtract_multiple(negative_meshes)
+        #     self.cached_mesh = result
+
+        ####################################
+        # compas_cgal implementation
+        ####################################
 
         if len(beam_features) > 0:
-            negative_meshes.append(self.cached_mesh)
-
-            # Compute the negative meshes from the features
-            for feature in beam_features:
-                negative_mesh = feature.get_feature_mesh(self)
-                negative_meshes.append(negative_mesh)
 
             # Calls trimesh to perform boolean
             from compas.rpc import Proxy
-            trimesh_proxy = Proxy(package='compas_trimesh')
-            result = trimesh_proxy.trimesh_subtract_multiple(negative_meshes)
+            proxy = Proxy()
+            proxy.package = 'compas_cgal.booleans'
+
+            # Convert uncut beam to triangle
+            self.cached_mesh.quads_to_triangles()
+            result_v_f = self.cached_mesh.to_vertices_and_faces()
+
+            # Compute the negative meshes from the features
+            for feature in beam_features:
+                bool_negative = feature.get_feature_mesh(self)
+                bool_negative.quads_to_triangles()
+                bool_negative_v_f = bool_negative.to_vertices_and_faces()
+                result_v_f = proxy.boolean_difference(result_v_f, bool_negative_v_f)
+
+            # Reassemble vertices and faces back to Mesh
+            result = Mesh.from_vertices_and_faces(* result_v_f)
             self.cached_mesh = result
 
         self.cached_mesh.name = self.name + "_mesh"
