@@ -72,7 +72,6 @@ class JointNonPlanarLap(Joint):
         self.name = name
         self.pt_jc = deepcopy(pt_jc)
         self.is_joint_on_beam_move = is_joint_on_beam_move
-        self.mesh = None
 
     # @property
     # def data(self):
@@ -107,8 +106,8 @@ class JointNonPlanarLap(Joint):
     #     return joint
 
 
-    def get_feature_mesh(self, BeamRef):
-        # type: (Beam) -> Mesh
+    def get_feature_meshes(self, BeamRef):
+        # type: (Beam) -> list[Mesh]
         """Compute the negative mesh volume of the joint.
         Parameters
         ----------
@@ -154,65 +153,19 @@ class JointNonPlanarLap(Joint):
             mesh_move_vertex_from_neighbor(mesh, [0,3,7,4], [1,2,6,5], OVERSIZE)
             mesh_move_vertex_from_neighbor(mesh, [1,2,6,5], [0,3,7,4], OVERSIZE)
             mesh_move_vertex_from_neighbor(mesh, [4,5,6,7], [0,1,2,3], OVERSIZE)
+            return [mesh]
 
         else:
             vertices = []
             vertices.extend(self.pt_jc[0:4])
             vertices.extend(pt_ipx[0:4])
-            mesh = mesh_box_from_vertices(vertices)
+            mesh_box = mesh_box_from_vertices(vertices)
             # Add offset
-            mesh_move_vertex_from_neighbor(mesh, [3,2,6,7], [0,1,5,4], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh, [0,1,5,4], [3,2,6,7], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh, [0,1,2,3], [4,5,6,7], OVERSIZE)
+            mesh_move_vertex_from_neighbor(mesh_box, [3,2,6,7], [0,1,5,4], OVERSIZE)
+            mesh_move_vertex_from_neighbor(mesh_box, [0,1,5,4], [3,2,6,7], OVERSIZE)
+            mesh_move_vertex_from_neighbor(mesh_box, [0,1,2,3], [4,5,6,7], OVERSIZE)
+            return [mesh_box]
 
-        # Add offset to the
-        return mesh
-
-
-        # # Get face_frame from Beam (the parent Beam)
-        # face_frame = BeamRef.reference_side_wcf(self.face_id)  # type: compas.datastructures.Mesh
-
-        # # Compute beam boolean box location
-        # box_frame_origin = face_frame.to_world_coordinates([(self.distance), self.height / 2 - OVERSIZE / 2, self.length / 2])
-        # box_frame = Frame(box_frame_origin, face_frame.xaxis, face_frame.yaxis)
-
-        # # The 8 corners of a box:
-        # # With respect to the local Z axis, the vertices of the bottom
-        # # face are listed first in clockwise direction, starting at the bottom left corner.
-        # # The vertices of the top face are listed in counterclockwise direction.
-
-        # angled_length = self.length / math.cos(math.radians(self.angle - 90))
-        # vertices = []
-        # vertices.append(Point(self.distance, 0, -self.height))  # point on -x -y -z
-        # vertices.append(Point(self.distance + self.angled_lead, self.width, -self.height))  # point on -x +y -z
-        # vertices.append(Point(self.distance + self.angled_lead + self.angled_length, self.width, -self.height))  # point on +x +y -z
-        # vertices.append(Point(self.distance + self.angled_length, 0, -self.height))  # point on -x +y -z
-
-        # # moving the trim box to -X and +X direction for easier boolean
-        # vector_0_1 = Vector.from_start_end(vertices[0], vertices[1]).unitized().scaled(OVERSIZE)
-        # vector_2_3 = Vector.from_start_end(vertices[2], vertices[3]).unitized().scaled(OVERSIZE)
-        # if self.thru_x_neg:
-        #     vertices[0] = vertices[0] - vector_0_1
-        # if self.thru_x_pos:
-        #     vertices[1] = vertices[1] + vector_0_1
-        # if self.thru_x_pos:
-        #     vertices[2] = vertices[2] - vector_2_3
-        # if self.thru_x_neg:
-        #     vertices[3] = vertices[3] + vector_2_3
-
-        # # add the last 4 points related to the height and tolerance
-        # vertices.append(vertices[0] + Point(0, 0, self.height + OVERSIZE))  # relative to point 0
-        # vertices.append(vertices[3] + Point(0, 0, self.height + OVERSIZE))  # relative to point 3
-        # vertices.append(vertices[2] + Point(0, 0, self.height + OVERSIZE))  # relative to point 2
-        # vertices.append(vertices[1] + Point(0, 0, self.height + OVERSIZE))  # relative to point 1
-
-        # box = Box(Frame.worldXY(), 1, 1, 1)
-        # boolean_box_mesh = Mesh.from_vertices_and_faces(vertices, box.faces)
-        # boolean_box_mesh = face_frame.to_world_coordinates(boolean_box_mesh)
-
-        # Draw boolean box and assign to self.mesh
-        self.mesh = boolean_box_mesh
-        return self.mesh
 
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]

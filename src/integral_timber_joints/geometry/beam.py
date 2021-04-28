@@ -573,7 +573,7 @@ class Beam(Network):
         Note
         ----------
         self.cached_mesh is updated.
-        features object need to implement the get_feature_mesh(beam)->Mesh function.
+        features object need to implement the get_feature_meshes(beam)-> list[Mesh] function.
         """
 
         negative_meshes = []
@@ -589,9 +589,9 @@ class Beam(Network):
 
         #     # Compute the negative meshes from the features
         #     for feature in beam_features:
-        #         negative_mesh = feature.get_feature_mesh(self)
-        #         from compas.datastructures import Mesh, mesh_offset
-        #         negative_meshes.append(negative_mesh)
+        #         for negative_mesh in feature.get_feature_meshes(self)
+        #             from compas.datastructures import Mesh, mesh_offset
+        #             negative_meshes.append(negative_mesh)
 
         #     # Calls trimesh to perform boolean
         #     from compas.rpc import Proxy
@@ -616,10 +616,10 @@ class Beam(Network):
 
             # Compute the negative meshes from the features
             for feature in beam_features:
-                bool_negative = feature.get_feature_mesh(self)
-                bool_negative.quads_to_triangles()
-                bool_negative_v_f = bool_negative.to_vertices_and_faces()
-                result_v_f = proxy.boolean_difference(result_v_f, bool_negative_v_f)
+                for bool_negative in feature.get_feature_meshes(self):
+                    bool_negative.quads_to_triangles()
+                    bool_negative_v_f = bool_negative.to_vertices_and_faces()
+                    result_v_f = proxy.boolean_difference(result_v_f, bool_negative_v_f)
 
             # Reassemble vertices and faces back to Mesh
             result = Mesh.from_vertices_and_faces(* result_v_f)

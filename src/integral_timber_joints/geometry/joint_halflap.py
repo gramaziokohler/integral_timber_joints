@@ -65,8 +65,8 @@ class Joint_halflap(Joint):
         joint.name = data['name']
         return joint
 
-    def get_feature_mesh(self, BeamRef):
-        # type: (Beam) -> Mesh
+    def get_feature_meshes(self, BeamRef):
+        # type: (Beam) -> list[Mesh]
         """Compute the negative mesh volume of the joint.
         Parameters
         ----------
@@ -111,7 +111,7 @@ class Joint_halflap(Joint):
 
         # Draw boolean box and assign to self.mesh
         self.mesh = boolean_box_mesh
-        return self.mesh
+        return [self.mesh]
 
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]
