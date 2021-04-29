@@ -51,12 +51,12 @@ class JointNonPlanarLap(Joint):
     """
 
     def __init__(self,
-                 center_frame=None, #type: Frame
-                 beam_move_face_id=1, #type: int
-                 beam_stay_face_id=1, #type: int
-                 axial_dot_product=0.0,  #type: float
-                 pt_jc = [], # type: list[Point]
-                 is_joint_on_beam_move = False, # type: bool
+                 center_frame=None,  # type: Frame
+                 beam_move_face_id=1,  # type: int
+                 beam_stay_face_id=1,  # type: int
+                 axial_dot_product=0.0,  # type: float
+                 pt_jc=[],  # type: list[Point]
+                 is_joint_on_beam_move=False,  # type: bool
                  name=None):
         """
         Parameters
@@ -69,42 +69,36 @@ class JointNonPlanarLap(Joint):
         self.beam_move_face_id = beam_move_face_id
         self.beam_stay_face_id = beam_stay_face_id
         self.axial_dot_product = axial_dot_product
-        self.name = name
         self.pt_jc = deepcopy(pt_jc)
         self.is_joint_on_beam_move = is_joint_on_beam_move
+        self.name = name
 
-    # @property
-    # def data(self):
-    #     data = {
-    #         'face_id'       : self.face_id,
-    #         'distance'      : self.distance,
-    #         'angle'         : self.angle,
-    #         'length'        : self.length,
-    #         'width'         : self.width,
-    #         'height'        : self.height,
-    #         'thru_x_neg'    : self.thru_x_neg,
-    #         'thru_x_pos'    : self.thru_x_pos,
-    #         'name'       : self.name,
-    #         }
-    #     return data
+    @property
+    def data(self):
+        data = {
+            'center_frame': self.center_frame,
+            'beam_move_face_id': self.beam_move_face_id,
+            'beam_stay_face_id': self.beam_stay_face_id,
+            'axial_dot_product': self.axial_dot_product,
+            'pt_jc': self.pt_jc,
+            'is_joint_on_beam_move': self.is_joint_on_beam_move,
+            'name': self.name,
+        }
+        return data
 
-    # @classmethod
-    # def from_data(cls,data):
-    #     """Construct a Joint object from structured data.
-    #     This class method must be overridden by an inherited class.
-    #     """
-    #     joint = cls()
-    #     joint.face_id       = data['face_id']
-    #     joint.distance      = data['distance']
-    #     joint.angle         = data['angle']
-    #     joint.length        = data['length']
-    #     joint.width         = data['width']
-    #     joint.height        = data['height']
-    #     joint.thru_x_neg    = data['thru_x_neg']
-    #     joint.thru_x_pos    = data['thru_x_pos']
-    #     joint.name          = data['name']
-    #     return joint
-
+    @classmethod
+    def from_data(cls, data):
+        """Construct a Joint object from structured data.
+        This class method must be overridden by an inherited class.
+        """
+        joint = cls()
+        joint.center_frame = data.get('center_frame', None)
+        joint.beam_move_face_id = data.get('beam_move_face_id', 1)
+        joint.beam_stay_face_id = data.get('beam_stay_face_id', 1)
+        joint.axial_dot_product = data.get('axial_dot_product', 0.0)
+        joint.pt_jc = data.get('pt_jc', [])
+        joint.is_joint_on_beam_move = data.get('is_joint_on_beam_move', True)
+        return joint
 
     def get_feature_meshes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
@@ -126,46 +120,92 @@ class JointNonPlanarLap(Joint):
         """
         OVERSIZE = 10.0
 
-        # Project Point [4 to 7] on cheek plane
+        # Project Point [4 to 7] on cheek plane (pt_p)
         center_plane = Plane.from_frame(self.center_frame)
         P = Projection.from_plane(center_plane)
-        pt_prj = [Point(* self.pt_jc[i+4]).transformed(P) for i in range(4)]
+        pt_p = [Point(* self.pt_jc[i+4]).transformed(P) for i in range(4)]
 
-        # Intersect Points
+        # Intersect Points (pt_x)
         corner_lines = [Line(self.pt_jc[i], self.pt_jc[i+4]) for i in range(4)]
-        pt_ipx = [intersection_line_plane(line, center_plane) for line in corner_lines]
+        pt_x = [intersection_line_plane(line, center_plane) for line in corner_lines]
+
+        # Joint corners alias
+        pt_c = self.pt_jc
+
+        # Create solid negative geometry
         if self.is_joint_on_beam_move:
             # Only one feature mesh
             vertices = []
             if self.axial_dot_product > 0:
-                vertices.append(pt_ipx[0])
-                vertices.append(pt_ipx[1])
-                vertices.append(pt_prj[2])
-                vertices.append(pt_prj[3])
+                vertices.append(pt_x[0])
+                vertices.append(pt_x[1])
+                vertices.append(pt_p[2])
+                vertices.append(pt_p[3])
             else:
-                vertices.append(pt_prj[0])
-                vertices.append(pt_prj[1])
-                vertices.append(pt_ipx[2])
-                vertices.append(pt_ipx[3])
-            vertices.extend(self.pt_jc[4:8])
+                vertices.append(pt_p[0])
+                vertices.append(pt_p[1])
+                vertices.append(pt_x[2])
+                vertices.append(pt_x[3])
+            vertices.extend(pt_c[4:8])
             mesh = mesh_box_from_vertices(vertices)
             # Add offset
-            mesh_move_vertex_from_neighbor(mesh, [0,3,7,4], [1,2,6,5], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh, [1,2,6,5], [0,3,7,4], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh, [4,5,6,7], [0,1,2,3], OVERSIZE)
+            mesh_move_vertex_from_neighbor(mesh, [0, 3, 7, 4], [1, 2, 6, 5], OVERSIZE)
+            mesh_move_vertex_from_neighbor(mesh, [1, 2, 6, 5], [0, 3, 7, 4], OVERSIZE)
+            mesh_move_vertex_from_neighbor(mesh, [4, 5, 6, 7], [0, 1, 2, 3], OVERSIZE)
             return [mesh]
 
         else:
             vertices = []
-            vertices.extend(self.pt_jc[0:4])
-            vertices.extend(pt_ipx[0:4])
-            mesh_box = mesh_box_from_vertices(vertices)
-            # Add offset
-            mesh_move_vertex_from_neighbor(mesh_box, [3,2,6,7], [0,1,5,4], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh_box, [0,1,5,4], [3,2,6,7], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh_box, [0,1,2,3], [4,5,6,7], OVERSIZE)
-            return [mesh_box]
+            # Degenerate case where angle is very close to zero.
+            # Boolean geometry is just a simple box
+            if abs(self.axial_dot_product) < 1e-4:
+                vertices.append(pt_c[0])
+                vertices.append(pt_c[1])
+                vertices.append(pt_c[2])
+                vertices.append(pt_c[3])
+                vertices.append(pt_x[0])
+                vertices.append(pt_x[1])
+                vertices.append(pt_x[2])
+                vertices.append(pt_x[3])
+                mesh = polygon_box_from_vertices(vertices)
+                mesh_move_vertex_from_neighbor(mesh, [0, 1, 2, 3], [4, 5, 6, 7], OVERSIZE)
+                mesh_move_vertex_from_neighbor(mesh, [0, 1, 4, 5], [3, 2, 7, 6], OVERSIZE)
+                mesh_move_vertex_from_neighbor(mesh, [3, 2, 7, 6], [0, 1, 4, 5], OVERSIZE)
+                return [mesh]
 
+            # In most case a 5 point polygon for a single boolean.
+            # In the past this was done as two simplier geometry
+            # but cgal just cannot boolean when meshes are coplanar
+
+            if self.axial_dot_product > 0:
+                vertices.append(pt_p[2])
+                vertices.append(pt_c[6])
+                vertices.append(pt_c[2])
+                vertices.append(pt_c[1])
+                vertices.append(pt_x[1])
+                vertices.append(pt_p[3])
+                vertices.append(pt_c[7])
+                vertices.append(pt_c[3])
+                vertices.append(pt_c[0])
+                vertices.append(pt_x[0])
+            else:
+                vertices.append(pt_p[0])
+                vertices.append(pt_c[4])
+                vertices.append(pt_c[0])
+                vertices.append(pt_c[3])
+                vertices.append(pt_x[3])
+                vertices.append(pt_p[1])
+                vertices.append(pt_c[5])
+                vertices.append(pt_c[1])
+                vertices.append(pt_c[2])
+                vertices.append(pt_x[2])
+
+            mesh = polygon_box_from_vertices(vertices)
+            mesh_move_vertex_from_neighbor(mesh, [1, 6], [0, 5], OVERSIZE)
+            mesh_move_vertex_from_neighbor(mesh, [2, 7], [3, 8], OVERSIZE)
+            mesh_move_vertex_from_neighbor(mesh, [2, 7, 3, 8], [1, 6, 4, 9], OVERSIZE)
+            mesh_move_vertex_from_neighbor(mesh, [3, 8, 4, 9], [2, 7, 0, 5], OVERSIZE)
+            return [mesh]
 
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]
@@ -245,10 +285,10 @@ def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, joint
 
     # Find which beam face to be facing each other
     # We use the intersection points of the two lines as a guide and compare with
-    v_ms =  subtract_vectors(cp_s , cp_m)
-    v_sm =  subtract_vectors(cp_m , cp_s)
-    normal_dot_product_m = [dot_vectors(beam_move.reference_side_wcf(i + 1).zaxis, v_ms) for i in range (4)]
-    normal_dot_product_s = [dot_vectors(beam_stay.reference_side_wcf(i + 1).zaxis, v_sm) for i in range (4)]
+    v_ms = subtract_vectors(cp_s, cp_m)
+    v_sm = subtract_vectors(cp_m, cp_s)
+    normal_dot_product_m = [dot_vectors(beam_move.reference_side_wcf(i + 1).zaxis, v_ms) for i in range(4)]
+    normal_dot_product_s = [dot_vectors(beam_stay.reference_side_wcf(i + 1).zaxis, v_sm) for i in range(4)]
     joint_face_id_m = normal_dot_product_m.index(max(normal_dot_product_m)) + 1
     joint_face_id_s = normal_dot_product_s.index(max(normal_dot_product_s)) + 1
 
@@ -301,9 +341,9 @@ def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, joint
 
     # Construct joint objects
     joint_m = JointNonPlanarLap(joint_center_frame, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
-                                is_joint_on_beam_move= True, name='%s-%s' % (beam_move.name, beam_stay.name))
+                                is_joint_on_beam_move=True, name='%s-%s' % (beam_move.name, beam_stay.name))
     joint_s = JointNonPlanarLap(joint_center_frame, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
-                                is_joint_on_beam_move= False, name='%s-%s' % (beam_move.name, beam_stay.name))
+                                is_joint_on_beam_move=False, name='%s-%s' % (beam_move.name, beam_stay.name))
 
     return (joint_m, joint_s)
 

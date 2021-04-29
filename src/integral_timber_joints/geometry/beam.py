@@ -589,8 +589,8 @@ class Beam(Network):
 
         #     # Compute the negative meshes from the features
         #     for feature in beam_features:
-        #         for negative_mesh in feature.get_feature_meshes(self)
-        #             from compas.datastructures import Mesh, mesh_offset
+        #         for negative_mesh in feature.get_feature_meshes(self):
+        #             # from compas.datastructures import Mesh, mesh_offset
         #             negative_meshes.append(negative_mesh)
 
         #     # Calls trimesh to perform boolean
@@ -612,6 +612,8 @@ class Beam(Network):
 
             # Convert uncut beam to triangle
             self.cached_mesh.quads_to_triangles()
+
+            # compas_cgal uses tuple(vertices and faces) as mesh representation
             result_v_f = self.cached_mesh.to_vertices_and_faces()
 
             # Compute the negative meshes from the features

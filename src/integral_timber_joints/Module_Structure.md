@@ -10,7 +10,7 @@ The structure of integral_timber_joints library
     |   |   ├── joint.py
     |   |   ├── joint90lap.py
     |   |   ├── griphole.py
-    |   |   └── ...    
+    |   |   └── ...
     │   ├── assembly  (Assembly classes - a network of beams and joints)
     |   |   └── assembly.py
     │   └── process  (Process Classes - clamp assembly process related classes)
@@ -19,7 +19,7 @@ The structure of integral_timber_joints library
     |       ├── movements.py
     |       ├── pathplanner.py
     |       └── algorithms.py
-    ├── compas_trimesh (Boolean Helper)
+    ├── compas_trimesh (Boolean Helper - No Longer Used)
     |   └── boolean.py
     └── geometric_blocking (Blocking Direction Calculation Helper)
         └── utils.py
