@@ -10,6 +10,8 @@ from compas.geometry import Box, Frame, Point, Vector, distance_point_point, int
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import *
+from integral_timber_joints.geometry.screw import Screw_SL
+from compas.geometry import Projection, Translation
 
 
 class Joint_halflap(Joint):
@@ -17,7 +19,7 @@ class Joint_halflap(Joint):
     joint class containing varied joints
     """
 
-    def __init__(self, face_id=1, distance=100, angle=90, length=100, width=100, height=100, name=None):
+    def __init__(self, face_id=1, distance=100, angle=90, length=100, width=100, height=100, name=None, has_screw = False, screw_head_side=True) :
         """
         :param distance:  double
         :param face_id:   int
@@ -31,6 +33,8 @@ class Joint_halflap(Joint):
         self.thru_x_neg = True
         self.thru_x_pos = True
         self.name = name
+        self.has_screw = has_screw
+        self.screw_head_side = screw_head_side
         self.mesh = None
 
     @property
@@ -45,6 +49,8 @@ class Joint_halflap(Joint):
             'thru_x_neg': self.thru_x_neg,
             'thru_x_pos': self.thru_x_pos,
             'name': self.name,
+            'has_screw': self.has_screw,
+            'screw_head_side': self.screw_head_side,
         }
         return data
 
@@ -63,6 +69,8 @@ class Joint_halflap(Joint):
         joint.thru_x_neg = data['thru_x_neg']
         joint.thru_x_pos = data['thru_x_pos']
         joint.name = data['name']
+        joint.has_screw = data.get('has_screw', False)
+        joint.screw_head_side = data.get('screw_head_side', True)
         return joint
 
     def get_feature_meshes(self, BeamRef):
@@ -85,7 +93,7 @@ class Joint_halflap(Joint):
         OVERSIZE = 10.0
 
         # Get face_frame from Beam (the parent Beam)
-        face_frame = BeamRef.reference_side_wcf(self.face_id)  # type: compas.datastructures.Mesh
+        face_frame = BeamRef.reference_side_wcf(self.face_id)
 
         # The 8 corners of a box:
         # Refer to notes in mesh_box_from_vertices()
@@ -111,7 +119,18 @@ class Joint_halflap(Joint):
 
         # Draw boolean box and assign to self.mesh
         self.mesh = boolean_box_mesh
-        return [self.mesh]
+
+        # Create the screw hole
+        screw_features = []
+        if self.has_screw:
+            joint_center_point = Point(self.distance + (self.angled_lead + self.angled_length) / 2, self.width / 2, - self.height)
+            joint_center_point_wcf = face_frame.to_world_coordinates(joint_center_point)
+            screw_center_frame = face_frame.transformed(Translation.from_vector(joint_center_point_wcf - face_frame.point))
+            if not self.screw_head_side:
+                screw_center_frame = Frame(screw_center_frame.point, face_frame.xaxis.inverted(), face_frame.yaxis)
+            screw_features = Screw_SL(screw_center_frame, self.height, 150, self.screw_head_side).get_feature_meshes(BeamRef)
+
+        return [self.mesh] + screw_features
 
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]

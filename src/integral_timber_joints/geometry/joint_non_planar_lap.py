@@ -6,17 +6,14 @@ from copy import deepcopy
 
 import compas
 from compas.datastructures import Mesh
-from compas.geometry import distance_point_point, dot_vectors, intersection_line_line, intersection_line_plane, intersection_segment_segment, subtract_vectors
-from compas.geometry.primitives.frame import Frame
-from compas.geometry.primitives.line import Line
-from compas.geometry.primitives.plane import Plane
-from compas.geometry.primitives.point import Point
-from compas.geometry.primitives.vector import Vector
-from compas.geometry.shapes.box import Box
-from compas.geometry.transformations.projection import Projection
-from compas.geometry.transformations.translation import Translation
+from compas.geometry import intersection_line_line, intersection_line_plane, intersection_segment_segment, subtract_vectors, norm_vector
+from compas.geometry import is_point_in_halfspace, distance_point_point, dot_vectors
+from compas.geometry import Frame, Line, Plane, Point, Vector
+from compas.geometry import Box
+from compas.geometry import Projection, Translation
 
 from integral_timber_joints.geometry.beam import Beam
+from integral_timber_joints.geometry.screw import Screw_SL
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import *
 
@@ -52,11 +49,13 @@ class JointNonPlanarLap(Joint):
 
     def __init__(self,
                  center_frame=None,  # type: Frame
+                 thickness=None,  # type: float
                  beam_move_face_id=1,  # type: int
                  beam_stay_face_id=1,  # type: int
                  axial_dot_product=0.0,  # type: float
                  pt_jc=[],  # type: list[Point]
                  is_joint_on_beam_move=False,  # type: bool
+                 has_screw=False,  # type: bool
                  name=None):
         """
         Parameters
@@ -66,22 +65,26 @@ class JointNonPlanarLap(Joint):
         :param face_id:   int
         """
         self.center_frame = deepcopy(center_frame)
+        self.thickness = thickness
         self.beam_move_face_id = beam_move_face_id
         self.beam_stay_face_id = beam_stay_face_id
         self.axial_dot_product = axial_dot_product
         self.pt_jc = deepcopy(pt_jc)
         self.is_joint_on_beam_move = is_joint_on_beam_move
+        self.has_screw = has_screw
         self.name = name
 
     @property
     def data(self):
         data = {
             'center_frame': self.center_frame,
+            'thickness': self.thickness,
             'beam_move_face_id': self.beam_move_face_id,
             'beam_stay_face_id': self.beam_stay_face_id,
             'axial_dot_product': self.axial_dot_product,
             'pt_jc': self.pt_jc,
             'is_joint_on_beam_move': self.is_joint_on_beam_move,
+            'has_screw': self.has_screw,
             'name': self.name,
         }
         return data
@@ -93,11 +96,14 @@ class JointNonPlanarLap(Joint):
         """
         joint = cls()
         joint.center_frame = data.get('center_frame', None)
+        joint.thickness = data.get('center_frame', 70)
         joint.beam_move_face_id = data.get('beam_move_face_id', 1)
         joint.beam_stay_face_id = data.get('beam_stay_face_id', 1)
         joint.axial_dot_product = data.get('axial_dot_product', 0.0)
         joint.pt_jc = data.get('pt_jc', [])
         joint.is_joint_on_beam_move = data.get('is_joint_on_beam_move', True)
+        joint.has_screw = data.get('has_screw', False)
+        joint.name = data.get('name', "")
         return joint
 
     def get_feature_meshes(self, BeamRef):
@@ -132,6 +138,12 @@ class JointNonPlanarLap(Joint):
         # Joint corners alias
         pt_c = self.pt_jc
 
+
+        # Create the screw hole
+        screw_features = []
+        if self.has_screw:
+            screw_features = Screw_SL(self.center_frame, self.thickness, 150, self.is_joint_on_beam_move).get_feature_meshes(BeamRef)
+
         # Create solid negative geometry
         if self.is_joint_on_beam_move:
             # Only one feature mesh
@@ -152,7 +164,7 @@ class JointNonPlanarLap(Joint):
             mesh_move_vertex_from_neighbor(mesh, [0, 3, 7, 4], [1, 2, 6, 5], OVERSIZE)
             mesh_move_vertex_from_neighbor(mesh, [1, 2, 6, 5], [0, 3, 7, 4], OVERSIZE)
             mesh_move_vertex_from_neighbor(mesh, [4, 5, 6, 7], [0, 1, 2, 3], OVERSIZE)
-            return [mesh]
+            return [mesh] + screw_features
 
         else:
             vertices = []
@@ -171,7 +183,7 @@ class JointNonPlanarLap(Joint):
                 mesh_move_vertex_from_neighbor(mesh, [0, 1, 2, 3], [4, 5, 6, 7], OVERSIZE)
                 mesh_move_vertex_from_neighbor(mesh, [0, 1, 4, 5], [3, 2, 7, 6], OVERSIZE)
                 mesh_move_vertex_from_neighbor(mesh, [3, 2, 7, 6], [0, 1, 4, 5], OVERSIZE)
-                return [mesh]
+                return [mesh] + screw_features
 
             # In most case a 5 point polygon for a single boolean.
             # In the past this was done as two simplier geometry
@@ -205,7 +217,7 @@ class JointNonPlanarLap(Joint):
             mesh_move_vertex_from_neighbor(mesh, [2, 7], [3, 8], OVERSIZE)
             mesh_move_vertex_from_neighbor(mesh, [2, 7, 3, 8], [1, 6, 4, 9], OVERSIZE)
             mesh_move_vertex_from_neighbor(mesh, [3, 8, 4, 9], [2, 7, 0, 5], OVERSIZE)
-            return [mesh]
+            return [mesh] + screw_features
 
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]
@@ -266,13 +278,15 @@ class JointNonPlanarLap(Joint):
         return clamps
 
 
-def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, joint_thickness=None):
+def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, thickness=None):
     # type: (Beam, Beam, float) -> tuple[JointNonPlanarLap, JointNonPlanarLap]
     ''' Compute the intersection between two beams.
     Returns a tuple of [JointNonPlanarLap, JointNonPlanarLap] when a valid joint pair can be found.
 
     Note. At the moment the center lines of two beams must not directly intersect.
     There need to be some offset
+
+    `thickness` is the thickness of the lap joint on the moving_beam.
 
     If no intersection can be found or the two beam are not coplanar,
     Returns a tuple of [None, None]
@@ -287,6 +301,10 @@ def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, joint
     # We use the intersection points of the two lines as a guide and compare with
     v_ms = subtract_vectors(cp_s, cp_m)
     v_sm = subtract_vectors(cp_m, cp_s)
+    if norm_vector(v_ms) < 1e-5:
+        # If the intersection is too close, we do not process it. TODO: Make it auto select faces.
+        return [None, None]
+
     normal_dot_product_m = [dot_vectors(beam_move.reference_side_wcf(i + 1).zaxis, v_ms) for i in range(4)]
     normal_dot_product_s = [dot_vectors(beam_stay.reference_side_wcf(i + 1).zaxis, v_sm) for i in range(4)]
     joint_face_id_m = normal_dot_product_m.index(max(normal_dot_product_m)) + 1
@@ -319,9 +337,34 @@ def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, joint
     lpx_pts.append(intersection_line_plane(ref_edge_m1, ref_plane_s1))
     lpx_pts.append(intersection_line_plane(ref_edge_m0, ref_plane_s1))
 
+    # Check if any of the first 8 points lie on the move_beam body. If not, there is no true intersection.
+    ref_plane_m_top = Plane(ref_edge_m0.start, ref_side_m.zaxis.inverted())
+    some_point_has_contact = any([is_point_in_halfspace(point, ref_plane_m_top) for point in lpx_pts])
+    if not some_point_has_contact:
+        return [None, None]
+
+    # Check if all of the first 8 points lie outside the stay_beam start or end.
+    # If all of them are outside, there is no true intersection.
+    ref_plane_s_start = Plane.from_frame(beam_stay.reference_side_wcf(5))
+    all_points_outside_start = all([is_point_in_halfspace(point, ref_plane_s_start) for point in lpx_pts])
+    ref_plane_s_end = Plane.from_frame(beam_stay.reference_side_wcf(6))
+    all_points_outside_end = all([is_point_in_halfspace(point, ref_plane_s_end) for point in lpx_pts])
+    if all_points_outside_start or all_points_outside_end:
+        return [None, None]
+
+    # Check if all of the first 8 points lie outside the move_beam start or end.
+    # If all of them are outside, there is no true intersection.
+    ref_plane_s_start = Plane.from_frame(beam_move.reference_side_wcf(5))
+    all_points_outside_start = all([is_point_in_halfspace(point, ref_plane_s_start) for point in lpx_pts])
+    ref_plane_s_end = Plane.from_frame(beam_move.reference_side_wcf(6))
+    all_points_outside_end = all([is_point_in_halfspace(point, ref_plane_s_end) for point in lpx_pts])
+    if all_points_outside_start or all_points_outside_end:
+        return [None, None]
+
+
     # Joint Thickness hard coded default:
-    if joint_thickness is None:
-        joint_thickness = 70
+    if thickness is None:
+        thickness = 70
 
     # Compute joint center (center on lap cheek plane, on centerline intersection)
     # Screw hole axis passes through this hole.
@@ -332,7 +375,7 @@ def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, joint
     ctl_s_projected = ctl_s.transformed(P)
     cp_m_projected, cp_s_projected = intersection_line_line(ctl_m_projected, ctl_s_projected)
     # Translating the frame to the cheek plane
-    offset_amount = joint_thickness - beam_move.get_face_height(joint_face_id_m)
+    offset_amount = thickness - beam_move.get_face_height(joint_face_id_m)
     T = Translation.from_vector(ref_side_m.zaxis.unitized().scaled(offset_amount))
     joint_center_frame = Frame(Point(* cp_m_projected).transformed(T), ref_side_m.xaxis, ref_side_m.yaxis)
 
@@ -340,9 +383,9 @@ def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, joint
     axial_dot_product = dot_vectors(ref_side_s.zaxis, ref_side_m.xaxis)
 
     # Construct joint objects
-    joint_m = JointNonPlanarLap(joint_center_frame, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
+    joint_m = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
                                 is_joint_on_beam_move=True, name='%s-%s' % (beam_move.name, beam_stay.name))
-    joint_s = JointNonPlanarLap(joint_center_frame, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
+    joint_s = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
                                 is_joint_on_beam_move=False, name='%s-%s' % (beam_move.name, beam_stay.name))
 
     return (joint_m, joint_s)
