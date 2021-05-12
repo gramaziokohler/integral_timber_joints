@@ -5,11 +5,11 @@
 
 Python library for designing timber structures with integral timber joints.
 
-This repo is part of the [Robotic Assembled Timber Structures with Integral Timber Joints](https://github.com/gramaziokohler/integral_timber_joints) project. 
+This repo is part of the [Robotic Assembled Timber Structures with Integral Timber Joints](https://github.com/gramaziokohler/integral_timber_joints) project.
 
 ## Design Goals
 
-The goal of the python library is to be able to achieve the following high-level functions: 
+The goal of the python library is to be able to achieve the following high-level functions:
 
 - Classes and Data Structure for describing:
   - Timber elements
@@ -40,11 +40,11 @@ conda activate itj
 
 One of the dependency from `compas` is planarity, which depends of `cython`. You will need to install this manually:
 
-```bash 
+```bash
 pip install cython --install-option="--no-cython-compile"
 ```
 
-or 
+or
 
 ```bash
 conda install cython
@@ -52,7 +52,7 @@ conda install cython
 
 ### Clone and update submodules
 
-Install this library from source by cloning this repo to local and install from source. 
+Install this library from source by cloning this repo to local and install from source.
 
 ```bash
 git clone --recursive https://github.com/gramaziokohler/integral_timber_joints.git
@@ -69,7 +69,7 @@ git submodule update --init --recursive
 
 ### Install libraries
 
-Run this the following in terminal from the root folder of this repo. 
+Run this the following in terminal from the root folder of this repo.
 
 ```bash
 pip install -e .\external\compas_fab_pychoreo
@@ -119,7 +119,7 @@ Install the following software:
 Run the following code in terminal to add them to Rhino Grasshopper Python library path:
 
 ```
-python -m compas_rhino.install -p compas compas_fab compas_ghpython roslibpy compas_rhino jsonpickle integral_timber_joints geometric_blocking compas_trimesh
+python -m compas_rhino.install -p compas compas_fab compas_ghpython roslibpy compas_rhino jsonpickle integral_timber_joints geometric_blocking
 ```
 
 ## Module Structure

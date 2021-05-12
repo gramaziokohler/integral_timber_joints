@@ -12,7 +12,8 @@ class Beamcut(object):
         """
         pass
 
-    def get_feature_mesh(self, BeamRef):
+    def get_feature_meshes(self, BeamRef):
+        # type: (Beam) -> list[Mesh]
         """Compute the negative mesh volume of the joint.
 
         Returns

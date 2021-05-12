@@ -12,6 +12,7 @@
 
 
 import json
+
 class Joint(object):
 
     def __init__(self):
@@ -34,7 +35,8 @@ class Joint(object):
         assert hasattr(self, 'data'), "Inherited class %s do not have data attribute" % self.__class__.__name__
         return self.data
 
-    def get_feature_mesh(self, BeamRef):
+    def get_feature_meshes(self, BeamRef):
+        # type: (Beam) -> list[Mesh]
         """Compute the negative mesh volume of the joint.
 
         Returns
@@ -50,15 +52,16 @@ class Joint(object):
         """
         raise NotImplementedError
 
+
 if __name__ == "__main__":
-    #Test to create a inherited joint object, serialize and deserialize it.
+    # Test to create a inherited joint object, serialize and deserialize it.
     from integral_timber_joints.geometry.joint_90lap import Joint_90lap
     from compas.geometry import Frame
 
-    j =  Joint_90lap(Frame.worldXY(),1,50,100,100)
-    j.to_json("n.json",pretty=True)
+    j = Joint_90lap(Frame.worldXY(), 1, 50, 100, 100)
+    j.to_json("n.json", pretty=True)
     print(j)
-    print (j.data)
+    print(j.data)
     q = Joint.from_json("n.json")
     print(q)
-    print (q.data)
+    print(q.data)

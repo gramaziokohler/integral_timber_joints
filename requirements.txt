@@ -1,6 +1,7 @@
 compas>=1.0,<2.0
-compas_fab>=0.16, <0.17
+compas_fab>=0.18, <0.19
 compas_fab_pychoreo>=0.3.0
+compas_cgal==0.1.1
 jsonpickle
 trimesh
 pycddlib

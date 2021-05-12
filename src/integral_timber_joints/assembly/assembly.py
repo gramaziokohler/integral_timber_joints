@@ -350,7 +350,7 @@ class Assembly(Network):
         Negative shift_amount means moving earlier.
 
         Assembly direction is recomputed.
-        However, if no assembly direction is possibble and allow_change_joint_direction, 
+        However, if no assembly direction is possibble and allow_change_joint_direction,
         new joint direction will be computed.
 
         Return all beam_ids in which their sequence number is changed
@@ -408,8 +408,8 @@ class Assembly(Network):
         """Add a OCF type Beamcut object to a beam.
         The Beam cut is defined from a plane that is in OCF.
 
-        The plane input to this function is in WCF, 
-        the function will convert it to OCF. 
+        The plane input to this function is in WCF,
+        the function will convert it to OCF.
 
         Note: beam(beam_id).cached_mesh will be reset to None
         """
@@ -474,9 +474,9 @@ class Assembly(Network):
 
     def get_new_beam_id(self):
         # type: () -> str
-        """ Returns the next available beam_id in the format of 'b%i'. 
+        """ Returns the next available beam_id in the format of 'b%i'.
         Starting from 'b0' to maximum 'b999', it returns the next unused beam_id
-        If there are holes between the used_id, the hole will be returned. 
+        If there are holes between the used_id, the hole will be returned.
         """
         for i in range(1000):
             beam_id = 'b%i' % i
@@ -488,17 +488,17 @@ class Assembly(Network):
     # -------------------------
 
     def transform(self, transformation):
-        """Transform the assembly. 
+        """Transform the assembly.
         Tansformation should contain translation and rotation only.
         """
         # Change the frame in beam
         [beam.transform(transformation) for beam in self.beams()]
-            
+
         # Helper function to transform attributes
         def transform_beam_attribute_if_not_none(beam_id, attribute_name, _transformation):
             if self.get_beam_attribute(beam_id, attribute_name) is not None:
                 self.get_beam_attribute(beam_id, attribute_name).transform(_transformation)
-        
+
         def transform_clamp_attribute_if_not_none(joint_id, attribute_name, _transformation):
             if self.get_joint_attribute(joint_id, attribute_name) is not None:
                 self.get_joint_attribute(joint_id, attribute_name).transform(_transformation)
@@ -529,7 +529,7 @@ class Assembly(Network):
         If the guide vector is parallel to the beam's X axis, error will occur.
         The beam object will be transformed, all joints related to the beam is deleted.
 
-        All existing beams will be checked for new joints. 
+        All existing beams will be checked for new joints.
         Returns a list of joint_id that are affected."""
         beam = self.beam(beam_id)
         beam_centerline = beam.get_center_line()
@@ -540,7 +540,7 @@ class Assembly(Network):
         new_zaxis = beam.frame.xaxis.cross(Y_axis_guide)
         new_yaxis = new_zaxis.cross(beam.frame.xaxis)
         new_frame = Frame(beam_centerline.start, beam.frame.xaxis, new_yaxis)
-        
+
         T = Transformation.from_frame_to_frame(original_frame, new_frame)
         beam.transform(T)
 
@@ -581,7 +581,7 @@ class Assembly(Network):
         features = joints
         features += beam_cuts
 
-        print(features)
+        # print(features)
         self.beam(beam_id).update_cached_mesh(features)
 
     def get_beam_transformaion_to(self, beam_id, attribute_name):
