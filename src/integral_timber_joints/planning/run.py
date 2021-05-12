@@ -110,7 +110,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         fm_options.update({
             'rrt_restarts' : 20,
             'rrt_iterations' : 200,
-            'smooth_iterations': 100,
+            'smooth_iterations': 1000,
             'resolutions' : joint_resolutions,
             'max_step' : 0.01,
             })
@@ -515,7 +515,7 @@ def set_initial_state(client, robot, process, disable_env=False, reinit_tool=Tru
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--problem', default='twelve_pieces_process.json', # pavilion.json
+    parser.add_argument('-p', '--problem', default='pavilion_process.json', # twelve_pieces_process.json
                         help='The name of the problem to solve')
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')

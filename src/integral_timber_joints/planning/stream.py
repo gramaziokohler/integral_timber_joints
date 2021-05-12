@@ -24,7 +24,7 @@ from compas_fab_pychoreo_examples.ik_solver import InverseKinematicsSolver, get_
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.utils import compare_configurations
 
-from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
+from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_GROUP
 from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
 from integral_timber_joints.planning.utils import reverse_trajectory, merge_trajectories, FRAME_TOL
 from integral_timber_joints.planning.state import set_state, gantry_base_generator
@@ -122,7 +122,9 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     gantry_attempts = options.get('gantry_attempts') or 10
     cartesian_attempts = options.get('cartesian_attempts') or 5
     reachable_range = options.get('reachable_range') or (0.2, 2.8) # (0.68, 2.83)
+
     cartesian_move_group = options.get('cartesian_move_group') or GANTRY_ARM_GROUP
+    gantry_group = GANTRY_GROUP
     debug = options.get('debug', False)
     verbose = options.get('verbose', True)
 
@@ -211,6 +213,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     planner_id = options.get('planner_id', 'IterativeIK')
 
     # TODO custom limits
+    # TODO try fixing IK and only use gantry for Cartesian movements
     if start_conf is None and end_conf is None:
         # * sample from a ball near the pose
         gantry_base_gen_fn = gantry_base_generator(client, robot, interp_frames[0], reachable_range=reachable_range, scale=1.0)
@@ -230,13 +233,12 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 if not client.check_collisions(robot, gantry_arm_conf, options=options):
                     # * Cartesian planning, only for the six-axis arm (aka sub_conf)
                     for ci in range(cartesian_attempts):
-                        # if debug:
                         # TODO pybullet IK struggles for dual arm setting
                         # see if we can create a x-y-z+6 axis subrobot clone
                         if verbose:
                             print('\tcartesian trial #{}'.format(ci))
                         cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-                            group=cartesian_move_group, options=options)
+                            group=gantry_group, options=options)
                         if cart_conf is not None:
                             solution_found = True
                             if verbose:
@@ -350,7 +352,8 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
 
 ##############################
 
-def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
+def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement,
+        options=None, diagnosis=False):
     assert isinstance(movement, RoboticFreeMovement)
     options = options or {}
     # * options
