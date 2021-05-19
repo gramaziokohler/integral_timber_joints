@@ -1,7 +1,7 @@
 # integral_timber_joints
 
-<a href="https://github.com/compas-dev/compas" rel="compas">![compas](https://img.shields.io/badge/compas->=1.0,<2.0-blue)</a>
-<a href="https://github.com/compas-dev/compas_fab" rel="compas_fab">![compas_fab](https://img.shields.io/badge/compas__fab->=0.16,<0.17-ff69b4)</a>
+<a href="https://github.com/compas-dev/compas" rel="compas">![compas](https://img.shields.io/badge/compas->=1.5.0,<2.0-blue)</a>
+<a href="https://github.com/compas-dev/compas_fab" rel="compas_fab">![compas_fab](https://img.shields.io/badge/compas__fab->=0.18,<0.19-ff69b4)</a>
 
 Python library for designing timber structures with integral timber joints.
 
