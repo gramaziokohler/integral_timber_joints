@@ -584,48 +584,54 @@ class Beam(Network):
         # compas_trimesh implementation
         ####################################
 
-        # if len(beam_features) > 0:
-        #     negative_meshes.append(self.cached_mesh)
+        if len(beam_features) > 0:
+            self.cached_mesh.quads_to_triangles()
+            negative_meshes.append(self.cached_mesh)
+            # Compute the negative meshes from the features
+            for feature in beam_features:
+                for negative_mesh in feature.get_feature_meshes(self):
+                    negative_mesh.quads_to_triangles()
+                    # from compas.datastructures import Mesh, mesh_offset
+                    negative_meshes.append(negative_mesh)
 
-        #     # Compute the negative meshes from the features
-        #     for feature in beam_features:
-        #         for negative_mesh in feature.get_feature_meshes(self):
-        #             # from compas.datastructures import Mesh, mesh_offset
-        #             negative_meshes.append(negative_mesh)
-
-        #     # Calls trimesh to perform boolean
-        #     from compas.rpc import Proxy
-        #     trimesh_proxy = Proxy(package='compas_trimesh')
-        #     result = trimesh_proxy.trimesh_subtract_multiple(negative_meshes)
-        #     self.cached_mesh = result
+            # Calls trimesh to perform boolean
+            from compas.rpc import Proxy
+            trimesh_proxy = Proxy(package='compas_trimesh')
+            result = trimesh_proxy.trimesh_subtract_multiple(negative_meshes)
+            self.cached_mesh = result
 
         ####################################
         # compas_cgal implementation
         ####################################
 
-        if len(beam_features) > 0:
+        # if len(beam_features) > 0:
 
-            # Calls trimesh to perform boolean
-            from compas.rpc import Proxy
-            proxy = Proxy()
-            proxy.package = 'compas_cgal.booleans'
+        #     # Calls trimesh to perform boolean
+        #     from compas.rpc import Proxy
+        #     proxy = Proxy()
+        #     proxy.package = 'compas_cgal.booleans'
 
-            # Convert uncut beam to triangle
-            self.cached_mesh.quads_to_triangles()
+        #     # Convert uncut beam to triangle
+        #     self.cached_mesh.quads_to_triangles()
 
-            # compas_cgal uses tuple(vertices and faces) as mesh representation
-            result_v_f = self.cached_mesh.to_vertices_and_faces()
+        #     # compas_cgal uses tuple(vertices and faces) as mesh representation
+        #     result_v_f = self.cached_mesh.to_vertices_and_faces()
 
-            # Compute the negative meshes from the features
-            for feature in beam_features:
-                for bool_negative in feature.get_feature_meshes(self):
-                    bool_negative.quads_to_triangles()
-                    bool_negative_v_f = bool_negative.to_vertices_and_faces()
-                    result_v_f = proxy.boolean_difference(result_v_f, bool_negative_v_f)
+        #     # Compute the negative meshes from the features
+        #     for feature in beam_features:
+        #         for bool_negative in feature.get_feature_meshes(self):
+        #             bool_negative.quads_to_triangles()
+        #             bool_negative_v_f = bool_negative.to_vertices_and_faces()
+        #             result_v_f = proxy.boolean_difference(result_v_f, bool_negative_v_f)
 
-            # Reassemble vertices and faces back to Mesh
-            result = Mesh.from_vertices_and_faces(* result_v_f)
-            self.cached_mesh = result
+        #     # Reassemble vertices and faces back to Mesh
+        #     result = Mesh.from_vertices_and_faces(* result_v_f)
+        #     self.cached_mesh = result
+
+        ####################################
+        # End of implementation
+        ####################################
+
 
         self.cached_mesh.name = self.name + "_mesh"
 
