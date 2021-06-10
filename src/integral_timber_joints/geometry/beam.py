@@ -19,10 +19,8 @@ import math
 import compas
 from compas.datastructures import Mesh, Network, mesh_bounding_box
 from compas.geometry import Box, Point, Transformation, Translation, distance_point_plane, is_point_on_plane
-from compas.geometry.primitives.frame import Frame
-from compas.geometry.primitives.line import Line
-from compas.geometry.primitives.plane import Plane
-from compas.geometry.primitives.vector import Vector
+from compas.geometry import Frame, Line, Plane, Vector
+
 
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import create_id
@@ -552,9 +550,9 @@ class Beam(Network):
         box = Box(box_center_frame, self.length, self.height, self.width)
 
         # Convert Box to Mesh
-        from compas.datastructures import mesh_quads_to_triangles
+        # from compas.datastructures import mesh_quads_to_triangles
         box_mesh = Mesh.from_vertices_and_faces(box.vertices, box.faces)  # type: compas.datastructures.Mesh
-        mesh_quads_to_triangles(box_mesh)
+        # mesh_quads_to_triangles(box_mesh)
         return box_mesh
 
     def update_cached_mesh(self, beam_features=[]):
@@ -631,7 +629,6 @@ class Beam(Network):
         ####################################
         # End of implementation
         ####################################
-
 
         self.cached_mesh.name = self.name + "_mesh"
 

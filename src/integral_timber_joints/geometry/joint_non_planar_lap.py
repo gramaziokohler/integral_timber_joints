@@ -7,9 +7,9 @@ from copy import deepcopy
 import compas
 from compas.datastructures import Mesh
 from compas.geometry import intersection_line_line, intersection_line_plane, intersection_segment_segment, subtract_vectors, norm_vector
-from compas.geometry import is_point_in_halfspace, distance_point_point, dot_vectors
+from compas.geometry import is_point_infront_plane, distance_point_point, dot_vectors
 from compas.geometry import Frame, Line, Plane, Point, Vector
-from compas.geometry import Box
+from compas.geometry import Box, Polyhedron
 from compas.geometry import Projection, Translation
 
 from integral_timber_joints.geometry.beam import Beam
@@ -106,9 +106,10 @@ class JointNonPlanarLap(Joint):
         joint.name = data.get('name', "")
         return joint
 
-    def get_feature_meshes(self, BeamRef):
+    def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
-        """Compute the negative mesh volume of the joint.
+        """Compute the negative shapes of the joint.
+
         Parameters
         ----------
         BeamRef -> integral_timber_joint.geometry.Beam
@@ -119,9 +120,6 @@ class JointNonPlanarLap(Joint):
         object
             A compas.Mesh
 
-        Note
-        ----
-        The self.mesh is updated with the new mesh
 
         """
         OVERSIZE = 10.0
@@ -138,11 +136,10 @@ class JointNonPlanarLap(Joint):
         # Joint corners alias
         pt_c = self.pt_jc
 
-
         # Create the screw hole
         screw_features = []
         if self.has_screw:
-            screw_features = Screw_SL(self.center_frame, self.thickness, 150, self.is_joint_on_beam_move).get_feature_meshes(BeamRef)
+            screw_features = Screw_SL(self.center_frame, self.thickness, 150, self.is_joint_on_beam_move).get_feature_shapes(BeamRef)
 
         # Create solid negative geometry
         if self.is_joint_on_beam_move:
@@ -159,12 +156,12 @@ class JointNonPlanarLap(Joint):
                 vertices.append(pt_x[2])
                 vertices.append(pt_x[3])
             vertices.extend(pt_c[4:8])
-            mesh = mesh_box_from_vertices(vertices)
             # Add offset
-            mesh_move_vertex_from_neighbor(mesh, [0, 3, 7, 4], [1, 2, 6, 5], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh, [1, 2, 6, 5], [0, 3, 7, 4], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh, [4, 5, 6, 7], [0, 1, 2, 3], OVERSIZE)
-            return [mesh] + screw_features
+            move_vertex_from_neighbor(vertices, [0, 3, 7, 4], [1, 2, 6, 5], OVERSIZE)
+            move_vertex_from_neighbor(vertices, [1, 2, 6, 5], [0, 3, 7, 4], OVERSIZE)
+            move_vertex_from_neighbor(vertices, [4, 5, 6, 7], [0, 1, 2, 3], OVERSIZE)
+            shape = polyhedron_box_from_vertices(vertices)
+            return [shape] + screw_features
 
         else:
             vertices = []
@@ -179,11 +176,12 @@ class JointNonPlanarLap(Joint):
                 vertices.append(pt_x[1])
                 vertices.append(pt_x[2])
                 vertices.append(pt_x[3])
-                mesh = polygon_box_from_vertices(vertices)
-                mesh_move_vertex_from_neighbor(mesh, [0, 1, 2, 3], [4, 5, 6, 7], OVERSIZE)
-                mesh_move_vertex_from_neighbor(mesh, [0, 1, 4, 5], [3, 2, 7, 6], OVERSIZE)
-                mesh_move_vertex_from_neighbor(mesh, [3, 2, 7, 6], [0, 1, 4, 5], OVERSIZE)
-                return [mesh] + screw_features
+                # Add offset
+                move_vertex_from_neighbor(vertices, [0, 1, 2, 3], [4, 5, 6, 7], OVERSIZE)
+                move_vertex_from_neighbor(vertices, [0, 1, 4, 5], [3, 2, 7, 6], OVERSIZE)
+                move_vertex_from_neighbor(vertices, [3, 2, 7, 6], [0, 1, 4, 5], OVERSIZE)
+                shape = polyhedron_box_from_vertices(vertices)
+                return [shape] + screw_features
 
             # In most case a 5 point polygon for a single boolean.
             # In the past this was done as two simplier geometry
@@ -211,13 +209,13 @@ class JointNonPlanarLap(Joint):
                 vertices.append(pt_c[1])
                 vertices.append(pt_c[2])
                 vertices.append(pt_x[2])
-
-            mesh = polygon_box_from_vertices(vertices)
-            mesh_move_vertex_from_neighbor(mesh, [1, 6], [0, 5], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh, [2, 7], [3, 8], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh, [2, 7, 3, 8], [1, 6, 4, 9], OVERSIZE)
-            mesh_move_vertex_from_neighbor(mesh, [3, 8, 4, 9], [2, 7, 0, 5], OVERSIZE)
-            return [mesh] + screw_features
+            # Add offset
+            move_vertex_from_neighbor(vertices, [1, 6], [0, 5], OVERSIZE)
+            move_vertex_from_neighbor(vertices, [2, 7], [3, 8], OVERSIZE)
+            move_vertex_from_neighbor(vertices, [2, 7, 3, 8], [1, 6, 4, 9], OVERSIZE)
+            move_vertex_from_neighbor(vertices, [3, 8, 4, 9], [2, 7, 0, 5], OVERSIZE)
+            shape = polyhedron_box_from_vertices(vertices)
+            return [shape] + screw_features
 
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]
@@ -339,28 +337,27 @@ def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, thick
 
     # Check if any of the first 8 points lie on the move_beam body. If not, there is no true intersection.
     ref_plane_m_top = Plane(ref_edge_m0.start, ref_side_m.zaxis.inverted())
-    some_point_has_contact = any([is_point_in_halfspace(point, ref_plane_m_top) for point in lpx_pts])
+    some_point_has_contact = any([is_point_infront_plane(point, ref_plane_m_top) for point in lpx_pts])
     if not some_point_has_contact:
         return [None, None]
 
     # Check if all of the first 8 points lie outside the stay_beam start or end.
     # If all of them are outside, there is no true intersection.
     ref_plane_s_start = Plane.from_frame(beam_stay.reference_side_wcf(5))
-    all_points_outside_start = all([is_point_in_halfspace(point, ref_plane_s_start) for point in lpx_pts])
+    all_points_outside_start = all([is_point_infront_plane(point, ref_plane_s_start) for point in lpx_pts])
     ref_plane_s_end = Plane.from_frame(beam_stay.reference_side_wcf(6))
-    all_points_outside_end = all([is_point_in_halfspace(point, ref_plane_s_end) for point in lpx_pts])
+    all_points_outside_end = all([is_point_infront_plane(point, ref_plane_s_end) for point in lpx_pts])
     if all_points_outside_start or all_points_outside_end:
         return [None, None]
 
     # Check if all of the first 8 points lie outside the move_beam start or end.
     # If all of them are outside, there is no true intersection.
     ref_plane_s_start = Plane.from_frame(beam_move.reference_side_wcf(5))
-    all_points_outside_start = all([is_point_in_halfspace(point, ref_plane_s_start) for point in lpx_pts])
+    all_points_outside_start = all([is_point_infront_plane(point, ref_plane_s_start) for point in lpx_pts])
     ref_plane_s_end = Plane.from_frame(beam_move.reference_side_wcf(6))
-    all_points_outside_end = all([is_point_in_halfspace(point, ref_plane_s_end) for point in lpx_pts])
+    all_points_outside_end = all([is_point_infront_plane(point, ref_plane_s_end) for point in lpx_pts])
     if all_points_outside_start or all_points_outside_end:
         return [None, None]
-
 
     # Joint Thickness hard coded default:
     if thickness is None:
