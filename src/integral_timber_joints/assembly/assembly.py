@@ -29,8 +29,6 @@ class Assembly(Network):
     Attributes
     ----------
     network : :class:`compas.Network`, optional
-    elements : list of :class:`Element`, optional
-        A list of assembly elements.
     attributes : dict, optional
         User-defined attributes of the assembly.
         Built-in attributes are:
@@ -45,10 +43,19 @@ class Assembly(Network):
 
     Examples
     --------
-    >>> assembly = Assembly()
-    >>> for i in range(2):
-    >>>     element = Element.from_box(Box(Frame.worldXY(), 10, 5, 2))
-    >>>     assembly.add_element(element)
+    >>> # Beam
+    >>> b1 = Beam(Frame.worldXY(), 1000, 100, 100, 'b1')
+    >>> b2 = Beam(Frame([100,200,0],[0,1,0],[0,0,1]), 1000, 100, 100, 'b2')
+
+    >>> # Joint
+    >>> j1 = Joint_90lap(100,4,100,50,25)
+
+    >>> # Assembly
+    >>> a = Assembly()
+    >>> a.add_beam(b1)
+    >>> a.add_beam(b2)
+    >>> a.add_one_joint(j1, 'b1', 'b2')
+
     """
 
     def __init__(self):
@@ -292,6 +299,7 @@ class Assembly(Network):
         return self.edge_attribute(joint_id, 'joint')
 
     def get_joints_of_beam(self, beam_id):
+        # type: (str) -> list[Joint]
         """Get all the joints attached to a beam"""
         joints = []
         for neighbor_beam_id in self.neighbors_out(beam_id):
@@ -554,8 +562,6 @@ class Assembly(Network):
             affected_neighbours.append(nbr)
 
         # Test to see if there are new joints
-
-
 
     # --------------------------------------------
     # Beam Joints Geometrical Functions

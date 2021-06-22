@@ -1,3 +1,4 @@
+import uuid
 import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
@@ -17,6 +18,9 @@ from integral_timber_joints.rhino.tool_artist import ToolArtist
 from integral_timber_joints.rhino.utility import purge_objects
 from integral_timber_joints.tools import Clamp, Gripper, Tool
 
+TOL = sc.doc.ModelAbsoluteTolerance
+
+guid = uuid.UUID
 
 def AddAnnotationText(frame, text, height, layer, redraw=True):
     rs.EnableRedraw(False)
@@ -248,67 +252,67 @@ class ProcessArtist(object):
     # Functions to handle the guid records
     #######################################
     def beam_guids(self, beam_id):
-        # type: (str) -> dict(str, list(guid))
+        # type: (str) -> dict[str, list[guid]]
         if beam_id not in self._beam_guids:
             self._beam_guids[beam_id] = {}
         return self._beam_guids[beam_id]
 
     def beam_guids_at_position(self, beam_id, position_id):
-        # type: (str, str) -> list(guid)
+        # type: (str, str) -> list[guid]
         if position_id not in self.beam_guids(beam_id):
             self.beam_guids(beam_id)[position_id] = []
         return self.beam_guids(beam_id)[position_id]
 
     def gripper_guids(self, beam_id):
-        # type: (str) -> dict(str, list(guid))
+        # type: (str) -> dict[str, list[guid]]
         if beam_id not in self._gripper_guids:
             self._gripper_guids[beam_id] = {}
         return self._gripper_guids[beam_id]
 
     def gripper_guids_at_position(self, beam_id, position_id):
-        # type: (str, str) -> list(guid)
+        # type: (str, str) -> list[guid]
         if position_id not in self.gripper_guids(beam_id):
             self.gripper_guids(beam_id)[position_id] = []
         return self.gripper_guids(beam_id)[position_id]
 
     def clamp_guids(self, joint_id):
-        # type: (tuple(str, str)) -> dict(str, list(guid))
+        # type: (tuple(str, str)) -> dict[str, list[guid]]
         if joint_id not in self._clamp_guids:
             self._clamp_guids[joint_id] = {}
         return self._clamp_guids[joint_id]
 
     def clamp_guids_at_position(self, joint_id, position_id):
-        # type: (str, str) -> list(guid)
+        # type: (str, str) -> list[guid]
         if position_id not in self.clamp_guids(joint_id):
             self.clamp_guids(joint_id)[position_id] = []
         return self.clamp_guids(joint_id)[position_id]
 
     def interactive_guids(self, beam_id):
-        # type: (tuple(str, str)) -> dict(str, list(guid))
+        # type: (tuple(str, str)) -> dict[str, list[guid]]
         if beam_id not in self._interactive_guids:
             self._interactive_guids[beam_id] = {}
         return self._interactive_guids[beam_id]
 
     def interactive_guids_at_layer(self, beam_id, layer_name):
-        # type: (str, str) -> list(guid)
+        # type: (str, str) -> list[guid]
         if layer_name not in self.interactive_guids(beam_id):
             self.interactive_guids(beam_id)[layer_name] = []
         return self.interactive_guids(beam_id)[layer_name]
 
     def state_visualization_guids(self, object_id):
-        # type: (str) -> list(guid)
+        # type: (str) -> list[guid]
         if object_id not in self._state_visualization_guids:
             self._state_visualization_guids[object_id] = []
         return self._state_visualization_guids[object_id]
 
     def tools_in_storage_guids(self, tool_id):
-        # type: (str) -> list(guid)
+        # type: (str) -> list[guid]
         if tool_id not in self._tools_in_storage_guids:
             self._tools_in_storage_guids[tool_id] = []
         return self._tools_in_storage_guids[tool_id]
 
     def env_mesh_guids(self, env_id):
-        # type: (str) -> list [guid]
+        # type: (str) -> list[guid]
         if env_id not in self._env_mesh_guids:
             self._env_mesh_guids[env_id] = []
         return self._env_mesh_guids[env_id]
@@ -409,7 +413,7 @@ class ProcessArtist(object):
             rs.EnableRedraw(True)
 
     def interactive_beam_guid(self, beam_id, layer='itj::interactive::beams_mesh'):
-        # type:(str, str) -> list(str)
+        # type:(str, str) -> list[guid]
         ''' Returns the interactive beam's guid(s)
         Typically this is a list of one mesh that represent the beam.
         '''
@@ -657,7 +661,7 @@ class ProcessArtist(object):
             rs.EnableRedraw(True)
 
     def draw_toolchanger_and_robot_wrist(self, beam_id, tcp_frame, layer_name):
-        # type: (str, Frame, str) -> list(str)
+        # type: (str, Frame, str) -> list[guid]
         new_guids = []
 
         # Draw Tool Changer with TCP at tcp_frame

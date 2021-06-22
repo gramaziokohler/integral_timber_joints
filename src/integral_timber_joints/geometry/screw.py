@@ -9,6 +9,21 @@ from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import *
 
+OVERSIZE = 10.0
+
+
+def cylinder_with_offset(plane, diameter, height, offset):
+    circle = Circle(plane, diameter / 2)
+    cylinder = Cylinder(circle, height)
+    offset_vector = plane.normal.unitized().scaled(height / 2 + offset)
+    cylinder.transform(Translation.from_vector(offset_vector))
+    return cylinder
+
+
+def cylinder_mesh(plane, diameter, height, offset):
+    cylinder = cylinder_with_offset(plane, diameter, height, offset)
+    return Mesh.from_vertices_and_faces(* cylinder.to_vertices_and_faces(u=16))
+
 
 class Screw_SL(object):
     """
@@ -55,6 +70,39 @@ class Screw_SL(object):
         self.screw_total_length = screw_total_length
         self.screw_diameters = screw_diameters
 
+    def get_feature_shapes(self, BeamRef):
+        """Returns the negative features of the screw.
+
+        type: list[compas.geometryShape]
+        """
+        # Two larger diameter cylinders on beam side
+        plane = Plane.from_frame(self.center_frame)
+        if self.is_screw_on_beam_move:
+            # Larger diameter cylinder / Screw Head
+            height = self.screw_head_length + OVERSIZE
+            offset = - (self.joint_move_thickness + OVERSIZE)
+            cyl1 = cylinder_with_offset(plane, self.screw_diameters[0], height, offset)
+
+            # Smaller diameter cylinder / Through hole
+            height = self.joint_move_thickness + OVERSIZE
+            offset = - self.joint_move_thickness
+            cyl2 = cylinder_with_offset(plane, self.screw_diameters[1], height, offset)
+
+            return [cyl1, cyl2]
+
+        else:
+            # Larger diameter cylinder / Left-in-Screw Thread
+            height = self.screw_total_length - self.joint_move_thickness + OVERSIZE
+            offset = - OVERSIZE
+            cyl1 = cylinder_with_offset(plane, self.screw_diameters[2], height, offset)
+
+            # Smaller diameter cylinder / Pull Screw Thread
+            height = self.joint_stay_thickness + OVERSIZE
+            offset = 0
+            cyl2 = cylinder_with_offset(plane, self.screw_diameters[3], height, offset)
+
+            return [cyl1, cyl2]
+
     def get_feature_meshes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
         """Compute the negative mesh volume of the joint.
@@ -65,48 +113,14 @@ class Screw_SL(object):
 
         Returns
         -------
-        object
-            A compas.Mesh
+        list[Mesh]
+            A list of compas.Mesh
 
         Note
         ----
         The self.mesh is updated with the new mesh
 
         """
-        OVERSIZE = 10.0
 
-        def cylinder_mesh (plane, diameter, height, offset):
-            circle = Circle(plane, diameter / 2)
-            cylinder = Cylinder(circle, height)
-            offset_vector = plane.normal.unitized().scaled(height / 2 + offset)
-            cylinder.transform(Translation.from_vector(offset_vector))
-            return Mesh.from_vertices_and_faces(* cylinder.to_vertices_and_faces(u=16))
-
-        # Two larger diameter cylinders on beam side
-        plane = Plane.from_frame(self.center_frame)
-        if self.is_screw_on_beam_move:
-            # Larger diameter cylinder / Screw Head
-            height = self.screw_head_length + OVERSIZE
-            offset = - (self.joint_move_thickness + OVERSIZE)
-            cyl1 = cylinder_mesh (plane, self.screw_diameters[0], height, offset)
-
-            # Smaller diameter cylinder / Through hole
-            height = self.joint_move_thickness + OVERSIZE
-            offset = - self.joint_move_thickness
-            cyl2 = cylinder_mesh (plane, self.screw_diameters[1], height, offset)
-
-            return [cyl1, cyl2]
-
-        else:
-            # Larger diameter cylinder / Left-in-Screw Thread
-            height = self.screw_total_length - self.joint_move_thickness + OVERSIZE
-            offset = - OVERSIZE
-            cyl1 = cylinder_mesh (plane, self.screw_diameters[2], height, offset)
-
-            # Smaller diameter cylinder / Pull Screw Thread
-            height = self.joint_stay_thickness + OVERSIZE
-            offset = 0
-            cyl2 = cylinder_mesh (plane, self.screw_diameters[3], height, offset)
-
-            return [cyl1, cyl2]
-
+        shapes = self.get_feature_shapes(BeamRef)
+        return [Mesh.from_vertices_and_faces(* shape.to_vertices_and_faces(u=16)) for shape in shapes]

@@ -124,7 +124,7 @@ python -m compas_rhino.install -p compas compas_fab compas_ghpython roslibpy com
 
 ## Module Structure
 
-See [this file](src/integral_timber_joints/Module_Structure.md)
+See [this markdown file](src/Module_Structure.md) regarding the organization of the code and how it relates to dependency and `compas` core libraries.
 
 ## Sequence and Motion Planning
 

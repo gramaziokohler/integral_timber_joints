@@ -299,7 +299,7 @@ class Tool (ToolModel):
         state = ObjectState()
         state.kinematic_config = self._get_kinematic_state()
         state.current_frame = self.current_frame.copy()
-        return state_dict
+        return state
 
     def set_state(self, state):
         self.current_frame = state.current_frame
