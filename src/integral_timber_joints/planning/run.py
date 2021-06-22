@@ -518,7 +518,7 @@ def main():
     parser.add_argument('-p', '--problem', default='pavilion_process.json', # twelve_pieces_process.json
                         help='The name of the problem to solve')
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
-                        help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
+                        help='subdir of the process file, default to `.`. Popular use: `results`')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan.')
     parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
@@ -531,6 +531,7 @@ def main():
     parser.add_argument('--save_now', action='store_true', help='Save immediately upon found.')
     parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
+    #
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
     parser.add_argument('--debug', action='store_true', help='Debug mode')
     parser.add_argument('--verbose', action='store_false', help='Print out verbose. Defaults to True.')
@@ -548,10 +549,10 @@ def main():
     print('Arguments:', args)
     print('='*10)
 
-    initial_time = time.time()
-
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.view_states or args.watch or args.step_sim)
+
+    #########
     # * Load process and recompute actions and states
     process = parse_process(args.problem, subdir=args.problem_subdir)
     result_path = get_process_path(args.problem, subdir='results')
@@ -572,6 +573,7 @@ def main():
     if args.recompute_action_states:
         save_process(process, result_path)
         cprint('Recomputed process saved to %s' % result_path, 'green')
+    #########
 
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     joint_types = robot.get_joint_types_by_names(joint_names)
@@ -627,7 +629,6 @@ def main():
         else:
             cprint('Beam #{} plan not found after {} attempts.'.format(beam_id, beam_attempts), 'red')
 
-    print('Total time:', elapsed_time(initial_time))
     client.disconnect()
 
 if __name__ == '__main__':

@@ -32,7 +32,7 @@ def reverse_trajectory(traj):
     jt_traj_pts = []
     joint_names = traj.points[0].joint_names
     for i, conf in enumerate(traj.points[::-1]):
-        jt_traj_pt = JointTrajectoryPoint(values=conf.values, types=conf.types, time_from_start=Duration(i*1,0))
+        jt_traj_pt = JointTrajectoryPoint(conf.joint_values, conf.types, time_from_start=Duration(i*1,0))
         jt_traj_pt.joint_names = conf.joint_names
         jt_traj_pts.append(jt_traj_pt)
     return JointTrajectory(trajectory_points=jt_traj_pts, joint_names=joint_names,
@@ -45,7 +45,7 @@ def merge_trajectories(trajs):
     cnt = 0
     for traj in trajs:
         for conf in traj.points:
-            jt_traj_pt = JointTrajectoryPoint(values=conf.values, types=conf.types, time_from_start=Duration(cnt,0))
+            jt_traj_pt = JointTrajectoryPoint(conf.joint_values, conf.types, time_from_start=Duration(cnt,0))
             jt_traj_pt.joint_names = conf.joint_names
             jt_traj_pts.append(jt_traj_pt)
             cnt += 1

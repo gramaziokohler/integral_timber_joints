@@ -53,9 +53,9 @@ def rfl_robot_joint_names(robot_id='robot12', include_gantry=False):
 
 def to_rlf_robot_full_conf(robot11_confval, robot12_confval):
     return Configuration(
-        values = (*robot11_confval, *robot12_confval,
+        joint_values = (*robot11_confval, *robot12_confval,
                   *R21_IDLE_CONF_VALS, *R22_IDLE_CONF_VALS),
-        types = (
+        joint_types = (
             *([2] + RFL_SINGLE_ARM_JOINT_TYPES), *RFL_SINGLE_ARM_JOINT_TYPES,
             *([2] + RFL_SINGLE_ARM_JOINT_TYPES), *RFL_SINGLE_ARM_JOINT_TYPES,),
         joint_names = (
@@ -93,9 +93,9 @@ def get_gantry_robot_custom_limits(robot_id='robot11'):
 
 ########################################
 
-def load_RFL_world(viewer=True):
+def load_RFL_world(viewer=True, verbose=False):
     urdf_filename, semantics = rfl_setup()
-    client = PyChoreoClient(viewer=viewer)
+    client = PyChoreoClient(viewer=viewer, verbose=verbose)
     client.connect()
 
     with LockRenderer():
