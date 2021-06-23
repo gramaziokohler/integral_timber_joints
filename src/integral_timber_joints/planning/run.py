@@ -9,6 +9,7 @@ from os import path
 from termcolor import cprint, colored
 from copy import copy, deepcopy
 from compas.utilities import DataEncoder
+from collections import namedtuple
 
 from compas.robots import Joint
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver, HideOutput
@@ -35,6 +36,7 @@ from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMov
 ##############################################
 
 def compute_movements_for_beam_id(client, robot, process, beam_id, args, options=None):
+    # ! Returns a boolean flag for planning success
     # if args.verbose:
     #     print_title('0) Before planning')
     #     process.get_movement_summary_by_beam_id(beam_id)
