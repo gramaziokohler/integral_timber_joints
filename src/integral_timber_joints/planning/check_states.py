@@ -49,9 +49,11 @@ def main():
                         help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
     parser.add_argument('--plan_summary', action='store_true', help='Give a summary of currently found plans.')
     parser.add_argument('--verify_plan', action='store_true', help='Collision check found trajectories.')
-    parser.add_argument('--seq_i', type=int, default=0, help='sequence index to start from, default to 0 (i.e. check all).')
-    parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
+    #
+    parser.add_argument('--seq_i', type=int, default=0, help='sequence index to start from, default to 0.')
     parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
+    parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
+    #
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     parser.add_argument('--debug', action='store_true', help='debug mode.')

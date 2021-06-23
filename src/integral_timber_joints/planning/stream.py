@@ -124,7 +124,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     reachable_range = options.get('reachable_range') or (0.2, 2.8) # (0.68, 2.83)
 
     cartesian_move_group = options.get('cartesian_move_group') or GANTRY_ARM_GROUP
-    gantry_group = GANTRY_GROUP
+    # gantry_group = GANTRY_GROUP
     debug = options.get('debug', False)
     verbose = options.get('verbose', True)
 
@@ -221,6 +221,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             if verbose:
                 cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
             samples_cnt += 1
+            # * bare-arm IK sampler
             arm_conf_vals = sample_ik_fn(pose_from_frame(interp_frames[0], scale=1))
             # * iterate through all 6-axis IK solution
             for ik_iter, arm_conf_val in enumerate(arm_conf_vals):
@@ -228,17 +229,20 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                     cprint('   -- IK iter {}'.format(ik_iter), 'magenta')
                 if arm_conf_val is None:
                     continue
-                gantry_arm_conf = Configuration(list(base_conf.values) + list(arm_conf_val),
+                gantry_arm_conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
                     gantry_arm_joint_types, gantry_arm_joint_names)
                 if not client.check_collisions(robot, gantry_arm_conf, options=options):
-                    # * Cartesian planning, only for the six-axis arm (aka sub_conf)
+                    # * Cartesian planning, only for the chosen link (aka sub_conf)
                     for ci in range(cartesian_attempts):
                         # TODO pybullet IK struggles for dual arm setting
                         # see if we can create a x-y-z+6 axis subrobot clone
                         if verbose:
                             print('\tcartesian trial #{}'.format(ci))
                         cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-                            group=gantry_group, options=options)
+                            group=cartesian_move_group, options=options)
+                        # TODO If using GANTRY joints only, the plan cartesian doesn't work...
+                        # might need to simplify to use get_base_link,
+
                         if cart_conf is not None:
                             solution_found = True
                             if verbose:

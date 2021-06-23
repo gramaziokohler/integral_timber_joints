@@ -149,12 +149,12 @@ def save_process_and_movements(process_name, _process, _movements,
             if isinstance(m, RoboticMovement):
                 m.trajectory = None
 
-    with open(process_file_path, 'w') as f:
-        json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
-    print('---')
-    cprint('Process written to {}'.format(process_file_path), 'green')
-
-    if save_temp:
+    if not save_temp:
+        with open(process_file_path, 'w') as f:
+            json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
+        print('---')
+        cprint('Process written to {}'.format(process_file_path), 'green')
+    else:
         temp_dir = os.path.join(DESIGN_DIR, TEMP_SUBDIR)
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
