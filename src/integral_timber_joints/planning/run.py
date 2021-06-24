@@ -25,6 +25,14 @@ from integral_timber_joints.planning.solve import get_movement_status, MovementS
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement
 
+SOLVE_MODE = [
+    'nonlinear',
+    'linear',
+    'id_only', # 'Compute only for movement with a specific tag, e.g. `A54_M0`.'
+    'free_motion_only', # 'Only compute free motions.'
+    'propagate_only', # 'Only do state propagation and impacted movement planning.'
+]
+
 # * Need now
 # TODO replay viz from file
 
@@ -49,63 +57,75 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         all_movements = process.get_movements_by_beam_id(beam_id)
         altered_movements = []
         with HideOutput(): #args.verbose
-            if args.id_only is None:
-                if not args.free_motion_only:
-                    success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
-                        [MovementStatus.neither_done, MovementStatus.one_sided],
-                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
-                    if not success:
-                        return False
-                    else:
-                        altered_movements.extend(altered_ms)
-                        if args.save_now:
-                            save_process_and_movements(args.problem, process, altered_ms, overwrite=False,
-                                include_traj_in_process=False, save_temp=args.save_temp)
+            if args.solve_mode == 'nonlinear':
+                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
+                    [MovementStatus.neither_done, MovementStatus.one_sided],
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
+                if not success:
+                    return False
+                else:
+                    altered_movements.extend(altered_ms)
+                    if args.save_now:
+                        save_process_and_movements(args.problem, process, altered_ms, overwrite=False,
+                            include_traj_in_process=False, save_temp=args.save_temp)
 
-                    # TODO if fails remove the related movement's trajectory and try again
-                    success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-                        [MovementStatus.one_sided],
-                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
-                    if not success:
-                        return False
-                    else:
-                        altered_movements.extend(altered_ms)
+                # TODO if fails remove the related movement's trajectory and try again
+                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                    [MovementStatus.one_sided],
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
+                if not success:
+                    return False
+                else:
+                    altered_movements.extend(altered_ms)
 
-                    # since adjacent "neither_done" states will change to `one_sided` and get skipped
-                    # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
-                    # Thus, when solving `neither_done`, we solve for both `neither_done` and `one_sided` sequentially
-                    # The movement statuses get changed on the fly.
-                    success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-                        [MovementStatus.neither_done, MovementStatus.one_sided],
-                        options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
-                    if not success:
-                        return False
-                    else:
-                        altered_movements.extend(altered_ms)
+                # since adjacent "neither_done" states will change to `one_sided` and get skipped
+                # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
+                # Thus, when solving `neither_done`, we solve for both `neither_done` and `one_sided` sequentially
+                # The movement statuses get changed on the fly.
+                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                    [MovementStatus.neither_done, MovementStatus.one_sided],
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
+                if not success:
+                    return False
+                else:
+                    altered_movements.extend(altered_ms)
 
                 # Ideally, all the free motions should have both start and end conf specified.
                 # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
-                    [MovementStatus.both_done, MovementStatus.one_sided] if not args.free_motion_only else \
-                        [MovementStatus.both_done, MovementStatus.one_sided], #, MovementStatus.has_traj],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
+                    [MovementStatus.both_done, MovementStatus.one_sided],
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.write)
                 if not success:
                     print('No success for free motions')
                     return False
                 else:
                     altered_movements.extend(altered_ms)
 
-                # * export computed movements
+                # * export computed movements if not save_now
                 if not args.save_now and args.write:
                     save_process_and_movements(args.problem, process, altered_movements, overwrite=False,
                         include_traj_in_process=False, save_temp=args.save_temp)
-            else:
+            elif args.solve_mode == 'linear':
+                options['movement_id_filter'] = [iter_m.movement_id for iter_m in all_movements]
+                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
+                    None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
+                    write_now=args.write, plan_impacted=args.plan_impacted)
+
+            elif args.solve_mode == 'free_motion_only':
+                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],
+                    [MovementStatus.both_done, MovementStatus.one_sided],
+                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.write)
+                if not success:
+                    print('No success for free motions')
+                    return False
+
+            elif args.solve_mode == 'id_only':
+                # * compute for id_only movement
                 cprint('Computing only for {}'.format(args.id_only), 'yellow')
                 options['movement_id_filter'] = [args.id_only]
                 chosen_m = process.get_movement_by_movement_id(args.id_only)
                 # * if linear movement and has both end specified, ask user keep start or end
-                if not args.propagate_only and get_movement_status(process, chosen_m, [RoboticLinearMovement]) \
-                    in [MovementStatus.has_traj, MovementStatus.both_done]:
+                if get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.has_traj, MovementStatus.both_done]:
                     chosen_m.trajectory = None
                     keep_end = int(input("Keep start or end conf? Enter 0 for start, 1 for end. 2 for abandoning both."))
                     if keep_end == 0:
@@ -174,9 +194,9 @@ def main():
     parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan.')
     parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
     #
+    parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
     parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
-    parser.add_argument('--free_motion_only', action='store_true', help='Only compute free motions.')
-    parser.add_argument('--propagate_only', action='store_true', help='Only do state propagation and impacted movement planning.')
+    #
     parser.add_argument('--plan_impacted', action='store_true', help='impacted movement planning.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
@@ -201,6 +221,8 @@ def main():
     args = parser.parse_args()
     print('Arguments:', args)
     print('='*10)
+    if args.id_only is not None:
+        args.solve_mode = 'id_only'
 
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
@@ -217,7 +239,7 @@ def main():
         recompute_action_states(process, False)
 
     # force load external if only planning for the free motions
-    args.load_external_movements = args.load_external_movements or args.free_motion_only or args.id_only is not None
+    args.load_external_movements = args.load_external_movements or args.solve_mode == 'free_motion_only' or args.solve_mode == 'id_only'
     if args.load_external_movements:
         ext_movement_path = os.path.dirname(result_path)
         cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
@@ -245,7 +267,7 @@ def main():
         'use_stored_seed' : args.use_stored_seed,
         'jump_threshold' : joint_jump_threshold,
         'max_distance' : args.max_distance,
-        'propagate_only' : args.propagate_only,
+        'propagate_only' : args.solve_mode == 'propagate_only',
         # until Trajectory json is fixed...
         'joint_names' : robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP),
     }
@@ -256,7 +278,7 @@ def main():
     assert args.seq_i < full_seq_len and args.seq_i >= 0
     if args.batch_run:
         beam_ids = [process.assembly.sequence[si] for si in range(args.seq_i, full_seq_len)]
-    elif args.id_only:
+    elif args.solve_mode == 'id_only':
         beam_ids = [process.get_beam_id_from_movement_id(args.id_only)]
     else:
         # only one

@@ -1456,10 +1456,15 @@ class RobotClampAssemblyProcess(Network):
         print('=====')
         print('Summary:')
         for i, m in enumerate(movements):
+            start_state = self.get_movement_start_state(m)
+            end_state = self.get_movement_end_state(m)
+            has_start_frame = start_state['robot'].current_frame is not None
+            has_end_frame = end_state['robot'].current_frame is not None
             print('---')
-            print('({}) {} \npriority {} | has start conf {} | has end conf {}{}'.format(
+            print('({}) {} \npriority {} | has start conf {}, TCP {} | has end conf {}, TCP {}{}'.format(
                 i, _colored_movement_short_summary(m), _colored_planning_priority(m.planning_priority),
-                _colored_is_none(self.movement_has_start_robot_config(m)), _colored_is_none(self.movement_has_end_robot_config(m)),
+                _colored_is_none(self.movement_has_start_robot_config(m)), _colored_is_none(has_start_frame),
+                _colored_is_none(self.movement_has_end_robot_config(m)), _colored_is_none(has_end_frame),
                 ' | has traj ' + _colored_is_none(m.trajectory) if isinstance(m, RoboticMovement) else ''
             ))
 

@@ -372,11 +372,11 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     orig_start_conf = start_state['robot'].kinematic_config
     orig_end_conf = end_state['robot'].kinematic_config
 
-    assert orig_end_conf is not None, 'End conf not provided in {}, which should never happen'.format(movement.short_summary)
+    # assert orig_end_conf is not None, 'End conf not provided in {}, which should never happen'.format(movement.short_summary)
 
-    # fill in joint names if needed
-    if orig_start_conf and len(orig_start_conf.joint_names) == 0:
-        orig_start_conf.joint_names = orig_end_conf.joint_names
+    # # fill in joint names if needed
+    # if orig_start_conf and len(orig_start_conf.joint_names) == 0:
+    #     orig_start_conf.joint_names = orig_end_conf.joint_names
 
     # * set start state
     try:
@@ -399,15 +399,33 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                 if orig_start_conf:
                     break
             else:
-                # if verbose:
                 cprint('No robot IK conf can be found for {} after {} attempts, Underspecified problem, solve fails.'.format(
                     movement.short_summary, gantry_attempts), 'red')
-                # raise RuntimeError()
                 return None
         else:
-            # if verbose:
             cprint('No robot start frame is specified in {}, Underspecified problem, solve fails.'.format(movement.short_summary), 'red')
-            # raise RuntimeError()
+            return None
+
+    if orig_end_conf is None:
+        cprint('FreeMovement: Robot end conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
+        if verbose:
+            notify('Warning! Go back to the command line now!')
+            # wait_for_user('Please press Enter to confirm.')
+        # * sample from t0cp if no conf is provided for the robot
+        end_t0cf_frame = copy(end_state['robot'].current_frame)
+        end_t0cf_frame.point *= 1e-3
+        if end_t0cf_frame is not None:
+            gantry_base_gen_fn = gantry_base_generator(client, robot, end_t0cf_frame, reachable_range=reachable_range, scale=1.0)
+            for _, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
+                orig_end_conf = client.inverse_kinematics(robot, end_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
+                if orig_end_conf:
+                    break
+            else:
+                cprint('No robot IK conf can be found for {} after {} attempts, Underspecified problem, solve fails.'.format(
+                    movement.short_summary, gantry_attempts), 'red')
+                return None
+        else:
+            cprint('No robot end frame is specified in {}, Underspecified problem, solve fails.'.format(movement.short_summary), 'red')
             return None
 
     start_conf = orig_start_conf

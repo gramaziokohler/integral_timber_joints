@@ -182,16 +182,18 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
     problem_name = options.get('problem_name', '')
     propagate_only = options.get('propagate_only', False)
     movement_id_filter = options.get('movement_id_filter', [])
-    if verbose:
-        print('='*20)
-        print_title('* compute {} (priority {}, status {})'.format([mt.__name__ for mt in movement_types], priority,
-            movement_statuses))
-
     all_movements = process.get_movements_by_beam_id(beam_id)
     if len(movement_id_filter) > 0:
         selected_movements = [process.get_movement_by_movement_id(mid) for mid in movement_id_filter]
+        if verbose:
+            print('='*20)
+            print_title('* compute movement ids: {}'.format(movement_id_filter))
     else:
         selected_movements = process.get_movements_by_planning_priority(beam_id, priority)
+        if verbose:
+            print('='*20)
+            print_title('* compute {} (priority {}, status {})'.format([mt.__name__ for mt in movement_types], priority,
+                movement_statuses))
 
     total_altered_movements = []
     for m in selected_movements:
@@ -228,6 +230,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         if plan_impacted:
             altered_movements.extend(impact_movements)
 
+        # * plan impacted movements now
         if plan_impacted and len(impact_movements) > 0:
             print('+'*10)
             cprint('Plan impacted movements:', 'yellow')
