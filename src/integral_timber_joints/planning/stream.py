@@ -173,10 +173,11 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     # you can disable (clamps - gripper) and (clamps - toolchanger) during the move,
     # but double check the end state (with jaw set to closed state) if they collide.
 
+    # * verify FK consistency if start_conf is given
     with WorldSaver():
         if start_conf is not None:
-            if not start_conf.joint_names:
-                start_conf.joint_names = gantry_arm_joint_names
+            # if not start_conf.joint_names:
+            #     start_conf.joint_names = gantry_arm_joint_names
             client.set_robot_configuration(robot, start_conf)
             start_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             start_t0cf_frame_temp = frame_from_pose(start_tool_pose, scale=1)
@@ -374,10 +375,6 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
 
     # assert orig_end_conf is not None, 'End conf not provided in {}, which should never happen'.format(movement.short_summary)
 
-    # # fill in joint names if needed
-    # if orig_start_conf and len(orig_start_conf.joint_names) == 0:
-    #     orig_start_conf.joint_names = orig_end_conf.joint_names
-
     # * set start state
     try:
         set_state(client, robot, process, start_state)
@@ -397,6 +394,10 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
             for _, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
                 orig_start_conf = client.inverse_kinematics(robot, start_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
                 if orig_start_conf:
+                    if debug:
+                        client.set_robot_configuration(robot, orig_start_conf)
+                        print(orig_start_conf.joint_values)
+                        wait_if_gui('Sampled start conf')
                     break
             else:
                 cprint('No robot IK conf can be found for {} after {} attempts, Underspecified problem, solve fails.'.format(
@@ -419,6 +420,10 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
             for _, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
                 orig_end_conf = client.inverse_kinematics(robot, end_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
                 if orig_end_conf:
+                    if debug:
+                        client.set_robot_configuration(robot, orig_end_conf)
+                        print(orig_end_conf.joint_values)
+                        wait_if_gui('Sampled end conf')
                     break
             else:
                 cprint('No robot IK conf can be found for {} after {} attempts, Underspecified problem, solve fails.'.format(

@@ -73,7 +73,7 @@ def get_gantry_control_joint_names(robot_id='robot11'):
 
 # meter
 GANTRY_X_LIMIT = (14.5, 28) # (0, 37)
-GANTRY_Y_LIMIT = (-9, 0) # (-9, 0)
+GANTRY_Y_LIMIT = (-9.5, 0) # (-9, 0)
 GANTRY_Z_LIMIT = (-5, -1.7) # (-5, -1)
 
 # rm_limits = [(-175, 175), (-85, 145), (-175, 70), (-181, 181), (-120, 120), (-181, 181)]

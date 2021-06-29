@@ -49,12 +49,13 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     #     print_title('0) Before planning')
     #     process.get_movement_summary_by_beam_id(beam_id)
         # wait_for_user()
+    all_movements = process.get_movements_by_beam_id(beam_id)
+    movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
 
     with LockRenderer(not args.debug) as lockrenderer:
         options['lockrenderer'] = lockrenderer
         # TODO loop and backtrack
         # TODO have to find a way to recover movements
-        all_movements = process.get_movements_by_beam_id(beam_id)
         altered_movements = []
         with HideOutput(): #args.verbose
             if args.solve_mode == 'nonlinear':
@@ -105,11 +106,13 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 if not args.save_now and args.write:
                     save_process_and_movements(args.problem, process, altered_movements, overwrite=False,
                         include_traj_in_process=False, save_temp=args.save_temp)
+
             elif args.solve_mode == 'linear':
-                options['movement_id_filter'] = [iter_m.movement_id for iter_m in all_movements]
+                options['movement_id_filter'] = [all_movements[m_i].movement_id for m_i in movement_id_range]
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
                     None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
                     write_now=args.write, plan_impacted=args.plan_impacted)
+                # Proceed to viz even no plan is found
 
             elif args.solve_mode == 'free_motion_only':
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],
@@ -154,13 +157,14 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     if args.watch:
         print('='*20)
         print_title('Visualize results')
+        wait_if_gui('Start simulating results. Press enter to start.')
         set_state(client, robot, process, process.initial_state)
-        for m in all_movements:
-            visualize_movement_trajectory(client, robot, process, m, step_sim=args.step_sim)
+        for m_id in movement_id_range:
+            visualize_movement_trajectory(client, robot, process, all_movements[m_id], step_sim=args.step_sim)
 
     if args.verbose:
         notify('A plan has been found for beam id {}!'.format(beam_id))
-    return True
+    return success
 
 #################################
 

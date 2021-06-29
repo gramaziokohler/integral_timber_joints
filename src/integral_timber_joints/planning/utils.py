@@ -1,3 +1,4 @@
+import sys
 from numpy import deg2rad, rad2deg
 from termcolor import cprint
 from plyer import notification
@@ -63,15 +64,17 @@ def notify(msg=''):
     msg : str, optional
         message content, by default ''
     """
-    try:
-        notification.notify(
-            title='itj_planning',
-            message=msg,
-            app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
-            timeout=2,  # seconds
-        )
-    except ImportError:
-        cprint(msg, 'yellow')
+    if 'ipykernel' not in sys.modules:
+        try:
+            notification.notify(
+                title='itj_planning',
+                message=msg,
+                app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
+                timeout=2,  # seconds
+            )
+        except ImportError:
+            pass
+    cprint(msg, 'yellow')
 
 def print_title(x):
     print('\n\n')

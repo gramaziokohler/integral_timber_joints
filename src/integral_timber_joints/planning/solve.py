@@ -14,7 +14,7 @@ from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
 from integral_timber_joints.planning.parsing import save_process_and_movements
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
-GANTRY_ATTEMPTS = 10
+GANTRY_ATTEMPTS = 100
 
 ###########################################
 
@@ -125,12 +125,12 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
-        joint_resolutions = 1.0 if low_res else 0.05 # 0.05
+        joint_resolutions = 1.0 if low_res else 0.1 # 0.05
         fm_options = options.copy()
         fm_options.update({
-            'rrt_restarts' : 20,
+            'rrt_restarts' : 20, #20,
             'rrt_iterations' : 200,
-            'smooth_iterations': 1000,
+            'smooth_iterations': None, #100, # 1000,
             'resolutions' : joint_resolutions,
             'max_step' : 0.01,
             })
@@ -153,7 +153,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             # wait_for_user('Planning fails, press Enter to continue. Try exit and running again - may the Luck be with you next time :)')
         return False
 
-def compute_selected_movements(client, robot, process, beam_id, priority, movement_types, movement_statuses, options=None,
+def compute_selected_movements(client, robot, process, beam_id, priority, movement_types=[], movement_statuses=None, options=None,
         viz_upon_found=False, diagnosis=False, write_now=False, plan_impacted=False):
     """Compute trajectories for movements specified by a certain criteria.
 
@@ -212,7 +212,8 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                             visualize_movement_trajectory(client, robot, process, m, step_sim=True)
                 else:
                     # break
-                    return False, []
+                    # return False, []
+                    continue
             else:
                 traj = m.trajectory
                 start_state = process.get_movement_start_state(m)
