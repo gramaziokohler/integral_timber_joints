@@ -1,4 +1,7 @@
+import time
 from enum import Enum, unique
+from copy import deepcopy
+from collections import defaultdict
 from termcolor import cprint, colored
 
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get_random_seed
@@ -21,12 +24,13 @@ GANTRY_ATTEMPTS = 100
 @unique
 class MovementStatus(Enum):
     incorrect_type = 0
-    has_traj = 1
-    one_sided = 2
-    both_done = 3
-    neither_done = 4
+    correct_type = 1
+    has_traj = 2
+    one_sided = 3
+    both_done = 4
+    neither_done = 5
 
-def get_movement_status(process, m, movement_types, verbose=True):
+def get_movement_status(process, m, movement_types, verbose=True, check_type_only=False):
     """get the movement's current status, see the `MovementStatus` class
 
     Parameters
@@ -44,6 +48,8 @@ def get_movement_status(process, m, movement_types, verbose=True):
     # if not isinstance(m, RoboticMovement):
     if all([not isinstance(m, mt) for mt in movement_types]):
         return MovementStatus.incorrect_type
+    if check_type_only:
+        return MovementStatus.correct_type
     has_start_conf = process.movement_has_start_robot_config(m)
     has_end_conf = process.movement_has_end_robot_config(m)
     has_traj = m.trajectory is not None
@@ -153,8 +159,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             # wait_for_user('Planning fails, press Enter to continue. Try exit and running again - may the Luck be with you next time :)')
         return False
 
-def compute_selected_movements(client, robot, process, beam_id, priority, movement_types=[], movement_statuses=None, options=None,
-        viz_upon_found=False, diagnosis=False, write_now=False, plan_impacted=False):
+def compute_selected_movements(client, robot, process, beam_id, priority, movement_types=None, movement_statuses=None, options=None,
+        viz_upon_found=False, diagnosis=False, write_now=False, plan_impacted=False, check_type_only=False):
     """Compute trajectories for movements specified by a certain criteria.
 
     Parameters
@@ -181,8 +187,10 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
     verbose = options.get('verbose', False)
     problem_name = options.get('problem_name', '')
     propagate_only = options.get('propagate_only', False)
+    m_attempts = options.get('movement_planning_reattempts', 1)
     movement_id_filter = options.get('movement_id_filter', [])
     all_movements = process.get_movements_by_beam_id(beam_id)
+    movement_types = movement_types or []
     if len(movement_id_filter) > 0:
         selected_movements = [process.get_movement_by_movement_id(mid) for mid in movement_id_filter]
         if verbose:
@@ -198,22 +206,51 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
     total_altered_movements = []
     for m in selected_movements:
         altered_movements = []
-        if movement_statuses is None or get_movement_status(process, m, movement_types) in movement_statuses :
+        if movement_statuses is None or \
+            any([get_movement_status(process, m, movement_types, check_type_only=check_type_only).value - m_st.value == 0 for m_st in movement_statuses]):
             m_id = all_movements.index(m)
             if verbose:
                 print('-'*10)
                 print('({})'.format(m_id))
 
             if not propagate_only:
-                if compute_movement(client, robot, process, m, options, diagnosis):
-                    altered_movements.append(m)
-                    if viz_upon_found:
-                        with WorldSaver():
-                            visualize_movement_trajectory(client, robot, process, m, step_sim=True)
+                options['samplig_order_counter'] += 1
+                archived_start_state = process.get_movement_start_state(m)
+                archived_start_conf = archived_start_state['robot'].kinematic_config
+                archived_end_state = process.get_movement_end_state(m)
+                archived_end_conf = archived_end_state['robot'].kinematic_config
+
+                for attempt in range(m_attempts):
+                    if verbose:
+                        print('Movement planning attempt {}'.format(attempt))
+                    start_time = time.time()
+                    plan_success = compute_movement(client, robot, process, m, options, diagnosis)
+                    plan_time = elapsed_time(start_time)
+                    if 'profiles' in options:
+                        if m_id not in options['profiles']:
+                            options['profiles'][m_id] = defaultdict(list)
+                        options['profiles'][m_id]['movement_id'] = [m.movement_id]
+                        options['profiles'][m_id]['plan_time'].append(plan_time)
+                        options['profiles'][m_id]['plan_success'].append(plan_success)
+                        options['profiles'][m_id]['sample_order'].append(options['samplig_order_counter'])
+
+                    if plan_success:
+                        altered_movements.append(m)
+                        if viz_upon_found:
+                            with WorldSaver():
+                                visualize_movement_trajectory(client, robot, process, m, step_sim=True)
+                        break
+                    else:
+                        _start_state = process.get_movement_start_state(m)
+                        _start_state['robot'].kinematic_config = archived_start_conf
+                        _end_state = process.get_movement_end_state(m)
+                        _end_state['robot'].kinematic_config = archived_end_conf
                 else:
+                    # TODO backtracking
+                    cprint('No plan found for {} after {} attempts!'.format(m.movement_id, m_attempts), 'red')
+                    continue
                     # break
                     # return False, []
-                    continue
             else:
                 traj = m.trajectory
                 start_state = process.get_movement_start_state(m)

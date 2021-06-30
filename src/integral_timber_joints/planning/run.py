@@ -24,6 +24,7 @@ from integral_timber_joints.planning.load_save_process import recompute_action_s
 from integral_timber_joints.planning.solve import get_movement_status, MovementStatus, compute_selected_movements
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement
+from integral_timber_joints.process.movement import RoboticMovement
 
 SOLVE_MODE = [
     'nonlinear',
@@ -51,6 +52,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         # wait_for_user()
     all_movements = process.get_movements_by_beam_id(beam_id)
     movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
+    options['samplig_order_counter'] = 0
 
     with LockRenderer(not args.debug) as lockrenderer:
         options['lockrenderer'] = lockrenderer
@@ -109,9 +111,9 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
             elif args.solve_mode == 'linear':
                 options['movement_id_filter'] = [all_movements[m_i].movement_id for m_i in movement_id_range]
-                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
-                    None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
-                    write_now=args.write, plan_impacted=args.plan_impacted)
+                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
+                    [MovementStatus.correct_type], options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
+                    write_now=args.write, plan_impacted=args.plan_impacted, check_type_only=True)
                 # Proceed to viz even no plan is found
 
             elif args.solve_mode == 'free_motion_only':
