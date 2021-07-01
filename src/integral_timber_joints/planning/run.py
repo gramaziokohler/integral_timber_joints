@@ -5,6 +5,7 @@ import argparse
 import json
 import sys
 from os import path
+from pybullet_planning.motion_planners.utils import elapsed_time
 
 from termcolor import cprint, colored
 from copy import copy, deepcopy
@@ -44,6 +45,31 @@ SOLVE_MODE = [
 
 ##############################################
 
+def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=None):
+    solve_timeout = options.get('solve_timeout', 600)
+    runtime_data = {}
+
+    unsolved_process = deepcopy(process)
+    start_time = time.time()
+    trial_i = 0
+    while elapsed_time(start_time) < solve_timeout:
+        print('#'*10)
+        print('{} | Inner Trail #{}'.format(args.solve_mode, trial_i))
+        options['profiles'] = {}
+        success = compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options)
+        runtime_data[trial_i] = {}
+        runtime_data[trial_i]['success'] = success
+        runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
+        if success:
+            break
+        trial_i += 1
+        process = deepcopy(unsolved_process)
+        client.disconnect()
+        client, robot, _ = load_RFL_world(viewer=args.viewer, verbose=False)
+        set_initial_state(client, robot, process, disable_env=False, reinit_tool=False)
+
+    return success, runtime_data
+
 def compute_movements_for_beam_id(client, robot, process, beam_id, args, options=None):
     # ! Returns a boolean flag for planning success
     # if args.verbose:
@@ -51,7 +77,6 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     #     process.get_movement_summary_by_beam_id(beam_id)
         # wait_for_user()
     all_movements = process.get_movements_by_beam_id(beam_id)
-    movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
     options['samplig_order_counter'] = 0
 
     with LockRenderer(not args.debug) as lockrenderer:
@@ -109,12 +134,15 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     save_process_and_movements(args.problem, process, altered_movements, overwrite=False,
                         include_traj_in_process=False, save_temp=args.save_temp)
 
-            elif args.solve_mode == 'linear':
+            elif args.solve_mode in 'linear':
+                movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
                 options['movement_id_filter'] = [all_movements[m_i].movement_id for m_i in movement_id_range]
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
                     [MovementStatus.correct_type], options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
                     write_now=args.write, plan_impacted=args.plan_impacted, check_type_only=True)
-                # Proceed to viz even no plan is found
+                if not success:
+                    print('No success for linear planning.')
+                    return False
 
             elif args.solve_mode == 'free_motion_only':
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],

@@ -17,7 +17,7 @@ from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
 from integral_timber_joints.planning.parsing import save_process_and_movements
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
-GANTRY_ATTEMPTS = 100
+GANTRY_ATTEMPTS = 50
 
 ###########################################
 
@@ -99,9 +99,9 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         lm_options = options.copy()
         lm_options.update({
             'max_step' : 0.01, # interpolation step size, in meter
-            'distance_threshold':0.002, # collision checking tolerance, in meter
+            'distance_threshold':0.0025, # collision checking tolerance, in meter
             'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
-            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help
+            'cartesian_attempts' : 3, # boosting up cartesian attempt here does not really help
             'reachable_range' : (0.2, 2.8), # circle radius for sampling gantry base when computing IK
             # -------------------
             'planner_id' : 'IterativeIK',
@@ -119,7 +119,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'max_step' : 0.02, # interpolation step size, in meter
             'distance_threshold':0.0025, # collision checking tolerance, in meter
             'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
-            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
+            'cartesian_attempts' : 3, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
             'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
             # -------------------
             'planner_id' : 'IterativeIK',
@@ -134,7 +134,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         joint_resolutions = 1.0 if low_res else 0.1 # 0.05
         fm_options = options.copy()
         fm_options.update({
-            'rrt_restarts' : 20, #20,
+            'rrt_restarts' : 50, #20,
             'rrt_iterations' : 200,
             'smooth_iterations': None, #100, # 1000,
             'resolutions' : joint_resolutions,
@@ -247,10 +247,10 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                         _end_state['robot'].kinematic_config = archived_end_conf
                 else:
                     # TODO backtracking
-                    cprint('No plan found for {} after {} attempts!'.format(m.movement_id, m_attempts), 'red')
-                    continue
+                    cprint('No plan found for {} after {} attempts! {}'.format(m.movement_id, m_attempts, m.short_summary), 'red')
+                    # continue
                     # break
-                    # return False, []
+                    return False, []
             else:
                 traj = m.trajectory
                 start_state = process.get_movement_start_state(m)
@@ -352,7 +352,8 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
                         cprint('Backward Prop: Start conf not coincided', 'red')
                             # notify('Warning! Go back to the command line now!')
                             # wait_for_user()
-                    print('\t- Altered (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
+                    if verbose:
+                        print('\t- Altered (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
                 back_end_state['robot'].kinematic_config = target_start_conf
                 altered_movements.append(back_m)
                 back_id -= 1
@@ -366,7 +367,8 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
                     # turn it one-sided
                     back_start_state['robot'].kinematic_config = None
                 impact_movements.append(back_m)
-                print('\t$ Impacted (backward): ({}) {}'.format(colored(back_id, 'yellow'), back_m.short_summary))
+                if verbose:
+                    print('\t$ Impacted (backward): ({}) {}'.format(colored(back_id, 'yellow'), back_m.short_summary))
                 break
             else:
                 break
@@ -401,7 +403,8 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
                     # turn it one-sided
                     forward_end_state['robot'].kinematic_config = None
                 impact_movements.append(forward_m)
-                print('\t$ Impacted (forward): ({}) {}'.format(colored(forward_id, 'yellow'), forward_m.short_summary))
+                if verbose:
+                    print('\t$ Impacted (forward): ({}) {}'.format(colored(forward_id, 'yellow'), forward_m.short_summary))
                 break
             else:
                 break

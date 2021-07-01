@@ -120,7 +120,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     # sampling attempts
     options = options or {}
     gantry_attempts = options.get('gantry_attempts') or 10
-    cartesian_attempts = options.get('cartesian_attempts') or 5
+    cartesian_attempts = options.get('cartesian_attempts') or 2
     reachable_range = options.get('reachable_range') or (0.2, 2.8) # (0.68, 2.83)
 
     cartesian_move_group = options.get('cartesian_move_group') or GANTRY_ARM_GROUP
@@ -382,8 +382,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         return None
 
     if orig_start_conf is None:
-        cprint('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
         if verbose:
+            cprint('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
             notify('Warning! Go back to the command line now!')
             # wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
@@ -408,8 +408,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
             return None
 
     if orig_end_conf is None:
-        cprint('FreeMovement: Robot end conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
         if verbose:
+            cprint('FreeMovement: Robot end conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
             notify('Warning! Go back to the command line now!')
             # wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
