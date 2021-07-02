@@ -189,8 +189,8 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         print_title('Visualize results')
         wait_if_gui('Start simulating results. Press enter to start.')
         set_state(client, robot, process, process.initial_state)
-        for m_id in movement_id_range:
-            visualize_movement_trajectory(client, robot, process, all_movements[m_id], step_sim=args.step_sim)
+        for altered_m in altered_ms:
+            visualize_movement_trajectory(client, robot, process, altered_m, step_sim=args.step_sim)
 
     if args.verbose:
         notify('A plan has been found for beam id {}!'.format(beam_id))

@@ -53,6 +53,8 @@ def fill_in_tool_path(client: PyChoreoClient, robot: Robot, traj, group=GANTRY_A
 
 ##############################
 
+from collections import namedtuple
+IKInfo = namedtuple('IKInfo', ['ik_fn', 'ee_link_name', 'ik_joint_names', 'free_joint_names']) # 'base_link_name',
 
 def _get_sample_bare_arm_ik_fn(client: PyChoreoClient, robot: Robot):
     """get the IKFast ik function for the 6-axis ABB robot.
@@ -69,10 +71,10 @@ def _get_sample_bare_arm_ik_fn(client: PyChoreoClient, robot: Robot):
     ik_joints = joints_from_names(robot_uid, ik_joint_names)
     ikfast_fn = ikfast_abb_irb4600_40_255.get_ik
 
-    def get_sample_ik_fn(robot, ik_fn, robot_base_link, ik_joints, tool_from_root=None):
+    def get_sample_ik_fn(robot, ik_fn, robot_base_link, ik_joints, ee_from_tool=None):
         def sample_ik_fn(world_from_tcp):
-            if tool_from_root:
-                world_from_tcp = multiply(world_from_tcp, tool_from_root)
+            if ee_from_tool:
+                world_from_tcp = multiply(world_from_tcp, ee_from_tool)
             return sample_tool_ik(ik_fn, robot, ik_joints, world_from_tcp, robot_base_link, get_all=True)
         return sample_ik_fn
     sample_ik_fn = get_sample_ik_fn(robot_uid, ikfast_fn, ik_base_link, ik_joints)
@@ -138,6 +140,9 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
 
     # * construct IK function
     sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
+    gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
+    ik_info = IKInfo(sample_ik_fn, tool_link_name, ik_joint_names, gantry_joint_names) # 'base_link_name',
+    options['customized_ikinfo'] = ik_info
     # TODO switch to client IK
     # ikfast_fn = get_ik_fn_from_ikfast(ikfast_abb_irb4600_40_255.get_ik)
     # ik_solver = InverseKinematicsSolver(robot, move_group, ikfast_fn, base_frame, robotA_tool.frame)
@@ -451,7 +456,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         else:
             cprint('Free movement found for {}!'.format(movement.short_summary), 'green')
 
-    if traj is None and diagnosis:
+# diagnosis
+    if traj is None and True:
         client._print_object_summary()
         lockrenderer = options.get('lockrenderer', None)
         if lockrenderer:
