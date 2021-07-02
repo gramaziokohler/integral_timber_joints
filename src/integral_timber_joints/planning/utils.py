@@ -40,7 +40,7 @@ def reverse_trajectory(traj):
         start_configuration=jt_traj_pts[0], fraction=1.0)
 
 def merge_trajectories(trajs):
-    assert len(trajs) > 1
+    # assert len(trajs) > 1
     jt_traj_pts = []
     joint_names = trajs[0].points[0].joint_names
     cnt = 0

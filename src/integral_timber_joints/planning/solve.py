@@ -101,7 +101,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'max_step' : 0.01, # interpolation step size, in meter
             'distance_threshold':0.0025, # collision checking tolerance, in meter
             'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
-            'cartesian_attempts' : 3, # boosting up cartesian attempt here does not really help
+            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help
             'reachable_range' : (0.2, 2.8), # circle radius for sampling gantry base when computing IK
             # -------------------
             'planner_id' : 'IterativeIK',
@@ -119,7 +119,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'max_step' : 0.02, # interpolation step size, in meter
             'distance_threshold':0.0025, # collision checking tolerance, in meter
             'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
-            'cartesian_attempts' : 3, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
+            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
             'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
             # -------------------
             'planner_id' : 'IterativeIK',
@@ -134,7 +134,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         joint_resolutions = 1.0 if low_res else 0.1 # 0.05
         fm_options = options.copy()
         fm_options.update({
-            'rrt_restarts' : 50, #20,
+            'rrt_restarts' : 20, #20,
             'rrt_iterations' : 200,
             'smooth_iterations': None, #100, # 1000,
             'resolutions' : joint_resolutions,

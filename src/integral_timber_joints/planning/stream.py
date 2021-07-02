@@ -1,6 +1,7 @@
 import os
 import sys
 import pybullet
+import numpy as np
 from termcolor import cprint
 from copy import copy, deepcopy
 from itertools import product
@@ -13,6 +14,7 @@ from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMov
 from integral_timber_joints.process.state import get_object_from_flange
 
 import ikfast_abb_irb4600_40_255
+import pybullet_planning as pp
 from pybullet_planning import GREY
 from pybullet_planning import link_from_name, get_link_pose, draw_pose, multiply, \
     joints_from_names, LockRenderer, WorldSaver, wait_for_user, joint_from_name, wait_if_gui, has_gui
@@ -446,18 +448,71 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     if 'custom_limits' not in options:
         options.update({'custom_limits': custom_limits})
 
-    goal_constraints = robot.constraints_from_configuration(end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
-    with LockRenderer():
-        traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
-                                  options=options)
+    # https://github.com/yijiangh/compas_fab_pychoreo/blob/7afe6bc74f2c14caf79f573bc6a6fd95442b779a/examples/itj/stream.py#L459
+    # TODO insert cartesian segment before and after the free motion
+    robot_uid = client.get_robot_pybullet_uid(robot)
+    tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
+    tool_link = link_from_name(robot_uid, tool_link_name)
+    client.set_robot_configuration(robot, start_conf)
+    start_pose = get_link_pose(robot_uid, tool_link)
+    client.set_robot_configuration(robot, end_conf)
+    end_pose = get_link_pose(robot_uid, tool_link)
+    sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
+    gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
+    ik_joint_names = robot.get_configurable_joint_names(group=BARE_ARM_GROUP)
+    ik_info = IKInfo(sample_ik_fn, tool_link_name, ik_joint_names, gantry_joint_names) # 'base_link_name',
+    options['customized_ikinfo'] = ik_info
+
+    traj = None
+    for retraction_dist in np.linspace(0, 0.05, 5):
+        if verbose:
+            print('Free motion: trying retraction dist {}'.format(retraction_dist))
+        full_trajs = []
+        if abs(retraction_dist) > 1e-6:
+            retract_start_pose = multiply(start_pose, pp.Pose(retraction_dist*pp.Point(z=-1)))
+            retract_end_pose = multiply(end_pose, pp.Pose(retraction_dist*pp.Point(z=-1)))
+            if debug:
+                draw_pose(start_pose, length=0.1)
+                draw_pose(retract_start_pose, length=0.05)
+                draw_pose(end_pose, length=0.1)
+                draw_pose(retract_end_pose, length=0.05)
+                wait_if_gui('Retract pose drawn.')
+            start_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(start_pose), frame_from_pose(retract_start_pose)], start_configuration=start_conf,
+                group=GANTRY_ARM_GROUP, options=options)
+            if not start_cart_traj:
+                if verbose: print('No start cart traj found.')
+                continue
+            full_trajs.append(start_cart_traj)
+
+            end_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(end_pose), frame_from_pose(retract_end_pose)], start_configuration=end_conf,
+                group=GANTRY_ARM_GROUP, options=options)
+            if not end_cart_traj:
+                if verbose: print('No end cart traj found.')
+                continue
+            end_cart_traj = reverse_trajectory(end_cart_traj)
+            full_trajs.append(end_cart_traj)
+        else:
+            # TODO remove
+            continue
+
+        with LockRenderer():
+            new_start_conf = start_conf if len(full_trajs) != 2 else full_trajs[0].points[0]
+            new_end_conf = end_conf if len(full_trajs) != 2 else full_trajs[1].points[-1]
+            goal_constraints = robot.constraints_from_configuration(new_end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
+            free_traj = client.plan_motion(robot, goal_constraints, start_configuration=new_start_conf, group=GANTRY_ARM_GROUP,
+                                      options=options)
+        if free_traj is not None:
+            full_trajs.insert(1, free_traj)
+            traj = merge_trajectories(full_trajs)
+            break
+
     if verbose:
         if traj is None:
             cprint('No free movement found for {}.'.format(movement.short_summary), 'red')
         else:
             cprint('Free movement found for {}!'.format(movement.short_summary), 'green')
 
-# diagnosis
-    if traj is None and True:
+    if traj is None and diagnosis:
         client._print_object_summary()
         lockrenderer = options.get('lockrenderer', None)
         if lockrenderer:
@@ -465,6 +520,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         print('Start diagnosis.')
         d_options = options.copy()
         d_options['diagnosis'] = True
+        goal_constraints = robot.constraints_from_configuration(end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
         traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
                                   options=d_options)
         if lockrenderer:
