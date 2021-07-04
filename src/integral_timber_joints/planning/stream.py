@@ -82,6 +82,46 @@ def _get_sample_bare_arm_ik_fn(client: PyChoreoClient, robot: Robot):
     sample_ik_fn = get_sample_ik_fn(robot_uid, ikfast_fn, ik_base_link, ik_joints)
     return sample_ik_fn
 
+
+from pybullet_planning import INF, invert, get_joint_positions
+
+def solve_trac_ik(ik_solver, robot_uid, world_from_tool, nearby_tolerance=INF):
+    init_lower, init_upper = ik_solver.get_joint_limits()
+    base_link = link_from_name(robot_uid, ik_solver.base_link)
+    world_from_base = get_link_pose(robot_uid, base_link)
+    # tip_link = link_from_name(robot_uid, ik_solver.tip_link)
+    # tool_from_tip = multiply(invert(get_link_pose(robot_uid, self.tool_link)),
+    #                          get_link_pose(robot_uid, tip_link))
+    # world_from_tip = multiply(world_from_tool, tool_from_tip)
+    world_from_tip = world_from_tool
+
+    base_from_tip = multiply(invert(world_from_base), world_from_tip)
+    joints = joints_from_names(robot_uid, ik_solver.joint_names)  # self.ik_solver.link_names
+    seed_state = get_joint_positions(robot_uid, joints)
+    # seed_state = [0.0] * self.ik_solver.number_of_joints
+
+    lower, upper = init_lower, init_upper
+    if nearby_tolerance < INF:
+        tolerance = nearby_tolerance * np.ones(len(joints))
+        lower = np.maximum(lower, seed_state - tolerance)
+        upper = np.minimum(upper, seed_state + tolerance)
+    ik_solver.set_joint_limits(lower, upper)
+
+    (x, y, z), (rx, ry, rz, rw) = base_from_tip
+    # TODO: can also adjust tolerances
+    conf = ik_solver.get_ik(seed_state, x, y, z, rx, ry, rz, rw)
+    ik_solver.set_joint_limits(init_lower, init_upper)
+    if conf is None:
+        return conf
+    # if nearby_tolerance < INF:
+    #    print(lower.round(3))
+    #    print(upper.round(3))
+    #    print(conf)
+    #    print(get_difference(seed_state, conf).round(3))
+    # pp.set_joint_positions(robot_uid, joints, conf)
+    # return pp.get_configuration(robot_uid)
+    return conf
+
 ##############################
 
 def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', conf2_tag='', options=None, verbose=True):
