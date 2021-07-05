@@ -97,9 +97,9 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
         # * Do robot first
         robot_state = state_from_object['robot']
         if robot_state.kinematic_config is not None:
-            if not robot_state.kinematic_config.joint_names:
+            # if not robot_state.kinematic_config.joint_names:
                 # cprint('Warning: robot conf joint_names not set : {}'.format(robot_state.kinematic_config), 'yellow')
-                robot_state.kinematic_config.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+                # robot_state.kinematic_config.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
             # client.set_robot_configuration(robot, robot_state.kinematic_config)
             # tool_link = link_from_name(robot_uid, flange_link_name)
             # FK_tool_frame = frame_from_pose(get_link_pose(robot_uid, tool_link), scale=1/scale)
@@ -110,7 +110,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             if robot_state.current_frame is None:
                 robot_state.current_frame = FK_tool_frame
             else:
-                if not robot_state.current_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance):
+                if not robot_state.current_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance*scale):
                     if (1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
                         if verbose:
                             msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point))

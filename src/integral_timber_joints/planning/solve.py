@@ -152,6 +152,12 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         start_state['robot'].kinematic_config = traj.points[0]
         end_state = process.get_movement_end_state(movement)
         end_state['robot'].kinematic_config = traj.points[-1]
+        # ! update attached objecs' current frame at the end state
+        client.set_robot_configuration(robot, end_state['robot'].kinematic_config)
+        for object_id, object_state in end_state.items():
+            if object_state.attached_to_robot:
+                # convert back to millimeter
+                object_state.current_frame = list(client.get_object_frame('^{}$'.format(object_id), scale=1e3).values())[0]
         return True
     else:
         if verbose:

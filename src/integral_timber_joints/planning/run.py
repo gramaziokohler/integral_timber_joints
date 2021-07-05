@@ -78,6 +78,8 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         # wait_for_user()
     all_movements = process.get_movements_by_beam_id(beam_id)
     options['samplig_order_counter'] = 0
+    if 'movement_id_filter' in options:
+        del options['movement_id_filter']
 
     with LockRenderer(not args.debug) as lockrenderer:
         options['lockrenderer'] = lockrenderer
@@ -294,8 +296,8 @@ def main():
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
         'low_res' : args.low_res,
-        'distance_threshold' : 0.0012,
-        'frame_jump_tolerance' : 0.0012,
+        'distance_threshold' : 0.0012, # in meter
+        'frame_jump_tolerance' : 0.0012, # in meter
         'verbose' : args.verbose,
         'problem_name' : args.problem,
         'use_stored_seed' : args.use_stored_seed,

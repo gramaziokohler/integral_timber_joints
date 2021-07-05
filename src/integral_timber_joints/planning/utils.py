@@ -6,7 +6,7 @@ from plyer import notification
 from compas_fab.robots import Configuration, JointTrajectory, JointTrajectoryPoint, Duration
 
 # in meter, used for frame comparison
-FRAME_TOL = 1e-4
+FRAME_TOL = 0.001
 
 ##########################################
 
