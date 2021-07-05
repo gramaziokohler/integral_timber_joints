@@ -30,6 +30,8 @@ def convert_rfl_robot_conf_unit(conf_vals, length_scale=1e-3, angle_unit='rad'):
 ##########################################
 
 def reverse_trajectory(traj):
+    if traj is None:
+        return traj
     jt_traj_pts = []
     joint_names = traj.points[0].joint_names
     for i, conf in enumerate(traj.points[::-1]):
@@ -45,6 +47,8 @@ def merge_trajectories(trajs):
     joint_names = trajs[0].points[0].joint_names
     cnt = 0
     for traj in trajs:
+        if not traj:
+            continue
         for conf in traj.points:
             jt_traj_pt = JointTrajectoryPoint(conf.joint_values, conf.joint_types, time_from_start=Duration(cnt,0))
             jt_traj_pt.joint_names = conf.joint_names

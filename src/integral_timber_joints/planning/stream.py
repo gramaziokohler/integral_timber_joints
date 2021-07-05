@@ -17,7 +17,7 @@ from integral_timber_joints.process.state import get_object_from_flange
 import ikfast_abb_irb4600_40_255
 from trac_ik_python.trac_ik import IK
 TRAC_IK_TIMEOUT = 0.1
-TRAC_IK_TOL = 1e-6
+TRAC_IK_TOL = 1e-5
 
 import pybullet_planning as pp
 from pybullet_planning import GREY
@@ -246,6 +246,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     # gantry_group = GANTRY_GROUP
     debug = options.get('debug', False)
     verbose = options.get('verbose', True)
+    enforce_continuous = options.get('enforce_continuous', True)
 
     # * custom limits
     ik_joint_names = robot.get_configurable_joint_names(group=BARE_ARM_GROUP)
@@ -480,7 +481,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
         if end_conf is not None:
             is_continuous = check_cartesian_conf_agreement(client, robot, end_conf, traj.points[-1],
                 conf1_tag='given end conf', conf2_tag='traj[-1]', options=options, verbose=verbose)
-        if not is_continuous:
+        if not is_continuous and enforce_continuous:
             return None
     else:
         if verbose:
@@ -631,7 +632,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         end_cart_traj = None
         if abs(retraction_dist) > 1e-6:
             if start_retraction_vector is not None:
-                retract_start_pose = multiply(pp.Pose(retraction_dist*pp.Point(*start_retraction_vector)), start_pose, )
+                retract_start_pose = multiply(pp.Pose(retraction_dist*pp.Point(*start_retraction_vector)), start_pose)
                 if debug:
                     with WorldSaver():
                         draw_point(prev_start_state['robot'].current_frame.point*1e-3)
@@ -664,9 +665,10 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                     if verbose: cprint('No end cart traj found.', 'red')
                 else:
                     if verbose: cprint('End cart traj found.', 'green')
-                end_cart_traj = reverse_trajectory(end_cart_traj)
-        else:
-            continue
+                    end_cart_traj = reverse_trajectory(end_cart_traj)
+        # else:
+        # # ! skip no -buffe attempt
+        #     continue
 
         with LockRenderer():
             new_start_conf = start_conf if start_cart_traj is None else start_cart_traj.points[-1]
