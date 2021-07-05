@@ -78,6 +78,9 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         # wait_for_user()
     all_movements = process.get_movements_by_beam_id(beam_id)
     options['samplig_order_counter'] = 0
+    options['enforce_continuous'] = True
+    if 'movement_id_filter' in options:
+        del options['movement_id_filter']
 
     with LockRenderer(not args.debug) as lockrenderer:
         options['lockrenderer'] = lockrenderer
@@ -137,6 +140,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             elif args.solve_mode in 'linear':
                 movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
                 options['movement_id_filter'] = [all_movements[m_i].movement_id for m_i in movement_id_range]
+                options['enforce_continuous'] = False
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
                     [MovementStatus.correct_type], options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
                     write_now=args.write, plan_impacted=args.plan_impacted, check_type_only=True)
@@ -294,8 +298,8 @@ def main():
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
         'low_res' : args.low_res,
-        'distance_threshold' : 0.0012,
-        'frame_jump_tolerance' : 0.0012,
+        'distance_threshold' : 0.0012, # in meter
+        'frame_jump_tolerance' : 0.0012, # in meter
         'verbose' : args.verbose,
         'problem_name' : args.problem,
         'use_stored_seed' : args.use_stored_seed,

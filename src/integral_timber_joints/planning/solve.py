@@ -85,14 +85,14 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         cprint(movement.short_summary, 'cyan')
 
     # set seed stored in the movement
-    if use_stored_seed:
-        seed = movement.seed
-        assert seed is not None, 'No meaningful seed saved in the movement.'
-    else:
-        seed = get_random_seed()
-        movement.seed = seed
-    set_random_seed(seed)
-    set_numpy_seed(seed)
+    # if use_stored_seed:
+    #     seed = movement.seed
+    #     assert seed is not None, 'No meaningful seed saved in the movement.'
+    # else:
+    #     seed = get_random_seed()
+    #     movement.seed = seed
+    # set_random_seed(seed)
+    # set_numpy_seed(seed)
 
     traj = None
     if isinstance(movement, RoboticLinearMovement):
@@ -152,6 +152,12 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         start_state['robot'].kinematic_config = traj.points[0]
         end_state = process.get_movement_end_state(movement)
         end_state['robot'].kinematic_config = traj.points[-1]
+        # ! update attached objecs' current frame at the end state
+        client.set_robot_configuration(robot, end_state['robot'].kinematic_config)
+        for object_id, object_state in end_state.items():
+            if object_state.attached_to_robot:
+                # convert back to millimeter
+                object_state.current_frame = list(client.get_object_frame('^{}$'.format(object_id), scale=1e3).values())[0]
         return True
     else:
         if verbose:
@@ -221,8 +227,8 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 archived_end_conf = archived_end_state['robot'].kinematic_config
 
                 for attempt in range(m_attempts):
-                    if verbose:
-                        print('Movement planning attempt {}'.format(attempt))
+                    # if verbose:
+                    #     print('Movement planning attempt {}'.format(attempt))
                     start_time = time.time()
                     plan_success = compute_movement(client, robot, process, m, options, diagnosis)
                     plan_time = elapsed_time(start_time)

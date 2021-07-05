@@ -38,7 +38,7 @@ def rfl_camera(scale=1e-3):
 
 ################################################
 
-def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
+def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step_duration=0.1):
     """[summary]
 
     Parameters
@@ -71,7 +71,7 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
                 if step_sim:
                     wait_if_gui('Step conf.')
                 else:
-                    wait_for_duration(0.1)
+                    wait_for_duration(step_duration)
         else:
             has_start_conf = process.movement_has_start_robot_config(m)
             has_end_conf = process.movement_has_end_robot_config(m)

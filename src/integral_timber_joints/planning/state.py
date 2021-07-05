@@ -12,6 +12,7 @@ from compas_fab.robots import AttachedCollisionMesh, Configuration, CollisionMes
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 from compas_fab_pychoreo.client import PyChoreoClient
 
+import pybullet_planning as pp
 from pybullet_planning import GREY
 from pybullet_planning import LockRenderer, HideOutput, load_pybullet, wait_for_user
 from pybullet_planning import get_sample_fn, link_from_name, joint_from_name, link_from_name, get_link_pose
@@ -91,15 +92,23 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
 
     # robot needed for creating attachments
     robot_uid = client.get_robot_pybullet_uid(robot)
+    ik_base_link_name = robot.get_base_link_name(group=GANTRY_ARM_GROUP)
     flange_link_name = robot.get_end_effector_link_name(group=GANTRY_ARM_GROUP)
+
+    from trac_ik_python.trac_ik import IK
+    from integral_timber_joints.planning.stream import TRAC_IK_TOL, TRAC_IK_TIMEOUT, get_solve_trac_ik_info
+    trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=flange_link_name,
+                        timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
+                        urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))
+    trac_ikinfo = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
 
     with LockRenderer(not debug):
         # * Do robot first
         robot_state = state_from_object['robot']
         if robot_state.kinematic_config is not None:
-            if not robot_state.kinematic_config.joint_names:
+            # if not robot_state.kinematic_config.joint_names:
                 # cprint('Warning: robot conf joint_names not set : {}'.format(robot_state.kinematic_config), 'yellow')
-                robot_state.kinematic_config.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+                # robot_state.kinematic_config.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
             # client.set_robot_configuration(robot, robot_state.kinematic_config)
             # tool_link = link_from_name(robot_uid, flange_link_name)
             # FK_tool_frame = frame_from_pose(get_link_pose(robot_uid, tool_link), scale=1/scale)
@@ -110,7 +119,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             if robot_state.current_frame is None:
                 robot_state.current_frame = FK_tool_frame
             else:
-                if not robot_state.current_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance):
+                if not robot_state.current_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance*scale):
                     if (1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
                         if verbose:
                             msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point))
@@ -209,6 +218,8 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                         else:
                             raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, ik_gantry_attempts))
                     client.set_robot_configuration(robot, conf)
+                    # if trac_ikinfo.ik_fn(pose_from_frame(flange_frame)) is None:
+                    #     raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, ik_gantry_attempts))
 
                     # * create attachments
                     wildcard = '^{}$'.format(object_id)
