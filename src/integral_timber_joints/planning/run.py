@@ -64,6 +64,10 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
             break
         trial_i += 1
         process = deepcopy(unsolved_process)
+        if options['ignore_taught_confs']:
+            # ! remove all taught confs
+            for m in process.movements:
+                m.end_state['robot'].kinematic_config = None
         client.disconnect()
         client, robot, _ = load_RFL_world(viewer=args.viewer, verbose=False)
         set_initial_state(client, robot, process, disable_env=False, reinit_tool=False)
@@ -137,7 +141,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     save_process_and_movements(args.problem, process, altered_movements, overwrite=False,
                         include_traj_in_process=False, save_temp=args.save_temp)
 
-            elif args.solve_mode in 'linear':
+            elif args.solve_mode == 'linear':
                 movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
                 options['movement_id_filter'] = [all_movements[m_i].movement_id for m_i in movement_id_range]
                 options['enforce_continuous'] = False
@@ -186,6 +190,8 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     write_now=args.write, plan_impacted=args.plan_impacted)
                 if not success:
                     return False
+            else:
+                raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
 
     # * final visualization
     if args.watch:

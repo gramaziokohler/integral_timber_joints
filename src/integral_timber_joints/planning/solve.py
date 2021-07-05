@@ -13,11 +13,11 @@ from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMov
 from integral_timber_joints.planning.stream import compute_free_movement, compute_linear_movement
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.utils import notify, print_title
-from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
+from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP, R11_JOINT_RESOLUTIONS, R11_JOINT_WEIGHTS
 from integral_timber_joints.planning.parsing import save_process_and_movements
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
-GANTRY_ATTEMPTS = 50
+GANTRY_ATTEMPTS = 100
 
 ###########################################
 
@@ -80,10 +80,10 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     # * low_res mode is used to quickly get a feeling of the planning problem
     low_res = options.get('low_res', False)
     verbose = options.get('verbose', True)
-    use_stored_seed = options.get('use_stored_seed', False)
     if verbose:
         cprint(movement.short_summary, 'cyan')
 
+    # use_stored_seed = options.get('use_stored_seed', False)
     # set seed stored in the movement
     # if use_stored_seed:
     #     seed = movement.seed
@@ -101,8 +101,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'max_step' : 0.01, # interpolation step size, in meter
             'distance_threshold':0.0025, # collision checking tolerance, in meter
             'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
-            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help
-            'reachable_range' : (0.2, 2.8), # circle radius for sampling gantry base when computing IK
+            'cartesian_attempts' : 1, # boosting up cartesian attempt here does not really help
+            'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
             # -------------------
             'planner_id' : 'IterativeIK',
             'cartesian_move_group' : GANTRY_ARM_GROUP,
@@ -119,7 +119,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'max_step' : 0.02, # interpolation step size, in meter
             'distance_threshold':0.0025, # collision checking tolerance, in meter
             'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
-            'cartesian_attempts' : 5, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
+            'cartesian_attempts' : 1, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
             'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
             # -------------------
             'planner_id' : 'IterativeIK',
@@ -131,14 +131,19 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
-        joint_resolutions = 1.0 if low_res else 0.1 # 0.05
+        resolution_ratio = 10.0 if low_res else 1.0
         fm_options = options.copy()
         fm_options.update({
-            'rrt_restarts' : 20, #20,
-            'rrt_iterations' : 200,
-            'smooth_iterations': None, #100, # 1000,
-            'resolutions' : joint_resolutions,
-            'max_step' : 0.01,
+            'rrt_restarts' : 2, #20,
+            'rrt_iterations' : 200, # ! value < 100 might not find solutions even if there is one
+            'smooth_iterations': None, #100, # 1000, TODO smoothing in postprocessing
+            'joint_resolutions' : R11_JOINT_RESOLUTIONS*resolution_ratio,
+            'joint_weights' : R11_JOINT_WEIGHTS,
+            # -------------------
+            'distance_threshold':0.0025, # collision checking tolerance, in meter
+            'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
+            'max_step' : 0.01, # interpolation step size, in meter, used in buffering motion
+            'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
             })
         traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis)
     else:

@@ -1,5 +1,6 @@
 from compas_fab.robots import Configuration
 from termcolor import cprint
+import numpy as np
 
 from compas_fab_pychoreo.client import PyChoreoClient
 from pybullet_planning import draw_pose, set_camera_pose, unit_pose, LockRenderer
@@ -37,6 +38,12 @@ try:
 except ImportError as e:
     IK_MODULE = None
     cprint('{}, Using pybullet ik fn instead'.format(e), 'red')
+
+# https://github.com/yijiangh/coop_assembly/blob/dev/src/coop_assembly/planning/robot_setup.py#L147
+R11_JOINT_WEIGHTS = np.reciprocal([0.1, 0.1, 0.1,
+        2.618, 2.618, 2.618, 6.2832, 6.2832, 7.854])
+R11_JOINT_RESOLUTIONS = 10*np.array([0.01, 0.01, 0.01,
+        0.01079, 0.00725, 0.012249, 0.009173, 0.037541, 0.01313])
 
 ############################################
 

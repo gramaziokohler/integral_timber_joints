@@ -35,8 +35,9 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
         client._print_object_summary()
 
     in_collision = client.check_attachment_collisions(options)
-    pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
-    in_collision |= pychore_collision_fn.check_collisions(robot, state_from_object['robot'].kinematic_config, options=options)
+    if state_from_object['robot'].kinematic_config:
+        pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
+        in_collision |= pychore_collision_fn.check_collisions(robot, state_from_object['robot'].kinematic_config, options=options)
     if debug:
         wait_for_user()
     return in_collision
@@ -121,7 +122,7 @@ def main():
 
     options = {
         # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
-        'distance_threshold' : 0.0012,
+        'distance_threshold' : 0.0025,
         # * buffering distance, If the distance between objects exceeds this maximum distance, no points may be returned.
         'max_distance' : 0.0,
         # * If target_configuration is different from the target_frame by more that this amount at flange center, a warning will be raised.
@@ -190,7 +191,7 @@ def main():
                 if args.verify_plan:
                     pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
                     if m.trajectory:
-                        print(client._print_object_summary())
+                        # print(client._print_object_summary())
                         prev_conf = start_conf
                         for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
                             if not jpt.joint_names:

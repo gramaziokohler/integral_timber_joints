@@ -220,7 +220,7 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
                         ['{:.3f}'.format(v) for v in p1[0]], ['{:.3f}'.format(v) for v in p1[1]],
                         ['{:.3f}'.format(v) for v in p2[0]], ['{:.3f}'.format(v) for v in p2[1]])
                         )
-            notify('Warning! Go back to the command line now!')
+            # notify('Warning! Go back to the command line now!')
             # wait_for_user()
         return False
     else:
@@ -423,16 +423,16 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 break
             else:
                 path_failures += 1
-        else:
-            # * fallback to ladder graph
-            lm_options = options.copy()
-            lm_options['planner_id'] = 'LadderGraph'
-            lm_options['ik_function'] = _get_sample_bare_arm_ik_fn(client, robot)
-            # pose -> list(conf values)
-            cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-                group=BARE_ARM_GROUP, options=lm_options)
-            if cart_conf:
-                success_planner = 'LadderGraph'
+        # else:
+        #     # * fallback to ladder graph
+        #     lm_options = options.copy()
+        #     lm_options['planner_id'] = 'LadderGraph'
+        #     lm_options['ik_function'] = _get_sample_bare_arm_ik_fn(client, robot)
+        #     # pose -> list(conf values)
+        #     cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
+        #         group=BARE_ARM_GROUP, options=lm_options)
+        #     if cart_conf:
+        #         success_planner = 'LadderGraph'
 
         if not cart_conf:
             if verbose:
@@ -514,52 +514,82 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     except RuntimeError:
         return None
 
+    sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
+    gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+    gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
     if orig_start_conf is None:
         if verbose:
             cprint('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
-            notify('Warning! Go back to the command line now!')
+            # notify('Warning! Go back to the command line now!')
             # wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
         start_t0cf_frame = copy(start_state['robot'].current_frame)
         start_t0cf_frame.point *= 1e-3
+        sample_found = False
         if start_t0cf_frame is not None:
             gantry_base_gen_fn = gantry_base_generator(client, robot, start_t0cf_frame, reachable_range=reachable_range, scale=1.0)
-            for _, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
-                orig_start_conf = client.inverse_kinematics(robot, start_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
-                if orig_start_conf:
+            for gantry_iter, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
+                # orig_start_conf = client.inverse_kinematics(robot, start_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
+                # * bare-arm IK sampler
+                arm_conf_vals = sample_ik_fn(pose_from_frame(start_t0cf_frame, scale=1))
+                # * iterate through all 6-axis IK solution
+                for arm_conf_val in arm_conf_vals:
+                    if arm_conf_val is None:
+                        continue
+                    orig_start_conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
+                        gantry_arm_joint_types, gantry_arm_joint_names)
                     if debug:
-                        client.set_robot_configuration(robot, orig_start_conf)
-                        print(orig_start_conf.joint_values)
-                        wait_if_gui('Sampled start conf')
+                            client.set_robot_configuration(robot, orig_start_conf)
+                            print(orig_start_conf.joint_values)
+                            wait_if_gui('Sampled start conf')
+                    if not client.check_collisions(robot, orig_start_conf, options=options):
+                        sample_found = True
+                        if verbose: print('Start conf sample found after {} gantry iters.'.format(gantry_iter))
+                        break
+                if sample_found:
                     break
             else:
-                cprint('No robot IK conf can be found for {} after {} attempts, Underspecified problem, solve fails.'.format(
+                cprint('No start robot IK conf can be found for {} after {} attempts, solve fails.'.format(
                     movement.short_summary, gantry_attempts), 'red')
                 return None
         else:
             cprint('No robot start frame is specified in {}, Underspecified problem, solve fails.'.format(movement.short_summary), 'red')
             return None
 
+    # TODO clean up code and make a function for start/end conf sampling
     if orig_end_conf is None:
         if verbose:
             cprint('FreeMovement: Robot end conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary), 'yellow')
-            notify('Warning! Go back to the command line now!')
+            # notify('Warning! Go back to the command line now!')
             # wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
         end_t0cf_frame = copy(end_state['robot'].current_frame)
         end_t0cf_frame.point *= 1e-3
+        sample_found = False
         if end_t0cf_frame is not None:
             gantry_base_gen_fn = gantry_base_generator(client, robot, end_t0cf_frame, reachable_range=reachable_range, scale=1.0)
-            for _, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
-                orig_end_conf = client.inverse_kinematics(robot, end_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
-                if orig_end_conf:
+            for gantry_iter, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
+                # orig_end_conf = client.inverse_kinematics(robot, end_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
+                # * bare-arm IK sampler
+                arm_conf_vals = sample_ik_fn(pose_from_frame(end_t0cf_frame, scale=1))
+                # * iterate through all 6-axis IK solution
+                for arm_conf_val in arm_conf_vals:
+                    if arm_conf_val is None:
+                        continue
+                    orig_end_conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
+                        gantry_arm_joint_types, gantry_arm_joint_names)
                     if debug:
-                        client.set_robot_configuration(robot, orig_end_conf)
-                        print(orig_end_conf.joint_values)
-                        wait_if_gui('Sampled end conf')
+                            client.set_robot_configuration(robot, orig_end_conf)
+                            print(orig_end_conf.joint_values)
+                            wait_if_gui('Sampled end conf')
+                    if not client.check_collisions(robot, orig_end_conf, options=options):
+                        sample_found = True
+                        if verbose: print('End conf sample found after {} gantry iters.'.format(gantry_iter))
+                        break
+                if sample_found:
                     break
             else:
-                cprint('No robot IK conf can be found for {} after {} attempts, Underspecified problem, solve fails.'.format(
+                cprint('No end robot IK conf can be found for {} after {} attempts, solve fails.'.format(
                     movement.short_summary, gantry_attempts), 'red')
                 return None
         else:
@@ -627,7 +657,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     retraction_candidates = [0.0] if start_retraction_vector is None and end_retraction_vector is None else retraction_candidates
     for retraction_dist in retraction_candidates:
         if verbose:
-            print('Free motion: trying retraction dist {}'.format(retraction_dist))
+            print('Free motion: trying retraction dist {:.4f}'.format(retraction_dist))
         start_cart_traj = None
         end_cart_traj = None
         if abs(retraction_dist) > 1e-6:
