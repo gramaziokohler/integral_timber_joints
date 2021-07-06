@@ -63,6 +63,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         if success:
             break
         trial_i += 1
+        copy_st_time = time.time()
         process = deepcopy(unsolved_process)
         if options['ignore_taught_confs']:
             # ! remove all taught confs
@@ -71,6 +72,10 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         client.disconnect()
         client, robot, _ = load_RFL_world(viewer=args.viewer, verbose=False)
         set_initial_state(client, robot, process, disable_env=False, reinit_tool=False)
+        copy_time = elapsed_time(copy_st_time)
+        solve_timeout += copy_time
+        print('Restarting client/process takes {} | total timeout {}'.format(copy_time, solve_timeout))
+        # ! process/client reset time shouldn't be counted in
 
     return success, runtime_data
 
@@ -97,6 +102,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
                 if not success:
+                    print('No success for nonlinear planning.')
                     return False
                 else:
                     altered_movements.extend(altered_ms)
@@ -109,6 +115,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.one_sided],
                     options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
                 if not success:
+                    print('No success for nonlinear planning.')
                     return False
                 else:
                     altered_movements.extend(altered_ms)
@@ -121,6 +128,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
                 if not success:
+                    print('No success for nonlinear planning.')
                     return False
                 else:
                     altered_movements.extend(altered_ms)
@@ -131,7 +139,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.both_done, MovementStatus.one_sided],
                     options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.write)
                 if not success:
-                    print('No success for free motions')
+                    print('No success for nonlinear planning.')
                     return False
                 else:
                     altered_movements.extend(altered_ms)
@@ -144,12 +152,12 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             elif args.solve_mode == 'linear':
                 movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
                 options['movement_id_filter'] = [all_movements[m_i].movement_id for m_i in movement_id_range]
-                options['enforce_continuous'] = False
+                # options['enforce_continuous'] = False
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
                     [MovementStatus.correct_type], options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
                     write_now=args.write, plan_impacted=args.plan_impacted, check_type_only=True)
                 if not success:
-                    print('No success for linear planning.')
+                    print('No success for linear (chained) planning.')
                     return False
 
             elif args.solve_mode == 'free_motion_only':
