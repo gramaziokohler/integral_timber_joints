@@ -54,7 +54,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     trial_i = 0
     while elapsed_time(start_time) < solve_timeout:
         print('#'*10)
-        print('{} | Inner Trail #{}'.format(args.solve_mode, trial_i))
+        print('Beam {} | {} | Inner Trail #{}'.format(beam_id, args.solve_mode, trial_i))
         options['profiles'] = {}
         success = compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options)
         runtime_data[trial_i] = {}
