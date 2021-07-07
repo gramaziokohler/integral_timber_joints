@@ -343,6 +343,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     solution_found = False
     samples_cnt = ik_failures = path_failures = 0
     planner_id = options.get('planner_id', 'IterativeIK')
+    cart_conf = None
 
     # TODO custom limits
     # TODO try fixing IK and only use gantry for Cartesian movements
