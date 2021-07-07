@@ -526,11 +526,11 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         # Retract
         self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract1.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.clamp_on_structure',
-                                                    tag="Linear Retract 1 of 2 from storage after picking up %s from structure." % self._tool_string,
+                                                    tag="Linear Retract 1 of 2 to storage after picking up %s from structure." % self._tool_string,
                                                     allowed_collision_matrix=acm))  # Tool Retract Frame at structure
         self.movements.append(RoboticLinearMovement(clamp_wcf_detachretract2.copy(), attached_tool_id=self.tool_id,
                                                     speed_type='speed.toolchange.retract.clamp_on_structure',
-                                                    tag="Linear Retract 2 of 2 from storage after picking up %s from structure." % self._tool_string,
+                                                    tag="Linear Retract 2 of 2 to storage after picking up %s from structure." % self._tool_string,
                                                     allowed_collision_matrix=acm))  # Tool Retract Frame at structure
 
         # Assign Unique Movement IDs to all movements
