@@ -48,6 +48,7 @@ SOLVE_MODE = [
 def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=None):
     solve_timeout = options.get('solve_timeout', 600)
     solve_iters = options.get('solve_iters', 40)
+    return_upon_success = options.get('return_upon_success', True)
     runtime_data = {}
 
     unsolved_process = deepcopy(process)
@@ -62,8 +63,8 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
         cprint('Return success: {}'.format(success), 'green' if success else 'red')
-        # if success:
-        #     break
+        if return_upon_success and success:
+            break
         trial_i += 1
         copy_st_time = time.time()
         process = deepcopy(unsolved_process)
