@@ -61,8 +61,9 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         runtime_data[trial_i] = {}
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
-        if success:
-            break
+        cprint('Return success: {}'.format(success), 'green' if success else 'red')
+        # if success:
+        #     break
         trial_i += 1
         copy_st_time = time.time()
         process = deepcopy(unsolved_process)
