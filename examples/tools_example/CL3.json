@@ -334,7 +334,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -577,7 +577,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -820,7 +820,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -1063,7 +1063,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -1306,7 +1306,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -1549,7 +1549,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -1792,7 +1792,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -2035,7 +2035,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -2229,7 +2229,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -2423,7 +2423,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -2666,7 +2666,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -2909,7 +2909,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -3201,7 +3201,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -3444,7 +3444,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -3687,7 +3687,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -3930,7 +3930,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -4388,7 +4388,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -4643,7 +4643,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -4898,7 +4898,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -5153,7 +5153,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -5408,7 +5408,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -5663,7 +5663,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -5918,7 +5918,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -6173,7 +6173,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -6379,7 +6379,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -6585,7 +6585,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -6840,7 +6840,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -7095,7 +7095,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -7399,7 +7399,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -7654,7 +7654,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -7909,7 +7909,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -8164,7 +8164,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -8542,7 +8542,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -8834,7 +8834,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -9077,7 +9077,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -9326,7 +9326,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -9630,7 +9630,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -9885,7 +9885,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -10145,7 +10145,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -10437,7 +10437,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -10680,7 +10680,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -10929,7 +10929,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -11233,7 +11233,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -11488,7 +11488,7 @@
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.5.0", 
                                     "data": {
                                         "attributes": {
                                             "name": null

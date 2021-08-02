@@ -55,40 +55,13 @@
                 "collision": [
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -315,40 +288,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -575,40 +521,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -835,40 +754,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -1095,40 +987,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -1355,40 +1220,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -1615,40 +1453,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -2081,40 +1892,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -2553,40 +2337,13 @@
                 "visual": [
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -2825,40 +2582,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -3097,40 +2827,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -3369,40 +3072,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -3641,40 +3317,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -3913,40 +3562,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -4185,40 +3807,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
@@ -4663,40 +4258,13 @@
                     }, 
                     {
                         "attr": {}, 
-                        "current_transformation": {
-                            "matrix": [
-                                [
-                                    1.0, 
-                                    0.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    1.0, 
-                                    0.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    1.0, 
-                                    0.0
-                                ], 
-                                [
-                                    0.0, 
-                                    0.0, 
-                                    0.0, 
-                                    1.0
-                                ]
-                            ]
-                        }, 
+                        "current_transformation": null, 
                         "geometry": {
                             "attr": {}, 
                             "shape": {
                                 "filename": "", 
                                 "geometry": {
-                                    "compas": "1.0.0", 
+                                    "compas": "1.7.1", 
                                     "data": {
                                         "attributes": {
                                             "name": null
