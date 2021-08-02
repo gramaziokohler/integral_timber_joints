@@ -1,5 +1,6 @@
 from compas_fab.robots import Configuration
 from termcolor import cprint
+import numpy as np
 
 from compas_fab_pychoreo.client import PyChoreoClient
 from pybullet_planning import draw_pose, set_camera_pose, unit_pose, LockRenderer
@@ -13,6 +14,7 @@ from integral_timber_joints.planning.parsing import rfl_setup
 MAIN_ROBOT_ID = 'robot11'
 BARE_ARM_GROUP = 'robot11'
 GANTRY_ARM_GROUP = 'robot11_eaXYZ'
+GANTRY_GROUP = 'robot11_gantry'
 
 # a preset configuration, only used in initializing the state
 # this set the other unused robot to the right configurations
@@ -37,6 +39,12 @@ except ImportError as e:
     IK_MODULE = None
     cprint('{}, Using pybullet ik fn instead'.format(e), 'red')
 
+# https://github.com/yijiangh/coop_assembly/blob/dev/src/coop_assembly/planning/robot_setup.py#L147
+R11_JOINT_WEIGHTS = np.reciprocal([0.1, 0.1, 0.1,
+        2.618, 2.618, 2.618, 6.2832, 6.2832, 7.854])
+R11_JOINT_RESOLUTIONS = 10*np.array([0.01, 0.01, 0.01,
+        0.01079, 0.00725, 0.012249, 0.009173, 0.037541, 0.01313])
+
 ############################################
 
 def rfl_robot_joint_names(robot_id='robot12', include_gantry=False):
@@ -52,9 +60,9 @@ def rfl_robot_joint_names(robot_id='robot12', include_gantry=False):
 
 def to_rlf_robot_full_conf(robot11_confval, robot12_confval):
     return Configuration(
-        values = (*robot11_confval, *robot12_confval,
+        joint_values = (*robot11_confval, *robot12_confval,
                   *R21_IDLE_CONF_VALS, *R22_IDLE_CONF_VALS),
-        types = (
+        joint_types = (
             *([2] + RFL_SINGLE_ARM_JOINT_TYPES), *RFL_SINGLE_ARM_JOINT_TYPES,
             *([2] + RFL_SINGLE_ARM_JOINT_TYPES), *RFL_SINGLE_ARM_JOINT_TYPES,),
         joint_names = (
@@ -72,7 +80,7 @@ def get_gantry_control_joint_names(robot_id='robot11'):
 
 # meter
 GANTRY_X_LIMIT = (14.5, 28) # (0, 37)
-GANTRY_Y_LIMIT = (-9, 0) # (-9, 0)
+GANTRY_Y_LIMIT = (-9.5, 0) # (-9, 0)
 GANTRY_Z_LIMIT = (-5, -1.7) # (-5, -1)
 
 # rm_limits = [(-175, 175), (-85, 145), (-175, 70), (-181, 181), (-120, 120), (-181, 181)]
@@ -92,9 +100,9 @@ def get_gantry_robot_custom_limits(robot_id='robot11'):
 
 ########################################
 
-def load_RFL_world(viewer=True):
+def load_RFL_world(viewer=True, verbose=False):
     urdf_filename, semantics = rfl_setup()
-    client = PyChoreoClient(viewer=viewer)
+    client = PyChoreoClient(viewer=viewer, verbose=verbose)
     client.connect()
 
     with LockRenderer():

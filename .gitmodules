@@ -1,12 +1,15 @@
 [submodule "external/compas_fab_pychoreo"]
 	path = external/compas_fab_pychoreo
 	url = https://github.com/yijiangh/compas_fab_pychoreo.git
-[submodule "external/pybullet_planning"]
-	path = external/pybullet_planning
-	url = https://github.com/yijiangh/pybullet_planning.git
 [submodule "external/itj_design_study"]
 	path = external/itj_design_study
 	url = https://github.com/gramaziokohler/itj_design_study
 [submodule "external/rfl_description"]
 	path = external/rfl_description
 	url = https://github.com/yijiangh/rfl_description.git
+[submodule "external/compas"]
+	path = external/compas
+	url = https://github.com/yck011522/compas.git
+[submodule "external/compas_fab"]
+	path = external/compas_fab
+	url = https://github.com/yck011522/compas_fab
