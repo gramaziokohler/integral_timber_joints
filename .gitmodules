@@ -12,4 +12,4 @@
 	url = https://github.com/yck011522/compas.git
 [submodule "external/compas_fab"]
 	path = external/compas_fab
-	url = https://github.com/compas-dev/compas_fab
+	url = https://github.com/yck011522/compas_fab
