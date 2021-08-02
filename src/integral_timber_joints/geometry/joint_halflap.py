@@ -192,11 +192,13 @@ class Joint_halflap(Joint):
     def clamp_types(self):
         # Returns a list of clamps types that can assemble this joint
         clamps = []
-        if self.angle > 24.9 and self.angle < 90.1:
-            clamps.append('CL3')
-        if self.angle > 89.9 and self.angle < 155.1:
-            clamps.append('CL3M')
-
+        if self.has_screw:
+            clamps.append('SL1')
+        else:
+            if self.angle > 24.9 and self.angle < 90.1:
+                clamps.append('CL3')
+            if self.angle > 89.9 and self.angle < 155.1:
+                clamps.append('CL3M')
         return clamps
 
 
