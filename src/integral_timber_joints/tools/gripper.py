@@ -9,10 +9,10 @@ from integral_timber_joints.tools import Tool
 
 
 class Gripper (Tool):
-    """ Gripper object represents a robotic gripper that has both 
+    """ Gripper object represents a robotic gripper that has both
     gripper jaw. This is a subclass of Tool and Robot Model.
 
-    The object keep track of the RobotModel and the kinematic configuration. 
+    The object keep track of the RobotModel and the kinematic configuration.
     """
 
     def __init__(self, name,
@@ -78,7 +78,7 @@ class Gripper (Tool):
     @property
     def beam_length_limits(self):
         # type: () -> tuple(float, float)
-        """Min max limits of beam lengths this gripper can hold: 
+        """Min max limits of beam lengths this gripper can hold:
         (beam_length_limit_min, beam_length_limit_max) """
         return self.attributes.get('beam_length_limits', (500, 5000))
 
@@ -88,6 +88,9 @@ class Gripper (Tool):
 
     @property
     def approach_vector(self):
+        # type: () -> Vector
+        """Vector for gripper to approach beam
+        """
         return self.attributes.get('approach_vector', None)
 
     @approach_vector.setter
@@ -175,8 +178,8 @@ def ParallelGripperFactory(
     beam_length_limit_min,
     beam_length_limit_max,
     approach_vector,
-    jaw_vector_l = None,           # In Ref to T0CF
-    jaw_vector_r = None,           # In Ref to T0CF
+    jaw_vector_l=None,           # In Ref to T0CF
+    jaw_vector_r=None,           # In Ref to T0CF
 ):
     """ A Parallel gripper will have a base and two gripper jaw.
     Modelling guide

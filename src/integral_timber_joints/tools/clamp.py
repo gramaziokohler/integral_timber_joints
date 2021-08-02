@@ -147,28 +147,36 @@ class Clamp (Gripper):
     @ property
     def tool_storage_approach_frame2(self):
         # type: () -> Frame
-        # Compute the approach frame in wcf
+        """Compute the approach frame in wcf.
+        Part of PlaceClampToStorageAction
+        """
         approach2_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.approach2_vector)
         return self.tool_storage_frame.transformed(Translation.from_vector(approach2_vector_wcf.scaled(-1)))
 
     @ property
     def tool_storage_approach_frame1(self):
         # type: () -> Frame
-        # Compute the approach frame in wcf
+        """Compute the approach frame in wcf.
+        Part of PlaceClampToStorageAction
+        """
         approach1_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.approach1_vector)
         return self.tool_storage_approach_frame2.transformed(Translation.from_vector(approach1_vector_wcf.scaled(-1)))
 
     @ property
     def tool_storage_retract_frame1(self):
         # type: () -> Frame
-        # Compute the retract frame in wcf
+        """ Compute the retract frame in wcf
+        Part of PickClampFromStorageAction
+        """
         detachretract1_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.detachretract1_vector)
         return self.tool_storage_frame.transformed(Translation.from_vector(detachretract1_vector_wcf))
 
     @ property
     def tool_storage_retract_frame2(self):
         # type: () -> Frame
-        # Compute the retract frame in wcf
+        """ Compute the retract frame in wcf
+        Part of PickClampFromStorageAction
+        """
         detachretract2_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.detachretract2_vector)
         return self.tool_storage_retract_frame1.transformed(Translation.from_vector(detachretract2_vector_wcf))
 
