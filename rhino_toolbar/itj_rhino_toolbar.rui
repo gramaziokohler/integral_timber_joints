@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<RhinoUI major_ver="3" minor_ver="0" guid="7d1f832f-513d-4f21-91fa-ecc4f91ba740" localize="False" default_language_id="1033" dpi_scale="100">
+<RhinoUI major_ver="3" minor_ver="0" guid="7d1f832f-513d-4f21-91fa-ecc4f91ba740" localize="False" default_language_id="1033" dpi_scale="125">
   <extend_rhino_menus>
     <menu guid="d58ceae7-fdb0-4104-80da-274b94ad44a9">
       <text>
@@ -9,7 +9,7 @@
   </extend_rhino_menus>
   <menus />
   <tool_bar_groups>
-    <tool_bar_group guid="52ce4810-3f18-4531-8a6a-a5dbb36b494a" dock_bar_guid32="00000000-0000-0000-0000-000000000000" dock_bar_guid64="45a3f6fb-4077-4cb6-96df-f71dc6bf6c19" active_tool_bar_group="d51b0d10-3a81-4256-9a3e-04b3b9cb9588" single_file="False" hide_single_tab="False" point_floating="10,107">
+    <tool_bar_group guid="52ce4810-3f18-4531-8a6a-a5dbb36b494a" dock_bar_guid32="00000000-0000-0000-0000-000000000000" dock_bar_guid64="45a3f6fb-4077-4cb6-96df-f71dc6bf6c19" active_tool_bar_group="d51b0d10-3a81-4256-9a3e-04b3b9cb9588" single_file="False" hide_single_tab="False" point_floating="705,558">
       <text>
         <locale_1033>ITJ Main</locale_1033>
       </text>
@@ -19,7 +19,7 @@
         </text>
         <tool_bar_id>31c43b10-774f-4f68-b2f1-8f742d6de8c3</tool_bar_id>
       </tool_bar_group_item>
-      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59478" mru_width="868" point_pos="0,59" float_point="10,107" rect_mru_dock_pos="0,59,1920,97" dock_location_u="59419" dock_location="top" float_size="768,62" />
+      <dock_bar_info dpi_scale="125" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59462" mru_width="1085" point_pos="0,183" float_point="705,558" rect_mru_dock_pos="0,183,1920,247" dock_location_u="59419" dock_location="top" float_size="960,78" />
     </tool_bar_group>
   </tool_bar_groups>
   <tool_bars>
@@ -536,7 +536,7 @@
       <bitmap_item guid="b70c11b4-c602-445d-9e48-4ce8b66740cf" index="3" />
       <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
       <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAABQCAYAAAAQq/UNAAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
-AAAOvgAADr4B6kKxwAAAABxJREFUWEftwYEAAAAAw6D5U1/hAFUAAAAAAJcaFFAAAef1VjkAAAAA
+AAAOvAAADrwBlbxySQAAABxJREFUWEftwYEAAAAAw6D5U1/hAFUAAAAAAJcaFFAAAef1VjkAAAAA
 SUVORK5CYIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
@@ -548,7 +548,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="b70c11b4-c602-445d-9e48-4ce8b66740cf" index="3" />
       <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
       <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAAB4CAYAAADogzKiAAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
-AAAOvgAADr4B6kKxwAAAACJJREFUaEPtwYEAAAAAw6D5U9/gBFUAAAAAAAAAAAAAABw1LXgAAf9L
+AAAOvAAADrwBlbxySQAAACJJREFUaEPtwYEAAAAAw6D5U9/gBFUAAAAAAAAAAAAAABw1LXgAAf9L
 ODQAAAAASUVORK5CYIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
@@ -560,7 +560,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="b70c11b4-c602-445d-9e48-4ce8b66740cf" index="3" />
       <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
       <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAACgCAYAAABtym4sAAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
-AAAOvgAADr4B6kKxwAAAACpJREFUeF7twQEBAAAAgiD/r25IQAAAAAAAAAAAAAAAAAAAAAAAAADA
+AAAOvAAADrwBlbxySQAAACpJREFUeF7twQEBAAAAgiD/r25IQAAAAAAAAAAAAAAAAAAAAAAAAADA
 uRpQoAAB330B7wAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>

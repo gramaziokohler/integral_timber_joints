@@ -9,7 +9,7 @@ from compas.robots import Joint
 
 from pybullet_planning import wait_if_gui, wait_for_user, has_gui
 from pybullet_planning import get_distance, draw_collision_diagnosis, expand_links, get_all_links, \
-    link_from_name, pairwise_link_collision_info, get_name, get_link_name
+    link_from_name, pairwise_link_collision_info, get_name, get_link_name, WorldSaver
 
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
@@ -35,6 +35,9 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
         client._print_object_summary()
 
     in_collision = client.check_attachment_collisions(options)
+    if state_from_object['robot'].kinematic_config:
+        pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
+        in_collision |= pychore_collision_fn.check_collisions(robot, state_from_object['robot'].kinematic_config, options=options)
     if debug:
         wait_for_user()
     return in_collision
@@ -49,9 +52,11 @@ def main():
                         help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
     parser.add_argument('--plan_summary', action='store_true', help='Give a summary of currently found plans.')
     parser.add_argument('--verify_plan', action='store_true', help='Collision check found trajectories.')
-    parser.add_argument('--seq_i', type=int, default=0, help='sequence index to start from, default to 0 (i.e. check all).')
-    parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
+    #
+    parser.add_argument('--seq_i', type=int, default=0, help='sequence index to start from, default to 0.')
     parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
+    parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
+    #
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     parser.add_argument('--debug', action='store_true', help='debug mode.')
@@ -62,7 +67,7 @@ def main():
 
     process = parse_process(args.problem, subdir=args.problem_subdir)
 
-    result_path = get_process_path(args.problem, subdir='results')
+    result_path = get_process_path(args.problem, subdir=args.problem_subdir)
     if args.plan_summary:
         ext_movement_path = os.path.dirname(result_path)
         cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
@@ -117,7 +122,7 @@ def main():
 
     options = {
         # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
-        'distance_threshold' : 0.0012,
+        'distance_threshold' : 0.0025,
         # * buffering distance, If the distance between objects exceeds this maximum distance, no points may be returned.
         'max_distance' : 0.0,
         # * If target_configuration is different from the target_frame by more that this amount at flange center, a warning will be raised.
@@ -137,13 +142,15 @@ def main():
 
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
 
-
     movement_need_fix = []
     for beam_id in beam_ids:
         seq_i = process.assembly.sequence.index(beam_id)
         if not args.id_only:
             print('='*20)
             cprint('(Seq#{}) Beam {}'.format(seq_i, beam_id), 'yellow')
+        if args.debug:
+            process.get_movement_summary_by_beam_id(beam_id)
+
         all_movements = process.get_movements_by_beam_id(beam_id)
         for i, m in enumerate(all_movements):
             if args.id_only and m.movement_id != args.id_only:
@@ -176,30 +183,32 @@ def main():
                         )
 
                 cprint('Start State:', 'blue')
-                in_collision |= check_state_collisions_among_objects(client, robot, process, start_state, options=options)
-                cprint('Start State in collision: {}.'.format(in_collision), 'red' if in_collision else 'green')
+                start_in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
+                in_collision |= start_in_collision
+                cprint('Start State in collision: {}.'.format(start_in_collision), 'red' if start_in_collision else 'green')
                 print('#'*20)
 
                 if args.verify_plan:
                     pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
                     if m.trajectory:
+                        # print(client._print_object_summary())
                         prev_conf = start_conf
                         for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
                             if not jpt.joint_names:
                                 jpt.joint_names = joint_names
                             if args.traj_collision:
+                                # with WorldSaver():
                                 in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
-                            # TODO check in-between polylines of attached tool and obstacles
-                            # https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA/edit#heading=h.e7a8kr2734k2
+                                # in_collision |= client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
 
                             if prev_conf and compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True):
-                                print('Up | traj point #{}'.format(conf_id))
+                                print('Up | traj point #{}/{}'.format(conf_id, len(m.trajectory.points)))
                                 print('='*10)
                                 joint_flip |= True
                             prev_conf = jpt
-                        cprint('Trajectory in trouble: {}.'.format(in_collision or joint_flip), 'red' if in_collision or joint_flip else 'green')
-                        # if in_collision or joint_flip:
-                        #     wait_for_user()
+                        cprint('Trajectory in trouble: in_collision {} | joint_flip {}'.format(in_collision, joint_flip), 'red' if in_collision or joint_flip else 'green')
+                        if in_collision or joint_flip:
+                            wait_for_user()
                     else:
                         no_traj = True
                         cprint('No trajectory found!', 'red')
@@ -207,8 +216,9 @@ def main():
                     print('#'*20)
 
                 cprint('End State:', 'blue')
-                in_collision |= check_state_collisions_among_objects(client, robot, process, end_state, options=options)
-                cprint('End State in collision: {}.'.format(in_collision), 'red' if in_collision else 'green')
+                end_in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
+                in_collision |= end_in_collision
+                cprint('End State in collision: {}.'.format(end_in_collision), 'red' if end_in_collision else 'green')
                 print('#'*20)
 
                 if temp_name in client.extra_disabled_collision_links:

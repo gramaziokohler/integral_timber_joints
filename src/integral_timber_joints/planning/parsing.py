@@ -94,7 +94,7 @@ def save_process(_process, save_path, include_traj_in_process=False, indent=None
         json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
 
 def save_process_and_movements(process_name, _process, _movements,
-    overwrite=False, include_traj_in_process=False, indent=None, save_temp=False):
+    overwrite=False, include_traj_in_process=False, indent=None, save_temp=False, save_temp_process=False):
     """[summary]
 
     Parameters
@@ -118,51 +118,40 @@ def save_process_and_movements(process_name, _process, _movements,
     if not _movements:
         return
 
-    process = deepcopy(_process)
-    movements = deepcopy(_movements)
-
     process_file_path = get_process_path(process_name, '.')
-    process_dir = DESIGN_DIR
-    if not overwrite:
-        process_fname = os.path.basename(process_file_path)
-        # time_stamp = get_date()
-        save_dir = 'results'
-        process_dir = os.path.join(process_dir, save_dir)
-        # * make paths
-        if not os.path.exists(process_dir):
-            os.makedirs(process_dir)
-        process_file_path = os.path.join(process_dir, process_fname)
+    process_fname = os.path.basename(process_file_path)
+    if not save_temp:
+        process_dir = DESIGN_DIR
+        if not overwrite:
+            # time_stamp = get_date()
+            save_dir = 'results'
+            process_dir = os.path.join(process_dir, save_dir)
+            # * make paths
+            if not os.path.exists(process_dir):
+                os.makedirs(process_dir)
+    else:
+        process_dir = os.path.join(DESIGN_DIR, TEMP_SUBDIR)
+    process_file_path = os.path.join(process_dir, process_fname)
 
     movement_dir = os.path.join(process_dir, 'movements')
     if not os.path.exists(movement_dir):
         os.makedirs(movement_dir)
 
-    for m in movements:
+    for m in _movements:
         m_file_path = os.path.abspath(os.path.join(process_dir, m.filepath))
         with open(m_file_path, 'w') as f:
             json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)
     print('---')
-    cprint('#{} movements written to {}'.format(len(movements), os.path.abspath(movement_dir)), 'green')
+    cprint('#{} movements written to {}'.format(len(_movements), os.path.abspath(movement_dir)), 'green')
 
+    process = deepcopy(_process)
     if not include_traj_in_process:
         for m in process.movements:
             if isinstance(m, RoboticMovement):
                 m.trajectory = None
-
     with open(process_file_path, 'w') as f:
         json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
     print('---')
     cprint('Process written to {}'.format(process_file_path), 'green')
-
-    if save_temp:
-        temp_dir = os.path.join(DESIGN_DIR, TEMP_SUBDIR)
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
-        temp_process_file_path = get_process_path(process_name, TEMP_SUBDIR)
-        with open(temp_process_file_path, 'w') as f:
-            json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
-        print('---')
-        cprint('(extra copy) Process written to {}'.format(temp_process_file_path), 'green')
-
 
 ##########################################

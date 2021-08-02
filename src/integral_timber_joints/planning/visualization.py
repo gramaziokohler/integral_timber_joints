@@ -38,7 +38,7 @@ def rfl_camera(scale=1e-3):
 
 ################################################
 
-def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
+def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step_duration=0.1):
     """[summary]
 
     Parameters
@@ -56,12 +56,12 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
     from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
     if not has_gui():
         return
-    print('===')
-    cprint('Viz:')
     start_state = process.get_movement_start_state(m)
     with LockRenderer():
         set_state(client, robot, process, start_state)
     if isinstance(m, RoboticMovement):
+        print('===')
+        cprint('Viz:')
         if m.trajectory is not None:
             cprint(m.short_summary, 'green')
             for jt_traj_pt in m.trajectory.points:
@@ -71,12 +71,13 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True):
                 if step_sim:
                     wait_if_gui('Step conf.')
                 else:
-                    wait_for_duration(0.1)
+                    wait_for_duration(step_duration)
         else:
             has_start_conf = process.movement_has_start_robot_config(m)
             has_end_conf = process.movement_has_end_robot_config(m)
             cprint('No traj found for {}\n -- has_start_conf {}, has_end_conf {}'.format(m.short_summary,
                 has_start_conf, has_end_conf), 'yellow')
+            wait_if_gui()
     end_state = process.get_movement_end_state(m)
     with LockRenderer():
         set_state(client, robot, process, end_state)

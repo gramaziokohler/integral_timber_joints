@@ -1,3 +1,4 @@
+import sys
 from numpy import deg2rad, rad2deg
 from termcolor import cprint
 from plyer import notification
@@ -5,7 +6,7 @@ from plyer import notification
 from compas_fab.robots import Configuration, JointTrajectory, JointTrajectoryPoint, Duration
 
 # in meter, used for frame comparison
-FRAME_TOL = 1e-4
+FRAME_TOL = 0.001
 
 ##########################################
 
@@ -29,23 +30,27 @@ def convert_rfl_robot_conf_unit(conf_vals, length_scale=1e-3, angle_unit='rad'):
 ##########################################
 
 def reverse_trajectory(traj):
+    if traj is None:
+        return traj
     jt_traj_pts = []
     joint_names = traj.points[0].joint_names
     for i, conf in enumerate(traj.points[::-1]):
-        jt_traj_pt = JointTrajectoryPoint(values=conf.values, types=conf.types, time_from_start=Duration(i*1,0))
+        jt_traj_pt = JointTrajectoryPoint(conf.joint_values, conf.joint_types, time_from_start=Duration(i*1,0))
         jt_traj_pt.joint_names = conf.joint_names
         jt_traj_pts.append(jt_traj_pt)
     return JointTrajectory(trajectory_points=jt_traj_pts, joint_names=joint_names,
         start_configuration=jt_traj_pts[0], fraction=1.0)
 
 def merge_trajectories(trajs):
-    assert len(trajs) > 1
+    # assert len(trajs) > 1
     jt_traj_pts = []
     joint_names = trajs[0].points[0].joint_names
     cnt = 0
     for traj in trajs:
+        if not traj:
+            continue
         for conf in traj.points:
-            jt_traj_pt = JointTrajectoryPoint(values=conf.values, types=conf.types, time_from_start=Duration(cnt,0))
+            jt_traj_pt = JointTrajectoryPoint(conf.joint_values, conf.joint_types, time_from_start=Duration(cnt,0))
             jt_traj_pt.joint_names = conf.joint_names
             jt_traj_pts.append(jt_traj_pt)
             cnt += 1
@@ -63,15 +68,17 @@ def notify(msg=''):
     msg : str, optional
         message content, by default ''
     """
-    try:
-        notification.notify(
-            title='itj_planning',
-            message=msg,
-            app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
-            timeout=2,  # seconds
-        )
-    except ImportError:
-        cprint(msg, 'yellow')
+    if 'ipykernel' not in sys.modules:
+        try:
+            notification.notify(
+                title='itj_planning',
+                message=msg,
+                app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
+                timeout=2,  # seconds
+            )
+        except ImportError:
+            pass
+    cprint(msg, 'yellow')
 
 def print_title(x):
     print('\n\n')
