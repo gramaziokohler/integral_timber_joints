@@ -24,8 +24,9 @@ print("> Loading Process from %s\n    Time: %sms" % (json_path_in, time.time()*1
 #########################################################################
 
 ms = time.time()*1000.0
-create_actions_from_sequence(process, verbose=False)
-print("> create_actions_from_sequence(process)\n    Time: %sms" % (time.time()*1000.0 - ms))
+for beam_id in process.assembly.sequence:
+    create_actions_from_sequence(process, beam_id, verbose=False)
+print("> create_actions_from_sequence(process, beam_id)\n    Time: %sms" % (time.time()*1000.0 - ms))
 
 ms = time.time()*1000.0
 optimize_actions_place_pick_gripper(process, verbose=False)
@@ -45,8 +46,9 @@ print("> optimize_actions_place_pick_clamp(process)\n    Time: %sms" % (time.tim
 #########################################################################
 
 ms = time.time()*1000.0
-create_movements_from_actions(process)
-print("> create_movements_from_actions(process)\n    Time: %sms" % (time.time()*1000.0 - ms))
+for beam_id in process.assembly.sequence:
+    create_movements_from_action(process, beam_id)
+print("> create_movements_from_action(process, beam_id)\n    Time: %sms" % (time.time()*1000.0 - ms))
 
 #########################################################################
 # List out actions and movements

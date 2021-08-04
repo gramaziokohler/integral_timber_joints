@@ -33,8 +33,8 @@ except:
 
 class RobotClampAssemblyProcess(Network):
 
-    from .algorithms import (assign_tools_to_actions, create_actions_from_sequence, create_movements_from_actions, debug_print_process_actions_movements,
-                             optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper)
+    from .algorithms import (assign_tools_to_actions, create_actions_from_sequence, create_movements_from_action, debug_print_process_actions_movements,
+                             optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper, assign_tool_id_to_beam_joints)
 
     # Constants for clamp jaw positions at different key positions.
     clamp_appraoch_position = 220
@@ -56,7 +56,6 @@ class RobotClampAssemblyProcess(Network):
         self.attributes['robot_toolchanger'] = None             # ToolChanger
         self.attributes['robot_wrist'] = None                   # RobotWrist
         self.attributes['robot_initial_config'] = None          # tuple(list(float), flaot)
-        self.attributes['actions'] = []                         # list[Action]
         self.attributes['pickup_station'] = None                # PickupStation
         self.attributes['beam_storage'] = None                  # BeamStorage
         self.attributes['environment_models'] = {}              # dict[str, Mesh]
@@ -120,12 +119,10 @@ class RobotClampAssemblyProcess(Network):
     @property
     def actions(self):
         # type: () -> list[Action]
+        actions = []
+        for beam_id in self.assembly.sequence:
+            actions.extend(self.assembly.get_beam_attribute(beam_id, 'actions'))
         return self.attributes['actions']
-
-    @actions.setter
-    def actions(self, value):
-        # type: (list[Action]) -> None
-        self.attributes['actions'] = value
 
     @property
     def movements(self):
@@ -1154,7 +1151,7 @@ class RobotClampAssemblyProcess(Network):
     def assign_clamp_type_to_joints(self, beam_id, verbose=True):
         """Assign clamp_types to joints based on the joint's preference and clamp availability.
 
-        If the attribute `tool_type` is already assigned, this function will not chage it.
+        If the attribute `tool_type` is already assigned, this function will not change it.
 
         State Change
         ------------

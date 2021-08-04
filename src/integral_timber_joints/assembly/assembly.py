@@ -113,6 +113,7 @@ class Assembly(Network):
             'design_guide_vector_grasp': Vector(1, 1, 1),      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
             'beam_cuts': None,                         # Beamcut objects at the start or end or anywhere on the beam. Can be empty
             'assembly_method': BeamAssemblyMethod.UNDEFINED, # AssemblyMethod determine how individual beam is assembled.
+            'actions': [],                         # List of high-level Assembly Actions
         })
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
