@@ -29,7 +29,7 @@ class CompasRobotArtist(BaseRobotModelArtist):
     def transform(self, compas_mesh, transformation):
         compas_mesh.transform(transformation)
 
-    def draw_geometry(self, geometry, name=None, color=None):
+    def create_geometry(self, geometry, name=None, color=None):
         return deepcopy(geometry)  # I think a copy would be required, to avoid screwing up stuff from the source model
 
 
