@@ -8,7 +8,7 @@ from compas_rhino.ui import CommandMenu
 # from compas_rhino.utilities import delete_objects
 from compas_rhino.utilities.objects import get_object_name, get_object_names
 
-from integral_timber_joints.assembly import Assembly
+from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint_halflap import Joint_halflap_from_beam_beam_intersection
 from integral_timber_joints.process import RobotClampAssemblyProcess
@@ -147,6 +147,62 @@ def ui_flip_beams(process):
 
         print('Beam flipped: %s (Neighbours: %s)' % (beam_id, earlier_neighbors))
 
+def show_assembly_method_color(process):
+    # Color Visualization
+    artist = get_process_artist()
+    rs.EnableRedraw(False)
+    print("Assembly Method Colour Legend:")
+    print("- Red: \t\tUndefined")
+    print("- Black: \t\tGround")
+    print("- Green: \t\tClamped")
+    print("- LightBlue: \tScrewedWithGripper")
+    print("- LightBlue: \tScrewedWithoutGripper")
+    for beam_id in process.assembly.sequence:
+        assembly_method = process.assembly.get_beam_attribute(beam_id, 'assembly_method')
+        if assembly_method == BeamAssemblyMethod.GROUND_CONTACT:
+            artist.change_interactive_beam_colour(beam_id, 'assembly_method_ground')
+        elif assembly_method == BeamAssemblyMethod.CLAMPED:
+            artist.change_interactive_beam_colour(beam_id, 'assembly_method_clamped')
+        elif assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
+            artist.change_interactive_beam_colour(beam_id, 'assembly_method_screwed_w_gripper')
+        elif assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            artist.change_interactive_beam_colour(beam_id, 'assembly_method_screwed_wo_gripper')
+        else:
+            artist.change_interactive_beam_colour(beam_id, 'assembly_method_undefined')
+    rs.EnableRedraw(True)
+
+def ui_visualize_assembly_method(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    '''Visualize beams assembly method in different colour.
+    Options for user to change assembly method.
+    Ask User to select beams.
+    '''
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+
+    show_assembly_method_color(process)
+
+    # Ask user if they want to change anything
+    while(True):
+        new_assembly_method = rs.GetString("Change Assembly Method to:", "Back", list(BeamAssemblyMethod.readable_names_dict.keys()) + ["Back"])
+        if new_assembly_method is not None and not new_assembly_method.startswith("Back"):
+            new_assembly_method = BeamAssemblyMethod.readable_names_dict[new_assembly_method]
+            # Ask user to select which to change
+            guids = rs.GetObjects('Select beams to change to %s :' % new_assembly_method, custom_filter=get_existing_beams_filter(process))
+            if guids is not None:
+                beam_ids = get_object_names(guids)
+                # Make change to all selected beams
+                for beam_id in beam_ids:
+                    old_assembly_method = assembly.get_beam_attribute(beam_id, 'assembly_method')
+                    if new_assembly_method != old_assembly_method:
+                        process.assembly.set_beam_attribute(beam_id, 'assembly_method', new_assembly_method)
+                        process.dependency.invalidate(beam_id, process.assign_clamp_type_to_joints)
+                        process.dependency.invalidate(beam_id, process.assign_gripper_to_beam)
+                        # print ('Beam(%s) change from %s to %s' % (beam_id, old_assembly_method, new_assembly_method))
+                show_assembly_method_color(process)
+        else:
+            show_assembly_color(process)
+            return
 
 def ui_change_assembly_vector(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -271,7 +327,6 @@ def show_assembly_color(process, beam_ids=None, delete_old=False, redraw=True):
     artist = get_process_artist()
     rs.EnableRedraw(False)
     for beam_id in beam_ids:
-        print (beam_id)
         if delete_old:
             artist.redraw_interactive_beam(beam_id, redraw=False)
         if process.assembly.beam_problems(beam_id):
@@ -316,6 +371,7 @@ def show_menu(process):
                 {'name': 'DeleteBeam', 'action': ui_delete_beams},
                 {'name': 'MoveAssembly', 'action': ui_orient_assembly},
                 {'name': 'FlipBeamAssemblyDirection', 'action': ui_flip_beams},
+                {'name': 'AssemblyMethod', 'action': ui_visualize_assembly_method},
                 {'name': 'RedefineAssemblyVector', 'action': ui_change_assembly_vector},
             ]
 

@@ -31,10 +31,15 @@ class BeamAssemblyMethod(object):
     SCREWED_WITH_GRIPPER = 2    # Each joint need a screwdriver.
                                 # Screwdriver information is stored in joint_attributes.
                                 # Gripper information is stored in beam_attributes.
-    SCREWED_WITHOUT_GRIPPER = 2 # Same as SCREWED_WITH_GRIPPER but one of the screwdriver is used as gripper.
+    SCREWED_WITHOUT_GRIPPER = 3 # Same as SCREWED_WITH_GRIPPER but one of the screwdriver is used as gripper.
                                 # Gripper information is stored in beam_attributes but
                                 # `gripper_type` and `gripper_id` will equal to `tool_type` and `tool_id`
-
+    readable_names_dict = {
+        "GroundContact" : GROUND_CONTACT,
+        "Clamped" : CLAMPED,
+        "ScrewedWithGripper" : SCREWED_WITH_GRIPPER,
+        "ScrewedWithoutGripper" : SCREWED_WITHOUT_GRIPPER,
+    }
 
 class Assembly(Network):
     """A data structure for discrete element assemblies.

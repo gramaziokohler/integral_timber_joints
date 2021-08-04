@@ -100,9 +100,6 @@ def delete_clamp(process):
     # Ask user which clamp to delete
     id = rs.GetString("Which clamp to delete?", "Cancel", ["Cancel"] + ids)
 
-    if id in ids:
-        print("%s is deleted" % (id))
-        process.delete_clamp(id)
 
     artist = get_process_artist()
     artist.delete_tool_in_storage(id)

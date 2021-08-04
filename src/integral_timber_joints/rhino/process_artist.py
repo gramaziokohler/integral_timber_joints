@@ -208,6 +208,11 @@ class ProcessArtist(object):
         'built_warning': (130, 20, 20),
         'neighbors': (0, 188, 212),
         'env_model': (230, 153, 0),
+        'assembly_method_undefined': (176, 65, 62), #red
+        'assembly_method_ground': (71, 51, 53), #black
+        'assembly_method_clamped': (84, 155, 135), #green
+        'assembly_method_screwed_w_gripper': (126, 178, 221),# lightblue
+        'assembly_method_screwed_wo_gripper': (68, 94, 147), # deepblue
     }
 
     key_positions = [
