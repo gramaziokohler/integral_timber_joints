@@ -4,9 +4,9 @@ The structure of integral_timber_joints library
 
 ## src
 
-The src folder contains the main `integral_timber_joints` module and other helper modules. They can installed 'in-one-go' with the default pip install. 
+The src folder contains the main `integral_timber_joints` module and other helper modules. They can installed 'in-one-go' with the default pip install.
 
-Note: This is the base folder path that is added to Python Path (for Rhino too) 
+Note: This is the base folder path that is added to Python Path (for Rhino too)
 
 ```
 ─── src
@@ -28,7 +28,7 @@ Note: This is the base folder path that is added to Python Path (for Rhino too)
     |       ├── pathplanner.py
     |       └── algorithms.py
     ├── compas_trimesh (Boolean Helper - Still a better alternative to compas_cgal)
-    |   └── boolean.py    
+    |   └── boolean.py
     ├── CV2_Animation (Image to Animation tool)
     └── geometric_blocking (Blocking Direction Calculation Helper)
 
@@ -42,7 +42,7 @@ This folder contains geometrical classes. An un-cut beam can be modelled by a `B
 - Screw Hole (Stored as a property of `Joint`)
 - `Beamcut` (Planar cut at start or end of beam)
 
-Each feature object belongs to only one beam, if two beams intersect to create a joint, each of the beams will have its own joint feature. 
+Each feature object belongs to only one beam, if two beams intersect to create a joint, each of the beams will have its own joint feature.
 
 ### Intrinsic and Extrinsic Geometric Properties
 
@@ -54,7 +54,7 @@ All features object implements `get_feature_meshes(BeamRef)` which returns the n
 
 ### Clamps and Screwdriver Attachment
 
-Joints that can be clamped or screwed will return a list of `Tools` that can be used to assemble the joint. It will also return a list of possible attachment location for the tool. For screwed joint, it returns the type of `Screw` used. 
+Joints that can be clamped or screwed will return a list of `Tools` that can be used to assemble the joint. It will also return a list of possible attachment location for the tool. For screwed joint, it returns the type of `Screw` used.
 
 ### Flip-able Joints
 
@@ -64,7 +64,7 @@ Some joints (e.g. `Joint_halflap`) which implemented `swap_faceid_to_opposite_fa
 
 ## src\integral_timber_joints\assembly
 
-`Assembly` class is a subclass of `compas.Network` and provides functions to create an assembly of Beams. 
+`Assembly` class is a subclass of `compas.Network` and provides functions to create an assembly of Beams.
 
 - Keep track of `Beam` neighbor relationships and their connecting `Joints`.
 - Keep track of assembly sequence.
@@ -79,7 +79,7 @@ Some joints (e.g. `Joint_halflap`) which implemented `swap_faceid_to_opposite_fa
 
 ### Joint Attributes
 
-- Robotic Clamp related properties (such as which clamp_type to use, clamp_id if assigned)
+- Robotic Clamp related properties (such as which tool_type to use, tool_id if assigned)
 - Robotic manipulation of clamps (storage, attach_approach, detach_approach ...)
 
 ### Assembly Class Functions
@@ -96,7 +96,7 @@ Some joints (e.g. `Joint_halflap`) which implemented `swap_faceid_to_opposite_fa
 
 The `RobotClampAssemblyProcess` class (abbreviated to `Process` class) contains all the information related to the robotic assembly of an `Assembly`. It stores all the `Tool(s)` available such as `Clamp(s)`, `Screwdriver(s)`, `Gripper(s)` and `Toolchanger`. It also contains a `RobotWrist` object for disembodied robot visualization. It can optionally store a `RobotModel` of the assembly robot (typically the RFL model, often referred to as `Robot`) for visualization purpose, although this will not be serialized.
 
-Robotic assembly related objects are also stored, such as `PickupStation`, `BeamStorage` and `EnvironmentModel`. These are defined by user using the Rhino interface and are used to compute the storage location, pickup frame and to avoid collision with assembly environment. 
+Robotic assembly related objects are also stored, such as `PickupStation`, `BeamStorage` and `EnvironmentModel`. These are defined by user using the Rhino interface and are used to compute the storage location, pickup frame and to avoid collision with assembly environment.
 
 ### Action and Movement Planning
 
@@ -111,7 +111,7 @@ The `Process` class contains functions to compute `Actions` and `Movements` for 
 
 - by an operator (such as `OperatorLoadBeamMovement`)
 - by the assembly robot (`RoboticMovement`)
-- by the robotic tools (such as `ClampsJawMovement`) 
+- by the robotic tools (such as `ClampsJawMovement`)
 - by some IO control (such as `RoboticDigitalOutput`)
 - by a sync movement of the assembly robot and the tools (such as `RoboticClampSyncLinearMovement`)
 
@@ -126,7 +126,7 @@ Typically the assembly planning process are linearly occurring in the following 
 5. List of `SceneState` computed after every Movement
 6. `State` and `RoboticMovement` pairs are passed to motion planner to create `RobotTrajectory` for `Robot`
 
-A `SceneState` dictionary (in form of `dict[str, ObjectState]`) keep track of the static properties (such as object location `Frame` and `RobotConfigutation` for `Robot` and `Tools`) of all the mutable objects in the planning scene at one single moment. It is a static snap shot of the scene. The only objects not included in the `SceneState` are `EnvironmentModels` because they are fixed and cannot be moved. 
+A `SceneState` dictionary (in form of `dict[str, ObjectState]`) keep track of the static properties (such as object location `Frame` and `RobotConfigutation` for `Robot` and `Tools`) of all the mutable objects in the planning scene at one single moment. It is a static snap shot of the scene. The only objects not included in the `SceneState` are `EnvironmentModels` because they are fixed and cannot be moved.
 
 The initial `SceneState` is defined as:
 
@@ -135,7 +135,7 @@ The initial `SceneState` is defined as:
 - Robotic `Tools` location at `ToolStorage`,  `RobotConfiguration` at initial state.
 - `Beams` location at `BeamStorage`
 
-After every `Movement`, one or more objects (`Beams`, `Tools` and `Robot`) in the scene *maybe* changed, therefore starting from the `InitialState`, an intermediate State is created after every Movement. The intermediate states contain an update location of objects based on the `Movement` . However, one important attribute – `RobotConfiguration` of the assembly `Robot` – cannot be deduced from the Movement alone, the `RobotConfiguration` is the result of running the motion planner for the given `RobotMovement`. 
+After every `Movement`, one or more objects (`Beams`, `Tools` and `Robot`) in the scene *maybe* changed, therefore starting from the `InitialState`, an intermediate State is created after every Movement. The intermediate states contain an update location of objects based on the `Movement` . However, one important attribute – `RobotConfiguration` of the assembly `Robot` – cannot be deduced from the Movement alone, the `RobotConfiguration` is the result of running the motion planner for the given `RobotMovement`.
 
 If we plan the `RoboticMovements` in the same sequence in the same order of the list of `Movements`, we could fill in the `RobotConfiguration` one after another, using the ending state of one `Movement` as the beginning state of the next `Movement`.  However, as explained later, this is not realistic. It is necessary to plan in non-sequential order and a different approach of managing the state is needed.
 

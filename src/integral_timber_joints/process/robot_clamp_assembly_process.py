@@ -11,7 +11,7 @@ from compas.rpc import Proxy
 from compas_fab.robots.configuration import Configuration
 
 from geometric_blocking import blocked
-from integral_timber_joints.assembly import Assembly
+from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry import Beam, EnvironmentModel, Joint
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
@@ -277,7 +277,7 @@ class RobotClampAssemblyProcess(Network):
     # Clamp
     # -----------------------
 
-    def get_one_clamp_by_type(self, type_name):
+    def get_one_tool_by_type(self, type_name):
         # type: (str) -> Clamp
         """Get one of the clamp that belongs to the given type"""
         for clamp in self.clamps:
@@ -285,33 +285,47 @@ class RobotClampAssemblyProcess(Network):
                 return clamp
         return None
 
-    def get_clamp_type_of_joint(self, joint_id):
+    def get_tool_type_of_joint(self, joint_id):
         # type: (tuple[str, str]) -> str
-        """Returns the clamp_type used at the joint. None, if the joint do not need a clamp"""
-        if self.assembly.get_joint_attribute(joint_id, 'clamp_used'):
-            return self.assembly.get_joint_attribute(joint_id, 'clamp_type')
+        """Returns the clamp_type used at the joint.
+        `joint_id` expects (earlier_beam_id, later_beam_id)
+
+        None, if the joint do not need a clamp (determined by assembly_method)
+        """
+        beam_id = joint_id[1] # This id is the beam to be assembled
+        if self.assembly.get_beam_attribute(beam_id, 'assembly_method') > BeamAssemblyMethod.GROUND_CONTACT:
+            return self.assembly.get_joint_attribute(joint_id, 'tool_type')
         else:
             return None
 
-    def get_clamp_of_joint(self, joint_id, position_name='clamp_wcf_final'):
+    def get_tool_of_joint(self, joint_id, position_name='clamp_wcf_final'):
         # type: (tuple[str, str], bool) -> Clamp
-        """Returns one of the clamp object being set at the position
+        """Returns the clamp object being set at the position
         specified by 'position_name', default is 'clamp_wcf_final'.
         Refering to the attached position on the beam.
+
+        If joint_attribute 'tool_id' is set, the exact tool object is returned
+        otherwise a random tool of the correct type (from 'tool_type') is returned.
 
         If 'position_name' = '', clamp frame will not be modified.
 
         Warning: This clamp object is not deep-copied.
         Modifying it will change its definition in the process.
         """
-        clamp_type = self.get_clamp_type_of_joint(joint_id)
-        clamp = self.get_one_clamp_by_type(clamp_type)
+        # Fetching the correct tool object
+        tool_id = self.assembly.get_joint_attribute(joint_id, 'tool_id')
+        if tool_id is not None and tool_id in self.tool_ids:
+            tool = self.tool(tool_id)
+        else:
+            tool_type = self.get_tool_type_of_joint(joint_id)
+            tool = self.get_one_tool_by_type(tool_type)
 
+        # Setting position
         if position_name != "":
-            clamp_wcf = self.assembly.get_joint_attribute(joint_id, position_name)
-            assert clamp_wcf is not None
-            clamp.current_frame = clamp_wcf
-        return clamp
+            tool_wcf = self.assembly.get_joint_attribute(joint_id, position_name)
+            assert tool_wcf is not None
+            tool.current_frame = tool_wcf
+        return tool
 
     def get_clamp_t0cf_at(self, joint_id, position_name):
         # type: (tuple[str, str], bool) -> Clamp
@@ -334,13 +348,6 @@ class RobotClampAssemblyProcess(Network):
 
         return tool_changer.current_frame.copy()
 
-    def get_clamp_ids_for_beam(self, beam_id):
-        # type: (str) -> tuple[str, str]
-        for neighbour_id in self.assembly.get_already_built_neighbors(beam_id):
-            joint_id = (neighbour_id, beam_id)
-            if self.assembly.get_joint_attribute(joint_id, 'clamp_used'):
-                yield joint_id
-
     def compute_jawapproach_vector_length(self, beam_id, vector_dir, min_dist=20, max_dist=150):
         # type: (str, Vector, float, float) -> Vector
         """Return a `assembly_vector_jawapproach` with correct length that will clear the clamp jaws
@@ -349,8 +356,8 @@ class RobotClampAssemblyProcess(Network):
         """
         # Compute the length of the movement to clear the clamp jaw
         clearance_length = min_dist
-        for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, '')
+        for joint_id in self.assembly.get_joint_ids_with_tools_for_beam(beam_id):
+            clamp = self.get_tool_of_joint(joint_id, '')
             clearance_length = max(clearance_length, clamp.jaw_clearance_vectors_in_wcf.length)
         clearance_length = min(max_dist, clearance_length)
 
@@ -365,8 +372,8 @@ class RobotClampAssemblyProcess(Network):
         assert design_guide_vector_jawapproach is not None
 
         # Check to see if the guide is blocked by any of the clamp jaws
-        for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
+        for joint_id in self.assembly.get_joint_ids_with_tools_for_beam(beam_id):
+            clamp = self.get_tool_of_joint(joint_id, 'clamp_wcf_final')
             if blocked(clamp.jaw_blocking_vectors_in_wcf, design_guide_vector_jawapproach.scaled(-1.0)):
                 return None
 
@@ -384,8 +391,8 @@ class RobotClampAssemblyProcess(Network):
 
         # Collect blocking vectors from attached clamps
         blocking_vectors = []
-        for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
+        for joint_id in self.assembly.get_joint_ids_with_tools_for_beam(beam_id):
+            clamp = self.get_tool_of_joint(joint_id, 'clamp_wcf_final')
             blocking_vectors += clamp.jaw_blocking_vectors_in_wcf
         # Fix rounding error for blocking vectors (Some -0.0 causes problems)
         ROUNDING_DIGITS = 10
@@ -415,8 +422,8 @@ class RobotClampAssemblyProcess(Network):
 
         # Gather blocking vectors from all clamps
         blocking_vectors = []
-        for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
+        for joint_id in self.assembly.get_joint_ids_with_tools_for_beam(beam_id):
+            clamp = self.get_tool_of_joint(joint_id, 'clamp_wcf_final')
             blocking_vectors += clamp.jaw_blocking_vectors_in_wcf
 
         # Check if either direction of the vector is free
@@ -439,7 +446,7 @@ class RobotClampAssemblyProcess(Network):
         beam_attribute 'assembly_wcf_inclampapproach' will be set.
         """
         # Exit if no clamp is needed to assemble this beam.
-        if len(list(self.get_clamp_ids_for_beam(beam_id))) == 0:
+        if len(list(self.assembly.get_joint_ids_with_tools_for_beam(beam_id))) == 0:
             return None
 
         # Compute vector with different strategies.
@@ -480,7 +487,7 @@ class RobotClampAssemblyProcess(Network):
         `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
         """
         # Exit if no clamp is needed to assemble this beam.
-        joint_ids = list(self.get_clamp_ids_for_beam(beam_id))
+        joint_ids = list(self.assembly.get_joint_ids_with_tools_for_beam(beam_id))
         if len(joint_ids) == 0:
             return ComputationalResult.ValidCanContinue
 
@@ -1147,11 +1154,11 @@ class RobotClampAssemblyProcess(Network):
     def assign_clamp_type_to_joints(self, beam_id, verbose=True):
         """Assign clamp_types to joints based on the joint's preference and clamp availability.
 
-        If the attribute `clamp_type` is already assigned, this function will not chage it.
+        If the attribute `tool_type` is already assigned, this function will not chage it.
 
         State Change
         ------------
-        This functions sets the joint attribute `clamp_type`
+        This functions sets the joint attribute `tool_type`
 
         Return
         ------
@@ -1161,27 +1168,27 @@ class RobotClampAssemblyProcess(Network):
         # Loop through all the beams and look at their previous_built neighbour.
         something_failed = False
         something_changed = False
-        for joint_id in self.get_clamp_ids_for_beam(beam_id):
-            # Do not change anything if clamp_type is already set
-            if self.assembly.get_joint_attribute(joint_id, "clamp_type") is not None:
+        for joint_id in self.assembly.get_joint_ids_with_tools_for_beam(beam_id):
+            # Do not change anything if tool_type is already set
+            if self.assembly.get_joint_attribute(joint_id, "tool_type") is not None:
                 if verbose:
-                    print("Joint (%s) clamp_type (%s) has already been set. No change made by assign_clamp_type_to_joints()." %
-                          (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
+                    print("Joint (%s) tool_type (%s) has already been set. No change made by assign_clamp_type_to_joints()." %
+                          (joint_id, self.assembly.get_joint_attribute(joint_id, "tool_type")))
                 continue
 
             # Loop through the list of clamp types requested by the joint.
-            for clamp_type in self.assembly.joint(joint_id).clamp_types:
+            for tool_type in self.assembly.joint(joint_id).clamp_types:
                 # Check if the preferred clamp exist.
-                if clamp_type in self.available_clamp_types:
-                    self.assembly.set_joint_attribute(joint_id, "clamp_type", clamp_type)
+                if tool_type in self.available_clamp_types:
+                    self.assembly.set_joint_attribute(joint_id, "tool_type", tool_type)
                     something_changed = True
 
-            if self.get_clamp_type_of_joint(joint_id) is None:
+            if self.get_tool_type_of_joint(joint_id) is None:
                 print("WARNING: Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, self.assembly.joint(joint_id).clamp_types))
                 something_failed = True
             else:
                 if verbose:
-                    print("Joint (%s) assigned clamp_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, "clamp_type")))
+                    print("Joint (%s) assigned tool_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, "tool_type")))
 
         # Return results
         if something_failed:
@@ -1200,7 +1207,7 @@ class RobotClampAssemblyProcess(Network):
         returns {'joint_id' : [attachment_frame])}]
 
         """
-        joints_with_clamps_id = self.get_clamp_ids_for_beam(beam_id)
+        joints_with_clamps_id = self.assembly.get_joint_ids_with_tools_for_beam(beam_id)
 
         results = {}
         for joint_id in joints_with_clamps_id:
@@ -1266,7 +1273,7 @@ class RobotClampAssemblyProcess(Network):
             selected_frame = choose_frame_by_guide_vector(attachment_frames, guiding_vector)
 
             # Set clamp tcp to selected_frame using set_current_frame_from_tcp()
-            clamp = self.get_clamp_of_joint(joint_id, '')
+            clamp = self.get_tool_of_joint(joint_id, '')
             if clamp is None:
                 continue
             clamp.set_current_frame_from_tcp(selected_frame)
@@ -1274,7 +1281,7 @@ class RobotClampAssemblyProcess(Network):
             # Save clamp.current_frame as 'clamp_wcf_final'
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_final', clamp.current_frame)
             # chosen_frames.append(selected_frame.copy())
-            #print ("Beam (%s) Joint (%s), we need clamp type (%s) at %s" % (beam_id, joint_id, self.get_clamp_type_of_joint(joint_id), selected_frame))
+            #print ("Beam (%s) Joint (%s), we need clamp type (%s) at %s" % (beam_id, joint_id, self.get_tool_type_of_joint(joint_id), selected_frame))
         return ComputationalResult.ValidCanContinue
 
     def compute_clamp_attachapproach_attachretract_detachapproach(self, beam_id, verbose=False):
@@ -1299,7 +1306,7 @@ class RobotClampAssemblyProcess(Network):
         `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
         `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
         """
-        joint_ids = self.assembly.get_joint_ids_of_beam_clamps(beam_id)
+        joint_ids = self.assembly.get_joint_ids_with_tools_for_beam(beam_id)
         if verbose:
             print("Beam (%s)" % beam_id)
         # Check to ensure prerequisite
@@ -1309,7 +1316,7 @@ class RobotClampAssemblyProcess(Network):
         for joint_id in joint_ids:
             if verbose:
                 print("|- Clamp at Joint (%s-%s)" % joint_id)
-            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
+            clamp = self.get_tool_of_joint(joint_id, 'clamp_wcf_final')
 
             # clamp_wcf_attachapproach is based on moveing clamp_wcf_final backwards along clamp.approach_vector
             # ------------------------------------------------------------
@@ -1365,7 +1372,7 @@ class RobotClampAssemblyProcess(Network):
         `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
 
         """
-        joint_ids = self.assembly.get_joint_ids_of_beam_clamps(beam_id)
+        joint_ids = self.assembly.get_joint_ids_with_tools_for_beam(beam_id)
         if verbose:
             print("Beam (%s)" % beam_id)
         # Check to ensure prerequisite
@@ -1375,7 +1382,7 @@ class RobotClampAssemblyProcess(Network):
         for joint_id in joint_ids:
             if verbose:
                 print("|- Clamp at Joint (%s-%s)" % joint_id)
-            clamp = self.get_clamp_of_joint(joint_id, 'clamp_wcf_final')
+            clamp = self.get_tool_of_joint(joint_id, 'clamp_wcf_final')
 
             # Moving clamp_wcf_final backwards along clamp.detachretract1_vector
             # ------------------------------------------------------------

@@ -92,7 +92,7 @@ def compute_collision_show_color(process):
 
     # Get Meshes - Clamps
     clamp_meshes = []
-    for joint_id in assembly.get_joint_ids_of_beam_clamps(selected_beam_id):
+    for joint_id in assembly.get_joint_ids_with_tools_for_beam(selected_beam_id):
         clamp_meshes.extend(artist.clamp_guids_at_position(joint_id, artist.selected_key_position.current_clamp_pos))
 
     # Get Meshes - Already Assembled Beams

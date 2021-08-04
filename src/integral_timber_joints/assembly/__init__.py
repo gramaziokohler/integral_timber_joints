@@ -1,1 +1,1 @@
-from .assembly import Assembly
+from .assembly import Assembly, BeamAssemblyMethod

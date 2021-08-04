@@ -18,6 +18,23 @@ from integral_timber_joints.geometry import Beamcut, Joint
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
 
+class BeamAssemblyMethod(object):
+    """
+    Values > GROUND_CONTACT imply assembly tools are used.
+    """
+    UNDEFINED = -1      # UNDEFINED : Default starting value when the method is not computed
+    GROUND_CONTACT = 0  # GROUND_CONTACT : no assembly tools.
+                        # final assembly vector will be hardcoded to be downwards.
+    CLAMPED = 1         # CLAMPED : All joints (with earlier neighbours) need a clamp.
+                        # Clamp information will be stored in joint_attributes.
+                        # Gripper information is stored in beam_attributes.
+    SCREWED_WITH_GRIPPER = 2    # Each joint need a screwdriver.
+                                # Screwdriver information is stored in joint_attributes.
+                                # Gripper information is stored in beam_attributes.
+    SCREWED_WITHOUT_GRIPPER = 2 # Same as SCREWED_WITH_GRIPPER but one of the screwdriver is used as gripper.
+                                # Gripper information is stored in beam_attributes but
+                                # `gripper_type` and `gripper_id` will equal to `tool_type` and `tool_id`
+
 
 class Assembly(Network):
     """A data structure for discrete element assemblies.
@@ -95,11 +112,11 @@ class Assembly(Network):
             'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
             'design_guide_vector_grasp': Vector(1, 1, 1),      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
             'beam_cuts': None,                         # Beamcut objects at the start or end or anywhere on the beam. Can be empty
+            'assembly_method': BeamAssemblyMethod.UNDEFINED, # AssemblyMethod determine how individual beam is assembled.
         })
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
             'sequence_earlier': False,
-            'clamp_used': True,
             'clamp_wcf_attachapproach1': None,      # Clamp position beforing approaching attachment point (1 happens before 2)
             'clamp_wcf_attachapproach2': None,      # Clamp position beforing approaching attachment point
             'clamp_wcf_final': None,                # Clamp position at attachment point "clamp_frame_wcf"
@@ -107,8 +124,8 @@ class Assembly(Network):
             'clamp_wcf_detachapproach': None,       # Robot Position (modeled as clamp frame) before picking up the clamp from final position.
             'clamp_wcf_detachretract1': None,       # Clamp position after assembly, retracting from attachment point (1 happens before 2)
             'clamp_wcf_detachretract2': None,       # Clamp position after assembly, retracting from attachment point
-            'clamp_type': None,
-            'clamp_id': None,
+            'tool_type': None,
+            'tool_id': None,
         })
 
     # ----------------------------
@@ -507,7 +524,7 @@ class Assembly(Network):
             if self.get_beam_attribute(beam_id, attribute_name) is not None:
                 self.get_beam_attribute(beam_id, attribute_name).transform(_transformation)
 
-        def transform_clamp_attribute_if_not_none(joint_id, attribute_name, _transformation):
+        def transform_joint_attribute_if_not_none(joint_id, attribute_name, _transformation):
             if self.get_joint_attribute(joint_id, attribute_name) is not None:
                 self.get_joint_attribute(joint_id, attribute_name).transform(_transformation)
 
@@ -522,14 +539,14 @@ class Assembly(Network):
             transform_beam_attribute_if_not_none(beam_id, 'assembly_vector_jawapproach', transformation)
             transform_beam_attribute_if_not_none(beam_id, 'design_guide_vector_jawapproach', transformation)
 
-            for clamp_id in self.get_joint_ids_of_beam_clamps(beam_id):
-                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_attachapproach1', transformation)
-                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_attachapproach2', transformation)
-                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_final', transformation)
-                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_attachretract', transformation)
-                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_detachapproach', transformation)
-                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_detachretract1', transformation)
-                transform_clamp_attribute_if_not_none(clamp_id, 'clamp_wcf_detachretract2', transformation)
+            for tool_id in self.get_joint_ids_with_tools_for_beam(beam_id):
+                transform_joint_attribute_if_not_none(tool_id, 'clamp_wcf_attachapproach1', transformation)
+                transform_joint_attribute_if_not_none(tool_id, 'clamp_wcf_attachapproach2', transformation)
+                transform_joint_attribute_if_not_none(tool_id, 'clamp_wcf_final', transformation)
+                transform_joint_attribute_if_not_none(tool_id, 'clamp_wcf_attachretract', transformation)
+                transform_joint_attribute_if_not_none(tool_id, 'clamp_wcf_detachapproach', transformation)
+                transform_joint_attribute_if_not_none(tool_id, 'clamp_wcf_detachretract1', transformation)
+                transform_joint_attribute_if_not_none(tool_id, 'clamp_wcf_detachretract2', transformation)
 
     def rotate_beam_to_align_Y_axis(self, beam_id, Y_axis_guide):
         # type: (str, Vector) -> list(str)
@@ -601,6 +618,10 @@ class Assembly(Network):
             return None
         return Transformation.from_frame_to_frame(source_frame, target_frame)
 
+    # --------------------------------------------
+    # Joints and Neighbours
+    # --------------------------------------------
+
     def get_joints_of_beam_connected_to_already_built(self, beam_id):
         # type: (str, bool) -> list[tuple[str,str]]
         """Return the joints ids (beam_id, neighbor_id) that are connected to already-assembled beams
@@ -608,22 +629,6 @@ class Assembly(Network):
         sequence_i_of_beam = self.get_beam_sequence(beam_id)
         return [(beam_id, neighbor_id) for neighbor_id in self.get_already_built_neighbors(beam_id)]
 
-    def get_joint_ids_of_beam_clamps(self, beam_id, clamping_this_beam=True):
-        # type: (str, bool) -> list[tuple[str,str]]
-        """Return the list [joint_id] of clamps related to the beam_id.
-        - If clamping_this_beam == True, clamps attached to already built neighbours, that will clamp the selected beam(beam_id)
-        - If clamping_this_beam == False, clamps are attached to beam(beam_id) for the assembly of later beams
-
-        Note
-        ----
-        The returned joint_id has get_joint_attribute(joint_id, 'clamp_used') == True
-        """
-        # The if statement checkes if the joint attribute 'clamp_used' == True
-        if clamping_this_beam:
-            return [(neighbour_id, beam_id) for neighbour_id in self.get_already_built_neighbors(beam_id) if self.get_joint_attribute((neighbour_id, beam_id), 'clamp_used') == True]
-            # return [joint_id for joint_id in self.get_reverse_joint_ids_of_beam(beam_id) if self.get_joint_attribute(joint_id, 'clamp_used') == True]
-        else:
-            return [(beam_id, neighbour_id) for neighbour_id in self.get_unbuilt_neighbors(beam_id) if self.get_joint_attribute((beam_id, neighbour_id), 'clamp_used') == True]
 
     def get_already_built_beams(self, beam_id):
         # type: (str) -> list[str]
@@ -644,6 +649,21 @@ class Assembly(Network):
         # The if statement checkes if the joint attribute 'sequence_earlier' == False
         this_beam_sequence = self.get_beam_sequence(beam_id)
         return [neighbor_id for neighbor_id in self.neighbors_out(beam_id) if self.get_beam_sequence(neighbor_id) > this_beam_sequence]
+
+    # --------------------------------------------
+    # Assembly Tools and Neighbours
+    # --------------------------------------------
+
+    def get_joint_ids_with_tools_for_beam(self, beam_id):
+        # type: (str) -> list[tuple[str, str]]
+        """Returning all the joint_ids on the given beam that require assembly tool.
+        """
+        if self.get_beam_attribute(beam_id, 'assembly_method') <= BeamAssemblyMethod.GROUND_CONTACT:
+            return []
+
+        for neighbour_id in self.get_already_built_neighbors(beam_id):
+            joint_id = (neighbour_id, beam_id)
+            yield joint_id
 
     # -------------------------------------
     # Computing joints and joint directions
@@ -711,7 +731,7 @@ class Assembly(Network):
         self.beam(neighbour_id).cached_mesh = None
 
     # -----------------------
-    # Advanced Algorithms
+    # Assembly Directions
     # -----------------------
 
     def compute_all_assembly_direction_from_joints_and_sequence(self, assembly_vector_if_no_joint=None, beam_in_jaw_position_gap_offset=None):

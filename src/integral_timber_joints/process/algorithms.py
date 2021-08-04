@@ -7,6 +7,9 @@ except:
 import itertools
 from copy import deepcopy
 
+import compas
+import compas_fab
+
 from compas.geometry import Frame
 
 from integral_timber_joints.assembly import Assembly
@@ -15,6 +18,7 @@ from integral_timber_joints.process.action import *
 from integral_timber_joints.process.movement import *
 from integral_timber_joints.process.state import ObjectState
 from integral_timber_joints.tools import Clamp, Gripper, Tool
+
 
 ###############################################
 # Algorithms that concerns the entire process
@@ -54,14 +58,14 @@ def create_actions_from_sequence(process, verbose=True):
 
         # move clamps from storage to structure
         # joint_id_of_clamps = assembly.get_joints_of_beam_connected_to_already_built(beam_id)
-        joint_id_of_clamps = assembly.get_joint_ids_of_beam_clamps(beam_id)
+        joint_id_of_clamps = assembly.get_joint_ids_with_tools_for_beam(beam_id)
 
         for joint_id in joint_id_of_clamps:
-            clamp_type = assembly.get_joint_attribute(joint_id, "clamp_type")
-            actions.append(PickClampFromStorageAction(seq_n, act_n(), clamp_type))
+            tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
+            actions.append(PickClampFromStorageAction(seq_n, act_n(), tool_type))
             if verbose:
                 print('|- ' + actions[-1].__str__())
-            actions.append(PlaceClampToStructureAction(seq_n, act_n(), joint_id, clamp_type))
+            actions.append(PlaceClampToStructureAction(seq_n, act_n(), joint_id, tool_type))
             if verbose:
                 print('|- ' + actions[-1].__str__())
 
@@ -95,11 +99,11 @@ def create_actions_from_sequence(process, verbose=True):
 
         # remove clamps from structure to storage
         for joint_id in joint_id_of_clamps:
-            clamp_type = assembly.get_joint_attribute(joint_id, "clamp_type")
-            actions.append(PickClampFromStructureAction(seq_n, act_n(), joint_id, clamp_type))
+            tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
+            actions.append(PickClampFromStructureAction(seq_n, act_n(), joint_id, tool_type))
             if verbose:
                 print('|- ' + actions[-1].__str__())
-            actions.append(PlaceClampToStorageAction(seq_n, act_n(), clamp_type))
+            actions.append(PlaceClampToStorageAction(seq_n, act_n(), tool_type))
             if verbose:
                 print('|- ' + actions[-1].__str__())
 
@@ -167,7 +171,7 @@ def assign_tools_to_actions(process, verbose=True):
             if (action.tool_type != tool_at_robot.type_name):
                 raise Exception("Detach action action.tool_type (%s) inconsistant with tool_at_robot.type_name (%s)" % (action.tool_type, tool_at_robot.type_name))
             action.tool_id = tool.name
-            process.assembly.set_joint_attribute(action.joint_id, 'clamp_id', tool.name)
+            process.assembly.set_joint_attribute(action.joint_id, 'tool_id', tool.name)
             clamps_on_structure[action.joint_id] = tool
             tool_at_robot = None
 

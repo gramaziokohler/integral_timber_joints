@@ -331,7 +331,7 @@ class ProcessArtist(object):
         # update selected_key_position whether current_beam_has_clamps
         if beam_id is not None:
             self.selected_key_position.current_beam_has_clamps = len(
-                self.process.assembly.get_joint_ids_of_beam_clamps(beam_id)) > 0
+                self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id)) > 0
 
     def select_next_beam(self):
         # type: () -> str
@@ -739,7 +739,7 @@ class ProcessArtist(object):
         rs.EnableRedraw(False)
         # clamp_id == joint_id
         # Loop through all clamps that are clamping this beam
-        for joint_id in self.process.assembly.get_joint_ids_of_beam_clamps(beam_id, clamping_this_beam=True):
+        for joint_id in self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
             # Loop through each position
             for clamp_position in ProcessKeyPosition.clamp_positions:
                 # If not delete_old, and there are already items drawn, we preserve them.
@@ -766,7 +766,7 @@ class ProcessArtist(object):
                 # Draw Clamp
                 if verbose:
                     print("Drawing Clamp(%s) for Beam(%s) in position: %s" % (joint_id, beam_id, clamp_position))
-                clamp = self.process.get_clamp_of_joint(joint_id, attribute_name)
+                clamp = self.process.get_tool_of_joint(joint_id, attribute_name)
 
                 # Set Tool State (better visualization)
                 for state in tool_states:
@@ -806,7 +806,7 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
-    def show_clamp_at_one_position(self, beam_id, position=None, clamping_this_beam=True, color = None):
+    def show_clamp_at_one_position(self, beam_id, position=None, color = None):
         """ Show Gripper only at the specified position.
 
         `position` is the position attribute name, if left `None`,
@@ -817,7 +817,7 @@ class ProcessArtist(object):
         if position is None:
             position = self.selected_key_position.current_clamp_pos
 
-        for joint_id in self.process.assembly.get_joint_ids_of_beam_clamps(beam_id, clamping_this_beam=clamping_this_beam):
+        for joint_id in self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
             for clamp_position in ProcessKeyPosition.clamp_positions:
                 if clamp_position == position:
                     rs.ShowObject(self.clamp_guids_at_position(joint_id, clamp_position))
@@ -827,12 +827,12 @@ class ProcessArtist(object):
                 else:
                     rs.HideObject(self.clamp_guids_at_position(joint_id, clamp_position))
 
-    def hide_clamp_all_positions(self, beam_id, clamping_this_beam=True):
+    def hide_clamp_all_positions(self, beam_id):
         """ Hide all gripper instances in the specified positions.
 
         `positions` are defaulted to all position.
         """
-        self.show_clamp_at_one_position(beam_id, '', clamping_this_beam=clamping_this_beam)
+        self.show_clamp_at_one_position(beam_id, '')
 
     #################################
     # Tools in storage Visualization
@@ -1035,7 +1035,7 @@ if __name__ == "__main__":
     #     artist.draw_beam_seqtag(beam_id)
     """Draw the clamp as a block. Block name is the clamp_type"""
     for clamp_type in process.available_clamp_types:
-        clamp = process.get_one_clamp_by_type(clamp_type).copy()
+        clamp = process.get_one_tool_by_type(clamp_type).copy()
         clamp.open_gripper()
         clamp.open_clamp()
         clamp.current_frame = Frame.worldXY()

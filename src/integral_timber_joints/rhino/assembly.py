@@ -154,7 +154,7 @@ def ui_change_assembly_vector(process):
     This only works for beams with no clamps'''
     artist = get_process_artist()
     # Ask user for input
-    beams_to_exclude = [beam_id for beam_id in process.assembly.sequence if len(process.assembly.get_joint_ids_of_beam_clamps(beam_id)) > 0]
+    beams_to_exclude = [beam_id for beam_id in process.assembly.sequence if len(process.assembly.get_joint_ids_with_tools_for_beam(beam_id)) > 0]
     guids = rs.GetObjects('Select beams (with no clamps) for changing assembly vector:', custom_filter=get_existing_beams_filter(process, beams_to_exclude))
     if guids is None:
         # Quit when user press Enter without selection
