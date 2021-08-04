@@ -31,15 +31,9 @@ def compute_action(process, verbose = False):
     for beam_id in process.assembly.sequence:
         process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
 
-    # Call function to create actions
-    print ("Compute 1 of 4 - Create Actions")
-    process.create_actions_from_sequence(verbose=verbose)
-    print ("Compute 2 of 4 - Assign Tools")
-    process.assign_tools_to_actions(verbose=verbose)
+    # Optimization is not yet pully implemented
     # process.optimize_actions_place_pick_gripper()
     # process.optimize_actions_place_pick_clamp()
-    print ("Compute 3 of 4 - Create Movements")
-    process.create_movements_from_actions(verbose=verbose)
 
     # Save result to log file.
     print ("Compute 4 of 4 - Export Movements Log")

@@ -26,6 +26,17 @@ def print_sequence(process):
         message += "%i, %s\n" % (i + 1, beam_id)
     rs.EditBox(message, "Sequence (starts from 1), Beam ID", "Sequence")
 
+def print_tools(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    message = ""
+    for i, beam_id in enumerate(process.assembly.sequence):
+        message += "#%i Beam(%s)\n" % (i + 1, beam_id)
+        for joint_id in process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
+            message += "Joint(%s)" % (joint_id)
+
+    rs.EditBox(message, "Tools at Joint", "Sequence")
+
+
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -39,6 +50,8 @@ def show_menu(process):
             {'name': 'Finish', 'action': 'Exit'
              },
             {'name': 'PrintSequence', 'action': print_sequence
+             },
+            {'name': 'PrintTools', 'action': print_tools
              },
         ]
 

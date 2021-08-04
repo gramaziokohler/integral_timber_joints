@@ -27,23 +27,28 @@ class ComputationalDependency(Graph):
     Functions
     ---------
     Functions that are managed by this dependency must accept only one parameter `beam_id`.
-    Functions can assume all upstream dependent functions returned "ok" when it is being called. 
+    Functions can assume all upstream dependent functions returned "ok" when it is being called.
 
-    The function must return `ComputationalResult.ValidCanContinue` if the computation can be completed, 
+    The function must return `ComputationalResult.ValidCanContinue` if the computation can be completed,
     and the result permits dowmstream computation. If downstream is not possible, `ComputationalResult.ValidCannotContinue`
     must be returned. In either case, function will not be recomputed unless upstream function changes things.
 
     The function can return `ComputationalResult.ValidNoChange` if the computation can be completed
     but no changes are made to the state. This function is not implemented yet.
 
-    External actions (eg. action by users) can set the state of a specific beam_id using `invalidate()` or 
-    `set_solution_validity() and trigger a down stream invalidation. 
-     This will not cause all depedent function to be recomputed when next compute()    is called. 
+    External actions (eg. action by users) can set the state of a specific beam_id using `invalidate()` or
+    `set_solution_validity() and trigger a down stream invalidation.
+    This will not cause the depedent functions for the affected beam
+    to be recomputed when next compute() is called.
 
     """
 
     def __init__(self, process=None):
         # type: (integral_timber_joints.process.RobotClampAssemblyProcess) -> None
+        """The dependency for RobotClampAssemblyProcess is hardcoded here.
+        Nodes are optional, included here as list of functions for overview.
+        Every Edge (Parent, Child) contains the relationship where Parent runs before Child.
+        """
 
         super(ComputationalDependency, self).__init__()
         self.process = process
@@ -55,80 +60,76 @@ class ComputationalDependency(Graph):
         self.add_node('compute_clamp_detachretract')
         self.add_node('search_valid_jawapproach_vector_prioritizing_beam_side')
         # Level 1
+        # -------
         self.add_edge(
             'assign_clamp_type_to_joints',  # Top level
             'search_valid_clamp_orientation_with_guiding_vector'
         )
+
+
+
         # Level 2
-        self.add_edge(
-            'search_valid_clamp_orientation_with_guiding_vector',
-            'compute_clamp_attachapproach_attachretract_detachapproach'
-        )
-        self.add_edge(
-            'search_valid_clamp_orientation_with_guiding_vector',
-            'compute_clamp_detachretract'
-        )
-        self.add_edge(
-            'search_valid_clamp_orientation_with_guiding_vector',
-            'search_valid_jawapproach_vector_prioritizing_beam_side'
-        )
+        # -------
+        function_names = [
+            'compute_clamp_attachapproach_attachretract_detachapproach',
+            'compute_clamp_detachretract',
+            'search_valid_jawapproach_vector_prioritizing_beam_side',
+            ]
+        for f in function_names:
+            self.add_edge('search_valid_clamp_orientation_with_guiding_vector', f)
+
 
         # Gripper Related Computation
+        # ---------------------------
         # self.add_node('assign_gripper_to_beam')
         # Layer 1
+        # -------
         # self.add_node('compute_gripper_grasp_pose')
         self.add_edge(
             'assign_gripper_to_beam',
             'compute_gripper_grasp_pose'
         )
         # Layer 2
+        # -------
         # self.add_node('compute_pickup_location_at_corner_aligning_pickup_location')
         self.add_edge(
             'compute_gripper_grasp_pose',
             'compute_pickup_frame'
         )
         # Layer 3
+        # -------
         # Things that are based on compute_pickup_frame
-        self.add_edge(
-            'compute_pickup_frame',
-            'compute_beam_pickupretract'
-        )
-        self.add_edge(
-            'compute_pickup_frame',
-            'compute_beam_pickupapproach'
-        )
-        self.add_edge(
-            'compute_pickup_frame',
-            'compute_beam_finalretract'
-        )
-
-        # Layer compute_all
-        # - Clamp Computations
-        self.add_edge(
-            'compute_clamp_attachapproach_attachretract_detachapproach',
-            'compute_all'
-        )
-        self.add_edge(
-            'compute_clamp_detachretract',
-            'compute_all'
-        )
-        self.add_edge(
-            'search_valid_jawapproach_vector_prioritizing_beam_side',
-            'compute_all'
-        )
-        # - Gripper Computations
-        self.add_edge(
+        function_names = [
             'compute_beam_pickupretract',
-            'compute_all'
-        )
-        self.add_edge(
             'compute_beam_pickupapproach',
-            'compute_all'
-        )
-        self.add_edge(
             'compute_beam_finalretract',
-            'compute_all'
-        )
+            ]
+        for f in function_names:
+            self.add_edge('compute_pickup_frame', f)
+
+        # Compute Actions and Movements
+        # -----------------------------
+        self.add_edge('assign_clamp_type_to_joints', 'assign_tool_id_to_beam_joints')
+        self.add_edge('assign_tool_id_to_beam_joints', 'create_actions_from_sequence')
+
+        # Automatically compute all
+        terminal_function_names = [
+            # Clamp Computations
+            'compute_clamp_attachapproach_attachretract_detachapproach',
+            'compute_clamp_detachretract',
+            'search_valid_jawapproach_vector_prioritizing_beam_side',
+            # Gripper Computations
+            'compute_beam_pickupretract',
+            'compute_beam_pickupapproach',
+            'compute_beam_finalretract',
+            # Actions
+            'create_actions_from_sequence',
+            ]
+
+        for f in terminal_function_names:
+            self.add_edge(f, 'create_movements_from_action')
+
+        self.add_edge('create_movements_from_action', 'compute_all')
 
         if self.process is not None and self.process.assembly is not None:
             for beam_id in self.process.assembly.beam_ids():
@@ -146,7 +147,7 @@ class ComputationalDependency(Graph):
 
     def get_solution_validity(self, beam_id, fx):
         # type: (str, function) -> int
-        """Checks the given computation if it is valid 
+        """Checks the given computation if it is valid
         Invalid means a recompute is needed.
         Does not perform recursive check upstream.
         """
@@ -182,7 +183,7 @@ class ComputationalDependency(Graph):
         The validity of rest of the dependency chain will be set to False.
 
         Returns
-        ------- 
+        -------
         True if all the computations upstream and the specified functions are completed.
         """
         fx_name = fx.__name__

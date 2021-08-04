@@ -49,12 +49,12 @@ def save_process_less(process):
 
     if recompute_actions_states == "Yes":
         # Recompute Actions Movements
-        process_copied.create_actions_from_sequence(verbose=False)
-        process_copied.assign_tools_to_actions(verbose=False)
+        # process_copied.create_actions_from_sequence(verbose=False)
+        # process_copied.assign_tools_to_actions(verbose=False)
         # I havent tried these optimization features so far but worth trying
         # process.optimize_actions_place_pick_gripper()
         # process.optimize_actions_place_pick_clamp()
-        process_copied.create_movements_from_actions(verbose=False)
+        # process_copied.create_movements_from_action(verbose=False)
 
         # Compute States
         process_copied.compute_initial_state()
