@@ -656,10 +656,10 @@ class Assembly(Network):
 
     def get_joint_ids_with_tools_for_beam(self, beam_id):
         # type: (str) -> list[tuple[str, str]]
-        """Returning all the joint_ids on the given beam that require assembly tool.
+        """Generator returning all the joint_ids on the given beam that require assembly tool.
         """
         if self.get_beam_attribute(beam_id, 'assembly_method') <= BeamAssemblyMethod.GROUND_CONTACT:
-            return []
+            return
 
         for neighbour_id in self.get_already_built_neighbors(beam_id):
             joint_id = (neighbour_id, beam_id)

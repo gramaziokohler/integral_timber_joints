@@ -330,8 +330,8 @@ class ProcessArtist(object):
         self._selected_beam_id = beam_id
         # update selected_key_position whether current_beam_has_clamps
         if beam_id is not None:
-            self.selected_key_position.current_beam_has_clamps = len(
-                self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id)) > 0
+            self.selected_key_position.current_beam_has_clamps = len(list(
+                self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id))) > 0
 
     def select_next_beam(self):
         # type: () -> str
