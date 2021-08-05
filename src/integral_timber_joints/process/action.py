@@ -164,10 +164,10 @@ class AttachBeamAction(RobotIOAction):
     For path planning purpose, both workpiece and tool is attached to robot.
     """
 
-    def __init__(self, beam_id=None):
-        # type: (str) -> None
+    def __init__(self, beam_id=None, gripper_id=None):
+        # type: (str, str) -> None
         self.beam_id = beam_id
-        self.gripper_id = None
+        self.gripper_id = gripper_id
 
     @property
     def data(self):
@@ -188,10 +188,10 @@ class DetachBeamAction(RobotIOAction):
     For example: PlaceBeamWithClampAction, PlaceBeamWithoutClampAction
     """
 
-    def __init__(self, beam_id=None):
-        # type: (str) -> None
+    def __init__(self, beam_id=None, gripper_id=None):
+        # type: (str, str) -> None
         self.beam_id = beam_id
-        self.gripper_id = None
+        self.gripper_id = gripper_id
 
     @property
     def data(self):
@@ -247,10 +247,10 @@ class LoadBeamAction(OperatorAction):
 
 
 class PickToolFromStorageAction(RobotAction, AttachToolAction):
-    def __init__(self, seq_n=0, act_n=0, tool_type=None):
+    def __init__(self, seq_n=0, act_n=0, tool_type=None, tool_id = None):
         # type: (str, int , int, str) -> None
         RobotAction.__init__(self)
-        AttachToolAction.__init__(self, tool_type)
+        AttachToolAction.__init__(self, tool_type, tool_id)
         self.seq_n = seq_n
         self.act_n = act_n
 
@@ -259,10 +259,10 @@ class PickToolFromStorageAction(RobotAction, AttachToolAction):
 
 
 class PlaceToolToStorageAction(RobotAction, DetachToolAction):
-    def __init__(self, seq_n=0, act_n=0, tool_type=None):
+    def __init__(self, seq_n=0, act_n=0, tool_type=None, tool_id = None):
         # type: (str, int , int, str) -> None
         RobotAction.__init__(self)
-        DetachToolAction.__init__(self, tool_type)
+        DetachToolAction.__init__(self, tool_type, tool_id)
         self.seq_n = seq_n
         self.act_n = act_n
 
@@ -461,10 +461,10 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
 
 
 class PickClampFromStructureAction(RobotAction, AttachToolAction):
-    def __init__(self, seq_n=0, act_n=0, joint_id=None, tool_type=None):
-        # type: (int, int, tuple[str, str], str) -> None
+    def __init__(self, seq_n=0, act_n=0, joint_id=None, tool_type=None, tool_id=None):
+        # type: (int, int, tuple[str, str], str, str) -> None
         RobotAction.__init__(self)
-        AttachToolAction.__init__(self, tool_type)
+        AttachToolAction.__init__(self, tool_type, tool_id)
         self.seq_n = seq_n
         self.act_n = act_n
         self.joint_id = joint_id
@@ -538,10 +538,10 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
 
 
 class PlaceClampToStructureAction(RobotAction, DetachToolAction):
-    def __init__(self, seq_n=0, act_n=0, joint_id=None, tool_type=None):
-        # type: (int, int, tuple[str, str], str) -> None
+    def __init__(self, seq_n=0, act_n=0, joint_id=None, tool_type=None, tool_id=None):
+        # type: (int, int, tuple[str, str], str, str) -> None
         RobotAction.__init__(self)
-        DetachToolAction.__init__(self, tool_type)
+        DetachToolAction.__init__(self, tool_type, tool_id)
         self.seq_n = seq_n
         self.act_n = act_n
         self.joint_id = joint_id
@@ -610,10 +610,10 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
 
 
 class BeamPickupAction(RobotAction, AttachBeamAction):
-    def __init__(self, seq_n=0, act_n=0, beam_id=None):
-        # type: (str, int , int, str) -> None
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None):
+        # type: (str, int , int, str, str) -> None
         RobotAction.__init__(self)
-        AttachBeamAction.__init__(self, beam_id)
+        AttachBeamAction.__init__(self, beam_id, gripper_id)
         self.seq_n = seq_n
         self.act_n = act_n
 
@@ -662,10 +662,10 @@ class BeamPickupAction(RobotAction, AttachBeamAction):
 
 
 class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
-    def __init__(self, seq_n=0, act_n=0, beam_id=None):
-        # type: (int, int, tuple[str, str]) -> None
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None):
+        # type: (int, int, tuple[str, str], str) -> None
         RobotAction.__init__(self)
-        DetachBeamAction.__init__(self, beam_id)
+        DetachBeamAction.__init__(self, beam_id, gripper_id)
         self.seq_n = seq_n
         self.act_n = act_n
 
@@ -711,14 +711,17 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
 
 
 class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
-    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[]):
-        # type: (int, int, str, list[tuple[str, str]]) -> None
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, clamp_ids=None):
+        # type: (int, int, str, list[tuple[str, str]], str, str) -> None
         RobotAction.__init__(self)
-        DetachBeamAction.__init__(self, beam_id)
+        DetachBeamAction.__init__(self, beam_id, gripper_id)
         self.seq_n = seq_n
         self.act_n = act_n
         self.joint_ids = joint_ids  # type: list[tuple[str, str]]
-        self.clamp_ids = [None for _ in joint_ids]  # type: list[str]
+        if clamp_ids is None:
+            self.clamp_ids = [None for _ in joint_ids]  # type: list[str]
+        else:
+            self.clamp_ids = clamp_ids
 
     @property
     def data(self):

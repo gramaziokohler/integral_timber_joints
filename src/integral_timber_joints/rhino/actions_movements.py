@@ -14,7 +14,7 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none, get_activedoc_path_no_ext
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, StackedPickupStation
-from integral_timber_joints.process.dependency import ComputationalDependency
+from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 
 
 def reset_dependency_graph(process):
@@ -23,31 +23,32 @@ def reset_dependency_graph(process):
     print("Dependency graph is reset.")
 
 
-def compute_action(process, verbose = False):
-    # type: (RobotClampAssemblyProcess, bool) -> None
-    """User triggered function to compute Actions from Assembly Sequence
-    """
-    # Make sure everything is computed and nothing is missing
-    for beam_id in process.assembly.sequence:
-        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
-
-    # Optimization is not yet pully implemented
-    # process.optimize_actions_place_pick_gripper()
-    # process.optimize_actions_place_pick_clamp()
-
-    # Save result to log file.
-    print ("Compute 4 of 4 - Export Movements Log")
-    log_file_path = get_activedoc_path_no_ext() + "_process.log"
-    process.debug_print_process_actions_movements(log_file_path)
-    print ("Compute Action Completed")
-
-
 def compute_states(process):
     # type: (RobotClampAssemblyProcess) -> None
     """User triggered function to compute Actions from Assembly Sequence
     """
+    # Optimization is not yet pully implemented
+    # process.optimize_actions_place_pick_gripper()
+    # process.optimize_actions_place_pick_clamp()
+
+    # Make sure everything is computed and nothing is missing
+    invalid_beams = []
+    for beam_id in process.assembly.sequence:
+        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+        if not process.dependency.get_solution_validity(beam_id, process.compute_all) in ComputationalResult.ValidResults:
+            invalid_beams.append(beam_id)
+    if len(invalid_beams) > 0:
+        print("Warning: The following beams are not yet computationally valid:" % invalid_beams)
+        print("Export cannnot continue.")
+        return
+
+    # Save action description to log file.
+    log_file_path = get_activedoc_path_no_ext() + "_process.log"
+    process.debug_print_process_actions_movements(log_file_path)
+    print ("Action Log saved to: %s" % log_file_path)
 
     # Call function to create actions
+    process.assign_unique_action_numbers()
     process.compute_initial_state()
     process.compute_intermediate_states(verbose=False)
 
@@ -60,7 +61,15 @@ def compute_states(process):
 
 
 def remove_actions(process):
-    process.actions = []
+    # type: (RobotClampAssemblyProcess) -> None
+
+    for beam_id in process.assembly.sequence:
+        process.assembly.set_beam_attribute(beam_id, 'actions', [])
+        process.dependency.invalidate(beam_id, process.create_actions_from_sequence)
+
+    # Legacy file process level actions removal
+    if 'actions' in process.attributes: process.attributes.pop('actions')
+
     print ("Actions and states Removed")
 
 def not_implemented(process):
@@ -84,8 +93,6 @@ def show_menu(process):
                 {'name': 'Finish', 'action': 'Exit'
                  },
                 {'name': 'ResetDependencyGraph', 'action': reset_dependency_graph
-                 },
-                {'name': 'ComputeActions', 'action': compute_action
                  },
                 {'name': 'ComputeStates', 'action': compute_states
                  },

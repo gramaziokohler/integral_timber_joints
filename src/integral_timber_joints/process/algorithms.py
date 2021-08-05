@@ -23,14 +23,14 @@ from integral_timber_joints.process.dependency import ComputationalResult
 
 ###############################################
 # Beam level functions (as used in auto update)
-# #############################################
+###############################################
 
 def assign_tool_id_to_beam_joints(process, beam_id, verbose=True):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
     """Assign available tool_ids to joints that require assembly tool.
     Based on the joint attribute `tool_type`
     """
-    available_tools = sorted(process.clamps, key = lambda tool:tool.name)
+    available_tools = sorted(process.clamps, key=lambda tool: tool.name)
     something_failed = False
     something_changed = False
 
@@ -50,7 +50,7 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=True):
                 process.assembly.set_joint_attribute(joint_id, 'tool_id', tool.name)
                 something_changed = True
         else:
-            print ("Warning: Tool Type %s Not available for joint %s" % (tool_type, joint_id))
+            print("Warning: Tool Type %s Not available for joint %s" % (tool_type, joint_id))
             something_failed = True
 
     # Return results
@@ -61,6 +61,7 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=True):
             return ComputationalResult.ValidCanContinue
         else:
             return ComputationalResult.ValidNoChange
+
 
 def create_actions_from_sequence(process, beam_id, verbose=True):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
@@ -73,7 +74,7 @@ def create_actions_from_sequence(process, beam_id, verbose=True):
     """
 
     assembly = process.assembly  # type: Assembly
-    actions = [] # type: List[Action]
+    actions = []  # type: List[Action]
 
     def act_n(reset=False):
         # Fuction to keep count of act_n
@@ -90,16 +91,15 @@ def create_actions_from_sequence(process, beam_id, verbose=True):
 
     # move clamps from storage to structure
     joint_id_of_clamps = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
+    clamp_ids = [assembly.get_joint_attribute(joint_id, 'clamp_id')  for joint_id in joint_id_of_clamps]
 
     for joint_id in joint_id_of_clamps:
         tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
         tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
-        actions.append(PickClampFromStorageAction(seq_n, act_n(), tool_type))
-        actions[-1].tool_id = tool_id
+        actions.append(PickClampFromStorageAction(seq_n, act_n(), tool_type, tool_id))
         if verbose:
             print('|- ' + actions[-1].__str__())
-        actions.append(PlaceClampToStructureAction(seq_n, act_n(), joint_id, tool_type))
-        actions[-1].tool_id = tool_id
+        actions.append(PlaceClampToStructureAction(seq_n, act_n(), joint_id, tool_type, tool_id))
         if verbose:
             print('|- ' + actions[-1].__str__())
 
@@ -107,46 +107,52 @@ def create_actions_from_sequence(process, beam_id, verbose=True):
 
     # attach gripper
     gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
-    actions.append(PickGripperFromStorageAction(seq_n, act_n(), gripper_type))
+    gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
+    act = PickGripperFromStorageAction(seq_n, act_n(), gripper_type, gripper_id)
+    actions.append(act)
     if verbose:
-        print('|- ' + actions[-1].__str__())
+        print('|- ' + act.__str__())
 
     # pick place beam
-    actions.append(BeamPickupAction(seq_n, act_n(), beam_id))
+    act = BeamPickupAction(seq_n, act_n(), beam_id, gripper_id)
+    actions.append(act)
     if verbose:
-        print('|- ' + actions[-1].__str__())
+        print('|- ' + act.__str__())
 
     # Syncronized clamp and move beam action
+
     if len(joint_id_of_clamps) > 0:
-        actions.append(BeamPlacementWithClampsAction(seq_n, act_n(), beam_id, joint_id_of_clamps))
+        act = BeamPlacementWithClampsAction(seq_n, act_n(), beam_id, joint_id_of_clamps, gripper_id, clamp_ids)
+        actions.append(act)
         if verbose:
-            print('|- ' + actions[-1].__str__())
+            print('|- ' + act.__str__())
     else:
-        actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n(), beam_id))
+        act = BeamPlacementWithoutClampsAction(seq_n, act_n(), beam_id, gripper_id)
+        actions.append(act)
         if verbose:
-            print('|- ' + actions[-1].__str__())
+            print('|- ' + act.__str__())
 
     # return gripper
-    actions.append(PlaceGripperToStorageAction(seq_n, act_n(), gripper_type))
+    act = PlaceGripperToStorageAction(seq_n, act_n(), gripper_type, gripper_id)
+    actions.append(act)
     if verbose:
-        print('|- ' + actions[-1].__str__())
+        print('|- ' + act.__str__())
 
     # remove clamps from structure to storage
     for joint_id in reversed(joint_id_of_clamps):
         tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
         tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
-        actions.append(PickClampFromStructureAction(seq_n, act_n(), joint_id, tool_type))
-        actions[-1].tool_id = tool_id
+        actions.append(PickClampFromStructureAction(seq_n, act_n(), joint_id, tool_type, tool_id))
         if verbose:
             print('|- ' + actions[-1].__str__())
-        actions.append(PlaceClampToStorageAction(seq_n, act_n(), tool_type))
-        actions[-1].tool_id = tool_id
+        actions.append(PlaceClampToStorageAction(seq_n, act_n(), tool_type, tool_id))
         if verbose:
             print('|- ' + actions[-1].__str__())
 
     process.assembly.set_beam_attribute(beam_id, 'actions', actions)
     # Return results
     return ComputationalResult.ValidCanContinue
+
 
 def create_movements_from_action(process, beam_id, verbose=True):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
@@ -158,10 +164,11 @@ def create_movements_from_action(process, beam_id, verbose=True):
 
     return ComputationalResult.ValidCanContinue
 
-###############################################
+#############################################################
 # Algorithms that concerns the entire process
-# Many of which require sequential parsing
-# #############################################
+# Require sequential parsing of all Actions in the process
+#############################################################
+
 
 def assign_unique_action_numbers(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
@@ -172,6 +179,7 @@ def assign_unique_action_numbers(process, verbose=True):
     for action in process.actions:
         action.act_n = act_n
         act_n += 1
+
 
 def assign_tools_to_actions(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
@@ -240,7 +248,6 @@ def assign_tools_to_actions(process, verbose=True):
             process.assembly.set_joint_attribute(action.joint_id, 'tool_id', tool.name)
             clamps_on_structure[action.joint_id] = tool
             tool_at_robot = None
-
 
         if isinstance(action, BeamPickupAction):
             if tool_at_robot is None:
@@ -353,47 +360,6 @@ def optimize_actions_place_pick_clamp(process, verbose=True):
         print("Actions removed: %s" % to_be_removed)
     to_be_removed = set(to_be_removed)
     process.actions = [action for i, action in enumerate(process.actions) if i not in to_be_removed]
-
-
-def debug_print_process_actions_movements(process, file_path=None):
-    # type: (RobotClampAssemblyProcess, Optional[str]) -> None
-    f = None
-    seq_number = None
-    if file_path is not None:
-        f = open(file_path, 'w')
-    for i, action in enumerate(process.actions):
-        # Print the separator between each beam
-        if action.seq_n != seq_number:
-            seq_number = action.seq_n
-            line = "\nBeam %s assembly\n" % process.assembly.sequence[seq_number]
-            if file_path is not None:
-                f.write(line)
-            else:
-                print(line)
-
-        # Print Action Name
-        line = "|- Action %s (%s): %s\n" % (i, action.__class__.__name__, action)
-        if file_path is not None:
-            f.write(line)
-        else:
-            print(line)
-
-        # Print Movement Name
-        for j, movement in enumerate(action.movements):
-
-            # Print Priority String
-            if movement.planning_priority < 0:
-                priority_string = 'x'
-            else:
-                priority_string = '%s' % movement.planning_priority
-
-            line = "|  |- <%s> Movement %s (%s): %s\n" % (priority_string, j, movement.__class__.__name__, movement.tag)
-            if file_path is not None:
-                f.write(line)
-            else:
-                print(line)
-    if file_path is not None:
-        f.close()
 
 
 def compute_initial_state(process, verbose=True):
@@ -525,6 +491,51 @@ def compute_intermediate_states(process, verbose=True):
                     current_state[movement.clamp_ids[i]].kinematic_config = clamp._get_kinematic_state()
             # Add the modified state to the current movement as end_state.
             movement.end_state = current_state
+
+#############################
+# Debug and Testing functions
+#############################
+
+
+def debug_print_process_actions_movements(process, file_path=None):
+    # type: (RobotClampAssemblyProcess, Optional[str]) -> None
+    f = None
+    seq_number = None
+    if file_path is not None:
+        f = open(file_path, 'w')
+    for i, action in enumerate(process.actions):
+        # Print the separator between each beam
+        if action.seq_n != seq_number:
+            seq_number = action.seq_n
+            line = "\nBeam %s assembly\n" % process.assembly.sequence[seq_number]
+            if file_path is not None:
+                f.write(line)
+            else:
+                print(line)
+
+        # Print Action Name
+        line = "|- Action %s (%s): %s\n" % (i, action.__class__.__name__, action)
+        if file_path is not None:
+            f.write(line)
+        else:
+            print(line)
+
+        # Print Movement Name
+        for j, movement in enumerate(action.movements):
+
+            # Print Priority String
+            if movement.planning_priority < 0:
+                priority_string = 'x'
+            else:
+                priority_string = '%s' % movement.planning_priority
+
+            line = "|  |- <%s> Movement %s (%s): %s\n" % (priority_string, j, movement.__class__.__name__, movement.tag)
+            if file_path is not None:
+                f.write(line)
+            else:
+                print(line)
+    if file_path is not None:
+        f.close()
 
 
 def test_process_prepathplan(json_path_in, json_path_out):

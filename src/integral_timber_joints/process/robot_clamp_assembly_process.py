@@ -33,8 +33,13 @@ except:
 
 class RobotClampAssemblyProcess(Network):
 
-    from .algorithms import (assign_tools_to_actions, create_actions_from_sequence, create_movements_from_action, debug_print_process_actions_movements,
-                             optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper, assign_tool_id_to_beam_joints)
+    # Beam level functions
+    from .algorithms import (create_actions_from_sequence, create_movements_from_action, assign_tool_id_to_beam_joints)
+
+    # Process level functions
+    from .algorithms import (assign_tools_to_actions, assign_unique_action_numbers,
+                            optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper,
+                            debug_print_process_actions_movements)
 
     # Constants for clamp jaw positions at different key positions.
     clamp_appraoch_position = 220
@@ -122,7 +127,7 @@ class RobotClampAssemblyProcess(Network):
         actions = []
         for beam_id in self.assembly.sequence:
             actions.extend(self.assembly.get_beam_attribute(beam_id, 'actions'))
-        return self.attributes['actions']
+        return actions
 
     @property
     def movements(self):
@@ -1448,6 +1453,7 @@ class RobotClampAssemblyProcess(Network):
     def get_action_by_beam_id(self, beam_id):
         # type: (str) -> list[Action]
         """ Get an ordered list of Action related to a beam"""
+
         return self.assembly.get_beam_attribute(beam_id, 'actions')
 
     def get_movements_by_beam_id(self, beam_id):
