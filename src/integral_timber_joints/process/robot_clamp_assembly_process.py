@@ -1448,7 +1448,7 @@ class RobotClampAssemblyProcess(Network):
     def get_action_by_beam_id(self, beam_id):
         # type: (str) -> list[Action]
         """ Get an ordered list of Action related to a beam"""
-        return [action for action in self.actions if self.assembly.sequence[action.seq_n] == beam_id]
+        return self.assembly.get_beam_attribute(beam_id, 'actions')
 
     def get_movements_by_beam_id(self, beam_id):
         # type: (str) -> list[Movement]
