@@ -132,7 +132,7 @@ def create_actions_from_sequence(process, beam_id, verbose=True):
         print('|- ' + actions[-1].__str__())
 
     # remove clamps from structure to storage
-    for joint_id in joint_id_of_clamps:
+    for joint_id in reversed(joint_id_of_clamps):
         tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
         tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
         actions.append(PickClampFromStructureAction(seq_n, act_n(), joint_id, tool_type))
