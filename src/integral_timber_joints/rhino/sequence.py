@@ -102,7 +102,7 @@ def show_menu(process):
         go.SetDefaultString("Enter again = MoveLater")
 
     def change_next_element():
-        """ Function invoked by user to select an element and move that sequence 
+        """ Function invoked by user to select an element and move that sequence
         to after the the active element's.
         """
         original_seq = assembly.get_beam_sequence(artist.selected_beam_id)
@@ -125,6 +125,14 @@ def show_menu(process):
             show_sequence_color(process, artist.selected_beam_id)
             rs.EnableRedraw(True)
         go.SetDefaultString("Enter again = ChangeElementAfterThis")
+
+    def change_assembly_method():
+        from integral_timber_joints.rhino.assembly import ui_change_assembly_method
+        ui_change_assembly_method(process, [artist.selected_beam_id])
+        show_sequence_color(process, artist.selected_beam_id)
+        rs.EnableRedraw(True)
+        go.SetDefaultString("Enter again = ChangeAssemblyMethod")
+
 
     def display_show_unbuilt():
         """ Function invoked by user to set displaysettings
@@ -165,6 +173,9 @@ def show_menu(process):
             if go.Option().EnglishName == "PickElementToGoAfterThis":
                 run_cmd = change_next_element
 
+            if go.Option().EnglishName == "ChangeAssemblyMethod":
+                run_cmd = change_assembly_method
+
             if go.Option().EnglishName == "DisplayShowUnbuilt":
                 run_cmd = display_show_unbuilt
 
@@ -199,6 +210,7 @@ def show_menu(process):
                 go.AddOption("MoveEarlier")
                 go.AddOption("MoveLater")
                 go.AddOption("PickElementToGoAfterThis")
+                go.AddOption("ChangeAssemblyMethod")
                 go.AddOption("DisplayShowUnbuilt")
                 go.AddOption("DisplayHideUnbuilt")
                 go.AddOption("Finish")

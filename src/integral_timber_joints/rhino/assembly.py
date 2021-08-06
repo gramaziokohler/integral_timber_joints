@@ -15,6 +15,10 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
 
+try:
+    from typing import Dict, Iterator, List, Optional, Tuple
+except:
+    pass
 
 def ui_add_beam_from_lines(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -173,11 +177,13 @@ def show_assembly_method_color(process):
     rs.EnableRedraw(True)
 
 
-def ui_change_assembly_method(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def ui_change_assembly_method(process, preselection = []):
+    # type: (RobotClampAssemblyProcess, Optional[list[str]]) -> None
     '''Visualize beams assembly method in different colour.
     Options for user to change assembly method.
     Ask User to select beams.
+
+    Preselection (beam_ids) can be supplied and allow user to only select the Assembly Method.
     '''
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
@@ -189,11 +195,16 @@ def ui_change_assembly_method(process):
         new_assembly_method = rs.GetString("Change Assembly Method to:", "Back", list(BeamAssemblyMethod.readable_names_dict.keys()) + ["Back"])
         if new_assembly_method is not None and not new_assembly_method.startswith("Back"):
             new_assembly_method = BeamAssemblyMethod.readable_names_dict[new_assembly_method]
+
             # Ask user to select which to change
-            guids = rs.GetObjects('Select beams to change to %s :' % new_assembly_method, custom_filter=get_existing_beams_filter(process))
-            if guids is not None:
-                beam_ids = get_object_names(guids)
-                # Make change to all selected beams
+            beam_ids = preselection
+            if len(beam_ids) == 0:
+                guids = rs.GetObjects('Select beams to change to %s :' % new_assembly_method, custom_filter=get_existing_beams_filter(process))
+                if guids is not None:
+                    beam_ids = get_object_names(guids)
+
+            # Make change to all selected beams
+            if len(beam_ids) > 0:
                 for beam_id in beam_ids:
                     old_assembly_method = assembly.get_assembly_method(beam_id)
                     if new_assembly_method != old_assembly_method:
@@ -213,6 +224,9 @@ def ui_change_assembly_method(process):
                         process.dependency.invalidate(beam_id, process.assign_gripper_to_beam)
                 show_assembly_method_color(process)
 
+            # Exit function if there are preselection
+            if len(preselection) > 0:
+                return
         else:
             show_assembly_color(process)
             return
