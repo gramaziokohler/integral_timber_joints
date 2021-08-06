@@ -295,7 +295,7 @@ class RobotClampAssemblyProcess(Network):
         None, if the joint do not need a clamp (determined by assembly_method)
         """
         beam_id = joint_id[1] # This id is the beam to be assembled
-        if self.assembly.assembly.get_assembly_method(beam_id) > BeamAssemblyMethod.GROUND_CONTACT:
+        if self.assembly.get_assembly_method(beam_id) > BeamAssemblyMethod.GROUND_CONTACT:
             return self.assembly.get_joint_attribute(joint_id, 'tool_type')
         else:
             return None
@@ -316,15 +316,18 @@ class RobotClampAssemblyProcess(Network):
         """
         # Fetching the correct tool object
         tool_id = self.assembly.get_joint_attribute(joint_id, 'tool_id')
+        tool_type = self.get_tool_type_of_joint(joint_id)
         if tool_id is not None and tool_id in self.tool_ids:
             tool = self.tool(tool_id)
+            # print("Getting Joint(%s) Tool %s (%s)" % (joint_id, tool_type, tool_id))
         else:
-            tool_type = self.get_tool_type_of_joint(joint_id)
             tool = self.get_one_tool_by_type(tool_type)
+            # print("Getting Joint(%s) get_one_tool_by_type Tool %s (%s)" % (joint_id, tool_type, tool_id))
 
         # Setting position
         if position_name != "":
             tool_wcf = self.assembly.get_joint_attribute(joint_id, position_name)
+            # print("Setting it to position %s = %s"  % (position_name, tool_wcf))
             assert tool_wcf is not None
             tool.current_frame = tool_wcf
         return tool
