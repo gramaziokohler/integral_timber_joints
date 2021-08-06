@@ -24,7 +24,7 @@ def polyhedron_box_from_vertices(vertices):
     Number of vertices must be even number.
     """
     assert len(vertices) % 2 == 0
-    n = len(vertices) / 2
+    n = int(len(vertices) / 2)
     faces = []
     # Top and bottom caps - triangles
     for i in range(n - 2):
