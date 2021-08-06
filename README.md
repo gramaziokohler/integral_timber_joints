@@ -69,15 +69,20 @@ git submodule update --init --recursive
 
 ### Install libraries
 
-Run this the following in terminal from the root folder of this repo.
+Run this the following in terminal from the root folder of this repo. All libraries are installed from source (in the [editable mode](https://pip.pypa.io/en/stable/reference/pip_install/#install-editable)).
 
 ```bash
+# Install the submodule libraries from source
+pip install -e .\external\compas
+pip install -e .\external\compas_fab
 pip install -e .\external\compas_fab_pychoreo
-pip install -e .\external\compas_fab_pychoreo\external\pybullet_planning
-pip install -e .
-```
 
-The first two lines will first install the two submodule libraries from source, and the last line will install `integral_timber_joints` from source (all in the [editable mode](https://pip.pypa.io/en/stable/reference/pip_install/#install-editable)).
+# install `integral_timber_joints` from source 
+pip install -e .
+
+# Run the following code add the python library paths to Rhino / Grasshopper:
+python -m compas_rhino.install -p compas compas_fab compas_ghpython roslibpy compas_rhino jsonpickle integral_timber_joints geometric_blocking
+```
 
 <!-- Note that there maybe error message from `pip` indicating version incompatibility of `compas` with `compas_fab`, this is fine.  -->
 
@@ -113,14 +118,6 @@ Install the following software:
   - [Elefront](https://www.food4rhino.com/app/elefront) (Handles clickable mesh interface)
 
 - [Openscad](https://www.openscad.org/downloads.html) (This will be running in the background. Start the software at least once after installing)
-
-## Installation (for use in Rhino)
-
-Run the following code in terminal to add them to Rhino Grasshopper Python library path:
-
-```
-python -m compas_rhino.install -p compas compas_fab compas_ghpython roslibpy compas_rhino jsonpickle integral_timber_joints geometric_blocking
-```
 
 ## Module Structure
 
