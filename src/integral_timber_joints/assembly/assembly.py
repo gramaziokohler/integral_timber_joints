@@ -34,12 +34,14 @@ class BeamAssemblyMethod(object):
     SCREWED_WITHOUT_GRIPPER = 3 # Same as SCREWED_WITH_GRIPPER but one of the screwdriver is used as gripper.
                                 # Gripper information is stored in beam_attributes but
                                 # `gripper_type` and `gripper_id` will equal to `tool_type` and `tool_id`
+    screw_methods = [SCREWED_WITH_GRIPPER, SCREWED_WITHOUT_GRIPPER]
     readable_names_dict = {
         "GroundContact" : GROUND_CONTACT,
         "Clamped" : CLAMPED,
         "ScrewedWithGripper" : SCREWED_WITH_GRIPPER,
         "ScrewedWithoutGripper" : SCREWED_WITHOUT_GRIPPER,
     }
+
 
 class Assembly(Network):
     """A data structure for discrete element assemblies.
@@ -347,6 +349,10 @@ class Assembly(Network):
             joint_ids.append((neighbor_beam_id, beam_id))
         return joint_ids
 
+    def get_assembly_method(self, beam_id):
+        # type: (str) -> BeamAssemblyMethod
+        return self.get_beam_attribute(beam_id, 'assembly_method')
+
     # --------------------------------------------
     # Assembly Sequence Functions
     # --------------------------------------------
@@ -371,9 +377,13 @@ class Assembly(Network):
         # Swap item with previous / next item
         if shift_earlier and i > 0:
             sequence[i-1], sequence[i] = sequence[i], sequence[i-1]
+            self.compute_joint_screw_hole(beam_id)
+            self.compute_joint_screw_hole(sequence[i-1])
             return [sequence[i], sequence[i-1]]
         if not shift_earlier and i < len(sequence) - 1:
             sequence[i+1], sequence[i] = sequence[i], sequence[i+1]
+            self.compute_joint_screw_hole(beam_id)
+            self.compute_joint_screw_hole(sequence[i+1])
             return [sequence[i], sequence[i+1]]
 
     def shift_beam_sequence(self, beam_id, shift_amount, update_assembly_direction=True, allow_change_joint_direction=True):
@@ -657,19 +667,45 @@ class Assembly(Network):
         return [neighbor_id for neighbor_id in self.neighbors_out(beam_id) if self.get_beam_sequence(neighbor_id) > this_beam_sequence]
 
     # --------------------------------------------
-    # Assembly Tools and Neighbours
+    # Assembly Tools / Screws and Neighbours
     # --------------------------------------------
 
     def get_joint_ids_with_tools_for_beam(self, beam_id):
         # type: (str) -> list[tuple[str, str]]
         """Generator returning all the joint_ids on the given beam that require assembly tool.
         """
-        if self.get_beam_attribute(beam_id, 'assembly_method') <= BeamAssemblyMethod.GROUND_CONTACT:
+        if self.get_assembly_method(beam_id) <= BeamAssemblyMethod.GROUND_CONTACT:
             return
 
         for neighbour_id in self.get_already_built_neighbors(beam_id):
             joint_id = (neighbour_id, beam_id)
             yield joint_id
+
+    def compute_joint_screw_hole(self, beam_id):
+        # type: (Assembly, str) -> None
+        """Assign the direction of screw holes for beams that are screwed.
+        If the beam's ssembly method require screws, joint.has_screw=True
+
+        Only the joints with previously built beams will be modifued.
+        If the joint is with an earlier beam, the joint will have a screw head.
+
+        """
+        for joint_id in self.get_joints_of_beam_connected_to_already_built(beam_id):
+            inverse_joint_id = (joint_id[1], joint_id[0])
+            print (self.get_assembly_method(beam_id))
+            print (BeamAssemblyMethod.screw_methods)
+            if self.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
+                # print("Screwing Joint %s, %s" % (joint_id, self.joint(joint_id)))
+                self.joint(joint_id).has_screw = True
+                self.joint(joint_id).screw_head_side = True
+                self.joint(inverse_joint_id).has_screw = True
+                self.joint(inverse_joint_id).screw_head_side = False
+
+            else:
+                # print("Notscrewing Joint %s, %s" % (joint_id, self.joint(joint_id)))
+                self.joint(joint_id).has_screw = False
+                self.joint(inverse_joint_id).has_screw = False
+
 
     # -------------------------------------
     # Computing joints and joint directions

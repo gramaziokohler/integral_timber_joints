@@ -39,7 +39,7 @@ def ui_add_beam_from_lines(process):
         # Compute guide vector: For vertical lines, guide vector points to world X
         # Otherwise, guide vector points to Z,
 
-        if centerline_vector.angle(Vector(0,0,1)) < 0.001:
+        if centerline_vector.angle(Vector(0, 0, 1)) < 0.001:
             guide_vector = Vector(1, 0, 0)
         else:
             guide_vector = Vector(0, 0, 1)
@@ -147,6 +147,7 @@ def ui_flip_beams(process):
 
         print('Beam flipped: %s (Neighbours: %s)' % (beam_id, earlier_neighbors))
 
+
 def show_assembly_method_color(process):
     # Color Visualization
     artist = get_process_artist()
@@ -158,7 +159,7 @@ def show_assembly_method_color(process):
     print("- LightBlue: \tScrewedWithGripper")
     print("- LightBlue: \tScrewedWithoutGripper")
     for beam_id in process.assembly.sequence:
-        assembly_method = process.assembly.get_beam_attribute(beam_id, 'assembly_method')
+        assembly_method = process.assembly.get_assembly_method(beam_id)
         if assembly_method == BeamAssemblyMethod.GROUND_CONTACT:
             artist.change_interactive_beam_colour(beam_id, 'assembly_method_ground')
         elif assembly_method == BeamAssemblyMethod.CLAMPED:
@@ -171,7 +172,8 @@ def show_assembly_method_color(process):
             artist.change_interactive_beam_colour(beam_id, 'assembly_method_undefined')
     rs.EnableRedraw(True)
 
-def ui_visualize_assembly_method(process):
+
+def ui_change_assembly_method(process):
     # type: (RobotClampAssemblyProcess) -> None
     '''Visualize beams assembly method in different colour.
     Options for user to change assembly method.
@@ -193,16 +195,28 @@ def ui_visualize_assembly_method(process):
                 beam_ids = get_object_names(guids)
                 # Make change to all selected beams
                 for beam_id in beam_ids:
-                    old_assembly_method = assembly.get_beam_attribute(beam_id, 'assembly_method')
+                    old_assembly_method = assembly.get_assembly_method(beam_id)
                     if new_assembly_method != old_assembly_method:
+                        #Changing assembly method
                         process.assembly.set_beam_attribute(beam_id, 'assembly_method', new_assembly_method)
+                        # print ('Beam(%s) change from %s to %s' % (beam_id, old_assembly_method, new_assembly_method))
+
+                        # Change of Screw Hole situation will require a recomputation and mesh update
+                        if (new_assembly_method in BeamAssemblyMethod.screw_methods) != (old_assembly_method in BeamAssemblyMethod.screw_methods):
+                            process.assembly.compute_joint_screw_hole(beam_id)
+                            artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
+                            # Neighbour joints are also affected
+                            for neighbour_beam_id in process.assembly.get_already_built_neighbors(beam_id):
+                                artist.redraw_interactive_beam(neighbour_beam_id, force_update=True, redraw=False)
+
                         process.dependency.invalidate(beam_id, process.assign_clamp_type_to_joints)
                         process.dependency.invalidate(beam_id, process.assign_gripper_to_beam)
-                        # print ('Beam(%s) change from %s to %s' % (beam_id, old_assembly_method, new_assembly_method))
                 show_assembly_method_color(process)
+
         else:
             show_assembly_color(process)
             return
+
 
 def ui_change_assembly_vector(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -371,7 +385,7 @@ def show_menu(process):
                 {'name': 'DeleteBeam', 'action': ui_delete_beams},
                 {'name': 'MoveAssembly', 'action': ui_orient_assembly},
                 {'name': 'FlipBeamAssemblyDirection', 'action': ui_flip_beams},
-                {'name': 'AssemblyMethod', 'action': ui_visualize_assembly_method},
+                {'name': 'AssemblyMethod', 'action': ui_change_assembly_method},
                 {'name': 'RedefineAssemblyVector', 'action': ui_change_assembly_vector},
             ]
 

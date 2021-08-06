@@ -12,7 +12,7 @@ import compas_fab
 
 from compas.geometry import Frame
 
-from integral_timber_joints.assembly import Assembly
+from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry import Beam, Joint
 from integral_timber_joints.process.action import *
 from integral_timber_joints.process.movement import *

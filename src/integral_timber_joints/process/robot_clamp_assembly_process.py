@@ -295,7 +295,7 @@ class RobotClampAssemblyProcess(Network):
         None, if the joint do not need a clamp (determined by assembly_method)
         """
         beam_id = joint_id[1] # This id is the beam to be assembled
-        if self.assembly.get_beam_attribute(beam_id, 'assembly_method') > BeamAssemblyMethod.GROUND_CONTACT:
+        if self.assembly.assembly.get_assembly_method(beam_id) > BeamAssemblyMethod.GROUND_CONTACT:
             return self.assembly.get_joint_attribute(joint_id, 'tool_type')
         else:
             return None
