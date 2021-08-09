@@ -7,4 +7,4 @@ from .movement import Movement, RoboticMovement, OperatorLoadBeamMovement
 from .movement import RoboticDigitalOutput, RoboticFreeMovement, RoboticLinearMovement, DigitalOutput, ClampsJawMovement, RoboticClampSyncLinearMovement
 from .path_planner import PathPlanner, RFLPathPlanner
 from .dependency import ComputationalResult, ComputationalDependency
-from .state import ObjectState
+from .state import ObjectState, SceneState

@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-
+from compas.data import Data
 from compas.datastructures import Mesh, Network
 from compas.geometry import Transformation, Translation
 from compas.geometry._core._algebra import dot_vectors
@@ -15,8 +15,8 @@ from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry import Beam, EnvironmentModel, Joint
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
-from integral_timber_joints.process.movement import Movement, RoboticLinearMovement, RoboticMovement, RoboticFreeMovement
-from integral_timber_joints.process.state import ObjectState, copy_state_dict
+from integral_timber_joints.process.movement import Movement, RoboticFreeMovement, RoboticLinearMovement, RoboticMovement
+from integral_timber_joints.process.state import ObjectState, SceneState, copy_state_dict
 from integral_timber_joints.tools.beam_storage import BeamStorage
 from integral_timber_joints.tools.clamp import Clamp
 from integral_timber_joints.tools.gripper import Gripper
@@ -27,24 +27,27 @@ from integral_timber_joints.tools.tool_changer import ToolChanger
 
 try:
     from typing import Dict, List, Optional, Tuple
+
     from termcolor import colored, cprint
 except:
     pass
 
-class RobotClampAssemblyProcess(Network):
+
+class RobotClampAssemblyProcess(Data):
 
     # Beam level functions
-    from .algorithms import (create_actions_from_sequence, create_movements_from_action, assign_tool_id_to_beam_joints)
-
     # Process level functions
-    from .algorithms import (assign_tools_to_actions, assign_unique_action_numbers,
-                            optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper,
-                            debug_print_process_actions_movements)
+    from .algorithms import (assign_tool_id_to_beam_joints, assign_tools_to_actions, assign_unique_action_numbers, create_actions_from_sequence, create_movements_from_action,
+                             debug_print_process_actions_movements, optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper, recompute_initial_state)
 
     # Constants for clamp jaw positions at different key positions.
     clamp_appraoch_position = 220
     clamp_inclamp_position = 210
     clamp_final_position = 100
+
+    robot_config_key = ('robot', 'c')
+    ROBOT_GANTRY_ARM_GROUP = 'robot11_eaXYZ'
+    ROBOT_END_LINK = 'robot11_tool0'
 
     def __init__(self, assembly=None):
         # type: (Assembly) -> None
@@ -53,6 +56,7 @@ class RobotClampAssemblyProcess(Network):
 
         if assembly is not None:
             assembly = assembly.copy()     # type: Assembly
+        self.attributes = {}
         self.attributes['assembly'] = assembly
         self.attributes['clamps'] = {}
         self.attributes['grippers'] = {}
@@ -80,6 +84,26 @@ class RobotClampAssemblyProcess(Network):
         process.dependency.process = process
         # print ("Assigned self to dependency")
         return process
+
+    def to_data(self):
+        return self.data
+
+    @property
+    def data(self):
+        """Return a data dict of this data structure for serialization.
+        """
+        data = {
+            'attributes': self.attributes,
+
+        }
+
+        return data
+
+    @data.setter
+    def data(self, data):
+        if 'data' in data:
+            data = data['data']
+        self.attributes.update(data.get('attributes') or {})
 
     @property
     def robot_model(self):
@@ -192,15 +216,6 @@ class RobotClampAssemblyProcess(Network):
         # type: (dict(str, ObjectState)) -> None
         self.attributes['initial_state'] = value
 
-    @property
-    def intermediate_states(self):
-        # type: () -> list[dict[str, ObjectState]]
-        return [movement.end_state for movement in self.movements]
-
-    # @intermediate_states.setter
-    # def intermediate_states(self, value):
-    #     # type: (list(dict(str, ObjectState))) -> None
-    #     self.attributes['intermediate_states'] = value
     # -----------------------
     # Properity access
     # -----------------------
@@ -294,7 +309,7 @@ class RobotClampAssemblyProcess(Network):
 
         None, if the joint do not need a clamp (determined by assembly_method)
         """
-        beam_id = joint_id[1] # This id is the beam to be assembled
+        beam_id = joint_id[1]  # This id is the beam to be assembled
         if self.assembly.get_assembly_method(beam_id) > BeamAssemblyMethod.GROUND_CONTACT:
             return self.assembly.get_joint_attribute(joint_id, 'tool_type')
         else:
@@ -1156,7 +1171,7 @@ class RobotClampAssemblyProcess(Network):
     # Clamps Algorithms
     # -----------------------
 
-    def assign_clamp_type_to_joints(self, beam_id, verbose=True):
+    def assign_clamp_type_to_joints(self, beam_id, verbose=False):
         """Assign clamp_types to joints based on the joint's preference and clamp availability.
 
         If the attribute `tool_type` is already assigned, this function will not change it.
@@ -1451,9 +1466,7 @@ class RobotClampAssemblyProcess(Network):
     # Action and Movements
     # -----------------------
 
-    from .algorithms import compute_initial_state, compute_intermediate_states
-
-    def get_action_by_beam_id(self, beam_id):
+    def get_actions_by_beam_id(self, beam_id):
         # type: (str) -> list[Action]
         """ Get an ordered list of Action related to a beam"""
 
@@ -1462,15 +1475,15 @@ class RobotClampAssemblyProcess(Network):
     def get_movements_by_beam_id(self, beam_id):
         # type: (str) -> list[Movement]
         """ Get an ordered list of Movements related to a beam"""
-        return [movement for action in self.get_action_by_beam_id(beam_id) for movement in action.movements]
+        return [movement for action in self.get_actions_by_beam_id(beam_id) for movement in action.movements]
 
     def get_movement_summary_by_beam_id(self, beam_id):
         movements = self.get_movements_by_beam_id(beam_id)
         print('=====')
         print('Summary:')
         for i, m in enumerate(movements):
-            start_state = self.get_movement_start_state(m)
-            end_state = self.get_movement_end_state(m)
+            start_state = self.get_movement_start_scene(m)
+            end_state = self.get_movement_end_scene(m)
             has_start_frame = start_state['robot'].current_frame is not None
             has_end_frame = end_state['robot'].current_frame is not None
             print('---')
@@ -1490,50 +1503,51 @@ class RobotClampAssemblyProcess(Network):
             raise ValueError('No movement with id {} found!'.format(movement_id))
         # return None
 
-    def get_movement_start_state(self, movement):
-        # type: (Movement) -> dict[str, ObjectState]
-        """ return the start state before the movment """
-        start_state = self.initial_state
-        for _movement in self.movements:
-            if _movement is movement:
-                return start_state
-            start_state = _movement.end_state
-        raise Exception("Given Movement object does not exist in self.movements.")
+    def get_movement_start_scene(self, movement):
+        # type: (Movement) -> SceneState
+        """ return the start state before the movment."""
+        movements = self.movements
+        index = movements.index(movement)
+        if index == 0:
+            return self.initial_state
+        else:
+            return self.get_movement_end_scene(movements[index-1])
 
-    def get_movement_end_state(self, movement):
-        # type: (Movement) -> dict[str, ObjectState]
-        """ return the end state after the movment """
-        return movement.end_state
+    def get_movement_end_scene(self, movement):
+        # type: (Movement) -> SceneState
+        """
+
+        """
+        movements = self.movements
+        start_state = self.initial_state
+        index = movements.index(movement)
+        scene = SceneState(self)
+
+        def find_last_diff(key):
+            """Function to search backwards for the last diff related to a key"""
+            for i in range(index, -1, -1):
+                if key in movements[i].state_diff:
+                    scene[key] = movements[i].state_diff[key]
+                    return
+            if key in start_state:
+                scene[key] = start_state[key]
+                return
+            print("Warning: Cannot find diff for state: %s" % str(key))
+
+        # Robot state is not the same as previous.
+        if self.robot_config_key in movements[index].state_diff:
+            scene[self.robot_config_key] = movements[index].state_diff[self.robot_config_key]
+        else:
+            scene[self.robot_config_key] = None
+
+        for key in scene.keys_with_unknown_state(skip_robot_config=True):
+            # print("Finding Key: %s" % str(key))
+            find_last_diff(key)
+        return scene
 
     def get_movements_by_planning_priority(self, beam_id, priority):
         # type: (str, int) -> list[Movement]
         return [m for m in self.get_movements_by_beam_id(beam_id) if m.planning_priority == priority]
-
-    def set_movement_start_state(self, movement, state_dict, deep_copy=False):
-        # type: (Movement, dict[str, ObjectState], bool) -> None
-        """Set the start state of a movement, effectively changing the end state of the previous movement.
-        Attempt to set the start state of the first movement will modify process.initial_state.
-
-        An optional deep copy is made for each object State """
-
-        # In order to reuse the function get_movement_start_state(),
-        # we keep the pointer to the dictionary, clear all the contents and fill in the new stuff.
-        # this is handeled by the copy_state_dict()
-        start_state = self.get_movement_start_state(movement)
-        copy_state_dict(start_state, state_dict, clear=False, deep_copy=deep_copy)
-
-    def set_movement_end_state(self, movement, state_dict, deep_copy=False):
-        # type: (Movement, dict[str, ObjectState], bool) -> None
-        """Set the end state of a movement, effectively changing the end state of the previous movement.
-        Attempt to set the start state of the first movement will modify process.initial_state.
-
-        An optional deep copy is made for each object State """
-
-        # In order to reuse the function get_movement_start_state(),
-        # we keep the pointer to the dictionary, clear all the contents and fill in the new stuff.
-        # this is handeled by the copy_state_dict()
-        start_state = self.get_movement_end_state(movement)
-        copy_state_dict(start_state, state_dict, clear=False, deep_copy=deep_copy)
 
     def get_action_of_movement(self, movement):
         # type: (Movement) -> Action
@@ -1554,17 +1568,87 @@ class RobotClampAssemblyProcess(Network):
         movement = self.get_movement_by_movement_id(movement_id)
         return self.get_beam_id_of_movement(movement)
 
+    # -----------------------
+    # Robot Configurations
+    # -----------------------
+
+    def set_initial_state_robot_config(self, robot_configuration):
+        # type: (Configuration) -> None
+        """Changes the default value of the initial state robot config."""
+        self.initial_state[self.robot_config_key] = robot_configuration
+
+    def get_movement_start_robot_config(self, movement):
+        # type: (Movement) -> Optional[Configuration]
+        """Get the robot configuration at the begining of a Movement.
+        None if the configuration is undefined.
+        """
+        movements = self.movements
+        index = movements.index(movement)
+        if index == 0:
+            return self.initial_state[self.robot_config_key]
+        else:
+            return self.get_movement_end_robot_config(movements[index - 1])
+
+    def get_movement_end_robot_config(self, movement):
+        # type: (Movement) -> Optional[Configuration]
+        """Get the robot configuration at the begining of a Movement.
+        None if the configuration is undefined.
+        """
+        if self.robot_config_key in movement.state_diff:
+            return movement.state_diff[self.robot_config_key]
+        else:
+            return None
+
+    def set_movement_start_robot_config(self, movement, robot_configuration):
+        # type: (Movement, Configuration) -> None
+        """Sets or changes the robot configuration at the begining of a Movement.
+        If attempt to set the start of the first movement, the initial state will be changed.
+
+        Setting the configuration to None will remove the configuration.
+
+        Note that the adjoining start and end configuration of two Movements are pointed to the same object.
+        Setting one of them will automatically change the other.
+        """
+        movements = self.movements
+        index = movements.index(movement)
+        if index == 0:
+            self.initial_state[self.robot_config_key] = robot_configuration
+        else:
+            self.set_movement_end_robot_config(movements[index - 1], robot_configuration)
+
+    def set_movement_end_robot_config(self, movement, robot_configuration):
+        # type: (Movement, Configuration) -> None
+        """Sets or changes the robot configuration at the end of a Movement.
+
+        Setting the configuration to None will remove the configuration.
+
+        Note that the adjoining start and end configuration of two Movements are pointed to the same object.
+        Setting one of them will automatically change the other.
+        """
+        if robot_configuration is not None:
+            movement.state_diff[self.robot_config_key] = robot_configuration
+        else:
+            if self.robot_config_key in movement.state_diff:
+                del movement.state_diff[self.robot_config_key]
+
     def movement_has_start_robot_config(self, movement):
         # type: (Movement) -> bool
-        """Returns True if the movement's start_state.['robot'].kinematic_config is not None """
-        state = self.get_movement_start_state(movement)
-        return state['robot'].kinematic_config is not None
+        """Returns True if the movement's start scene has a defined robot configuration."""
+        movements = self.movements
+        index = movements.index(movement)
+        if index == 0:
+            return self.initial_state[self.robot_config_key] is not None
+        else:
+            return self.movement_has_end_robot_config(movements[index-1])
+        return
 
     def movement_has_end_robot_config(self, movement):
         # type: (Movement) -> bool
-        """Returns True if the movement's end_state.['robot'].kinematic_config is not None """
-        state = self.get_movement_end_state(movement)
-        return state['robot'].kinematic_config is not None
+        """Returns True if the movement's end scene has a defined robot configuration."""
+        if self.robot_config_key in movement.state_diff:
+            if movement.state_diff[self.robot_config_key] is not None:
+                return True
+        return False
 
     def get_object_from_id(self, object_id):
         if object_id.startswith('c') or object_id.startswith('g'):
@@ -1583,16 +1667,17 @@ class RobotClampAssemblyProcess(Network):
         with new movements, returns the list of movements modified.
         If movement_id is None, all movements will be parsed. Otherwise only the given movement
         and its neighbors will be parsed."""
-        import os
         import json
+        import os
+
         from compas.utilities import DataDecoder
         if movement_id:
             target_movement = self.get_movement_by_movement_id(movement_id)
             target_movements = [target_movement]
             m_id = self.movements.index(target_movement)
-            if m_id-1>=0:
+            if m_id-1 >= 0:
                 target_movements.append(self.movements[m_id-1])
-            if m_id+1<len(self.movements):
+            if m_id+1 < len(self.movements):
                 target_movements.append(self.movements[m_id+1])
             print(target_movements)
         else:
@@ -1610,6 +1695,7 @@ class RobotClampAssemblyProcess(Network):
                 movements_modified.append(movement)
         return movements_modified
 
+
 def _colored_is_none(value):
     try:
         if value is None:
@@ -1619,12 +1705,14 @@ def _colored_is_none(value):
     except:
         return value
 
+
 def _colored_planning_priority(p):
     color_from_p = {1: 'blue', 0: 'magenta', -1: 'white'}
     try:
         return colored(p, color_from_p[p])
     except:
         return p
+
 
 def _colored_movement_short_summary(m):
     try:

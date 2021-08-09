@@ -3,6 +3,13 @@ from compas.datastructures.network.core.graph import Graph
 import integral_timber_joints
 from integral_timber_joints.assembly import Assembly
 
+try:
+    from typing import Dict, List, Optional, Tuple
+
+    from integral_timber_joints.process import RobotClampAssemblyProcess
+except:
+    pass
+
 
 class ComputationalResult(object):
     Invalid = 0
@@ -44,7 +51,7 @@ class ComputationalDependency(Graph):
     """
 
     def __init__(self, process=None):
-        # type: (integral_timber_joints.process.RobotClampAssemblyProcess) -> None
+        # type: (RobotClampAssemblyProcess) -> None
         """The dependency for RobotClampAssemblyProcess is hardcoded here.
         Nodes are optional, included here as list of functions for overview.
         Every Edge (Parent, Child) contains the relationship where Parent runs before Child.
@@ -66,18 +73,15 @@ class ComputationalDependency(Graph):
             'search_valid_clamp_orientation_with_guiding_vector'
         )
 
-
-
         # Level 2
         # -------
         function_names = [
             'compute_clamp_attachapproach_attachretract_detachapproach',
             'compute_clamp_detachretract',
             'search_valid_jawapproach_vector_prioritizing_beam_side',
-            ]
+        ]
         for f in function_names:
             self.add_edge('search_valid_clamp_orientation_with_guiding_vector', f)
-
 
         # Gripper Related Computation
         # ---------------------------
@@ -103,7 +107,7 @@ class ComputationalDependency(Graph):
             'compute_beam_pickupretract',
             'compute_beam_pickupapproach',
             'compute_beam_finalretract',
-            ]
+        ]
         for f in function_names:
             self.add_edge('compute_pickup_frame', f)
 
@@ -124,7 +128,7 @@ class ComputationalDependency(Graph):
             'compute_beam_finalretract',
             # Actions
             'create_actions_from_sequence',
-            ]
+        ]
 
         for f in terminal_function_names:
             self.add_edge(f, 'create_movements_from_action')
@@ -176,7 +180,7 @@ class ComputationalDependency(Graph):
         for dfx in self.get_downstream_fxs(fx):
             self.invalidate(beam_id, dfx)
 
-    def compute(self, beam_id, fx, attempt_all_parents_even_failure=False):
+    def compute(self, beam_id, fx, attempt_all_parents_even_failure=False, verbose=True):
         """ Recursively compute all parents of this function and this function.
         Starting from the root of dependency, if a function is not valid, it will be recomputed.
         If any of the computation failed, it will not continue.
@@ -193,7 +197,7 @@ class ComputationalDependency(Graph):
 
             # If parent solution is not Valid, try compute it.
             if parent_status not in ComputationalResult.ValidResults:
-                parent_status = self.compute(beam_id, ufx)
+                parent_status = self.compute(beam_id, ufx, attempt_all_parents_even_failure=attempt_all_parents_even_failure, verbose=verbose)
                 # If any parent is invalid despite retry, we stop here
                 if parent_status != ComputationalResult.ValidCanContinue:
                     if attempt_all_parents_even_failure:
@@ -205,10 +209,18 @@ class ComputationalDependency(Graph):
         if validity not in ComputationalResult.ValidResults:
             validity = fx(beam_id)
             # Invalidate downsteram results.
-            print("Beam(%s) Dependency compute(%s) Validity = %s" % (beam_id, fx_name, validity))
+            if verbose:
+                print("Beam(%s) Dependency compute(%s) Validity = %s" % (beam_id, fx_name, validity))
             self.set_solution_validity(beam_id, fx, validity, invalidate_downstream=True)
         return validity in ComputationalResult.ValidResults
 
     def debug_print(self, beam_id):
         for key, data in self.nodes(data=True):
             print("%s: %s = %s" % (beam_id, key, data[beam_id]))
+
+    def get_invalid_beam_ids(self):
+        invalid_beams = []
+        for beam_id in self.process.assembly.sequence:
+            if not self.process.dependency.get_solution_validity(beam_id, self.process.compute_all) in ComputationalResult.ValidResults:
+                invalid_beams.append(beam_id)
+        return invalid_beams

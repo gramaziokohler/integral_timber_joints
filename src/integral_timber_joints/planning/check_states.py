@@ -25,19 +25,19 @@ from integral_timber_joints.process import RoboticMovement, RobotClampAssemblyPr
 
 ###########################################
 def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, process: RobotClampAssemblyProcess,
-    state_from_object: dict, options=None):
+    scene_from_object: dict, options=None):
     options = options or {}
     debug = options.get('debug', False)
 
     # * update state
-    set_state(client, robot, process, state_from_object, options=options)
+    set_state(client, robot, process, scene_from_object, options=options)
     if debug:
         client._print_object_summary()
 
     in_collision = client.check_attachment_collisions(options)
-    if state_from_object['robot'].kinematic_config:
+    if scene_from_object[process.robot_config_key]:
         pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
-        in_collision |= pychore_collision_fn.check_collisions(robot, state_from_object['robot'].kinematic_config, options=options)
+        in_collision |= pychore_collision_fn.check_collisions(robot, scene_from_object[process.robot_config_key], options=options)
     if debug:
         wait_for_user()
     return in_collision
@@ -108,7 +108,7 @@ def main():
     full_start_conf = to_rlf_robot_full_conf(R11_INTER_CONF_VALS, R12_INTER_CONF_VALS)
     client.set_robot_configuration(robot, full_start_conf)
 
-    process.initial_state['robot'].kinematic_config = process.robot_initial_config
+    process.set_initial_state_robot_config(process.robot_initial_config)
     set_state(client, robot, process, process.initial_state, initialize=True,
         options={'debug' : False, 'reinit_tool' : args.reinit_tool})
     # * collision sanity check for the initial conf
@@ -155,12 +155,12 @@ def main():
         for i, m in enumerate(all_movements):
             if args.id_only and m.movement_id != args.id_only:
                 continue
-            start_state = process.get_movement_start_state(m)
-            end_state = process.get_movement_end_state(m)
-            start_conf = start_state['robot'].kinematic_config
+            start_state = process.get_movement_start_scene(m)
+            end_state = process.get_movement_end_scene(m)
+            start_conf = process.get_movement_start_robot_config(m)
             if start_conf:
                 start_conf.joint_names = joint_names
-            end_conf = end_state['robot'].kinematic_config
+            end_conf = process.get_movement_end_robot_config(m)
             if end_conf:
                 end_conf.joint_names = joint_names
 

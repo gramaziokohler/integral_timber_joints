@@ -56,9 +56,9 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step
     from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
     if not has_gui():
         return
-    start_state = process.get_movement_start_state(m)
+    start_scene = process.get_movement_start_scene(m)
     with LockRenderer():
-        set_state(client, robot, process, start_state)
+        set_state(client, robot, process, start_scene)
     if isinstance(m, RoboticMovement):
         print('===')
         cprint('Viz:')
@@ -78,8 +78,8 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step
             cprint('No traj found for {}\n -- has_start_conf {}, has_end_conf {}'.format(m.short_summary,
                 has_start_conf, has_end_conf), 'yellow')
             wait_if_gui()
-    end_state = process.get_movement_end_state(m)
+    end_scene = process.get_movement_end_scene(m)
     with LockRenderer():
-        set_state(client, robot, process, end_state)
+        set_state(client, robot, process, end_scene)
     if step_sim:
-        wait_if_gui('End state.')
+        wait_if_gui('End scene.')

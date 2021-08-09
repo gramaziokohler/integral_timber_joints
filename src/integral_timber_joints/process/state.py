@@ -1,5 +1,106 @@
+try:
+    from typing import Dict, List, Optional, Tuple
+
+    from integral_timber_joints.process import RobotClampAssemblyProcess
+except:
+    pass
+
+import itertools
+
+from compas.data import Data
 from compas.geometry import Frame
 from compas.geometry.transformations.transformation import Transformation
+from compas.robots import Configuration
+
+
+class SceneState(Data):
+    """
+    This is a dictionary like object that holds all the states of all objects in a given moment.
+    This static moment is refered to as a scene.
+
+    A movement has a start scene and end scene.
+    """
+
+    def __init__(self, process=None):
+        # type: (RobotClampAssemblyProcess) -> None
+
+        self.object_state_dict = {}
+
+        self.object_keys = []
+        if process is not None:
+            assembly = process.assembly
+            # self.beam_states = {} # type: dict[str, list]
+
+            # compile a list of keys that should contain state values
+            for beam_id in assembly.sequence:
+                self.object_keys.append((beam_id, 'f'))
+                self.object_keys.append((beam_id, 'a'))
+            for tool_id in process.tool_ids:
+                self.object_keys.append((tool_id, 'f'))
+                self.object_keys.append((tool_id, 'a'))
+                self.object_keys.append((tool_id, 'c'))
+
+        # Singleton items
+        self.object_keys.append(('tool_changer', 'f'))  # TC Base Frame
+        self.object_keys.append(('tool_changer', 'a'))  # Always True
+        self.object_keys.append(('robot', 'f'))  # Robot Target Frame
+        self.object_keys.append(('robot', 'c'))  # Full Configuration
+
+    @classmethod
+    def from_data(cls, data):
+        """Construct a RobotClampAssemblyProcess from structured data.
+        Overridden the from_data method because we have to assign self to dependency.process
+        """
+        scene = cls()
+        scene.data = data
+        return scene
+
+    def to_data(self):
+        return self.data
+
+    def __getitem__(self, key):
+        return self.object_state_dict[key]
+
+    def __setitem__(self, key, value):
+        self.object_state_dict[key] = value
+
+    def __len__(self):
+        return len(self.object_state_dict)
+
+    def __contains__(self, key):
+        return key in self.object_state_dict
+
+    @property
+    def data(self):
+        # Flatten Tuple dict keys to strings
+        flattened_dict = {}
+        for key, value in self.object_state_dict.items():
+            flattened_dict[str(key)] = value
+        data = {
+            'object_keys': self.object_keys,
+            'flattened_dict': flattened_dict,
+        }
+        return data
+
+    @data.setter
+    def data(self, data):
+        self.object_keys = data.get('object_keys', [])
+        # Unflatten dict keys to Tuples
+        import ast
+        flattened_dict = data.get('flattened_dict', {})
+        for key, value in flattened_dict.items():
+            self[ast.literal_eval(key)] = value
+
+    def has_unknown_state(self, skip_robot_config=True):
+        # type: (RobotClampAssemblyProcess) -> bool
+        return len(list(self.keys_with_unknown_state, skip_robot_config)) > 0
+
+    def keys_with_unknown_state(self, skip_robot_config=True):
+        for key in self.object_keys:
+            if skip_robot_config and key == ('robot', 'c'):
+                continue
+            if key not in self:
+                yield key
 
 
 class ObjectState(object):
@@ -21,10 +122,10 @@ class ObjectState(object):
     - Beam can only be attached to a Gripper or Clamp (Level 3)
     """
 
-    def __init__(self):
-        self.current_frame = None  # type: Frame
-        self.kinematic_config = None  # type: ignore
-        self.attached_to_robot = False  # type: bool
+    def __init__(self, current_frame=None, attached_to_robot=False, kinematic_config=None):
+        self.current_frame = current_frame  # type: Frame
+        self.attached_to_robot = attached_to_robot  # type: bool
+        self.kinematic_config = kinematic_config  # type: ignore
 
     def to_data(self):
         """Simpliest way to get this class serialized.

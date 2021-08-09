@@ -4,17 +4,16 @@ import os
 import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 from compas.utilities import DataDecoder
-from compas_rhino.ui import CommandMenu
 from compas_rhino.geometry import RhinoMesh, RhinoPoint
-
+from compas_rhino.ui import CommandMenu
 from compas_rhino.utilities.objects import get_object_name
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
-from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none, get_activedoc_path_no_ext
+from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
+from integral_timber_joints.rhino.load import get_activedoc_path_no_ext, get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, PickupStation, StackedPickupStation
-from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 
 
 def reset_dependency_graph(process):
@@ -31,33 +30,35 @@ def compute_states(process):
     # process.optimize_actions_place_pick_gripper()
     # process.optimize_actions_place_pick_clamp()
 
+    # Ask user if recompute actions
+    recompute_initial_states = rs.GetString("Recompute Initial States?", "No", ["No", "Yes"])
+    if recompute_initial_states == "Yes":
+        process.recompute_initial_state()
+
     # Make sure everything is computed and nothing is missing
-    invalid_beams = []
     for beam_id in process.assembly.sequence:
         process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
-        if not process.dependency.get_solution_validity(beam_id, process.compute_all) in ComputationalResult.ValidResults:
-            invalid_beams.append(beam_id)
+
+    invalid_beams = process.dependency.get_invalid_beam_ids()
     if len(invalid_beams) > 0:
         print("Warning: The following beams are not yet computationally valid:" % invalid_beams)
-        print("Export cannnot continue.")
+        print("States are not valid.")
         return
+
+    # Assign unique numbers across the entire process file.
+    process.assign_unique_action_numbers()
 
     # Save action description to log file.
     log_file_path = get_activedoc_path_no_ext() + "_process.log"
     process.debug_print_process_actions_movements(log_file_path)
-    print ("Action Log saved to: %s" % log_file_path)
-
-    # Call function to create actions
-    process.assign_unique_action_numbers()
-    process.compute_initial_state()
-    process.compute_intermediate_states(verbose=False)
+    print("Action Log saved to: %s" % log_file_path)
 
     # Print out some information to user
-    full_state_count = 0
-    for state in process.intermediate_states:
-        if len(state) > 0:
-            full_state_count += 1
-    print("Total: %i of %i intermediate states computed. for %i objects." % (full_state_count, len(process.intermediate_states), len(process.initial_state)))
+    diff_count = 0
+    for movement in process.movements:
+        diff_count += len(movement.state_diff)
+    print("Total: %i diffs computed for %i object states." % (diff_count, len(process.initial_state)))
+    print("Total: %i Movements in %i Acttions for %i Beams." % (len(process.movements), len(process.actions), len(process.assembly.sequence)))
 
 
 def remove_actions(process):
@@ -68,9 +69,11 @@ def remove_actions(process):
         process.dependency.invalidate(beam_id, process.create_actions_from_sequence)
 
     # Legacy file process level actions removal
-    if 'actions' in process.attributes: process.attributes.pop('actions')
+    if 'actions' in process.attributes:
+        process.attributes.pop('actions')
 
-    print ("Actions and states Removed")
+    print("Actions and states Removed")
+
 
 def not_implemented(process):
     #

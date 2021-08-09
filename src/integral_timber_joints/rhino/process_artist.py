@@ -1,9 +1,11 @@
 import uuid
+
 import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
 from compas.datastructures import Mesh
 from compas.geometry import Frame
+from compas.robots import Configuration
 from compas_rhino.artists import MeshArtist, RobotModelArtist
 from compas_rhino.geometry import RhinoPlane
 from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
@@ -13,14 +15,21 @@ from System.Drawing import Color  # type: ignore
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry import Beam
 from integral_timber_joints.process import RobotClampAssemblyProcess
-from integral_timber_joints.process.state import ObjectState
+from integral_timber_joints.process.state import ObjectState, SceneState
 from integral_timber_joints.rhino.tool_artist import ToolArtist
 from integral_timber_joints.rhino.utility import purge_objects
 from integral_timber_joints.tools import Clamp, Gripper, Tool
 
+try:
+    from typing import Any, Dict, List, Optional, Tuple, Type
+except:
+    pass
+
+
 TOL = sc.doc.ModelAbsoluteTolerance
 
 guid = uuid.UUID
+
 
 def AddAnnotationText(frame, text, height, layer, redraw=True):
     rs.EnableRedraw(False)
@@ -208,11 +217,11 @@ class ProcessArtist(object):
         'built_warning': (130, 20, 20),
         'neighbors': (0, 188, 212),
         'env_model': (230, 153, 0),
-        'assembly_method_undefined': (176, 65, 62), #red
-        'assembly_method_ground': (71, 51, 53), #black
-        'assembly_method_clamped': (84, 155, 135), #green
-        'assembly_method_screwed_w_gripper': (126, 178, 221),# lightblue
-        'assembly_method_screwed_wo_gripper': (68, 94, 147), # deepblue
+        'assembly_method_undefined': (176, 65, 62),  # red
+        'assembly_method_ground': (71, 51, 53),  # black
+        'assembly_method_clamped': (84, 155, 135),  # green
+        'assembly_method_screwed_w_gripper': (126, 178, 221),  # lightblue
+        'assembly_method_screwed_wo_gripper': (68, 94, 147),  # deepblue
     }
 
     key_positions = [
@@ -702,7 +711,7 @@ class ProcessArtist(object):
             purge_objects(guids, redraw)
             del self.gripper_guids_at_position(beam_id, gripper_position)[:]
 
-    def show_gripper_at_one_position(self, beam_id, position=None, color = None):
+    def show_gripper_at_one_position(self, beam_id, position=None, color=None):
         """ Show Gripper only at the specified position.
 
         `position` is the position attribute name, if left `None`,
@@ -811,7 +820,7 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
-    def show_clamp_at_one_position(self, beam_id, position=None, color = None):
+    def show_clamp_at_one_position(self, beam_id, position=None, color=None):
         """ Show Gripper only at the specified position.
 
         `position` is the position attribute name, if left `None`,
@@ -955,46 +964,47 @@ class ProcessArtist(object):
         return guids
 
     def draw_state(self, state=None, redraw=True):
-        # type: (dict[str, ObjectState], bool) -> None
+        # type: (SceneState, bool) -> None
         """Draw objects that relates to a specific object state dictionary.
 
         Please call delete_state() to erase previous geometry before calling this.
 
         """
         if state is None:
-            state = self.process.states[self.selected_state_id]
+            state = self.process.get_movement_start_scene(self.process.movements[self.selected_state_id])
 
         # Layer:
         rs.CurrentLayer(self.state_visualization_layer)
         rs.EnableRedraw(False)
 
-        # Draw each object in the state dictionary
-        for object_id, object_state in state.items():
-            # print (object_id, object_state)
-            meshes = None
-            # Beam objects
-            if object_id.startswith('b'):
+        # * Temp holder for object_id and their list of Compas Meshes
+        meshes = {}
 
-                beam = self.process.assembly.beam(object_id)
-                meshes = beam.draw_state(object_state)
+        # * Beams
+        for beam_id in self.process.assembly.sequence:
+            beam = self.process.assembly.beam(beam_id)
+            object_state = ObjectState(state[(beam_id, 'f')], state[(beam_id, 'a')], None)
+            meshes[beam_id] = beam.draw_state(object_state)
 
-            # Tool objects
-            if object_id.startswith('c') or object_id.startswith('g'):
+        # * Tools
+        for tool_id in self.process.tool_ids:
+            tool = self.process.tool(tool_id)
+            object_state = ObjectState(state[(tool_id, 'f')], state[(tool_id, 'a')], state[(tool_id, 'c')])
+            meshes[tool_id] = tool.draw_state(object_state)
 
-                tool = self.process.tool(object_id)
-                meshes = tool.draw_state(object_state)
+        # * Tool Changer
+        tool_changer_key = ('tool_changer', 'f')
+        object_state = ObjectState(state[tool_changer_key], True, None)
+        meshes['tool_changer'] = self.process.robot_toolchanger.draw_state(object_state)
 
-            # Tool Changer
-            if object_id.startswith('t'):
-                tool = self.process.robot_toolchanger
-                meshes = tool.draw_state(object_state)
-
-            # Shared functions to draw meshes and add guids to tracking dict
-            if meshes is not None:
-                guids = self.draw_meshes_get_guids(meshes, object_id, redraw=False)
+        # * Draw meshes to Rhinoand add guids to tracking dict
+        for object_id in meshes:
+            if meshes[object_id] is not None:
+                guids = self.draw_meshes_get_guids(meshes[object_id], object_id, redraw=False)
                 self.state_visualization_guids(object_id).extend(guids)
                 # Add a color to the objects that are attached-to-robot
-                if object_state.attached_to_robot:
+                attachment_key = (object_id, 'a')
+                if attachment_key in state and state[attachment_key]:
                     meshes_apply_color(guids, (0.7, 1, 1, 1))
 
         # Enable Redraw

@@ -1,5 +1,6 @@
 import json
 import os
+from copy import deepcopy
 
 import rhinoscriptsyntax as rs
 from compas.utilities import DataDecoder, DataEncoder
@@ -8,7 +9,7 @@ from integral_timber_joints.assembly import Assembly
 # import integral_timber_joints.process as Process
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_activedoc_process_path, get_process, get_process_artist, process_is_none
-from copy import deepcopy
+
 
 def save_process_less(process):
     # type: (RobotClampAssemblyProcess) -> bool
@@ -21,7 +22,7 @@ def save_process_less(process):
 
     # Ask user what file name to use
     new_filename = rs.GetString("What file name to use? (do not include _process.json)", "twelve_pieces")
-    new_json_path = os.path.join(json_folder, new_filename + "_process.json" )
+    new_json_path = os.path.join(json_folder, new_filename + "_process.json")
 
     # Ask user how many beams to save
     beams_to_keep = rs.GetInteger("How many beams to save", 12, 0, len(process.assembly.sequence))
@@ -39,39 +40,26 @@ def save_process_less(process):
         print("File Not Saved")
         return
 
-    # Ask user if recompute actions
-    recompute_actions_states = rs.GetString("Recompute Actions and States?", "No", ["No", "Yes"])
-
     # Make a copy of process and remove beams
     process_copied = RobotClampAssemblyProcess.from_data(deepcopy(process.data))
     delete_beams_until(process_copied, beams_to_keep)
 
+    process_copied.assign_unique_action_numbers()
 
-    if recompute_actions_states == "Yes":
-        # Recompute Actions Movements
-        # process_copied.create_actions_from_sequence(verbose=False)
-        # process_copied.assign_tools_to_actions(verbose=False)
-        # I havent tried these optimization features so far but worth trying
-        # process.optimize_actions_place_pick_gripper()
-        # process.optimize_actions_place_pick_clamp()
-        # process_copied.create_movements_from_action(verbose=False)
-
-        # Compute States
-        process_copied.compute_initial_state()
-        process_copied.compute_intermediate_states(verbose=False)
-    else :
-        process_copied.actions = []
-
-
+    # I havent tried these optimization features so far but worth trying
+    # process_copied.optimize_actions_place_pick_gripper()
+    # process_copied.optimize_actions_place_pick_clamp()
+    # process_copied.create_movements_from_action(verbose=False)
 
     # Save in new location
     with open(new_json_path, 'w') as f:
         json.dump(process_copied, f, cls=DataEncoder, indent=indent, sort_keys=True)
-    print ("New process with %s beams saved to: %s" %  (beams_to_keep, new_json_path))
+    print("New process with %s beams saved to: %s" % (beams_to_keep, new_json_path))
 
     return True
 
-def delete_beams_until (process, beams_to_keep):
+
+def delete_beams_until(process, beams_to_keep):
     # type: (RobotClampAssemblyProcess, int) -> RobotClampAssemblyProcess
     '''  Deleting until a number of beams are left
     '''
@@ -83,8 +71,6 @@ def delete_beams_until (process, beams_to_keep):
     for beam_id in beam_ids:
         neighbors += assembly.neighbors(beam_id)
     neighbors = set(neighbors) - set(beam_ids)
-
-
 
     # Delete Beams and their joints
     for beam_id in beam_ids:
@@ -102,6 +88,7 @@ def delete_beams_until (process, beams_to_keep):
 ######################
 # Below is the functions that get evoked when user press UI Button
 # Put this in the Rhino button ! _-RunPythonScript "integral_timber_joints.rhino.load.py"
+
 
 if __name__ == "__main__":
 

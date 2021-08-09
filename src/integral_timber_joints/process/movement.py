@@ -5,10 +5,17 @@ from compas.geometry.primitives.frame import Frame
 from compas_fab.robots import Configuration
 from compas_fab.robots.trajectory import JointTrajectory
 
+try:
+    from typing import Dict, List, Optional, Tuple
+
+    from integral_timber_joints.process import RobotClampAssemblyProcess
+except:
+    pass
+
 from integral_timber_joints.process.state import ObjectState
 
 try:
-    from typing import Dict, Iterator, List, Optional, Tuple
+    from typing import Any, Dict, Iterator, List, Optional, Tuple
 except:
     pass
 
@@ -41,16 +48,22 @@ class Movement(object):
     `operator_stop_before` and `operator_stop_after`
     - If set to a non empty String, a operator stop will be triggered before or after the action execution.
     - If set to None, no stop will happen. (default)
+
+    `state_diff`
+    - They record the changed state of objects in the scene.
+    - It is implemented as a dictionary where key is Tuple (object_id, ['f', 'a', 'c']),
+        value is Any[Frame, bool, Configuration]
     """
 
     def __init__(self, operator_stop_before=None, operator_stop_after=None, planning_priority=0, tag=None):
         self.operator_stop_before = operator_stop_before  # type: str
         self.operator_stop_after = operator_stop_after  # type: str
         self.end_state = {}  # type: dict[str, ObjectState]
+        self.state_diff = {}  # type: dict[Tuple[str, str], Any[Frame, Configuration, bool]]
         self.planning_priority = planning_priority  # type: int
         self.movement_id = ""  # type: str
         self.tag = tag or "Generic Movement"  # type: str
-        self.path_from_link = None # type: list[Frame]
+        self.path_from_link = None  # type: list[Frame]
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -68,10 +81,14 @@ class Movement(object):
 
     @property
     def data(self):
+        flattened_state_diff = {}
+        for key, value in self.state_diff.items():
+            flattened_state_diff[str(key)] = value
         data = {
             'operator_stop_before': self.operator_stop_before,
             'operator_stop_after': self.operator_stop_after,
             'end_state': self.end_state,
+            'flattened_state_diff': flattened_state_diff,
             'planning_priority': self.planning_priority,
             'movement_id': self.movement_id,
             'tag': self.tag,
@@ -81,10 +98,15 @@ class Movement(object):
 
     @data.setter
     def data(self, data):
+        import ast
         self.operator_stop_before = data.get('operator_stop_before', None)
         self.operator_stop_after = data.get('operator_stop_after', None)
         self.planning_priority = data.get('planning_priority', 0)
         self.end_state = data.get('end_state', {})
+        flattened_state_diff = data.get('flattened_state_diff', {})
+        self.state_diff = {}
+        for key, value in flattened_state_diff.items():
+            self.state_diff[ast.literal_eval(key)] = value
         self.movement_id = data.get('movement_id', "")
         self.tag = data.get('tag', "")
         self.path_from_link = data.get('path_from_link', None)
@@ -101,6 +123,18 @@ class Movement(object):
     @property
     def short_summary(self):
         return '{}(#{}, {})'.format(self.__class__.__name__, self.movement_id, self.tag)
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        """The create_state_diff() functions are are implemented within each of the Movement child class.
+
+        They record the changed state of objects in the scene.
+        For any changed state, the new state is recorded.
+
+        It is implemented as a dictionary where key is Tuple (object_id, ['f', 'a', 'c']),
+        value is Any[Frame, bool, Configuration]
+        """
+        raise NotImplementedError("Action.create_movements() is not implemented by child class")
 
 
 class RoboticMovement(Movement):
@@ -127,11 +161,11 @@ class RoboticMovement(Movement):
         self.attached_beam_id = attached_beam_id  # type: Optional[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
-        self.path_from_link = None # Optional[dictionary: robot link name[str] -> list(Frame)]
+        self.path_from_link = None  # Optional[dictionary: robot link name[str] -> list(Frame)]
         self.target_configuration = target_configuration  # type: Optional[Configuration]
         self.allowed_collision_matrix = allowed_collision_matrix  # type: list(tuple(str,str))
         self.tag = tag or "Generic Robotic Movement"
-        self.seed = seed # or hash(time.time())
+        self.seed = seed  # or hash(time.time())
 
     @property
     def data(self):
@@ -167,7 +201,42 @@ class RoboticMovement(Movement):
     @property
     def short_summary(self):
         return '{}(#{}, {}, traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
-                                                             int(self.trajectory is not None))
+                                             int(self.trajectory is not None))
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}
+        # Change robot flange frame
+        self.state_diff[('robot', 'f')] = self.target_frame
+        self.state_diff[('tool_changer', 'f')] = self.target_frame
+
+        # If target_configuration is available, pass it to robot kinematic_config.
+        if self.target_configuration is not None:
+            self.state_diff[('robot', 'c')] = self.target_configuration
+
+        # Change ToolChanger location, it is always attached to robot
+        self.state_diff[('tool_changer', 'f')] = self.target_frame
+
+        # Change attached tool location
+        if self.attached_tool_id is not None:
+            tool_id = self.attached_tool_id
+            # Using the Toolchanger to compute Tool Frame
+            process.robot_toolchanger.current_frame = self.target_frame
+            tool_base_frame = process.robot_toolchanger.current_tcf
+            self.state_diff[(tool_id, 'f')] = tool_base_frame
+
+            # Change beam location
+            if self.attached_beam_id is not None:
+                # Beam is attached to gripper
+                beam_id = self.attached_beam_id
+                # Find out `gripper tcp` and beam attribute `gripper_tcp_in_ocf`
+                tool = process.tool(tool_id)
+                tool.current_frame = tool_base_frame
+
+                beam_frame = process.get_beam_frame_from_gripper(beam_id, tool)
+                self.state_diff[(beam_id, 'f')] = beam_frame
+
 
 ######################################
 # Movement Classes that can be used
@@ -208,6 +277,12 @@ class OperatorLoadBeamMovement(Movement):
         self.beam_id = data.get('beam_id', None)
         self.grasp_face = data.get('grasp_face', None)
         self.target_frame = data.get('target_frame', None)
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}
+        self.state_diff[(self.beam_id, 'f')] = self.target_frame
 
 
 class RoboticFreeMovement(RoboticMovement):
@@ -278,6 +353,32 @@ class RoboticDigitalOutput(Movement):
         self.tool_id = data.get('tool_id', None)
         self.beam_id = data.get('beam_id', None)
 
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}
+        tool_id = self.tool_id
+        if self.digital_output == DigitalOutput.LockTool:
+            self.state_diff[(tool_id, 'a')] = True
+
+        if self.digital_output == DigitalOutput.UnlockTool:
+            self.state_diff[(tool_id, 'a')] = False
+
+        # OpenGripper and CloseGripper type affects the tool and the beam
+        if self.digital_output == DigitalOutput.OpenGripper:
+            gripper = process.tool(self.tool_id)
+            gripper.open_gripper()
+            self.state_diff[(tool_id, 'c')] = gripper._get_kinematic_state()
+            if self.beam_id is not None:
+                self.state_diff[(self.beam_id, 'a')] = False
+
+        if self.digital_output == DigitalOutput.CloseGripper:
+            gripper = process.tool(self.tool_id)
+            gripper.close_gripper()
+            self.state_diff[(tool_id, 'c')] = gripper._get_kinematic_state()
+            if self.beam_id is not None:
+                self.state_diff[(self.beam_id, 'a')] = True
+
 
 class DigitalOutput(object):
     LockTool = 1
@@ -316,6 +417,15 @@ class ClampsJawMovement(Movement):
         self.clamp_ids = data.get('clamp_ids', [])
         self.speed_type = data.get('speed_type', "")
 
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}
+        for i, clamp_id in enumerate(self.clamp_ids):
+            clamp = process.tool(clamp_id)
+            clamp.clamp_jaw_position = self.jaw_positions[i]
+            self.state_diff[(clamp_id, 'c')] = clamp._get_kinematic_state()
+
 
 class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
@@ -342,3 +452,8 @@ class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
     def __str__(self):
         return "Robot-Clamp Linear Sync Move to %s. Clamps %s Jaw Move to %s." % (self.target_frame, self.clamp_ids, self.jaw_positions)
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        RoboticMovement.create_state_diff(self, process, clear)
+        ClampsJawMovement.create_state_diff(self, process, clear=False)

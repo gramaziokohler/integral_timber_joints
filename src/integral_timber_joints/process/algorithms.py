@@ -9,23 +9,21 @@ from copy import deepcopy
 
 import compas
 import compas_fab
-
 from compas.geometry import Frame
 
 from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry import Beam, Joint
 from integral_timber_joints.process.action import *
-from integral_timber_joints.process.movement import *
-from integral_timber_joints.process.state import ObjectState
-from integral_timber_joints.tools import Clamp, Gripper, Tool
 from integral_timber_joints.process.dependency import ComputationalResult
-
+from integral_timber_joints.process.movement import *
+from integral_timber_joints.process.state import SceneState
+from integral_timber_joints.tools import Clamp, Gripper, Tool
 
 ###############################################
 # Beam level functions (as used in auto update)
 ###############################################
 
-def assign_tool_id_to_beam_joints(process, beam_id, verbose=True):
+def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
     """Assign available tool_ids to joints that require assembly tool.
     Based on the joint attribute `tool_type`
@@ -63,7 +61,7 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=True):
             return ComputationalResult.ValidNoChange
 
 
-def create_actions_from_sequence(process, beam_id, verbose=True):
+def create_actions_from_sequence(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
     """ Creating Action objects (process.actions) from process.sequence
     This is specific to the general action framework for a clamp and gripper assembly streategy.
@@ -91,7 +89,7 @@ def create_actions_from_sequence(process, beam_id, verbose=True):
 
     # move clamps from storage to structure
     joint_id_of_clamps = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
-    clamp_ids = [assembly.get_joint_attribute(joint_id, 'clamp_id')  for joint_id in joint_id_of_clamps]
+    clamp_ids = [assembly.get_joint_attribute(joint_id, 'clamp_id') for joint_id in joint_id_of_clamps]
 
     for joint_id in joint_id_of_clamps:
         tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
@@ -154,15 +152,24 @@ def create_actions_from_sequence(process, beam_id, verbose=True):
     return ComputationalResult.ValidCanContinue
 
 
-def create_movements_from_action(process, beam_id, verbose=True):
+def create_movements_from_action(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
     """Expand a given beam's Actions into low-level Movements.
-    The actual functions to create_movements are located within each of the Action class.
+    State Diff is also created for each resulting Movement.
+
+    The create_movements() functions are are located within each of the Action class.
+    They copy tool_ids / target frames from the Action classes,
+    occationally performing transformation along the tool chain.
     """
-    for action in process.get_action_by_beam_id(beam_id):
+    for action in process.get_actions_by_beam_id(beam_id):
         action.create_movements(process)
+        for mov_n, movement in enumerate(action.movements):
+            if verbose:
+                print("Processing Seq %i Action %i Movement %i: %s" % (action.seq_n, action.act_n, mov_n, movement.tag))
+            movement.create_state_diff(process)
 
     return ComputationalResult.ValidCanContinue
+
 
 #############################################################
 # Algorithms that concerns the entire process
@@ -362,135 +369,59 @@ def optimize_actions_place_pick_clamp(process, verbose=True):
     process.actions = [action for i, action in enumerate(process.actions) if i not in to_be_removed]
 
 
-def compute_initial_state(process, verbose=True):
+def recompute_initial_state(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
     """Compute the initial scene state. This is the begining of the assembly process
 
     State Change
     ------------
-    This functions sets the following process attribute:
-    - 'initial_state' dict(str, ObjectState)
+    This functions sets the following keys in process.initial_state:
+    - (beam_id, 'f')
+    - (beam_id, 'a')
+    - (tool_id, 'f')
+    - (tool_id, 'a')
+    - (tool_id, 'c')
+    - ('robot', 'c')
+    - ('tool_changer', 'a')
 
+    Note that ('robot', 'f') and ('tool_changer', 'f') are computed only if process.robot_model is loaded (FK of config needed).
+
+    Recomputation of the initial state is necessary if
+    - tool's definitions or their storage positions are changed.
+    - robot initial configuration is changed
     """
-    process.initial_state = {}
+    process.initial_state = SceneState(process)
     assembly = process.assembly
 
     # Beams are all in their storage position
     for beam_id in assembly.sequence:
-        state = ObjectState()
-        state.current_frame = assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
-        process.initial_state[beam_id] = state
+        process.initial_state[(beam_id, 'f')] = assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
+        process.initial_state[(beam_id, 'a')] = False
 
     # Tools (Clamps, Grippers) are all in their storage position
-    for tool in itertools.chain(process.clamps, process.grippers):
+    for tool_id in process.tool_ids:
+        tool = process.tool(tool_id)
         tool.close_gripper()
         # Clamps should have a open clamp jaw state in the begining.
         if isinstance(tool, Clamp):
             tool.open_clamp()
-        state = ObjectState()
-        state.kinematic_config = tool._get_kinematic_state()
-        state.current_frame = tool.tool_storage_frame
-        process.initial_state[tool.name] = state
+        process.initial_state[(tool_id, 'f')] = tool.tool_storage_frame
+        process.initial_state[(tool_id, 'a')] = False
+        process.initial_state[(tool_id, 'c')] = tool._get_kinematic_state()
 
     # Robot is in its initial position
-    robot_state = ObjectState()
-    robot_state.kinematic_config = process.robot_initial_config
     # TODO robot_state.current_frame should be an FK of the robot form the robot_initial_config
-    process.initial_state['robot'] = robot_state
+    process.initial_state[('robot', 'c')] = process.robot_initial_config
 
     # Tool Chagner is attached to the robot
-    tool_changer_state = ObjectState()
-    tool_changer_state.attached_to_robot = True
-    tool_changer_state.current_frame = Frame((0, 0, 0), (1, 0, 0), (0, 1, 0))  # TODO shouold be robot_state.current_frame
-    process.initial_state['tool_changer'] = tool_changer_state
+    process.initial_state[('tool_changer', 'a')] = True
 
-
-def compute_intermediate_states(process, verbose=True):
-    # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
-    """Compute the intermediate scenes according to the Movement(s) in `process.action`
-
-    Movements and Actions should be computed before.
-
-    State Change
-    ------------
-    This functions sets the following process attribute:
-    - 'intermediate_states'  list(dict(str, ObjectState))
-
-    """
-    current_state = deepcopy(process.initial_state)
-    for action in process.actions:
-        for mov_n, movement in enumerate(action.movements):
-            # Make a copy of the previous state
-            current_state = deepcopy(current_state)
-            if verbose:
-                print("Processing Seq %i Action %i Movement %i: %s" % (action.seq_n, action.act_n, mov_n, movement.tag))
-
-            # Make changes to objects according to movements
-            if isinstance(movement, OperatorLoadBeamMovement):
-                # Change beam location
-                beam_id = movement.beam_id
-                beam_state = current_state[beam_id]
-                beam_state.current_frame = movement.target_frame
-
-            if isinstance(movement, RoboticMovement):  # This include RoboticFreeMovement and RoboticLinearMovement
-                # Change robot flange frame
-                current_state['robot'].current_frame = movement.target_frame
-                # If target_configuration is available, pass it to robot kinematic_config.
-                current_state['robot'].kinematic_config = movement.target_configuration
-
-                # Change ToolChanger location, it is always attached to robot
-                current_state['tool_changer'].current_frame = movement.target_frame
-                process.robot_toolchanger.current_frame = movement.target_frame
-
-                # Change attached tool location
-                if movement.attached_tool_id is not None:
-                    # Tool Sits on Toolchanger
-                    tool_base_frame = process.robot_toolchanger.current_tcf
-                    current_state[movement.attached_tool_id].attached_to_robot = True
-                    current_state[movement.attached_tool_id].current_frame = tool_base_frame
-
-                    # Change beam location
-                    if movement.attached_beam_id is not None:
-                        # Beam is attached to gripper
-                        # Find out `gripper tcp` and beam attribute `gripper_tcp_in_ocf`
-                        tool = process.tool(movement.attached_tool_id)
-                        tool.current_frame = tool_base_frame
-
-                        beam_frame = process.get_beam_frame_from_gripper(movement.attached_beam_id, tool)
-
-                        current_state[movement.attached_beam_id].attached_to_robot = True
-                        current_state[movement.attached_beam_id].current_frame = beam_frame
-
-            if isinstance(movement, RoboticDigitalOutput):  # This include RoboticFreeMovement and RoboticLinearMovement
-                if movement.digital_output == DigitalOutput.LockTool:
-                    current_state[movement.tool_id].attached_to_robot = True
-                if movement.digital_output == DigitalOutput.UnlockTool:
-                    current_state[movement.tool_id].attached_to_robot = False
-
-                # OpenGripper and CloseGripper type affects the tool and the beam
-                if movement.digital_output == DigitalOutput.OpenGripper:
-                    gripper = process.tool(movement.tool_id)  # type: Gripper
-                    gripper.open_gripper()
-                    current_state[movement.tool_id].attached_to_robot = True
-                    current_state[movement.tool_id].kinematic_config = gripper._get_kinematic_state()
-                    if movement.beam_id is not None:
-                        current_state[movement.beam_id].attached_to_robot = False
-
-                if movement.digital_output == DigitalOutput.CloseGripper:
-                    gripper = process.tool(movement.tool_id)  # type: Gripper
-                    gripper.close_gripper()
-                    current_state[movement.tool_id].attached_to_robot = True
-                    current_state[movement.tool_id].kinematic_config = gripper._get_kinematic_state()
-                    if movement.beam_id is not None:
-                        current_state[movement.beam_id].attached_to_robot = True
-
-            if isinstance(movement, ClampsJawMovement):
-                for i in range(len(movement.clamp_ids)):
-                    clamp = process.tool(movement.clamp_ids[i])  # type: Clamp
-                    clamp.clamp_jaw_position = movement.jaw_positions[i]
-                    current_state[movement.clamp_ids[i]].kinematic_config = clamp._get_kinematic_state()
-            # Add the modified state to the current movement as end_state.
-            movement.end_state = current_state
+    if process.robot_model is not None:
+        robot_frame = process.robot_model.forward_kinematics(process.robot_initial_config, process.ROBOT_END_LINK)
+        process.initial_state[('robot', 'f')] = robot_frame
+        process.initial_state[('tool_changer', 'f')] = robot_frame
+    else:
+        process.initial_state[('tool_changer', 'f')] = Frame([0, 0, 0], [1, 0, 0], [0, 1, 0])
 
 #############################
 # Debug and Testing functions

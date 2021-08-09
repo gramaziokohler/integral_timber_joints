@@ -32,6 +32,13 @@ class Action(object):
 
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
+        """The create_movements() functions are are located within each of the Action child class.
+
+        They copy tool_ids / target frames from the Action classes,
+        occationally performing transformation along the tool chain.
+        All the information needed to execute a Movement will need to be copied as Movement
+        object have to be consummed individually.
+        """
         raise NotImplementedError("Action.create_movements() is not implemented by child class")
 
     def to_data(self):
@@ -247,7 +254,7 @@ class LoadBeamAction(OperatorAction):
 
 
 class PickToolFromStorageAction(RobotAction, AttachToolAction):
-    def __init__(self, seq_n=0, act_n=0, tool_type=None, tool_id = None):
+    def __init__(self, seq_n=0, act_n=0, tool_type=None, tool_id=None):
         # type: (str, int , int, str) -> None
         RobotAction.__init__(self)
         AttachToolAction.__init__(self, tool_type, tool_id)
@@ -259,7 +266,7 @@ class PickToolFromStorageAction(RobotAction, AttachToolAction):
 
 
 class PlaceToolToStorageAction(RobotAction, DetachToolAction):
-    def __init__(self, seq_n=0, act_n=0, tool_type=None, tool_id = None):
+    def __init__(self, seq_n=0, act_n=0, tool_type=None, tool_id=None):
         # type: (str, int , int, str) -> None
         RobotAction.__init__(self)
         DetachToolAction.__init__(self, tool_type, tool_id)
@@ -651,8 +658,8 @@ class BeamPickupAction(RobotAction, AttachBeamAction):
 
         # Close Gripper and
         self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.gripper_id, self.beam_id,
-                                                operator_stop_after="Confirm Beam Held",
-                                                tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
+                                                   operator_stop_after="Confirm Beam Held",
+                                                   tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickupretract.copy(), attached_tool_id=self.gripper_id,
                                                     attached_beam_id=self.beam_id, speed_type='speed.transfer.caution',
                                                     tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)))
@@ -775,7 +782,7 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
         neighbour_beam_ids = process.assembly.get_already_built_neighbors(self.beam_id)
         acm = [(self.beam_id, nbr_id) for nbr_id in chain(self.clamp_ids, neighbour_beam_ids)] + \
               [(self.beam_id, env_id) for env_id in process.environment_models.keys()] + \
-              [(self.gripper_id, clamp_id) for clamp_id in self.clamp_ids] # this is a hack for the planner to work because it cannot actuate the clamp jaw while planning.
+              [(self.gripper_id, clamp_id) for clamp_id in self.clamp_ids]  # this is a hack for the planner to work because it cannot actuate the clamp jaw while planning.
 
         # Robot Clamp Sync Move to final location
         target_frame, attached_tool_id, attached_beam_id = assembly_wcf_final.copy(), self.gripper_id, self.beam_id

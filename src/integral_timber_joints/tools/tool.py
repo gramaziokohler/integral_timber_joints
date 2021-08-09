@@ -244,7 +244,8 @@ class Tool (ToolModel):
     @property
     def current_tcf(self):
         """ Getting the current tool coordinate frame (tool tip) in WCF"""
-        T = Transformation.from_frame_to_frame(Frame.worldXY(), self.current_frame)
+        # T = Transformation.from_frame_to_frame(Frame.worldXY(), self.current_frame)
+        T = Transformation.from_frame(self.current_frame)
         return self.tool_coordinate_frame.transformed(T)
 
     # --------------------------------------------------------
@@ -357,7 +358,7 @@ class Tool (ToolModel):
             self._set_kinematic_state(state.kinematic_config)
 
         # Draw meshes at the frame and revert the change to self.current_frame
-        transformed_meshes = self.draw_visual() # type: List[Mesh]
+        transformed_meshes = self.draw_visual()  # type: List[Mesh]
 
         # Return the tool to previous state
         self.current_frame = previous_frame
@@ -401,7 +402,7 @@ class Tool (ToolModel):
             if triangulize:
                 mesh_quads_to_triangles(mesh)
             assert mesh_name not in address_dict
-            shape.filename = mesh_name #str(mesh.guid)
+            shape.filename = mesh_name  # str(mesh.guid)
             try:
                 sub_path = os.path.join(mesh_subdir, mesh_name + '.stl')
                 mesh.to_stl(os.path.join(save_dir, sub_path), binary=True)
@@ -432,10 +433,10 @@ class Tool (ToolModel):
         for link_id, link in enumerate(self.links):
             for v_eid, element in enumerate(link.visual):
                 self._export_element(element, save_dir, visual_mesh_subdir, 'L{}_visual_{}'.format(link_id, v_eid),
-                    address_dict, triangulize)
+                                     address_dict, triangulize)
             for c_eid, element in enumerate(link.collision):
                 self._export_element(element, save_dir, collision_mesh_subdir, 'L{}_collision_{}'.format(link_id, c_eid),
-                    address_dict, triangulize)
+                                     address_dict, triangulize)
 
         # * create urdf with new mesh locations
         urdf = URDF.from_robot(self)
@@ -449,6 +450,7 @@ class Tool (ToolModel):
         # write urdf
         robot_file_name = package_name + '.urdf'
         urdf.to_file(self.get_urdf_path(save_dir), prettify=True)
+
 
 if __name__ == "__main__":
     # t = Tool('T1', 'tool')

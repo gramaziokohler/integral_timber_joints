@@ -2,7 +2,7 @@ import os
 import numpy as np
 from termcolor import cprint
 from copy import copy, deepcopy
-from itertools import product
+from itertools import product, chain
 
 from compas.geometry import distance_point_point
 from compas.geometry.primitives.frame import Frame
@@ -23,8 +23,9 @@ from integral_timber_joints.planning.robot_setup import get_gantry_control_joint
 from integral_timber_joints.planning.visualization import color_from_object_id
 from integral_timber_joints.planning.parsing import PLANNING_DATA_DIR
 from integral_timber_joints.planning.utils import FRAME_TOL
+from integral_timber_joints.process import SceneState
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement, ObjectState
-from typing import Dict
+from typing import Dict, Tuple, Any
 
 ##############################
 
@@ -56,7 +57,7 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
         yield gantry_base_conf
 
 
-def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, state_from_object: Dict[str, ObjectState], initialize=False, scale=1e-3, options=None):
+def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, scene: SceneState, initialize=False, scale=1e-3, options=None):
     """Set the pybullet client to a given state
 
     Parameters
@@ -67,7 +68,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
         [description]
     process : [type]
         [description]
-    state_from_object : dict(object_id : state)
+    scene : SceneState
         state dictionary for objects in the scene
     initialize : bool, optional
         [description], by default False
@@ -103,37 +104,38 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     trac_ikinfo = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
 
     with LockRenderer(not debug):
-        # * Do robot first
-        robot_state = state_from_object['robot']
-        if robot_state.kinematic_config is not None:
-            # if not robot_state.kinematic_config.joint_names:
-                # cprint('Warning: robot conf joint_names not set : {}'.format(robot_state.kinematic_config), 'yellow')
-                # robot_state.kinematic_config.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
-            # client.set_robot_configuration(robot, robot_state.kinematic_config)
+        # * Robot and Tool Changer
+        robot_config = scene[process.robot_config_key]
+        if robot_config is not None:
+            # if not robot_config.joint_names:
+                # cprint('Warning: robot conf joint_names not set : {}'.format(robot_config), 'yellow')
+                # robot_config.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+            # client.set_robot_configuration(robot, robot_config)
             # tool_link = link_from_name(robot_uid, flange_link_name)
             # FK_tool_frame = frame_from_pose(get_link_pose(robot_uid, tool_link), scale=1/scale)
-            FK_tool_frame = client.forward_kinematics(robot, robot_state.kinematic_config, group=GANTRY_ARM_GROUP,
+            FK_tool_frame = client.forward_kinematics(robot, scene[process.robot_config_key], group=GANTRY_ARM_GROUP,
                 options={'link' : flange_link_name})
             # ! in millimeter
             FK_tool_frame.point *= 1/scale
-            if robot_state.current_frame is None:
-                robot_state.current_frame = FK_tool_frame
+            robot_frame = scene[('robot', 'f')]
+            if robot_frame is None:
+                robot_frame = FK_tool_frame # ! Note that this state object should be read only.
             else:
-                if not robot_state.current_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance*scale):
-                    if (1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
+                if not robot_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance*scale):
+                    if (1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
                         if verbose:
-                            msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_state.current_frame.point, FK_tool_frame.point))
+                            msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point))
                             cprint(msg, 'yellow')
                             cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
                             wait_for_user()
-                    robot_state.current_frame = FK_tool_frame
+                    scene[('robot', 'f')] = FK_tool_frame  # ! Note that this state object should be read only.
 
             if initialize:
                 # update tool_changer's current_frame
                 # ! change if tool_changer has a non-trivial grasp pose
-                state_from_object['tool_changer'].current_frame = FK_tool_frame
+                scene['tool_changer', 'f'] = FK_tool_frame
 
-        # * environment meshes
+        # * Environment meshes
         if initialize and include_env:
             for name, _mesh in process.environment_models.items():
                 # if name == 'e27':
@@ -143,55 +145,61 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 cm.scale(scale)
                 client.add_collision_mesh(cm, {'color': GREY})
 
-        for object_id, object_state in state_from_object.items():
-            # print('====')
-            # print('{} : {}'.format(object_id, object_state))
-            if object_id.startswith('robot'):
-                continue
-            obj = process.get_object_from_id(object_id)
+        # * Beams
+        for beam_id in process.assembly.beam_ids:
             if initialize:
-                # * create each object in the state dictionary
-                # create objects in pybullet, convert mm to m
                 color = GREY
-                if object_id.startswith('b'):
-                    # ! notice that the notch geometry will be convexified in pybullet
-                    mesh = obj.mesh.copy()
-                    mesh_quads_to_triangles(mesh)
-                    cm = CollisionMesh(mesh, object_id)
-                    cm.scale(scale)
-                    # add mesh to environment at origin
-                    client.add_collision_mesh(cm)
-                else:
-                    urdf_path = obj.get_urdf_path(PLANNING_DATA_DIR)
-                    if reinit_tool or not os.path.exists(urdf_path):
-                        obj.save_as_urdf(PLANNING_DATA_DIR, scale=1e-3, triangulize=True)
-                        cprint('Tool {} ({}) URDF generated to {}'.format(object_id, obj.name, urdf_path), 'green')
-                    with HideOutput():
-                        tool_robot = load_pybullet(urdf_path, fixed_base=False)
-                    client.collision_objects[object_id] = [tool_robot]
-            # end if initialize
+                # ! notice that the notch geometry will be convexified in pybullet
+                mesh = process.assembly.beam(beam_id).mesh.copy()
+                mesh_quads_to_triangles(mesh)
+                cm = CollisionMesh(mesh, beam_id)
+                cm.scale(scale)
+                # add mesh to environment at origin
+                client.add_collision_mesh(cm)
 
-            if object_state.current_frame is not None:
-                current_frame = copy(object_state.current_frame)
+            # * Setting Frame
+            if scene[beam_id, 'f'] is not None:
+                current_frame = copy(scene[beam_id, 'f'])
                 current_frame.point *= scale
                 # * set pose according to state
-                client.set_object_frame('^{}$'.format(object_id), current_frame, options={'color': color_from_object_id(object_id)})
+                client.set_object_frame('^{}$'.format(beam_id), current_frame, options={'color': color_from_object_id(beam_id)})
 
-            if object_state.kinematic_config is not None:
-                assert object_id.startswith('c') or object_id.startswith('g')
-                # this might be in millimeter, but that's not related to pybullet's business (if we use static meshes)
-                obj._set_kinematic_state(object_state.kinematic_config)
-                tool_conf = obj.current_configuration.scaled(1e-3)
-                tool_bodies = client._get_bodies('^{}$'.format(object_id))
-                for b in tool_bodies:
-                    client._set_body_configuration(b, tool_conf)
 
+        # * Tools
+        for tool_id in process.tool_ids:
+            tool = process.tool(tool_id)
+            if initialize:
+                urdf_path = tool.get_urdf_path(PLANNING_DATA_DIR)
+                if reinit_tool or not os.path.exists(urdf_path):
+                    tool.save_as_urdf(PLANNING_DATA_DIR, scale=1e-3, triangulize=True)
+                    cprint('Tool {} ({}) URDF generated to {}'.format(tool.type_name, tool_id, urdf_path), 'green')
+                with HideOutput():
+                    tool_robot = load_pybullet(urdf_path, fixed_base=False)
+                client.collision_objects[tool_id] = [tool_robot]
+
+            # * Setting Frame
+            if scene[tool_id, 'f'] is not None:
+                current_frame = copy(scene[tool_id, 'f'])
+                current_frame.point *= scale
+                # * set pose according to state
+                client.set_object_frame('^{}$'.format(tool_id), current_frame, options={'color': color_from_object_id(tool_id)})
+
+            # * Setting Kinematics
+            # this might be in millimeter, but that's not related to pybullet's business (if we use static meshes)
+            tool._set_kinematic_state(scene[tool_id, 'c'])
+            tool_conf = tool.current_configuration.scaled(1e-3)
+            tool_bodies = client._get_bodies('^{}$'.format(tool_id))
+            for b in tool_bodies:
+                client._set_body_configuration(b, tool_conf)
+
+
+        for object_id in chain(process.assembly.beam_ids, process.tool_ids, 'tool_changer'):
             # * attachment management
             wildcard = '^{}$'.format(object_id)
             # -1 if not attached and not collision object
             # 0 if collision object, 1 if attached
             status = client._get_body_status(wildcard)
-            if not object_state.attached_to_robot:
+            if not scene[object_id, 'a']:
                 # * demote attachedCM to collision_objects
                 if status == 1:
                     client.detach_attached_collision_mesh(object_id, {'wildcard': wildcard})
@@ -199,10 +207,10 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 # * promote to attached_collision_object if needed
                 if status == 0:
                     # * attached collision objects haven't been added
-                    assert initialize or state_from_object['robot'].current_frame is not None
-                    # object_from_flange = get_object_from_flange(state_from_object, object_id)
-                    flange_frame = deepcopy(state_from_object['robot'].current_frame)
-                    object_frame = deepcopy(state_from_object[object_id].current_frame)
+                    assert initialize or scene[('robot', 'f')] is not None
+                    # object_from_flange = get_object_from_flange(scene, object_id)
+                    flange_frame = scene[('robot', 'f')].copy()
+                    object_frame = scene[(object_id, 'f')].copy()
                     flange_frame.point *= scale
                     object_frame.point *= scale
 
@@ -216,7 +224,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                             if conf is not None:
                                 break
                         else:
-                            raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, ik_gantry_attempts))
+                            raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_id, ik_gantry_attempts))
                     client.set_robot_configuration(robot, conf)
                     # if trac_ikinfo.ik_fn(pose_from_frame(flange_frame)) is None:
                     #     raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, ik_gantry_attempts))
@@ -227,12 +235,12 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # touched_links is only for the adjacent Robot links
                     touched_links = ['{}_tool0'.format(MAIN_ROBOT_ID), '{}_link_6'.format(MAIN_ROBOT_ID)] \
                         if object_id.startswith('t') else []
-                    # TODO auto derive from URDF link tree
+
                     attached_child_link_name = None
                     if object_id.startswith('t'):
-                        attached_child_link_name = 'toolchanger_base'
-                    elif object_id.startswith('g') or object_id.startswith('c'):
-                        attached_child_link_name = 'gripper_base'
+                        attached_child_link_name = process.robot_toolchanger.get_base_link_name()
+                    else:
+                        attached_child_link_name = process.tool(object_id).get_base_link_name()
                     for name in names:
                         # a faked AttachedCM since we are not adding a new mesh, just promoting collision meshes to AttachedCMes
                         client.add_attached_collision_mesh(AttachedCollisionMesh(CollisionMesh(None, name),
@@ -243,15 +251,16 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     if object_id.startswith('b'):
                         # gripper and beam
                         g_id = None
-                        for o_id, o_st in state_from_object.items():
-                            if o_id.startswith('g') and o_st.attached_to_robot:
-                                g_id = o_id
+                        for gripper in process.grippers:
+                            if scene[gripper.name, 'a']:
+                                g_id = gripper.name
                                 break
                         assert g_id is not None, 'At least one gripper should be attached to the robot when the beam is attached.'
                         extra_disabled_bodies = client._get_bodies('^{}$'.format(g_id))
-                    elif object_id.startswith('c') or object_id.startswith('g'):
+                    elif not object_id.startswith('t'):
                         # tool_changer and gripper
                         extra_disabled_bodies = client._get_bodies('^{}$'.format('tool_changer'))
+
                     for name in names:
                         at_bodies = client._get_attached_bodies('^{}$'.format(name))
                         assert len(at_bodies) > 0

@@ -273,21 +273,21 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     # client.planner.inverse_kinematics = ik_solver.inverse_kinematics_function()
 
     # * get target T0CF pose
-    start_state = process.get_movement_start_state(movement)
-    end_state = process.get_movement_end_state(movement)
-    start_conf = start_state['robot'].kinematic_config
-    end_conf = end_state['robot'].kinematic_config
+    start_scene = process.get_movement_start_scene(movement)
+    end_scene = process.get_movement_end_scene(movement)
+    start_conf = process.get_movement_start_robot_config(movement)
+    end_conf = process.get_movement_end_robot_config(movement)
 
     # * set start state
     try:
-        set_state(client, robot, process, start_state)
+        set_state(client, robot, process, start_scene)
     except RuntimeError:
         return None
 
     # convert to meter
-    start_t0cf_frame = copy(start_state['robot'].current_frame)
+    start_t0cf_frame = start_scene[('robot', 'f')].copy()
     start_t0cf_frame.point *= 1e-3
-    end_t0cf_frame = copy(end_state['robot'].current_frame)
+    end_t0cf_frame = end_scene[('robot', 'f')].copy()
     end_t0cf_frame.point *= 1e-3
 
     # TODO: ignore beam / env collision in the first pickup pose
@@ -503,16 +503,16 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     gantry_attempts = options.get('gantry_attempts', 500)
     reachable_range = options.get('reachable_range', (0.2, 2.8))
 
-    start_state = process.get_movement_start_state(movement)
-    end_state = process.get_movement_end_state(movement)
-    orig_start_conf = start_state['robot'].kinematic_config
-    orig_end_conf = end_state['robot'].kinematic_config
+    start_scene = process.get_movement_start_scene(movement)
+    end_state = process.get_movement_end_scene(movement)
+    orig_start_conf = process.get_movement_start_robot_config(movement)
+    orig_end_conf = process.get_movement_end_robot_config(movement)
 
     # assert orig_end_conf is not None, 'End conf not provided in {}, which should never happen'.format(movement.short_summary)
 
     # * set start state
     try:
-        set_state(client, robot, process, start_state)
+        set_state(client, robot, process, start_scene)
     except RuntimeError:
         return None
 
@@ -525,7 +525,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
             # notify('Warning! Go back to the command line now!')
             # wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
-        start_t0cf_frame = copy(start_state['robot'].current_frame)
+        start_t0cf_frame = start_scene[('robot', 'f')].copy()
         start_t0cf_frame.point *= 1e-3
         sample_found = False
         if start_t0cf_frame is not None:
@@ -636,8 +636,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         start_retraction_vector = None
     else:
         prev_movement = process.movements[current_mid-1]
-        prev_start_state = process.get_movement_start_state(prev_movement)
-        prev_end_state = process.get_movement_end_state(prev_movement)
+        prev_start_state = process.get_movement_start_scene(prev_movement)
+        prev_end_state = process.get_movement_end_scene(prev_movement)
         # convert to meter
         # ? attach -> retreat, vector = retreat(end) - attach(start)
         start_retraction_vector = get_unit_vector(list(prev_end_state['robot'].current_frame.point - prev_start_state['robot'].current_frame.point))
@@ -648,8 +648,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         end_retraction_vector = None
     else:
         next_movement = process.movements[current_mid+1]
-        next_start_state = process.get_movement_start_state(next_movement)
-        next_end_state = process.get_movement_end_state(next_movement)
+        next_start_state = process.get_movement_start_scene(next_movement)
+        next_end_state = process.get_movement_end_scene(next_movement)
         # convert to meter
         # ? retreat -> attach, vector = retreat(start) - attach(end)
         end_retraction_vector = get_unit_vector(list(next_start_state['robot'].current_frame.point - next_end_state['robot'].current_frame.point))
@@ -671,7 +671,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         draw_point(prev_end_state['robot'].current_frame.point*1e-3)
                         draw_pose(start_pose, length=0.1)
                         draw_pose(retract_start_pose, length=0.05)
-                        client.set_robot_configuration(robot, process.initial_state['robot'].kinematic_config)
+                        client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
                         wait_if_gui('Retract pose drawn. start vec: {}'.format(start_retraction_vector))
                 start_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(start_pose), frame_from_pose(retract_start_pose)], start_configuration=start_conf,
                     group=GANTRY_ARM_GROUP, options=options)
@@ -689,7 +689,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         draw_point(next_end_state['robot'].current_frame.point*1e-3)
                         draw_pose(end_pose, length=0.1)
                         draw_pose(retract_end_pose, length=0.05)
-                        client.set_robot_configuration(robot, process.initial_state['robot'].kinematic_config)
+                        client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
                         wait_if_gui('Retract pose drawn. end vec: {}'.format(end_retraction_vector))
                 end_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(end_pose), frame_from_pose(retract_end_pose)], start_configuration=end_conf,
                     group=GANTRY_ARM_GROUP, options=options)

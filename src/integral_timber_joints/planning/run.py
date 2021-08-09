@@ -71,7 +71,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         if options['ignore_taught_confs']:
             # ! remove all taught confs
             for m in process.movements:
-                m.end_state['robot'].kinematic_config = None
+                process.set_movement_end_robot_config(m, None)
         client.disconnect()
         client, robot, _ = load_RFL_world(viewer=args.viewer, verbose=False)
         set_initial_state(client, robot, process, disable_env=False, reinit_tool=False)
@@ -182,16 +182,12 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     keep_end = int(input("Keep start or end conf? Enter 0 for start, 1 for end. 2 for abandoning both."))
                     if keep_end == 0:
                         # keep start
-                        end_state = process.get_movement_end_state(chosen_m)
-                        end_state['robot'].kinematic_config = None
+                        process.set_movement_end_robot_config(chosen_m, None)
                     elif keep_end == 1:
-                        start_state = process.get_movement_start_state(chosen_m)
-                        start_state['robot'].kinematic_config = None
+                        process.set_movement_start_robot_config(chosen_m, None)
                     elif keep_end == 2:
-                        start_state = process.get_movement_start_state(chosen_m)
-                        start_state['robot'].kinematic_config = None
-                        end_state = process.get_movement_end_state(chosen_m)
-                        end_state['robot'].kinematic_config = None
+                        process.set_movement_start_robot_config(chosen_m, None)
+                        process.set_movement_end_robot_config(chosen_m, None)
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.neither_done]
                     if keep_end != 2:
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
@@ -224,7 +220,7 @@ def set_initial_state(client, robot, process, disable_env=False, reinit_tool=Tru
     full_start_conf = to_rlf_robot_full_conf(R11_INTER_CONF_VALS, R12_INTER_CONF_VALS)
     client.set_robot_configuration(robot, full_start_conf)
     # wait_if_gui('Pre Initial state.')
-    process.initial_state['robot'].kinematic_config = process.robot_initial_config
+    process.set_initial_state_robot_config(process.robot_initial_config)
     try:
         set_state(client, robot, process, process.initial_state, initialize=True,
             options={'debug' : False, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
