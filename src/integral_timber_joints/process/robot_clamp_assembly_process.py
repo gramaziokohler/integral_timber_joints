@@ -163,15 +163,6 @@ class RobotClampAssemblyProcess(Data):
         return all_movements
 
     @property
-    def states(self):
-        # type: () -> list[dict[str, ObjectState]]
-        all_states = [self.initial_state]
-        for action in self.actions:
-            for movement in action.movements:
-                all_states.append(movement.end_state)
-        return all_states
-
-    @property
     def pickup_station(self):
         # type: () -> PickupStation
         return self.attributes['pickup_station']

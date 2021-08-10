@@ -79,19 +79,20 @@ def print_current_state_info(process):
     prev_movement = all_movements[state_id - 1] if state_id > 0 else None  # type: Movement
     next_movement = all_movements[state_id] if state_id <= len(all_movements) else None  # type: Movement
 
-    config_string = " (! Robot config is SET !)" if process.movement_has_start_robot_config(all_movements[state_id]) is not None else ""
+    config_string = " (! Robot config is SET !)" if process.movement_has_start_robot_config(all_movements[state_id]) else ""
+
     if prev_movement is not None:
-        print("The prev movement is: %s" % (prev_movement.tag))
-    print("The current state is (%i of %i). %s" % (state_id, len(all_movements)+1, config_string))
+        print("- The prev movement is: %s" % (prev_movement.tag))
+    print("- The current state is (%i of %i). %s" % (state_id, len(all_movements)+1, config_string))
     if next_movement is not None:
-        print("The next movement is: %s" % (next_movement.tag))
+        print("- The next movement is: %s" % (next_movement.tag))
         if next_movement.operator_stop_before is not None:
             print("! Confirm Before Next movement: %s" % next_movement.operator_stop_before)
         if next_movement.operator_stop_after is not None:
             print("! Confirm After Next movement: %s" % next_movement.operator_stop_after)
     if isinstance(next_movement, RoboticMovement):
         if next_movement.allowed_collision_matrix != []:
-            print("Next Movement allowed_collision_matrix: %s" % next_movement.allowed_collision_matrix)
+            print("* Next Movement allowed_collision_matrix: %s" % next_movement.allowed_collision_matrix)
 
 
 def ui_show_env_meshes(process):

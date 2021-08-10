@@ -27,10 +27,6 @@ except:
 
 class Movement(object):
     """ Base class of all movements.
-    `Movement.end_state`
-    A diction of all the object's ObjectState object representing the scene after the movement is completed.
-    No `start_state` exist becuase it is simply the `end_state` of the previous movement.
-
     `Movement.planning_priority`
     Integer that can only have three possible values
     - -1 means planning not required
@@ -58,7 +54,6 @@ class Movement(object):
     def __init__(self, operator_stop_before=None, operator_stop_after=None, planning_priority=0, tag=None):
         self.operator_stop_before = operator_stop_before  # type: str
         self.operator_stop_after = operator_stop_after  # type: str
-        self.end_state = {}  # type: dict[str, ObjectState]
         self.state_diff = {}  # type: dict[Tuple[str, str], Any[Frame, Configuration, bool]]
         self.planning_priority = planning_priority  # type: int
         self.movement_id = ""  # type: str
@@ -87,7 +82,6 @@ class Movement(object):
         data = {
             'operator_stop_before': self.operator_stop_before,
             'operator_stop_after': self.operator_stop_after,
-            'end_state': self.end_state,
             'flattened_state_diff': flattened_state_diff,
             'planning_priority': self.planning_priority,
             'movement_id': self.movement_id,
@@ -102,7 +96,6 @@ class Movement(object):
         self.operator_stop_before = data.get('operator_stop_before', None)
         self.operator_stop_after = data.get('operator_stop_after', None)
         self.planning_priority = data.get('planning_priority', 0)
-        self.end_state = data.get('end_state', {})
         flattened_state_diff = data.get('flattened_state_diff', {})
         self.state_diff = {}
         for key, value in flattened_state_diff.items():
