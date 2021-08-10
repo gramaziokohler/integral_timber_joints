@@ -15,19 +15,30 @@ from integral_timber_joints.geometry.env_model import EnvironmentModel
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
-from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
+from integral_timber_joints.tools import Clamp, Screwdriver, Gripper, RobotWrist, ToolChanger
+
+try:
+    from typing import Dict, List, Optional, Tuple, Type
+except:
+    pass
 
 
 def list_tools(process):
     # type: (RobotClampAssemblyProcess) -> None
     print("-- Clamps --")
-    for clamp in process.clamps:
+    for clamp in sorted(process.clamps, key=lambda tool: tool.name):
         print("  Clamp (id = %s) type = %s)" % (clamp.name, clamp.type_name))
         for link in clamp.links:
             print("  - Link %s with %i meshes" % (link.name, len(link.visual)))
 
+    print("-- Screwdrivers --")
+    for screwdriver in sorted(process.screwdrivers, key=lambda tool: tool.name):
+        print("  Screwdriver (id = %s) type = %s)" % (screwdriver.name, screwdriver.type_name))
+        for link in screwdriver.links:
+            print("  - Link %s with %i meshes" % (link.name, len(link.visual)))
+
     print("-- Gripper --")
-    for gripper in process.grippers:
+    for gripper in sorted(process.grippers, key=lambda tool: tool.name):
         print("  type: %s (id = %s))" % (gripper.type_name, gripper.name))
         for link in gripper.links:
             print("  - Link %s with %i meshes" % (link.name, len(link.visual)))
@@ -43,181 +54,168 @@ def list_tools(process):
         print("  Mesh %i with %i vertices" % (i, mesh.number_of_vertices()))
 
     print("-- Env Meshes --")
-    for env_id, env_model in process.environment_models.items():
-        print("  EnvModel %s with %i vertices" % (env_id, env_model.number_of_vertices()))
+    print("  %i Environment Model(es) in current file." % len(process.environment_models))
 
 
-def get_next_clamp_id(process):
-    # type: (RobotClampAssemblyProcess) -> str
-    clamp_ids = [tool.name for tool in process.clamps]
+def get_next_tool_id(process, cls):
+    # type: (RobotClampAssemblyProcess, Type) -> str
+    if cls is Clamp:
+        prefix = 'c'
+    elif cls is Screwdriver:
+        prefix = 's'
+    elif cls is Gripper:
+        prefix = 'g'
+    else:
+        raise TypeError("%s Class is weird." % cls.__name__)
+
+    existing_ids = process.tool_ids
     for i in range(1, 100):
-        id = 'c%i' % i
-        if id not in clamp_ids:
+        id = prefix + '%i' % i
+        if id not in existing_ids:
             return id
 
+###########
+# Add Tools
+###########
 
-def get_next_gripper_id(process):
-    gripper_ids = [tool.name for tool in process.grippers]
-    for i in range(1, 100):
-        id = 'g%i' % i
-        if id not in gripper_ids:
-            return id
+
+def add_tool(process, cls):
+    # type: (RobotClampAssemblyProcess, Type) -> None
+    artist = get_process_artist()
+
+    # Ask user for a json file
+    tool_type_name = cls.__name__
+    path = rs.OpenFileName("Open", tool_type_name + " File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            # Deserialize asert correctness and add to Process
+            tool = json.load(f, cls=DataDecoder)
+            assert tool.__class__ is cls
+            # Ask user for a new id
+            name = rs.GetString("Type in " + tool_type_name + " id typically c1,c2, etc.. Or use Default ", get_next_tool_id(process, cls))
+            if name is not None:
+                tool.name = name
+                process.add_tool(tool)
+                artist.draw_tool_in_storage(tool.name)
+                print("Tool added: %s(%s) " % (tool_type_name, tool.name))
 
 
 def add_clamp(process):
     # type: (RobotClampAssemblyProcess) -> None
-    artist = get_process_artist()
-
-    # Ask user for a json file
-    path = rs.OpenFileName("Open", "Clamp File (*.json)|*.json|All Files (*.*)|*.*||")
-    if path:
-        with open(path, 'r') as f:
-            # Deserialize asert correctness and add to Process
-            tool = json.load(f, cls=DataDecoder)
-            assert isinstance(tool, Clamp)
-            # Ask user for a new id
-            name = rs.GetString("Type in clamp id typically c1,c2, etc..", get_next_clamp_id(process))
-            if name is not None:
-                tool.name = name
-                process.add_clamp(tool)
-
-                artist.draw_tool_in_storage(id)
-                print("Clamp added: %s " % tool)
+    add_tool(process, Clamp)
 
 
-def delete_clamp(process):
+def add_screwdriver(process):
     # type: (RobotClampAssemblyProcess) -> None
-    if len(process.clamps) == 0:
-        print("No clamps exist for you to delete.")
-        return
-
-    # List out current clamps for users to choose
-    print("Current Clamps:")
-    ids = []
-    for clamp in process.clamps:
-        ids.append(clamp.name)
-        print("- clamp_id: %s, type: %s" % (clamp.name, clamp.type_name))
-    # Ask user which clamp to delete
-    id = rs.GetString("Which clamp to delete?", "Cancel", ["Cancel"] + ids)
-
-
-    artist = get_process_artist()
-    artist.delete_tool_in_storage(id)
-
-
-def replace_clamp(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    artist = get_process_artist()
-
-    if len(process.clamps) == 0:
-        print("No clamps exist for you to replace.")
-        return
-
-    # List out current clamps for users to choose
-    print("Current Clamps:")
-    ids = []
-    for tool in process.clamps:
-        ids.append(tool.name)
-        print("- clamp_id: %s, type: %s" % (tool.name, tool.type_name))
-    # Ask user which clamp to delete
-    id = rs.GetString("Which clamp to replace? (id and storage frame are kept)", "Cancel", ["Cancel"] + ids)
-    old_tool = process.tool(id)
-
-    if id in ids:
-        path = rs.OpenFileName("Open", "Clamp File (*.json)|*.json|All Files (*.*)|*.*||")
-        with open(path, 'r') as f:
-            # Deserialize asert correctness and add to Process
-            new_tool = json.load(f, cls=DataDecoder)
-            assert isinstance(new_tool, Clamp)
-
-            # Copy over old attributes
-            new_tool.name = old_tool.name
-            new_tool.tool_storage_frame = old_tool.tool_storage_frame
-            new_tool.tool_storage_configuration = old_tool.tool_storage_configuration
-        artist.delete_tool_in_storage(id)
-        process.delete_clamp(id)
-        process.add_clamp(new_tool)
-        artist.draw_tool_in_storage(id)
-        print("%s is replaced by %s." % (old_tool, new_tool))
+    add_tool(process, Screwdriver)
 
 
 def add_gripper(process):
     # type: (RobotClampAssemblyProcess) -> None
-    artist = get_process_artist()
+    add_tool(process, Gripper)
 
-    # Ask user for a json file
-    path = rs.OpenFileName("Open", "Gripper File (*.json)|*.json|All Files (*.*)|*.*||")
-    if path:
-        with open(path, 'r') as f:
-            # Deserialize asert correctness and add to Process
-            tool = json.load(f, cls=DataDecoder)
-            assert isinstance(tool, Gripper)
-            # Ask user for a new id
-            name = rs.GetString("Type in gripper id typically g1,g2, etc..", get_next_gripper_id(process))
-            if name is not None:
-                tool.name = name
-                process.add_gripper(tool)
-                artist.draw_tool_in_storage(id)
-                print("Clamp added: %s " % tool)
+##############
+# Delete Tools
+##############
+
+
+def delete_tool(process, cls):
+    # type: (RobotClampAssemblyProcess, Type) -> None
+    tool_type_name = cls.__name__
+
+    # Gather available tools
+    existing_tools_ids = [tool_id for tool_id in process.tool_ids
+                          if process.tool(tool_id).__class__ is cls]
+    if len(existing_tools_ids) == 0:
+        print("No %s exist for you to delete." % tool_type_name)
+        return
+
+    # List out current clamps for users to choose
+    print("Current %s:" % tool_type_name)
+    for tool_id in existing_tools_ids:
+        tool = process.tool(tool_id)
+        print("- tool_id: %s, type: %s" % (tool.name, tool.type_name))
+
+    # Ask user which clamp to delete
+    tool_id = rs.GetString("Which %a to delete?" % tool_type_name, "Cancel", ["Cancel"] + existing_tools_ids)
+    if tool_id in existing_tools_ids:
+        process.delete_tool(tool_id)
+        artist = get_process_artist()
+        artist.delete_tool_in_storage(tool_id)
+
+
+def delete_clamp(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    delete_tool(process, Clamp)
+
+
+def delete_screwdriver(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    delete_tool(process, Screwdriver)
 
 
 def delete_gripper(process):
     # type: (RobotClampAssemblyProcess) -> None
-    if len(process.grippers) == 0:
-        print("No gripper exist for you to delete.")
+    delete_tool(process, Gripper)
+
+###############
+# Replace Tools
+###############
+
+
+def replace_tool(process, cls):
+    # type: (RobotClampAssemblyProcess, Type) -> None
+    tool_type_name = cls.__name__
+
+    # Gather available tools
+    existing_tools_ids = [tool_id for tool_id in process.tool_ids
+                          if process.tool(tool_id).__class__ is cls]
+    if len(existing_tools_ids) == 0:
+        print("No %s exist for you to delete." % tool_type_name)
         return
 
-    # List out current gripper for users to choose
-    print("Current Gripper:")
-    ids = []
-    for gripper in process.grippers:
-        ids.append(gripper.name)
-        print("- %s : %s" % (gripper.name, gripper.type_name))
-    # Ask user which gripper to delete
-    id = rs.GetString("Which gripper to delete?", "Cancel", ["Cancel"] + ids)
+    # List out current tools for users to choose
+    print("Current %s:" % tool_type_name)
+    for tool_id in existing_tools_ids:
+        tool = process.tool(tool_id)
+        print("- tool_id: %s, type: %s" % (tool.name, tool.type_name))
 
-    if id in ids:
-        print("%s is deleted" % (id))
-        process.delete_gripper(id)
+    # Ask user which tool to delete
+    tool_id = rs.GetString("Which %s to replace? (id and storage frame are kept)" % tool_type_name, "Cancel", ["Cancel"] + existing_tools_ids)
 
-    artist = get_process_artist()
-    artist.delete_tool_in_storage(id)
-
-
-def replace_gripper(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    artist = get_process_artist()
-
-    if len(process.grippers) == 0:
-        print("No gripper exist for you to replace.")
-        return
-
-    # List out current gripper for users to choose
-    print("Current Grippers:")
-    ids = []
-    for tool in process.grippers:
-        ids.append(tool.name)
-        print("- gripper_id: %s, type: %s" % (tool.name, tool.type_name))
-    # Ask user which gripper to delete
-    id = rs.GetString("Which gripper to replace? (id and storage frame are kept)", "Cancel", ["Cancel"] + ids)
-    old_tool = process.tool(id)
-
-    if id in ids:
-        path = rs.OpenFileName("Open", "Gripper File (*.json)|*.json|All Files (*.*)|*.*||")
+    if tool_id in existing_tools_ids:
+        old_tool = process.tool(tool_id)
+        path = rs.OpenFileName("Open", "%s File (*.json)|*.json|All Files (*.*)|*.*||" % tool_type_name)
         with open(path, 'r') as f:
             # Deserialize asert correctness and add to Process
             new_tool = json.load(f, cls=DataDecoder)
-            assert isinstance(new_tool, Gripper)
+            assert tool.__class__ is cls
 
             # Copy over old attributes
             new_tool.name = old_tool.name
             new_tool.tool_storage_frame = old_tool.tool_storage_frame
             new_tool.tool_storage_configuration = old_tool.tool_storage_configuration
-        artist.delete_tool_in_storage(id)
-        process.delete_gripper(id)
-        process.add_gripper(new_tool)
-        artist.draw_tool_in_storage(id)
+        artist = get_process_artist()
+        artist.delete_tool_in_storage(tool_id)
+        process.delete_clamp(tool_id)
+        process.add_clamp(new_tool)
+        artist.draw_tool_in_storage(tool_id)
         print("%s is replaced by %s." % (old_tool, new_tool))
+
+
+def replace_clamp(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    replace_tool(process, Clamp)
+
+
+def replace_screwdriver(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    replace_tool(process, Screwdriver)
+
+
+def replace_gripper(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    replace_tool(process, Gripper)
 
 
 def replace_toolchanger(process):
@@ -231,6 +229,11 @@ def replace_toolchanger(process):
             assert isinstance(tool, ToolChanger)
             process.robot_toolchanger = tool
             print("Tool Changer replaced with %s" % tool)
+
+
+#######
+# Robot
+#######
 
 
 def replace_robot(process):
@@ -284,6 +287,11 @@ def replace_robot_wrist(process):
             print("Robot Wrist Object replaced with %s" % tool)
 
 
+############
+# Env Models
+############
+
+
 def add_env_model(process):
     # type: (RobotClampAssemblyProcess) -> None
     # Ask user to pick one or more mesh object
@@ -321,12 +329,13 @@ def delete_all_env_model(process):
 
 def copy_tools(process):
     # type: (RobotClampAssemblyProcess) -> None
+    """Copying tools from another process file."""
 
     # If there are existing tools
     delete_old = False
-    if len(list(process.clamps)) > 0 or len(list(process.grippers)) > 0:
-        reconfirm = rs.GetString("There are %i Clamps, %i Grippers in current file, do you want to delete them?" %
-                                 (len(list(process.clamps)), len(list(process.grippers))), "Delete", ["Delete", "Keep"])
+    if len(list(process.tool_ids)):
+        reconfirm = rs.GetString("There are %i Clamps, %i Screwdrivers, %i Grippers in current file, do you want to delete them?" %
+                                 (len(list(process.clamps)), len(list(process.screwdrivers)), len(list(process.grippers))), "Delete", ["Delete", "Keep"])
         if reconfirm is None:
             return
         if reconfirm.startswith("D") or reconfirm.startswith("d"):
@@ -340,18 +349,21 @@ def copy_tools(process):
             another_process = json.load(f, cls=DataDecoder)  # type: RobotClampAssemblyProcess
         if delete_old:
             process.attributes['clamps'] = another_process.attributes['clamps']
+            process.attributes['screwdrivers'] = another_process.attributes['screwdrivers']
             process.attributes['grippers'] = another_process.attributes['grippers']
-            print("Old clamps and Grippers deleted, %i Clamps, %i Grippers imported." % (len(list(process.clamps)), len(list(process.grippers))))
+            print("Old clamps and Grippers deleted, %i Clamps, %i Screwdrivers, %i Grippers imported." % (len(list(process.clamps)), len(list(process.screwdrivers)), len(list(process.grippers))))
         else:
-            for id in another_process.attributes['clamps']:
-                process.add_clamp(another_process.clamp(id))
-            for id in another_process.attributes['grippers']:
-                process.add_gripper(another_process.gripper(id))
-            print("%i Clamps, %i Grippers imported. Now total: %i Clamps, %i Grippers" % (len(list(another_process.clamps)),
-                                                                                          len(list(another_process.grippers)), len(list(process.clamps)), len(list(process.grippers))))
+            for tool in another_process.tools:
+                process.add_tool(tool)
+
+            print("%i Clamps, %i Screwdrivers, %i Grippers imported. Now total: %i Clamps, %i Clamps, %i Grippers" % (
+                len(list(another_process.clamps)), len(list(another_process.screwdrivers)), len(list(another_process.grippers)),
+                len(list(process.clamps)), len(list(process.screwdrivers)), len(list(process.grippers))))
 
     artist = get_process_artist()
     artist.delete_all_tools_in_storage()
+    for tool_id in process.tool_ids:
+        artist.draw_tool_in_storage(tool_id)
 
 
 def copy_tool_changer(process):
@@ -442,6 +454,11 @@ def copy_all(process):
 
         process.environment_models = another_process.environment_models
         print("Old Environment Model(es) deleted, %i Environment Model(es) imported." % (len(process.environment_models)))
+
+
+##############################
+# Tool Storage / Configuration
+##############################
 
 
 def ui_ask_user_for_tool_id(process, message="Which Tool ID", print_existing_tools=True, include_clamp=True, inclde_gripper=True):
@@ -590,6 +607,12 @@ def show_menu(process):
                     {'name': 'AddClamp', 'action': add_clamp},
                     {'name': 'DeleteClamp', 'action': delete_clamp},
                     {'name': 'ReplaceClamp', 'action': replace_clamp},
+                ]},
+                {'name': 'Screwdrivers', 'message': 'Process have %i Screwdrivers:' % len(list(process.clamps)), 'options': [
+                    {'name': 'Back', 'action': 'Back'},
+                    {'name': 'AddScrewdriver', 'action': add_screwdriver},
+                    {'name': 'DeleteScrewdriver', 'action': delete_screwdriver},
+                    {'name': 'ReplaceScrewdrivers', 'action': replace_screwdriver},
                 ]},
                 {'name': 'Gripper', 'message': 'Process have %i Gripper:' % len(list(process.grippers)), 'options': [
                     {'name': 'Back', 'action': 'Back'},

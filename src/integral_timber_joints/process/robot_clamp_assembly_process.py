@@ -1,14 +1,12 @@
 from copy import deepcopy
 
 from compas.data import Data
-from compas.datastructures import Mesh, Network
-from compas.geometry import Transformation, Translation
-from compas.geometry._core._algebra import dot_vectors
-from compas.geometry.primitives.frame import Frame
-from compas.geometry.primitives.vector import Vector
+from compas.datastructures import Mesh
+from compas.geometry import Frame, Transformation, Translation, Vector, dot_vectors
 from compas.robots.model.robot import RobotModel
 from compas.rpc import Proxy
-from compas_fab.robots.configuration import Configuration
+from compas_fab.robots import Configuration
+from itertools import chain
 
 from geometric_blocking import blocked
 from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
@@ -20,6 +18,7 @@ from integral_timber_joints.process.state import ObjectState, SceneState, copy_s
 from integral_timber_joints.tools.beam_storage import BeamStorage
 from integral_timber_joints.tools.clamp import Clamp
 from integral_timber_joints.tools.gripper import Gripper
+from integral_timber_joints.tools.screwdriver import Screwdriver
 from integral_timber_joints.tools.pickup_station import GripperAlignedPickupStation, PickupStation, StackedPickupStation
 from integral_timber_joints.tools.robot_wrist import RobotWrist
 from integral_timber_joints.tools.tool import Tool
@@ -60,8 +59,9 @@ class RobotClampAssemblyProcess(Data):
         self.attributes['assembly'] = assembly
         self.attributes['clamps'] = {}
         self.attributes['grippers'] = {}
+        self.attributes['screwdrivers'] = {}
 
-        self.attributes['robot_model'] = None                         # RobotModel
+        self.attributes['robot_model'] = None                   # RobotModel
         self.attributes['robot_toolchanger'] = None             # ToolChanger
         self.attributes['robot_wrist'] = None                   # RobotWrist
         self.attributes['robot_initial_config'] = None          # tuple(list(float), flaot)
@@ -94,9 +94,7 @@ class RobotClampAssemblyProcess(Data):
         """
         data = {
             'attributes': self.attributes,
-
         }
-
         return data
 
     @data.setter
@@ -207,9 +205,9 @@ class RobotClampAssemblyProcess(Data):
         # type: (dict(str, ObjectState)) -> None
         self.attributes['initial_state'] = value
 
-    # -----------------------
+    # ----------------
     # Properity access
-    # -----------------------
+    # ----------------
 
     @property
     def assembly(self):
@@ -219,29 +217,71 @@ class RobotClampAssemblyProcess(Data):
     def add_clamp(self, clamp):
         self.attributes['clamps'][clamp.name] = clamp.copy()
 
+    def add_screwdriver(self, screwdriver):
+        self.attributes['screwdrivers'][screwdriver.name] = screwdriver.copy()
+
     def add_gripper(self, gripper):
         self.attributes['grippers'][gripper.name] = gripper.copy()
+
+    def add_tool(self, tool):
+        # type: (Tool) -> None
+        """Add new or overwrite existing Clamp, Screwdriver or Gripper.
+        Add or Replace behaviour depends on the tool.name """
+        if tool.__class__ is Clamp:
+            self.attributes['clamps'][tool.name] = tool.copy()
+        elif tool.__class__ is Screwdriver:
+            self.attributes['screwdrivers'][tool.name] = tool.copy()
+        elif tool.__class__ is Gripper:
+            self.attributes['grippers'][tool.name] = tool.copy()
+        else:
+            raise TypeError("%s Class is weird." % tool.__class__.__name__)
 
     def delete_clamp(self, clamp_id):
         if clamp_id in self.attributes['clamps']:
             del self.attributes['clamps'][clamp_id]
 
+    def delete_screwdriver(self, screwdriver_id):
+        if screwdriver_id in self.attributes['screwdrivers']:
+            del self.attributes['screwdrivers'][screwdriver_id]
+
     def delete_gripper(self, gripper_id):
         if gripper_id in self.attributes['grippers']:
             del self.attributes['grippers'][gripper_id]
 
+    def delete_tool(self, tool_id):
+        # type: (str) -> None
+        """Delete existing Clamp, Screwdriver or Gripper
+        by the tool_id given."""
+        if tool_id is self.attributes['clamps']:
+            del self.attributes['clamps'][tool_id]
+        elif tool_id is self.attributes['screwdrivers']:
+            del self.attributes['screwdrivers'][tool_id]
+        elif tool_id is self.attributes['grippers']:
+            del self.attributes['grippers'][tool_id]
+        else:
+            raise ValueError("Tool id %s cannot be found to be deleted." % tool_id)
+
     def clamp(self, clamp_id):
         # type: (str) -> Clamp
         return self.attributes['clamps'][clamp_id]
+
+    def screwdriver(self, screwdriver_id):
+        # type: (str) -> Screwdriver
+        return self.attributes['screwdrivers'][screwdriver_id]
+
+    def gripper(self, gripper_id):
+        # type: (str) -> Clamp
+        return self.attributes['grippers'][gripper_id]
 
     @property
     def clamps(self):
         # type: () -> list[Clamp]
         return self.attributes['clamps'].values()
 
-    def gripper(self, gripper_id):
-        # type: (str) -> Clamp
-        return self.attributes['grippers'][gripper_id]
+    @property
+    def screwdrivers(self):
+        # type: () -> list[Screwdriver]
+        return self.attributes['screwdrivers'].values()
 
     @property
     def grippers(self):
@@ -254,20 +294,22 @@ class RobotClampAssemblyProcess(Data):
             return self.gripper(tool_id)
         elif tool_id in self.attributes['clamps']:
             return self.clamp(tool_id)
+        elif tool_id in self.attributes['screwdrivers']:
+            return self.screwdriver(tool_id)
         else:
-            raise KeyError("tool_id ({}) cannot be found in process.grippers or process.clamps".format(tool_id))
+            raise KeyError("tool_id ({}) cannot be found in process.grippers/screwdrivers/clamps".format(tool_id))
 
     @property
     def tools(self):
-        # type: () -> list(Tool)
-        """Return a list of all grippers and clamps."""
-        return list(self.clamps) + list(self.grippers)
+        # type: () -> list[Tool]
+        """Return a list of all grippers, screwdrivers and clamps."""
+        return list(self.clamps) + list(self.screwdrivers) + list(self.grippers)
 
     @property
     def tool_ids(self):
-        # type: () -> list(str)
-        """Return all gripper and clamp ids."""
-        return list(self.attributes['grippers'].keys()) + list(self.attributes['clamps'].keys())
+        # type: () -> list[str]
+        """Return all Clamp, Screwdriver and Gripper ids."""
+        return list(self.attributes['clamps'].keys()) + list(self.attributes['screwdrivers'].keys()) + list(self.attributes['grippers'].keys())
 
     def environment_model(self, env_id):
         # type: (str) -> EnvironmentModel
@@ -275,22 +317,33 @@ class RobotClampAssemblyProcess(Data):
 
     @property
     def available_clamp_types(self):
+        # type: () -> set[str]
         return set([clamp.type_name for clamp in self.clamps])
 
     @property
+    def available_screwdriver_types(self):
+        # type: () -> set[str]
+        return set([screwdriver.type_name for screwdriver in self.screwdrivers])
+
+    @property
     def available_gripper_types(self):
+        # type: () -> set[str]
         return set([gripper.type_name for gripper in self.grippers])
 
-    # -----------------------
-    # Clamp
-    # -----------------------
-
     def get_one_tool_by_type(self, type_name):
-        # type: (str) -> Clamp
+        # type: (str) -> Tool
+        """Get one of the clamp or screwdriver that belongs to the given type"""
+        for tool in self.tools:
+            if (tool.type_name == type_name):
+                return tool
+        return None
+
+    def get_one_gripper_by_type(self, type_name):
+        # type: (str) -> Gripper
         """Get one of the clamp that belongs to the given type"""
-        for clamp in self.clamps:
-            if (clamp.type_name == type_name):
-                return clamp
+        for gripper in self.grippers:
+            if (gripper.type_name == type_name):
+                return gripper
         return None
 
     def get_tool_type_of_joint(self, joint_id):
@@ -306,21 +359,23 @@ class RobotClampAssemblyProcess(Data):
         else:
             return None
 
-    def get_tool_of_joint(self, joint_id, position_name='clamp_wcf_final'):
-        # type: (tuple[str, str], bool) -> Clamp
-        """Returns the clamp object being set at the position
-        specified by 'position_name', default is 'clamp_wcf_final'.
-        Refering to the attached position on the beam.
+    def get_tool_of_joint(self, joint_id, position_name=''):
+        # type: (tuple[str, str], Optional[str]) -> Tool
+        """Returns the clamp/screwdriver object being set at the position
+        specified by 'position_name', default '' will be translated to
+        'clamp_wcf_final' or 'screwdriver_assembled_attached',
+        refering to the attached position on the beam.
 
         If joint_attribute 'tool_id' is set, the exact tool object is returned
         otherwise a random tool of the correct type (from 'tool_type') is returned.
 
-        If 'position_name' = '', clamp frame will not be modified.
+        If 'position_name' = None, clamp frame will not be modified.
 
         Warning: This clamp object is not deep-copied.
         Modifying it will change its definition in the process.
         """
         # Fetching the correct tool object
+        beam_id = joint_id[0]
         tool_id = self.assembly.get_joint_attribute(joint_id, 'tool_id')
         tool_type = self.get_tool_type_of_joint(joint_id)
         if tool_id is not None and tool_id in self.tool_ids:
@@ -331,17 +386,24 @@ class RobotClampAssemblyProcess(Data):
             # print("Getting Joint(%s) get_one_tool_by_type Tool %s (%s)" % (joint_id, tool_type, tool_id))
 
         # Setting position
-        if position_name != "":
+        if position_name is not None:
+            if position_name == "":
+                if self.assembly.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
+                    position_name = 'screwdriver_assembled_attached'
+                elif self.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.CLAMPED:
+                    position_name = 'clamp_wcf_final'
+                else:
+                    return None
             tool_wcf = self.assembly.get_joint_attribute(joint_id, position_name)
             # print("Setting it to position %s = %s"  % (position_name, tool_wcf))
             assert tool_wcf is not None
             tool.current_frame = tool_wcf
         return tool
 
-    def get_clamp_t0cf_at(self, joint_id, position_name):
-        # type: (tuple[str, str], bool) -> Clamp
+    def get_tool_t0cf_at(self, joint_id, position_name):
+        # type: (tuple[str, str], str) -> Frame
         """ Returns the t0cf (flange frame) of the robot (in WCF)
-        when the clamp is at the specified key position.
+        when the Clamp/Screwdriver is at the specified key position.
         Taking into account of the tool changer.
 
         Actually it should be called T0CF (Tool0 coordinate frame). Tool0 means no tool.
@@ -353,11 +415,15 @@ class RobotClampAssemblyProcess(Data):
         - This is the robot flange.
         - The result can be used directly for path planning.
         """
-        world_from_clampbase = self.assembly.get_joint_attribute(joint_id, position_name)
+        world_from_toolbase = self.assembly.get_joint_attribute(joint_id, position_name)
         tool_changer = self.robot_toolchanger
-        tool_changer.set_current_frame_from_tcp(world_from_clampbase)
+        tool_changer.set_current_frame_from_tcp(world_from_toolbase)
 
         return tool_changer.current_frame.copy()
+
+    # -----------------------
+    # Jaw Approach Algorithms
+    # -----------------------
 
     def compute_jawapproach_vector_length(self, beam_id, vector_dir, min_dist=20, max_dist=150):
         # type: (str, Vector, float, float) -> Vector
@@ -368,7 +434,7 @@ class RobotClampAssemblyProcess(Data):
         # Compute the length of the movement to clear the clamp jaw
         clearance_length = min_dist
         for joint_id in self.assembly.get_joint_ids_with_tools_for_beam(beam_id):
-            clamp = self.get_tool_of_joint(joint_id, '')
+            clamp = self.get_tool_of_joint(joint_id, None)
             clearance_length = max(clearance_length, clamp.jaw_clearance_vectors_in_wcf.length)
         clearance_length = min(max_dist, clearance_length)
 
@@ -526,17 +592,9 @@ class RobotClampAssemblyProcess(Data):
 
         return ComputationalResult.ValidCanContinue
 
-    # ----------------------------------
+    # ------------------------------
     # Gripper / Grip Pose Algorithms
-    # ----------------------------------
-
-    def get_one_gripper_by_type(self, type_name):
-        # type: (str) -> Gripper
-        """Get one of the clamp that belongs to the given type"""
-        for gripper in self.grippers:
-            if (gripper.type_name == type_name):
-                return gripper
-        return None
+    # ------------------------------
 
     def override_grasp_face(self, beam_id, grasp_face):
         """Manually override `gripper_grasp_face` for a specified beam
@@ -854,9 +912,9 @@ class RobotClampAssemblyProcess(Data):
         self.dependency.invalidate(beam_id, self.compute_gripper_grasp_pose)
         return ComputationalResult.ValidCanContinue
 
-    # -----------------------------------------------
+    # -------------------------------------------
     # Beam Storage / Pick Up / Retract Algorithms
-    # -----------------------------------------------
+    # -------------------------------------------
 
     def compute_storeage_frame(self, beam_id):
         # type(int) -> None
@@ -1158,9 +1216,9 @@ class RobotClampAssemblyProcess(Data):
 
         return ComputationalResult.ValidCanContinue
 
-    # -----------------------
+    # -----------------
     # Clamps Algorithms
-    # -----------------------
+    # -----------------
 
     def assign_clamp_type_to_joints(self, beam_id, verbose=False):
         """Assign clamp_types to joints based on the joint's preference and clamp availability.
@@ -1284,7 +1342,7 @@ class RobotClampAssemblyProcess(Data):
             selected_frame = choose_frame_by_guide_vector(attachment_frames, guiding_vector)
 
             # Set clamp tcp to selected_frame using set_current_frame_from_tcp()
-            clamp = self.get_tool_of_joint(joint_id, '')
+            clamp = self.get_tool_of_joint(joint_id, None)
             if clamp is None:
                 continue
             clamp.set_current_frame_from_tcp(selected_frame)
@@ -1414,9 +1472,9 @@ class RobotClampAssemblyProcess(Data):
                 print("|  |- clamp_wcf_detachretract2 = %s" % clamp_wcf_detachretract2)
         return ComputationalResult.ValidCanContinue
 
-    # -----------------------
+    # ----------------------
     # Dependency Computation
-    # -----------------------
+    # ----------------------
 
     def compute_all(self, beam_id):
         return ComputationalResult.ValidCanContinue
@@ -1424,9 +1482,9 @@ class RobotClampAssemblyProcess(Data):
     def copy(self):
         return deepcopy(self)
 
-    # -----------------------
+    # -----------------
     # Environment Model
-    # -----------------------
+    # -----------------
 
     def get_new_environment_model_id(self):
         # type: () -> str
@@ -1453,9 +1511,9 @@ class RobotClampAssemblyProcess(Data):
         self.environment_models[env_id] = env_model
         return env_id
 
-    # -----------------------
-    # Action and Movements
-    # -----------------------
+    # -------------------------
+    # Action Movement and Scene
+    # -------------------------
 
     def get_actions_by_beam_id(self, beam_id):
         # type: (str) -> list[Action]
@@ -1559,9 +1617,9 @@ class RobotClampAssemblyProcess(Data):
         movement = self.get_movement_by_movement_id(movement_id)
         return self.get_beam_id_of_movement(movement)
 
-    # -----------------------
+    # --------------------
     # Robot Configurations
-    # -----------------------
+    # --------------------
 
     def set_initial_state_robot_config(self, robot_configuration):
         # type: (Configuration) -> None
@@ -1651,9 +1709,14 @@ class RobotClampAssemblyProcess(Data):
         elif object_id.startswith('robot'):
             raise ValueError('robot object is not stored within the Process class.')
 
+    # ------------------------------
+    # Loading Externally Saved Files
+    # ------------------------------
+
     # TODO load specific movement_id and neighbors
+
     def load_external_movements(self, process_folder_path, movement_id=None):
-        # type: (str, str) -> list(Movement)
+        # type: (str, str) -> list[Movement]
         """Load External Movements from nearby folder if they exist, replace the movements
         with new movements, returns the list of movements modified.
         If movement_id is None, all movements will be parsed. Otherwise only the given movement
@@ -1681,8 +1744,6 @@ class RobotClampAssemblyProcess(Data):
                 # print("Loading External Movement File: movement_path%s" % movement_path)
                 with open(movement_path, 'r') as f:
                     movement.data = json.load(f, cls=DataDecoder).data
-                # if isinstance(movement, RoboticMovement):
-                #     print('Has traj: {} | end state conf: {}'.format(movement.trajectory is not None, movement.end_state['robot'].kinematic_config))
                 movements_modified.append(movement)
         return movements_modified
 
