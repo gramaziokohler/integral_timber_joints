@@ -37,9 +37,9 @@ def test_compute_states(process):
     # Recompute Initial State
     recompute_initial_state(process, verbose=False)
     # Recompute all other stuff
-    [process.dependency.compute(beam_id, process.compute_all, verbose=False) for beam_id in process.assembly.sequence]
+    [process.dependency.compute_all(beam_id, verbose=True) for beam_id in process.assembly.sequence]
     # import cProfile
-    # cProfile.run('[process.dependency.compute(beam_id, process.compute_all, verbose=False) for beam_id in process.assembly.sequence]', sort="cumulative")
+    # cProfile.run('[process.dependency.compute_all(beam_id, verbose=False) for beam_id in process.assembly.sequence]', sort="cumulative")
 
 
 def save_and_load_process(process):
@@ -48,7 +48,7 @@ def save_and_load_process(process):
 
 
 if __name__ == "__main__":
-    process = load_process(r"C:\Users\leungp\Documents\GitHub\integral_timber_joints\external\itj_design_study\210128_RemodelFredPavilion\twelve_pieces_process.json")
+    process = load_process(r"C:\Users\leungp\Documents\GitHub\integral_timber_joints\external\itj_design_study\210605_ScrewdriverTestProcess\nine_pieces_process.json")
     test_compute_states(process)
 
     movement = process.get_movements_by_beam_id('b1')[0]

@@ -16,6 +16,10 @@ import json
 from compas.datastructures import Mesh
 from compas.geometry import Cylinder, Polyhedron, Shape
 
+try:
+    from integral_timber_joints.geometry.beam import Beam
+except:
+    pass
 
 class Joint(object):
 
@@ -77,6 +81,9 @@ class Joint(object):
 
         return [Mesh.from_vertices_and_faces(* shape.to_vertices_and_faces()) for shape in shapes]
 
+    def get_clamp_frames(self, beam):
+        # type: (Beam) -> list[Frame]
+        raise NotImplementedError
 
 if __name__ == "__main__":
     # Test to create a inherited joint object, serialize and deserialize it.

@@ -24,11 +24,11 @@ from integral_timber_joints.tools import Clamp, Gripper, Tool
 ###############################################
 
 def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
-    # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
+    # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> ComputationalResult
     """Assign available tool_ids to joints that require assembly tool.
     Based on the joint attribute `tool_type`
     """
-    available_tools = sorted(process.clamps, key=lambda tool: tool.name)
+    available_tools = sorted(process.tools, key=lambda tool: tool.name)
     something_failed = False
     something_changed = False
 
@@ -64,11 +64,24 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
 def create_actions_from_sequence(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
     """ Creating Action objects (process.actions) from process.sequence
-    This is specific to the general action framework for a clamp and gripper assembly streategy.
-    This is specific to a single robot / multiple clamp and gripper scenario.
 
     Beam attribute 'assembly_method' should be assigned prior.
     Joint attribute 'tool_type' and 'tool_id' should be assigned.
+    """
+    assembly_method = process.assembly.get_assembly_method(beam_id)
+    if assembly_method == BeamAssemblyMethod.CLAMPED:
+        return _create_actions_for_clamped(process, beam_id, verbose)
+    else:
+        return _create_actions_for_screwed(process, beam_id, verbose)
+
+
+def _create_actions_for_clamped(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
+    """ Creating Action objects (process.actions)
+    for beams with `BeamAssemblyMethod.CLAMPED`.
+
+    This is specific to the general action framework for a clamp and gripper assembly streategy.
+    This is specific to a single robot / multiple clamp and gripper scenario.
     """
 
     assembly = process.assembly  # type: Assembly
@@ -92,7 +105,7 @@ def create_actions_from_sequence(process, beam_id, verbose=False):
     clamp_ids = [assembly.get_joint_attribute(joint_id, 'clamp_id') for joint_id in joint_id_of_clamps]
 
     for joint_id in joint_id_of_clamps:
-        tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
+        tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
         tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
         actions.append(PickClampFromStorageAction(seq_n, act_n(), tool_type, tool_id))
         if verbose:
@@ -138,7 +151,7 @@ def create_actions_from_sequence(process, beam_id, verbose=False):
 
     # remove clamps from structure to storage
     for joint_id in reversed(joint_id_of_clamps):
-        tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
+        tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
         tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
         actions.append(PickClampFromStructureAction(seq_n, act_n(), joint_id, tool_type, tool_id))
         if verbose:
@@ -151,6 +164,15 @@ def create_actions_from_sequence(process, beam_id, verbose=False):
     # Return results
     return ComputationalResult.ValidCanContinue
 
+def _create_actions_for_screwed(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
+    """ Creating Action objects (process.actions)
+    for beams with `BeamAssemblyMethod.CLAMPED`.
+
+    This is specific to the general action framework for a clamp and gripper assembly streategy.
+    This is specific to a single robot / multiple clamp and gripper scenario.
+    """
+    return ComputationalResult.ValidCanContinue
 
 def create_movements_from_action(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
@@ -203,7 +225,7 @@ def assign_tools_to_actions(process, verbose=True):
     """
     # Variables for a procedural simulation to ensure process consistancy
     print("deprecated Warning: assign_tools_to_actions should be retired. Use assign_tool_id_to_beam_joints() instead.")
-    tools_in_storage = [c for c in process.clamps] + [g for g in process.grippers]
+    tools_in_storage = [c for c in process.clamps] + [s for s in process.screwdrivers] + [g for g in process.grippers]
 
     tool_at_robot = None  # type: Optional[Tool]
     beam_id_at_robot = None  # type: Optional[str]
@@ -484,7 +506,7 @@ def test_process_prepathplan(json_path_in, json_path_out):
     # Pre computation
     #########################################################################
 
-    # process.assign_clamp_type_to_joints()
+    # process.assign_tool_type_to_joints()
     # for beam_id in process.assembly.sequence:
     #     process.compute_clamp_attachapproach_attachretract(beam_id, verbose = True)
 

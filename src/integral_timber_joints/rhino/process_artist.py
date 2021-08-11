@@ -12,7 +12,7 @@ from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
 from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
 from System.Drawing import Color  # type: ignore
 
-from integral_timber_joints.assembly import Assembly
+from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry import Beam
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.process.state import ObjectState, SceneState
@@ -50,9 +50,16 @@ def AddAnnotationText(frame, text, height, layer, redraw=True):
 
 
 class ProcessKeyPosition(object):
-    def __init__(self, current_pos_num=0):
-        self.current_pos_num = 0
-        self.current_beam_has_clamps = True
+    def __init__(self, process = None, beam_id = None, current_pos_num=0):
+        # type: (RobotClampAssemblyProcess, str, int) -> None
+        """Initializing the Key Positions accoring to the assembly method of beam."""
+        if process is not None and beam_id is not None:
+            self.beam_tool_count = len(list(process.assembly.get_joint_ids_with_tools_for_beam(beam_id)))
+            self.beam_assembly_method = process.assembly.get_assembly_method(beam_id)
+        else:
+            self.beam_tool_count = 0
+            self.beam_assembly_method = BeamAssemblyMethod.UNDEFINED
+        self.current_pos_num = current_pos_num
 
     # Constant names for beam, gripper and clamp positions.
     # beam_positions and gripper_positions relate directly to Beam Attributes in Assembly
@@ -64,6 +71,7 @@ class ProcessKeyPosition(object):
         'assembly_wcf_inclampapproach',
         'assembly_wcf_inclamp',
         'assembly_wcf_final',
+        'assembly_wcf_assembleapproach',
     ]
     gripper_positions = [
         'assembly_wcf_pickupapproach.open_gripper',
@@ -81,6 +89,13 @@ class ProcessKeyPosition(object):
         'clamp_wcf_final.close_clamp.close_gripper',
         'clamp_wcf_detachretract1.open_clamp.open_gripper',
         'clamp_wcf_detachretract2.open_clamp.open_gripper',
+    ]
+    screwdriver_positions = [
+        'screwdriver_assembleapproach_attached.close_gripper',
+        'screwdriver_assemblebegin_attached.close_gripper',
+        'screwdriver_assembled_attached.close_gripper',
+        'screwdriver_assembled_detached.open_gripper',
+        'screwdriver_assembled_retracted.open_gripper',
     ]
 
     # pos_name, beam_pos, gripper_pos, clamp_pos
@@ -118,6 +133,41 @@ class ProcessKeyPosition(object):
         ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract.open_gripper',      None),
     ]
 
+    # pos_name, beam_pos, gripper_pos, screwdriver_pos
+    pos_names_for_beam_with_screwdriver_with_gripper = [
+        ('screwdriver_assembleapproach',
+         'assembly_wcf_assembleapproach',
+         'assembly_wcf_assembleapproach.close_gripper',
+         'screwdriver_assembleapproach_attached.close_gripper'),
+
+        ('screwdriver_assembled',
+         'assembly_wcf_final',
+         'assembly_wcf_final.close_gripper',
+         'screwdriver_assembled_attached.close_gripper'),
+
+        ('screwdriver_assembled',
+         'assembly_wcf_final',
+         'assembly_wcf_finalretract.open_gripper',
+         'screwdriver_assembled_attached.close_gripper'),
+
+        ('screwdriver_retracted',
+         'assembly_wcf_final',
+         None,
+         'screwdriver_assembled_retracted.open_gripper'),
+    ]
+
+    # pos_name, beam_pos, gripper_pos, screwdriver_pos
+    pos_names_for_beam_with_screwdriver_without_gripper = [
+        ('screwdriver_assembleapproach',            'assembly_wcf_assembleapproach',
+         None,                                      'screwdriver_assembleapproach_attached.close_gripper'),
+
+        ('screwdriver_assembled',                   'assembly_wcf_final',
+         None,                                      'screwdriver_assembled_attached.close_gripper'),
+
+        ('screwdriver_retracted',                   'assembly_wcf_final',
+         None,                                      'screwdriver_assembled_detached.open_gripper'),
+    ]
+
     def next_position(self):
         self.current_pos_num += 1
         if self.current_pos_num >= self.total_pos_number:
@@ -136,26 +186,51 @@ class ProcessKeyPosition(object):
     def final_position(self):
         """ Set `self.current_pos_num` to beam_final
         """
-        if self.current_beam_has_clamps:
-            self.current_pos_num = 7
-        else:
+        if self.beam_tool_count == 0:
             self.current_pos_num = 5
+        elif self.beam_assembly_method == BeamAssemblyMethod.CLAMPED:
+            self.current_pos_num = 7
+        elif self.beam_assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
+            self.current_pos_num = 2
+        elif self.beam_assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            self.current_pos_num = 2
+        else:
+            self.current_pos_num = 0
+
+
+    def _get_pos_names(self):
+        # type: () -> List[Tuple[str,str,str,str]]
+        """Getting the right pos_name array depending on the assembly method"""
+
+        # Switching between two sets of key positions depending if it has clamps
+        if self.beam_tool_count == 0:
+            return self.pos_names_for_beam_without_clamps
+        elif self.beam_assembly_method == BeamAssemblyMethod.CLAMPED:
+            return self.pos_names_for_beam_with_clamps
+        elif self.beam_assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
+            return self.pos_names_for_beam_with_screwdriver_with_gripper
+        elif self.beam_assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            return self.pos_names_for_beam_with_screwdriver_without_gripper
+        else:
+            return []
 
     @property
     def _get_current_pos_names(self):
+        # type: () -> Tuple[str,str,str,str]
+        """Getting the 4 part Tuple of where things are.
+        Order is: pos_name, beam_pos, gripper_pos, assembly_tool_pos
+        """
         # just in case
         if self.current_pos_num >= self.total_pos_number:
             self.final_position()
 
         # Switching between two sets of key positions depending if it has clamps
-        if self.current_beam_has_clamps:
-            return self.pos_names_for_beam_with_clamps[self.current_pos_num]
-        else:
-            return self.pos_names_for_beam_without_clamps[self.current_pos_num]
+        pos_names = self._get_pos_names()
+        return pos_names[self.current_pos_num]
 
     @property
     def current_pos_name(self):
-        # type() -> str
+        # type: () -> str
         return self._get_current_pos_names[0]
 
     @property
@@ -172,17 +247,29 @@ class ProcessKeyPosition(object):
 
     @property
     def total_pos_number(self):
-        if self.current_beam_has_clamps:
-            return len(self.pos_names_for_beam_with_clamps)
-        else:
-            return len(self.pos_names_for_beam_without_clamps)
+        return len(self._get_pos_names())
+
+    @property
+    def get_all_asstool_positions(self):
+        """Returning all possible Assembly Tool Positions according to the current beam"""
+        return set([x[3] for x in self._get_pos_names()])
 
     def to_data(self):
-        data = {'current_pos_num': self.current_pos_num}
+        # type: () -> dict[str, Any]
+        data = {'current_pos_num': self.current_pos_num,
+        'beam_tool_count' : self.beam_tool_count,
+        'beam_assembly_method' : self.beam_assembly_method,
+        }
+        return data
 
     @classmethod
     def from_data(cls, data):
-        return cls(data['current_pos_num'])
+        # type: (dict[str, Any]) -> ProcessKeyPosition
+        p = cls()
+        p.current_beam_pos = data.get('current_pos_num', 0)
+        p.beam_tool_count = data.get('beam_tool_count', 0)
+        p.beam_assembly_method = data.get('beam_assembly_method', BeamAssemblyMethod.UNDEFINED)
+        return p
 
 
 class ProcessArtist(object):
@@ -191,7 +278,7 @@ class ProcessArtist(object):
     Beam Brep : layer = itj::beams_brep         name = beam_id
     Beam Mesh : layer =  itj::beams_mesh        name = beam_id
     Beam Sequence Tag - itj::beams_seqtag
-    self.gripper_guids, clamp_guids, beam_guids, interactive_guids
+    self.gripper_guids, asstool_guids, beam_guids, interactive_guids
     are dictionary that keep track of the objects drawn in Rhino.
     """
 
@@ -236,7 +323,7 @@ class ProcessArtist(object):
         # # Create guid in dictionary to store geometries added to Rhino document
         self._beam_guids = {}  # type: dict[str, dict[str, list[str]]]
         self._gripper_guids = {}  # type: dict[str, dict[str, list[str]]]
-        self._clamp_guids = {}  # type: dict[str, dict[str, list[str]]]
+        self._asstool_guids = {}  # type: dict[str, dict[str, list[str]]]
         self._interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
         self._state_visualization_guids = {}  # type: dict[str, list[str]]
         self._tools_in_storage_guids = {}  # type: dict[str, list[str]]
@@ -260,7 +347,7 @@ class ProcessArtist(object):
 
         self._selected_beam_id = None  # type: str
         self.selected_state_id = 0  # type: str # State Id = Start State of Movement with the same ID"""
-        self.selected_key_position = ProcessKeyPosition(0)
+        self.selected_key_position = ProcessKeyPosition(process, self.selected_beam_id, 0)
 
     #######################################
     # Functions to handle the guid records
@@ -289,17 +376,17 @@ class ProcessArtist(object):
             self.gripper_guids(beam_id)[position_id] = []
         return self.gripper_guids(beam_id)[position_id]
 
-    def clamp_guids(self, joint_id):
+    def asstool_guids(self, joint_id):
         # type: (tuple(str, str)) -> dict[str, list[guid]]
-        if joint_id not in self._clamp_guids:
-            self._clamp_guids[joint_id] = {}
-        return self._clamp_guids[joint_id]
+        if joint_id not in self._asstool_guids:
+            self._asstool_guids[joint_id] = {}
+        return self._asstool_guids[joint_id]
 
-    def clamp_guids_at_position(self, joint_id, position_id):
+    def asstool_guids_at_position(self, joint_id, position_id):
         # type: (str, str) -> list[guid]
-        if position_id not in self.clamp_guids(joint_id):
-            self.clamp_guids(joint_id)[position_id] = []
-        return self.clamp_guids(joint_id)[position_id]
+        if position_id not in self.asstool_guids(joint_id):
+            self.asstool_guids(joint_id)[position_id] = []
+        return self.asstool_guids(joint_id)[position_id]
 
     def interactive_guids(self, beam_id):
         # type: (tuple(str, str)) -> dict[str, list[guid]]
@@ -341,11 +428,15 @@ class ProcessArtist(object):
 
     @selected_beam_id.setter
     def selected_beam_id(self, beam_id):
+        # Do not change anything if the id is the same
+        if beam_id == self._selected_beam_id:
+            return
         self._selected_beam_id = beam_id
-        # update selected_key_position whether current_beam_has_clamps
+
+        # update selected_key_position object
         if beam_id is not None:
-            self.selected_key_position.current_beam_has_clamps = len(list(
-                self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id))) > 0
+            self.selected_key_position = ProcessKeyPosition(self.process, self.selected_beam_id, 0)
+            self.selected_key_position.final_position()
 
     def select_next_beam(self):
         # type: () -> str
@@ -586,8 +677,9 @@ class ProcessArtist(object):
             yield layer
         for gripper_position in ProcessKeyPosition.gripper_positions:
             yield 'itj::gripper::' + gripper_position
-        for clamp_position in ProcessKeyPosition.clamp_positions:
-            yield 'itj::clamp::' + clamp_position
+        for tool_position in set(ProcessKeyPosition.clamp_positions + ProcessKeyPosition.screwdriver_positions):
+            yield 'itj::tool::' + tool_position
+
         for beam_position in ProcessKeyPosition.beam_positions:
             yield 'itj::beam::' + beam_position
         yield self.state_visualization_layer
@@ -613,7 +705,7 @@ class ProcessArtist(object):
             self.delete_beam_all_positions(beam_id=beam_id, redraw=False)
             self.delete_gripper_all_positions(beam_id, redraw=False)
             for joint_id in self.process.assembly.get_joint_ids_of_beam(beam_id):
-                self.delete_clamp_all_positions(joint_id=joint_id, redraw=False)
+                self.delete_asstool_all_positions(joint_id=joint_id, redraw=False)
 
         self._state_visualization_guids = {}
         self._tools_in_storage_guids = {}
@@ -643,7 +735,7 @@ class ProcessArtist(object):
             if '.' in gripper_position:
                 attribute_name = gripper_position.split('.')[0]
                 tool_states = gripper_position.split('.')[1:]
-            layer_name = 'itj::clamp::' + gripper_position
+            layer_name = 'itj::gripper::' + gripper_position
 
             # Delete old geometry
             self.delete_gripper_at_position(beam_id, gripper_position, redraw=False)
@@ -743,85 +835,89 @@ class ProcessArtist(object):
     # Drawing Clamp
     ######################
 
-    def draw_clamp_all_positions(self, beam_id, delete_old=False, verbose=False, redraw=True):
-        """ Delete old clamp geometry if delete_old is True
+    def draw_asstool_all_positions(self, beam_id, delete_old=False, verbose=False, redraw=True):
+        """ Delete old Assembly Tool (Clamps/Screwdrivers) geometry if delete_old is True
         Redraw them in Rhino in different layers.
-        The resulting Rhino guids are kept in self.clamp_guids(joint_id, clamp_position)
+        The resulting Rhino guids are kept in self.asstool_guids(joint_id, clamp_position)
 
         This applies to all positions where the attribute is set in joint attributes.
         """
         rs.EnableRedraw(False)
-        # clamp_id == joint_id
         # Loop through all clamps that are clamping this beam
         for joint_id in self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
+            # Smart about the tool positions of this beam
+            tool_positions = ProcessKeyPosition(self.process, beam_id).get_all_asstool_positions
             # Loop through each position
-            for clamp_position in ProcessKeyPosition.clamp_positions:
+            for tool_position in tool_positions:
                 # If not delete_old, and there are already items drawn, we preserve them.
-                if len(self.clamp_guids_at_position(joint_id, clamp_position)) > 0 and not delete_old:
+                if len(self.asstool_guids_at_position(joint_id, tool_position)) > 0 and not delete_old:
                     continue
 
                 # Check if the position string contains a dot notation for states , such as open gripper
                 tool_states = []  # tool_states are function names that chagen state of the tool
-                attribute_name = clamp_position
-                if '.' in clamp_position:
-                    attribute_name = clamp_position.split('.')[0]
-                    tool_states = clamp_position.split('.')[1:]
-                layer_name = 'itj::clamp::' + clamp_position
+                attribute_name = tool_position
+                if '.' in tool_position:
+                    attribute_name = tool_position.split('.')[0]
+                    tool_states = tool_position.split('.')[1:]
+                layer_name = 'itj::tool::' + tool_position
 
                 # Delete old geometry
-                self.delete_clamp_at_position(joint_id, clamp_position, redraw=False)
+                self.delete_asstool_at_position(joint_id, tool_position, redraw=False)
 
                 # Skip the rest of code if the position does not exist.
                 if self.process.assembly.get_joint_attribute(joint_id, attribute_name) is None:
                     if verbose:
-                        print("Skipping clamp(%s) at position: %s" % (joint_id, attribute_name))
+                        print("Skipping tool(%s) at position: %s" % (joint_id, attribute_name))
                     continue
 
-                # Draw Clamp
+                # Draw Tool
                 if verbose:
-                    print("Drawing Clamp(%s) for Beam(%s) in position: %s" % (joint_id, beam_id, clamp_position))
-                clamp = self.process.get_tool_of_joint(joint_id, attribute_name)
+                    print("Drawing Tool(%s) for Beam(%s) in position: %s" % (joint_id, beam_id, tool_position))
+                tool = self.process.get_tool_of_joint(joint_id, attribute_name)
 
                 # Set Tool State (better visualization)
                 for state in tool_states:
-                    getattr(clamp, state)()
+                    getattr(tool, state)()
 
-                artist = ToolArtist(clamp, layer_name)
-                new_guids = clamp.draw_visual(artist)
-                self.clamp_guids_at_position(joint_id, clamp_position).extend(new_guids)
+                artist = ToolArtist(tool, layer_name)
+                new_guids = tool.draw_visual(artist)
+                self.asstool_guids_at_position(joint_id, tool_position).extend(new_guids)
 
                 # Draw ToolChanger and Robot Wrist
-                new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, clamp.current_frame, layer_name, )
-                self.clamp_guids_at_position(joint_id, clamp_position).extend(new_guids)
+                new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, tool.current_frame, layer_name)
+                self.asstool_guids_at_position(joint_id, tool_position).extend(new_guids)
         if redraw:
             rs.EnableRedraw(True)
 
-    def delete_clamp_all_positions(self, joint_id, redraw=True):
-        """Delete all Rhino geometry associated to a a gripper.
-        All positions are deleted
+    def delete_asstool_all_positions(self, joint_id, redraw=True):
+        """Delete all Rhino geometry associated to Assembly Tool
+        (Clamp/Screwdriver). All positions are deleted
         """
         rs.EnableRedraw(False)
-        for clamp_position in ProcessKeyPosition.clamp_positions:
+        beam_id = joint_id[1]
+        for tool_position in ProcessKeyPosition(self.process, beam_id).get_all_asstool_positions:
             # The redraw is supressed in each individual call to save time.
-            self.delete_gripper_at_position(joint_id, clamp_position, redraw=False)
+            self.delete_asstool_at_position(joint_id, tool_position, redraw=False)
         if redraw:
             rs.EnableRedraw(True)
 
-    def delete_clamp_at_position(self, joint_id, clamp_position, redraw=True):
-        """Delete all Rhino geometry associated to a gripper at specified position
+    def delete_asstool_at_position(self, joint_id, tool_position, redraw=True):
+        """Delete all Rhino geometry associated to an Assembly Tool
+        (Clamp/Screwdriver) at specified position
 
-        No change will be made if the joint_id or clamp_position do not exist in the guid dictionary.
+        No change will be made if the joint_id or tool_position
+        do not exist in the guid dictionary.
         """
 
-        guids = self.clamp_guids_at_position(joint_id, clamp_position)
+        guids = self.asstool_guids_at_position(joint_id, tool_position)
         if len(guids) > 0:
             purge_objects(guids, redraw=False)
-            del self.clamp_guids_at_position(joint_id, clamp_position)[:]
+            del self.asstool_guids_at_position(joint_id, tool_position)[:]
         if redraw:
             rs.EnableRedraw(True)
 
-    def show_clamp_at_one_position(self, beam_id, position=None, color=None):
-        """ Show Gripper only at the specified position.
+    def show_asstool_at_one_position(self, beam_id, position=None, color=None):
+        """ Show Assembly Tool (Clamp/Screwdriver) only at the specified position.
 
         `position` is the position attribute name, if left `None`,
         selected_key_position saved in artist will be used.
@@ -832,21 +928,21 @@ class ProcessArtist(object):
             position = self.selected_key_position.current_clamp_pos
 
         for joint_id in self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
-            for clamp_position in ProcessKeyPosition.clamp_positions:
-                if clamp_position == position:
-                    rs.ShowObject(self.clamp_guids_at_position(joint_id, clamp_position))
+            for tool_position in ProcessKeyPosition(self.process, beam_id).get_all_asstool_positions:
+                if tool_position == position:
+                    rs.ShowObject(self.asstool_guids_at_position(joint_id, tool_position))
                     # Change color for shown object
                     if color is not None:
-                        rs.ObjectColor(self.clamp_guids_at_position(joint_id, clamp_position), self.color_meaning.get(color))
+                        rs.ObjectColor(self.asstool_guids_at_position(joint_id, tool_position), self.color_meaning.get(color))
                 else:
-                    rs.HideObject(self.clamp_guids_at_position(joint_id, clamp_position))
+                    rs.HideObject(self.asstool_guids_at_position(joint_id, tool_position))
 
-    def hide_clamp_all_positions(self, beam_id):
+    def hide_asstool_all_positions(self, beam_id):
         """ Hide all gripper instances in the specified positions.
 
         `positions` are defaulted to all position.
         """
-        self.show_clamp_at_one_position(beam_id, '')
+        self.show_asstool_at_one_position(beam_id, '')
 
     #################################
     # Tools in storage Visualization
@@ -1049,16 +1145,15 @@ if __name__ == "__main__":
     #     artist.draw_beam_mesh(beam_id)
     #     artist.draw_beam_seqtag(beam_id)
     """Draw the clamp as a block. Block name is the clamp_type"""
-    for clamp_type in process.available_clamp_types:
-        clamp = process.get_one_tool_by_type(clamp_type).copy()
-        clamp.open_gripper()
-        clamp.open_clamp()
-        clamp.current_frame = Frame.worldXY()
-        clamp_meshes = clamp.draw_visuals()
+    for tool_type in process.available_assembly_tool_types:
+        tool = process.get_one_tool_by_type(tool_type).copy()
+        tool.open_gripper()
+        tool.current_frame = Frame.worldXY()
+        meshes = tool.draw_visuals()
         guids = []
-        for clamp_mesh in clamp_meshes:
-            v, f = clamp_mesh.to_vertices_and_faces()
-            layer = 'itj::clamps'
-            guids.append(draw_mesh(v, f, name=clamp_type, layer=layer))
-        block = rs.AddBlock(guids, (0, 0, 0), clamp_type, True)
+        for mesh in meshes:
+            v, f = mesh.to_vertices_and_faces()
+            layer = 'itj::tool'
+            guids.append(draw_mesh(v, f, name=tool_type, layer=layer))
+        block = rs.AddBlock(guids, (0, 0, 0), tool_type, True)
         #rs.InsertBlock(block, (10,10,10))

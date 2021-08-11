@@ -61,20 +61,24 @@ class ComputationalDependency(Graph):
         self.process = process
 
         # Clamp related computation
-        self.add_node('assign_clamp_type_to_joints')
+        self.add_node('assign_tool_type_to_joints')
         self.add_node('search_valid_clamp_orientation_with_guiding_vector')
         self.add_node('compute_clamp_attachapproach_attachretract_detachapproach')
         self.add_node('compute_clamp_detachretract')
         self.add_node('search_valid_jawapproach_vector_prioritizing_beam_side')
-        # Level 1
-        # -------
-        self.add_edge(
-            'assign_clamp_type_to_joints',  # Top level
-            'search_valid_clamp_orientation_with_guiding_vector'
-        )
 
-        # Level 2
+        # Assigning Tools
         # -------
+        self.add_edge('assign_tool_type_to_joints', 'search_valid_clamp_orientation_with_guiding_vector')
+        self.add_edge('assign_tool_type_to_joints', 'assign_tool_id_to_beam_joints')
+
+        # Gripper / Grasp / Beam at Pickup
+        # --------------------------------
+        self.add_edge('assign_gripper_to_beam', 'compute_gripper_grasp_pose')
+        self.add_edge('compute_gripper_grasp_pose', 'compute_pickup_frame')
+
+        # Clamp Specific Computations (based on search_valid_clamp_orientation_with_guiding_vector)
+        # ---------------------------
         function_names = [
             'compute_clamp_attachapproach_attachretract_detachapproach',
             'compute_clamp_detachretract',
@@ -83,26 +87,8 @@ class ComputationalDependency(Graph):
         for f in function_names:
             self.add_edge('search_valid_clamp_orientation_with_guiding_vector', f)
 
-        # Gripper Related Computation
-        # ---------------------------
-        # self.add_node('assign_gripper_to_beam')
-        # Layer 1
-        # -------
-        # self.add_node('compute_gripper_grasp_pose')
-        self.add_edge(
-            'assign_gripper_to_beam',
-            'compute_gripper_grasp_pose'
-        )
-        # Layer 2
-        # -------
-        # self.add_node('compute_pickup_location_at_corner_aligning_pickup_location')
-        self.add_edge(
-            'compute_gripper_grasp_pose',
-            'compute_pickup_frame'
-        )
-        # Layer 3
-        # -------
-        # Things that are based on compute_pickup_frame
+        # Beam Positions / Gripper Positions 3 (based on compute_pickup_frame)
+        # ---------------------------------------------------------------------
         function_names = [
             'compute_beam_pickupretract',
             'compute_beam_pickupapproach',
@@ -111,9 +97,12 @@ class ComputationalDependency(Graph):
         for f in function_names:
             self.add_edge('compute_pickup_frame', f)
 
+        # Screwdriver related Computations
+        # -------------------------------
+        self.add_edge('assign_tool_id_to_beam_joints', 'compute_screwdriver_positions')
+
         # Compute Actions and Movements
         # -----------------------------
-        self.add_edge('assign_clamp_type_to_joints', 'assign_tool_id_to_beam_joints')
         self.add_edge('assign_tool_id_to_beam_joints', 'create_actions_from_sequence')
 
         # Automatically compute all
@@ -132,7 +121,6 @@ class ComputationalDependency(Graph):
 
         for f in terminal_function_names:
             self.add_edge(f, 'create_movements_from_action')
-
 
         if self.process is not None and self.process.assembly is not None:
             for beam_id in self.process.assembly.beam_ids():

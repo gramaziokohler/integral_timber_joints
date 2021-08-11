@@ -64,10 +64,10 @@ def show_sequence_color(process):
         # Show gripper and clamp
         if seq == selected_seq_num:
             artist.show_gripper_at_one_position(beam_id, color='normal')
-            artist.show_clamp_at_one_position(beam_id, color='normal')
+            artist.show_asstool_at_one_position(beam_id, color='normal')
         else:
             artist.hide_gripper_all_positions(beam_id)
-            artist.hide_clamp_all_positions(beam_id)
+            artist.hide_asstool_all_positions(beam_id)
 
         # Print out for debug
         if problem:
@@ -93,7 +93,7 @@ def compute_collision_show_color(process):
     # Get Meshes - Clamps
     clamp_meshes = []
     for joint_id in assembly.get_joint_ids_with_tools_for_beam(selected_beam_id):
-        clamp_meshes.extend(artist.clamp_guids_at_position(joint_id, artist.selected_key_position.current_clamp_pos))
+        clamp_meshes.extend(artist.asstool_guids_at_position(joint_id, artist.selected_key_position.current_clamp_pos))
 
     # Get Meshes - Already Assembled Beams
     other_beams_meshes = []
@@ -156,7 +156,7 @@ def show_normal_color_and_unhide(process):
         artist.change_interactive_beam_colour(beam_id, 'normal')
         artist.hide_beam_all_positions(beam_id)
         artist.hide_gripper_all_positions(beam_id)
-        artist.hide_clamp_all_positions(beam_id)
+        artist.hide_asstool_all_positions(beam_id)
 
         artist.show_interactive_beam(beam_id)
     rs.EnableRedraw(True)
@@ -178,8 +178,8 @@ def show_menu(process):
         artist.hide_beam_all_positions(beam_id)
         artist.draw_gripper_all_positions(beam_id, redraw=False)
         artist.hide_gripper_all_positions(beam_id)
-        artist.draw_clamp_all_positions(beam_id, redraw=False)
-        artist.hide_clamp_all_positions(beam_id)
+        artist.draw_asstool_all_positions(beam_id, redraw=False)
+        artist.hide_asstool_all_positions(beam_id)
     rs.EnableRedraw(True)
     rs.Redraw()
 
@@ -197,7 +197,7 @@ def show_menu(process):
         # Hide the current beam and grippers
         artist.hide_beam_all_positions(artist.selected_beam_id)
         artist.hide_gripper_all_positions(artist.selected_beam_id)
-        artist.hide_clamp_all_positions(artist.selected_beam_id)
+        artist.hide_asstool_all_positions(artist.selected_beam_id)
         # Increment the selected id
         artist.select_next_beam()
         artist.selected_key_position.final_position()
@@ -209,7 +209,7 @@ def show_menu(process):
         # Hide the current beam and grippers
         artist.hide_beam_all_positions(artist.selected_beam_id)
         artist.hide_gripper_all_positions(artist.selected_beam_id)
-        artist.hide_clamp_all_positions(artist.selected_beam_id)
+        artist.hide_asstool_all_positions(artist.selected_beam_id)
         # Decrement the selected id
         artist.select_previous_beam()
         artist.selected_key_position.final_position()
@@ -234,7 +234,7 @@ def show_menu(process):
     def _show_key_position_beam_gripper_clamp():
         artist.show_beam_at_one_position(artist.selected_beam_id)
         artist.show_gripper_at_one_position(artist.selected_beam_id)
-        artist.show_clamp_at_one_position(artist.selected_beam_id)
+        artist.show_asstool_at_one_position(artist.selected_beam_id)
         show_sequence_color(process)
 
     ###################################
@@ -373,7 +373,7 @@ def show_menu(process):
         # Refresh Display
         artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
         artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
-        artist.draw_clamp_all_positions(beam_id, delete_old=True)
+        artist.draw_asstool_all_positions(beam_id, delete_old=True)
         show_sequence_color(process)
 
     run_cmd = None  # Variable to remember the last command to allow easy rerun.
@@ -485,7 +485,7 @@ def show_menu(process):
 
         # artist.show_beam_at_one_position(artist.selected_beam_id)
         # artist.show_gripper_at_one_position(artist.selected_beam_id)
-        # artist.show_clamp_at_one_position(artist.selected_beam_id)
+        # artist.show_asstool_at_one_position(artist.selected_beam_id)
         show_sequence_color(process)
         compute_collision_show_color(process)
 

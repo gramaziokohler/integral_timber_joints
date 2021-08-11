@@ -38,6 +38,8 @@ class RobotClampAssemblyProcess(Data):
     # Process level functions
     from .algorithms import (assign_tool_id_to_beam_joints, assign_tools_to_actions, assign_unique_action_numbers, create_actions_from_sequence, create_movements_from_action,
                              debug_print_process_actions_movements, optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper, recompute_initial_state)
+    from .process_screwdriver_compute import compute_screwdriver_positions
+
 
     # Constants for clamp jaw positions at different key positions.
     clamp_appraoch_position = 220
@@ -321,6 +323,11 @@ class RobotClampAssemblyProcess(Data):
         return set([clamp.type_name for clamp in self.clamps])
 
     @property
+    def available_assembly_tool_types(self):
+        # type: () -> set[str]
+        return set([clamp.type_name for clamp in chain(self.clamps, self.screwdrivers)])
+
+    @property
     def available_screwdriver_types(self):
         # type: () -> set[str]
         return set([screwdriver.type_name for screwdriver in self.screwdrivers])
@@ -332,7 +339,7 @@ class RobotClampAssemblyProcess(Data):
 
     def get_one_tool_by_type(self, type_name):
         # type: (str) -> Tool
-        """Get one of the clamp or screwdriver that belongs to the given type"""
+        """Get one of the Clamp, Screwdriver or Gripper that belongs to the given type"""
         for tool in self.tools:
             if (tool.type_name == type_name):
                 return tool
@@ -563,6 +570,9 @@ class RobotClampAssemblyProcess(Data):
         `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied or if valid vector cannot be found.
         `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
         """
+        if self.assembly.get_assembly_method(beam_id) != BeamAssemblyMethod.CLAMPED:
+            return ComputationalResult.ValidNoChange
+
         # Exit if no clamp is needed to assemble this beam.
         joint_ids = list(self.assembly.get_joint_ids_with_tools_for_beam(beam_id))
         if len(joint_ids) == 0:
@@ -1220,10 +1230,10 @@ class RobotClampAssemblyProcess(Data):
     # Clamps Algorithms
     # -----------------
 
-    def assign_clamp_type_to_joints(self, beam_id, verbose=False):
-        """Assign clamp_types to joints based on the joint's preference and clamp availability.
+    def assign_tool_type_to_joints(self, beam_id, verbose=False):
+        """Assign tool_types to joints based on the joint's preference and tool availability.
 
-        If the attribute `tool_type` is already assigned, this function will not change it.
+        If the attribute `tool_type` is already assigned and is still valid, this function will not change it.
 
         State Change
         ------------
@@ -1238,18 +1248,18 @@ class RobotClampAssemblyProcess(Data):
         something_failed = False
         something_changed = False
         for joint_id in self.assembly.get_joint_ids_with_tools_for_beam(beam_id):
-            # Do not change anything if tool_type is already set
-            if self.assembly.get_joint_attribute(joint_id, "tool_type") is not None:
+            # Do not change anything if tool_type is already set and is valid
+            if self.assembly.get_joint_attribute(joint_id, 'tool_type') in self.assembly.joint(joint_id).clamp_types:
                 if verbose:
-                    print("Joint (%s) tool_type (%s) has already been set. No change made by assign_clamp_type_to_joints()." %
-                          (joint_id, self.assembly.get_joint_attribute(joint_id, "tool_type")))
+                    print("Joint (%s) tool_type (%s) has already been set. No change made by assign_tool_type_to_joints()." %
+                          (joint_id, self.assembly.get_joint_attribute(joint_id, 'tool_type')))
                 continue
 
             # Loop through the list of clamp types requested by the joint.
             for tool_type in self.assembly.joint(joint_id).clamp_types:
                 # Check if the preferred clamp exist.
-                if tool_type in self.available_clamp_types:
-                    self.assembly.set_joint_attribute(joint_id, "tool_type", tool_type)
+                if tool_type in self.available_assembly_tool_types:
+                    self.assembly.set_joint_attribute(joint_id, 'tool_type', tool_type)
                     something_changed = True
 
             if self.get_tool_type_of_joint(joint_id) is None:
@@ -1257,7 +1267,7 @@ class RobotClampAssemblyProcess(Data):
                 something_failed = True
             else:
                 if verbose:
-                    print("Joint (%s) assigned tool_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, "tool_type")))
+                    print("Joint (%s) assigned tool_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, 'tool_type')))
 
         # Return results
         if something_failed:
@@ -1324,6 +1334,8 @@ class RobotClampAssemblyProcess(Data):
         ------
         `ComputationalResult.ValidCanContinue`
         """
+        if self.assembly.get_assembly_method(beam_id) != BeamAssemblyMethod.CLAMPED:
+            return ComputationalResult.ValidNoChange
 
         guiding_vector = self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach')
 
@@ -1375,6 +1387,9 @@ class RobotClampAssemblyProcess(Data):
         `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
         `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
         """
+        if self.assembly.get_assembly_method(beam_id) != BeamAssemblyMethod.CLAMPED:
+            return ComputationalResult.ValidNoChange
+
         joint_ids = self.assembly.get_joint_ids_with_tools_for_beam(beam_id)
         if verbose:
             print("Beam (%s)" % beam_id)
@@ -1441,6 +1456,9 @@ class RobotClampAssemblyProcess(Data):
         `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
 
         """
+        if self.assembly.get_assembly_method(beam_id) != BeamAssemblyMethod.CLAMPED:
+            return ComputationalResult.ValidNoChange
+
         joint_ids = self.assembly.get_joint_ids_with_tools_for_beam(beam_id)
         if verbose:
             print("Beam (%s)" % beam_id)
@@ -1475,9 +1493,6 @@ class RobotClampAssemblyProcess(Data):
     # ----------------------
     # Dependency Computation
     # ----------------------
-
-    def compute_all(self, beam_id):
-        return ComputationalResult.ValidCanContinue
 
     def copy(self):
         return deepcopy(self)

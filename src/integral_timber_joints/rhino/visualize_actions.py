@@ -121,7 +121,7 @@ def show_menu(process):
         artist.hide_interactive_beam(beam_id)
         artist.hide_beam_all_positions(beam_id)
         artist.hide_gripper_all_positions(beam_id)
-        artist.hide_clamp_all_positions(beam_id)
+        artist.hide_asstool_all_positions(beam_id)
 
     # Show Environment Meshes
     artist.draw_all_env_mesh(True, redraw=False)

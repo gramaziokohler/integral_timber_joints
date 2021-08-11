@@ -104,6 +104,7 @@ class Assembly(Network):
             'design_guide_vector_jawapproach': Vector(1, 1, 1),
             'assembly_vector_final': None,
             'assembly_vector_jawapproach': None,
+            # * Clamps related Positions
             'assembly_wcf_storage': None,           # Beam storage position (modeled as beam frame) before getting to the pickup point
             'assembly_wcf_pickupapproach': None,    # Beam gripper position (modeled as beam frame) before approaching pickup point
             'assembly_wcf_pickup': None,            # Beam position at pick-up point
@@ -112,6 +113,10 @@ class Assembly(Network):
             'assembly_wcf_inclamp': None,           # Beam position inside the clamp, ready for final clamping move
             'assembly_wcf_final': None,             # Beam position in final modeled position, same as beam.frame
             'assembly_wcf_finalretract': None,      # Beam gripper position (modeled as beam frame) after releasing and retracting from final position.
+            # * Screwdriver related Positions
+            'assembly_wcf_assembleapproach': None,   # Beam position after free motion transfer
+            'assembly_wcf_assemblebegin': None,      # Beam position after short linear move, ready for screwing action
+            # * Gripper Information
             'gripper_type': None,
             'gripper_id': None,
             'gripper_grasp_face': None,             # Grasp pose expressed in relationship to Beam Face
@@ -132,6 +137,13 @@ class Assembly(Network):
             'clamp_wcf_detachapproach': None,       # Robot Position (modeled as clamp frame) before picking up the clamp from final position.
             'clamp_wcf_detachretract1': None,       # Clamp position after assembly, retracting from attachment point (1 happens before 2)
             'clamp_wcf_detachretract2': None,       # Clamp position after assembly, retracting from attachment point
+
+            'screwdriver_assembleapproach_attached': None,   # Screwdriver position when beam = assemble approach, tool = attached.
+            'screwdriver_assemblebegin_attached': None,   # Screwdriver position when beam = assemble approach, tool = attached.
+            'screwdriver_assembled_attached': None,   # Screwdriver position when beam = assembled, tool = attached.
+            'screwdriver_assembled_detached': None,   # Screwdriver position when beam = assembled, tool = retracted from beam.
+            'screwdriver_assembled_retracted': None,   # Screwdriver position when beam = assembled, tool = retractedfurther from beam.
+
             'tool_type': None,
             'tool_id': None,
         })

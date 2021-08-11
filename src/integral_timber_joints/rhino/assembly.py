@@ -220,7 +220,7 @@ def ui_change_assembly_method(process, preselection = []):
                             for neighbour_beam_id in process.assembly.get_already_built_neighbors(beam_id):
                                 artist.redraw_interactive_beam(neighbour_beam_id, force_update=True, redraw=False)
 
-                        process.dependency.invalidate(beam_id, process.assign_clamp_type_to_joints)
+                        process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
                         process.dependency.invalidate(beam_id, process.assign_gripper_to_beam)
                 show_assembly_method_color(process)
 
@@ -259,7 +259,7 @@ def ui_change_assembly_vector(process):
         process.dependency.invalidate(beam_id, process.compute_gripper_grasp_pose)
         process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
         artist.delete_beam_all_positions(beam_id)
-        artist.delete_clamp_all_positions(beam_id)
+        artist.delete_asstool_all_positions(beam_id)
         artist.delete_gripper_all_positions(beam_id)
 
 
@@ -325,7 +325,7 @@ def ui_orient_assembly(process):
     for beam_id in assembly.sequence:
         artist.delete_beam_all_positions(beam_id, redraw=False)
         artist.delete_gripper_all_positions(beam_id, redraw=False)
-        artist.delete_clamp_all_positions(beam_id, redraw=False)
+        artist.delete_asstool_all_positions(beam_id, redraw=False)
         artist.delete_interactive_beam_visualization(beam_id, redraw=False)
 
     assembly.transform(T)
