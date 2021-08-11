@@ -16,7 +16,7 @@ PLANNING_DATA_DIR = os.path.join(HERE, "data")
 DESIGN_STUDY_DIR = os.path.abspath(os.path.join(EXTERNAL_DIR, 'itj_design_study'))
 
 # TODO specific to RemodelFredPavilion now, change to parameter later
-DESIGN_DIR = os.path.join(DESIGN_STUDY_DIR, '210128_RemodelFredPavilion')
+DESIGN_DIR = os.path.join(DESIGN_STUDY_DIR, '210605_ScrewdriverTestProcess') # '210128_RemodelFredPavilion')
 TEMP_SUBDIR = 'YJ_tmp'
 
 ###########################################

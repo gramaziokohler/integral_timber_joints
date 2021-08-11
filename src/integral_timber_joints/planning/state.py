@@ -117,10 +117,10 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 options={'link' : flange_link_name})
             # ! in millimeter
             FK_tool_frame.point *= 1/scale
-            robot_frame = scene[('robot', 'f')]
-            if robot_frame is None:
+            if ('robot', 'f') not in scene:
                 robot_frame = FK_tool_frame # ! Note that this state object should be read only.
             else:
+                robot_frame = scene[('robot', 'f')]
                 if not robot_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance*scale):
                     if (1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
                         if verbose:
@@ -146,7 +146,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 client.add_collision_mesh(cm, {'color': GREY})
 
         # * Beams
-        for beam_id in process.assembly.beam_ids:
+        for beam_id in process.assembly.beam_ids():
             if initialize:
                 color = GREY
                 # ! notice that the notch geometry will be convexified in pybullet

@@ -226,7 +226,8 @@ def set_initial_state(client, robot, process, disable_env=False, reinit_tool=Tru
             options={'debug' : False, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
     except:
         cprint('Recomputing Actions and States', 'cyan')
-        recompute_action_states(process, False)
+        for beam_id in process.assembly.beam_ids():
+            process.dependency.compute(beam_id, process.compute_all)
         set_state(client, robot, process, process.initial_state, initialize=True,
             options={'debug' : False, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
     # # * collision sanity check
