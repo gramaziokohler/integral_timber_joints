@@ -117,9 +117,11 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 options={'link' : flange_link_name})
             # ! in millimeter
             FK_tool_frame.point *= 1/scale
-            if ('robot', 'f') not in scene:
-                robot_frame = FK_tool_frame # ! Note that this state object should be read only.
+            if scene[('robot', 'f')] is None:
+                robot_frame = FK_tool_frame
+                scene[('robot', 'f')] = FK_tool_frame
             else:
+                # consistency check
                 robot_frame = scene[('robot', 'f')]
                 if not robot_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance*scale):
                     if (1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
@@ -128,7 +130,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                             cprint(msg, 'yellow')
                             cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
                             wait_for_user()
-                    scene[('robot', 'f')] = FK_tool_frame  # ! Note that this state object should be read only.
+                    scene[('robot', 'f')] = FK_tool_frame
 
             if initialize:
                 # update tool_changer's current_frame
@@ -193,24 +195,27 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 client._set_body_configuration(b, tool_conf)
 
 
-        for object_id in chain(process.assembly.beam_ids, process.tool_ids, 'tool_changer'):
+        for object_id in chain(process.assembly.sequence, process.tool_ids, 'tool_changer'):
             # * attachment management
             wildcard = '^{}$'.format(object_id)
             # -1 if not attached and not collision object
             # 0 if collision object, 1 if attached
             status = client._get_body_status(wildcard)
-            if not scene[object_id, 'a']:
+            if scene[(object_id, 'a')] != True:
+                # ! these are not attached objects
                 # * demote attachedCM to collision_objects
                 if status == 1:
                     client.detach_attached_collision_mesh(object_id, {'wildcard': wildcard})
             else:
+                # ! these are attached objects
                 # * promote to attached_collision_object if needed
                 if status == 0:
                     # * attached collision objects haven't been added
-                    assert initialize or scene[('robot', 'f')] is not None
+                    assert initialize or ('robot', 'f') in scene
                     # object_from_flange = get_object_from_flange(scene, object_id)
                     flange_frame = scene[('robot', 'f')].copy()
                     object_frame = scene[(object_id, 'f')].copy()
+                    # convert to meter
                     flange_frame.point *= scale
                     object_frame.point *= scale
 
@@ -231,37 +236,45 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
 
                     # * create attachments
                     wildcard = '^{}$'.format(object_id)
-                    names = client._get_collision_object_names(wildcard)
-                    # touched_links is only for the adjacent Robot links
-                    touched_links = ['{}_tool0'.format(MAIN_ROBOT_ID), '{}_link_6'.format(MAIN_ROBOT_ID)] \
-                        if object_id.startswith('t') else []
+                    collision_object_names = client._get_collision_object_names(wildcard)
 
+                    # touched_links is only for the adjacent Robot links
+                    touched_links = []
                     attached_child_link_name = None
-                    if object_id.startswith('t'):
+                    if object_id == 'tool_changer':
+                        # tool changer
                         attached_child_link_name = process.robot_toolchanger.get_base_link_name()
-                    else:
+                        touched_links = ['{}_tool0'.format(MAIN_ROBOT_ID), '{}_link_6'.format(MAIN_ROBOT_ID)]
+                    elif object_id in process.tool_ids:
+                        # tools
                         attached_child_link_name = process.tool(object_id).get_base_link_name()
-                    for name in names:
+                    else:
+                        # beams
+                        attached_child_link_name = None # process.tool(object_id).get_base_link_name()
+
+                    for name in collision_object_names:
                         # a faked AttachedCM since we are not adding a new mesh, just promoting collision meshes to AttachedCMes
                         client.add_attached_collision_mesh(AttachedCollisionMesh(CollisionMesh(None, name),
                                                                                  flange_link_name, touch_links=touched_links), options={'robot': robot, 'attached_child_link_name': attached_child_link_name})
 
                     # * attachments disabled collisions
+                    # list of bodies that should not collide with the current object_id
                     extra_disabled_bodies = []
-                    if object_id.startswith('b'):
-                        # gripper and beam
-                        g_id = None
+                    if object_id in process.assembly.sequence:
+                        # beam is the current object, iterating through all the tools to see which one is attached
+                        # and disable collisions between them
+                        attached_gripper_id = None
                         for gripper in process.grippers:
                             if scene[gripper.name, 'a']:
-                                g_id = gripper.name
+                                attached_gripper_id = gripper.name
                                 break
-                        assert g_id is not None, 'At least one gripper should be attached to the robot when the beam is attached.'
-                        extra_disabled_bodies = client._get_bodies('^{}$'.format(g_id))
-                    elif not object_id.startswith('t'):
-                        # tool_changer and gripper
+                        assert attached_gripper_id is not None, 'At least one gripper should be attached to the robot when the beam is attached.'
+                        extra_disabled_bodies = client._get_bodies('^{}$'.format(attached_gripper_id))
+                    elif object_id in process.tool_ids:
+                        # tool_changer and a tool
                         extra_disabled_bodies = client._get_bodies('^{}$'.format('tool_changer'))
 
-                    for name in names:
+                    for name in collision_object_names:
                         at_bodies = client._get_attached_bodies('^{}$'.format(name))
                         assert len(at_bodies) > 0
                         for parent_body, child_body in product(extra_disabled_bodies, at_bodies):

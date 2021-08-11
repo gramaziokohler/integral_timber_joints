@@ -59,7 +59,10 @@ class SceneState(Data):
         return self.data
 
     def __getitem__(self, key):
-        return self.object_state_dict[key]
+        if key not in self.object_state_dict:
+            return None
+        else:
+            return self.object_state_dict[key]
 
     def __setitem__(self, key, value):
         self.object_state_dict[key] = value
