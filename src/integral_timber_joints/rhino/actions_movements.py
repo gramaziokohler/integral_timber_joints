@@ -37,7 +37,7 @@ def compute_states(process):
 
     # Make sure everything is computed and nothing is missing
     for beam_id in process.assembly.sequence:
-        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True, verbose=True)
 
     invalid_beams = process.dependency.get_invalid_beam_ids()
     if len(invalid_beams) > 0:

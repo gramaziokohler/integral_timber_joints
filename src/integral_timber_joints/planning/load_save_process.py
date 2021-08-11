@@ -7,7 +7,7 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 
 def recompute_action_states(process, verbose = False):
     #type: (RobotClampAssemblyProcess, bool) -> None
-    print("deprecated Warning: recompute_action_states() should be retired. Use process.dependency.compute(beam_id, process.compute_all) if you want to make sure everything is computed.")
+    print("deprecated Warning: recompute_action_states() should be retired. Use process.dependency.beam_all_valid(beam_id) if you want to make sure everything is computed.")
 
     for beam_id in process.assembly.sequence:
         process.create_actions_from_sequence(beam_id, verbose=verbose)

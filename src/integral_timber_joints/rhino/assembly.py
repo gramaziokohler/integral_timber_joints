@@ -257,7 +257,7 @@ def ui_change_assembly_vector(process):
     for beam_id in beam_ids:
         process.assembly.compute_beam_assembly_direction_from_joints_and_sequence(beam_id, vector)
         process.dependency.invalidate(beam_id, process.compute_gripper_grasp_pose)
-        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
         artist.delete_beam_all_positions(beam_id)
         artist.delete_clamp_all_positions(beam_id)
         artist.delete_gripper_all_positions(beam_id)

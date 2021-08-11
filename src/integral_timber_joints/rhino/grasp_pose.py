@@ -270,7 +270,7 @@ def show_menu(process):
             process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
 
         process.dependency.invalidate(beam_id, process.assign_gripper_to_beam, downstream_only=True)
-        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
 
         # Redraw Visualization
         artist.draw_beam_all_positions(beam_id, delete_old=True)
@@ -282,7 +282,7 @@ def show_menu(process):
         """
         beam_id = artist.selected_beam_id
         process.adjust_gripper_pos(beam_id, +30)
-        process.dependency.compute(beam_id, process.compute_all)
+        process.dependency.compute_all(beam_id)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process)
 
@@ -291,7 +291,7 @@ def show_menu(process):
         """
         beam_id = artist.selected_beam_id
         process.adjust_gripper_pos(beam_id, -30)
-        process.dependency.compute(beam_id, process.compute_all)
+        process.dependency.compute_all(beam_id)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process)
 
@@ -301,7 +301,7 @@ def show_menu(process):
         """
         beam_id = artist.selected_beam_id
         process.search_grasp_face_from_joint_assembly_direction(beam_id)
-        process.dependency.compute(beam_id, process.compute_all)
+        process.dependency.compute_all(beam_id)
 
         # Redraw Visualization
         artist.draw_beam_all_positions(beam_id, delete_old=True)
@@ -345,7 +345,7 @@ def show_menu(process):
             if selected_grasp_face != current_grasp_face:
                 # Recompute dependency
                 process.override_grasp_face(beam_id, selected_grasp_face)
-                process.dependency.compute(beam_id, process.compute_all)
+                process.dependency.compute_all(beam_id)
 
                 # Redraw Visualization
                 artist.draw_beam_all_positions(beam_id, delete_old=True)
@@ -369,7 +369,7 @@ def show_menu(process):
         process.flip_clamp_guide_vector(beam_id)
         # Recompute Dependency
         process.dependency.invalidate(beam_id, process.search_valid_clamp_orientation_with_guiding_vector)
-        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
         # Refresh Display
         artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
         artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
@@ -505,7 +505,7 @@ def compute_positions(process, verbose=True):
     process.assembly.update_default_node_attributes({'design_guide_vector_grasp': Vector(0, 0, 1)})
 
     for beam_id in assembly.sequence:
-        process.dependency.compute(beam_id, process.compute_all, attempt_all_parents_even_failure=True)
+        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
 
 
 ######################

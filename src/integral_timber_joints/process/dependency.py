@@ -4,7 +4,7 @@ import integral_timber_joints
 from integral_timber_joints.assembly import Assembly
 
 try:
-    from typing import Dict, List, Optional, Tuple
+    from typing import Dict, List, Optional, Tuple, Callable
 
     from integral_timber_joints.process import RobotClampAssemblyProcess
 except:
@@ -133,7 +133,6 @@ class ComputationalDependency(Graph):
         for f in terminal_function_names:
             self.add_edge(f, 'create_movements_from_action')
 
-        self.add_edge('create_movements_from_action', 'compute_all')
 
         if self.process is not None and self.process.assembly is not None:
             for beam_id in self.process.assembly.beam_ids():
@@ -181,6 +180,7 @@ class ComputationalDependency(Graph):
             self.invalidate(beam_id, dfx)
 
     def compute(self, beam_id, fx, attempt_all_parents_even_failure=False, verbose=True):
+        # type: (str, Callable[[str], ComputationalResult], bool, bool) -> ComputationalResult
         """ Recursively compute all parents of this function and this function.
         Starting from the root of dependency, if a function is not valid, it will be recomputed.
         If any of the computation failed, it will not continue.
@@ -214,6 +214,21 @@ class ComputationalDependency(Graph):
             self.set_solution_validity(beam_id, fx, validity, invalidate_downstream=True)
         return validity in ComputationalResult.ValidResults
 
+    def compute_all(self, beam_id, attempt_all_parents_even_failure=True, verbose=True):
+        # type: (str, bool, bool) -> ComputationalResult
+        """Compute all functions associated to a beam_id"""
+        for fx_name in self.nodes():
+            fx = getattr(self.process, fx_name)
+            self.compute(beam_id, fx, attempt_all_parents_even_failure, verbose)
+
+    def beam_all_valid(self, beam_id):
+        # type: (str) -> bool
+        """Check if all the functions belongings to the beam_id is valid"""
+        for fx_name in self.nodes():
+            if not self.node_attribute(fx_name, beam_id) in ComputationalResult.ValidResults:
+                return False
+        return True
+
     def debug_print(self, beam_id):
         for key, data in self.nodes(data=True):
             print("%s: %s = %s" % (beam_id, key, data[beam_id]))
@@ -221,6 +236,6 @@ class ComputationalDependency(Graph):
     def get_invalid_beam_ids(self):
         invalid_beams = []
         for beam_id in self.process.assembly.sequence:
-            if not self.process.dependency.get_solution_validity(beam_id, self.process.compute_all) in ComputationalResult.ValidResults:
+            if not self.beam_all_valid(beam_id):
                 invalid_beams.append(beam_id)
         return invalid_beams
