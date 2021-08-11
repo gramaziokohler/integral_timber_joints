@@ -61,42 +61,6 @@ class ProcessKeyPosition(object):
             self.beam_assembly_method = BeamAssemblyMethod.UNDEFINED
         self.current_pos_num = current_pos_num
 
-    # Constant names for beam, gripper and clamp positions.
-    # beam_positions and gripper_positions relate directly to Beam Attributes in Assembly
-    # clamp_positions  relate directly to Joint Attributes in Assembly
-    beam_positions = [
-        'assembly_wcf_storage',
-        'assembly_wcf_pickup',
-        'assembly_wcf_pickupretract',
-        'assembly_wcf_inclampapproach',
-        'assembly_wcf_inclamp',
-        'assembly_wcf_final',
-        'assembly_wcf_assembleapproach',
-    ]
-    gripper_positions = [
-        'assembly_wcf_pickupapproach.open_gripper',
-        'assembly_wcf_pickup.close_gripper',
-        'assembly_wcf_pickupretract.close_gripper',
-        'assembly_wcf_inclampapproach.close_gripper',
-        'assembly_wcf_inclamp.close_gripper',
-        'assembly_wcf_final.close_gripper',
-        'assembly_wcf_finalretract.open_gripper',
-    ]
-    clamp_positions = [
-        'clamp_wcf_attachapproach1.open_clamp.open_gripper',
-        'clamp_wcf_attachapproach2.open_clamp.open_gripper',
-        'clamp_wcf_final.open_clamp.close_gripper',
-        'clamp_wcf_final.close_clamp.close_gripper',
-        'clamp_wcf_detachretract1.open_clamp.open_gripper',
-        'clamp_wcf_detachretract2.open_clamp.open_gripper',
-    ]
-    screwdriver_positions = [
-        'screwdriver_assembleapproach_attached.close_gripper',
-        'screwdriver_assemblebegin_attached.close_gripper',
-        'screwdriver_assembled_attached.close_gripper',
-        'screwdriver_assembled_detached.open_gripper',
-        'screwdriver_assembled_retracted.open_gripper',
-    ]
 
     # pos_name, beam_pos, gripper_pos, clamp_pos
     pos_names_for_beam_with_clamps = [
@@ -168,6 +132,37 @@ class ProcessKeyPosition(object):
          None,                                      'screwdriver_assembled_detached.open_gripper'),
     ]
 
+    @property
+    def _all_pos_names(self):
+        return self.pos_names_for_beam_with_clamps +\
+            self.pos_names_for_beam_without_clamps +\
+            self.pos_names_for_beam_with_screwdriver_with_gripper+\
+            self.pos_names_for_beam_with_screwdriver_without_gripper
+
+
+    @property
+    def possible_beam_positions(self):
+        # type: () -> set[str]
+        """All possible beam positions. Used for creating layers in Rhino"""
+        positions = [names[1] for names in self._all_pos_names if names[1] is not None]
+        return set(positions)
+
+    @property
+    def possible_gripper_positions(self):
+        # type: () -> set[str]
+        """All possible gripper positions. Used for creating layers in Rhino"""
+        positions = [names[2] for names in self._all_pos_names if names[2] is not None]
+        return set(positions)
+
+    @property
+    def possible_tool_positions(self):
+        # type: () -> set[str]
+        """All possible tool positions. Used for creating layers in Rhino"""
+        positions = [names[3] for names in self._all_pos_names if names[3] is not None]
+        return set(positions)
+
+
+
     def next_position(self):
         self.current_pos_num += 1
         if self.current_pos_num >= self.total_pos_number:
@@ -196,7 +191,6 @@ class ProcessKeyPosition(object):
             self.current_pos_num = 2
         else:
             self.current_pos_num = 0
-
 
     def _get_pos_names(self):
         # type: () -> List[Tuple[str,str,str,str]]
@@ -581,7 +575,7 @@ class ProcessArtist(object):
         """
         rs.EnableRedraw(False)
 
-        for beam_position in ProcessKeyPosition.beam_positions:
+        for beam_position in ProcessKeyPosition().possible_beam_positions:
             layer_name = 'itj::beam::' + beam_position
             # If not delete_old, and there are already items drawn, we preserve them.
             if len(self.beam_guids_at_position(beam_id, beam_position)) > 0 and not delete_old:
@@ -612,7 +606,7 @@ class ProcessArtist(object):
         """Delete all Rhino geometry associated to a beam at all position.
         """
         rs.EnableRedraw(False)
-        for beam_position in ProcessKeyPosition.beam_positions:
+        for beam_position in ProcessKeyPosition().possible_beam_positions:
             # The redraw is supressed in each individual call to save time.
             self.delete_beam_at_position(beam_id, beam_position, redraw=False)
         if redraw:
@@ -638,7 +632,7 @@ class ProcessArtist(object):
         if position is None:
             position = self.selected_key_position.current_beam_pos
 
-        for beam_position in ProcessKeyPosition.beam_positions:
+        for beam_position in ProcessKeyPosition().possible_beam_positions:
             if beam_position == position:
                 rs.ShowObject(self.beam_guids_at_position(beam_id, beam_position))
             else:
@@ -675,12 +669,12 @@ class ProcessArtist(object):
     def all_layer_names(self):
         for layer in self.interactive_layers:
             yield layer
-        for gripper_position in ProcessKeyPosition.gripper_positions:
+        for gripper_position in ProcessKeyPosition().possible_gripper_positions:
+            print (gripper_position)
             yield 'itj::gripper::' + gripper_position
-        for tool_position in set(ProcessKeyPosition.clamp_positions + ProcessKeyPosition.screwdriver_positions):
+        for tool_position in ProcessKeyPosition().possible_tool_positions:
             yield 'itj::tool::' + tool_position
-
-        for beam_position in ProcessKeyPosition.beam_positions:
+        for beam_position in ProcessKeyPosition().possible_beam_positions:
             yield 'itj::beam::' + beam_position
         yield self.state_visualization_layer
         yield self.tools_in_storage_layer
@@ -723,7 +717,7 @@ class ProcessArtist(object):
         """
         rs.EnableRedraw(False)
 
-        for gripper_position in ProcessKeyPosition.gripper_positions:
+        for gripper_position in ProcessKeyPosition().possible_gripper_positions:
             layer_name = 'itj::gripper::' + gripper_position
             # If not delete_old, and there are already items drawn, we preserve them.
             if len(self.gripper_guids_at_position(beam_id, gripper_position)) > 0 and not delete_old:
@@ -786,7 +780,7 @@ class ProcessArtist(object):
         All positions are deleted
         """
         rs.EnableRedraw(False)
-        for gripper_position in ProcessKeyPosition.gripper_positions:
+        for gripper_position in ProcessKeyPosition().possible_gripper_positions:
             # The redraw is supressed in each individual call to save time.
             self.delete_gripper_at_position(beam_id, gripper_position, redraw=False)
         if redraw:
@@ -814,7 +808,7 @@ class ProcessArtist(object):
         if position is None:
             position = self.selected_key_position.current_gripper_pos
 
-        for gripper_position in ProcessKeyPosition.gripper_positions:
+        for gripper_position in ProcessKeyPosition().possible_gripper_positions:
             if gripper_position == position:
                 rs.ShowObject(self.gripper_guids_at_position(beam_id, gripper_position))
                 # Change color for shown object
