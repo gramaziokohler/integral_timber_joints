@@ -17,16 +17,12 @@ def main():
     print('Arguments:', args)
     print('='*10)
 
-    recompute_action_states = False
-
     process = parse_process(args.problem, subdir=args.problem_subdir)
     # result_path = get_process_path(args.problem, subdir='results')
-    if len(process.movements) == 0:
-        cprint('No movements found in process, trigger recompute actions.', 'red')
-        recompute_action_states = True
-    if recompute_action_states:
-        cprint('Recomputing Actions and States', 'cyan')
-        recompute_action_states(process)
+    for beam_id in process.assembly.sequence:
+        if not process.dependency.beam_all_valid(beam_id):
+            process.dependency.compute_all(beam_id)
+            assert process.dependency.beam_all_valid(beam_id)
 
     # * Connect to path planning backend and initialize robot parameters
     # viewer or diagnosis or view_states or watch or step_sim,

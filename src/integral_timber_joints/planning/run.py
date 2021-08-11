@@ -21,7 +21,6 @@ from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_r
 from integral_timber_joints.planning.utils import notify, print_title
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
-from integral_timber_joints.planning.load_save_process import recompute_action_states
 from integral_timber_joints.planning.solve import get_movement_status, MovementStatus, compute_selected_movements
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement
@@ -227,7 +226,7 @@ def set_initial_state(client, robot, process, disable_env=False, reinit_tool=Tru
     except:
         cprint('Recomputing Actions and States', 'cyan')
         for beam_id in process.assembly.beam_ids():
-            process.dependency.compute(beam_id, process.compute_all)
+            process.dependency.compute_all(beam_id)
         set_state(client, robot, process, process.initial_state, initialize=True,
             options={'debug' : False, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
     # # * collision sanity check
@@ -253,7 +252,6 @@ def main():
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--save_now', action='store_true', help='Save immediately upon found.')
-    parser.add_argument('--recompute_action_states', action='store_true', help='Recompute actions and states for the process.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
     #
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
@@ -283,12 +281,12 @@ def main():
     # * Load process and recompute actions and states
     process = parse_process(args.problem, subdir=args.problem_subdir)
     result_path = get_process_path(args.problem, subdir='results')
-    if len(process.movements) == 0:
-        cprint('No movements found in process, trigger recompute actions.', 'red')
-        args.recompute_action_states = True
-    if args.recompute_action_states:
-        cprint('Recomputing Actions and States', 'cyan')
-        recompute_action_states(process, False)
+
+    # Double check entire solution is valid
+    for beam_id in process.assembly.sequence:
+        if not process.dependency.beam_all_valid(beam_id):
+            process.dependency.compute_all(beam_id)
+            assert process.dependency.beam_all_valid(beam_id)
 
     # force load external if only planning for the free motions
     args.load_external_movements = args.load_external_movements or args.solve_mode == 'free_motion_only' or args.solve_mode == 'id_only'
@@ -297,7 +295,9 @@ def main():
         cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
         process.load_external_movements(ext_movement_path)
 
+    # ! Refactor how the process file is saved to the result folder
     if args.recompute_action_states:
+        assert False
         save_process(process, result_path)
         cprint('Recomputed process saved to %s' % result_path, 'green')
     #########
