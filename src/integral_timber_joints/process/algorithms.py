@@ -102,7 +102,7 @@ def _create_actions_for_clamped(process, beam_id, verbose=False):
 
     # move clamps from storage to structure
     joint_id_of_clamps = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
-    clamp_ids = [assembly.get_joint_attribute(joint_id, 'clamp_id') for joint_id in joint_id_of_clamps]
+    clamp_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_id_of_clamps]
 
     for joint_id in joint_id_of_clamps:
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
