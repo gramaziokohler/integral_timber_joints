@@ -423,6 +423,8 @@ class RobotClampAssemblyProcess(Data):
         - The result can be used directly for path planning.
         """
         world_from_toolbase = self.assembly.get_joint_attribute(joint_id, position_name)
+        if world_from_toolbase is None:
+            print("Warning ! Attempt to process.get_tool_t0cf_at(%s, %s). Cannot find position name in joint attribute." % (str(joint_id), position_name))
         tool_changer = self.robot_toolchanger
         tool_changer.set_current_frame_from_tcp(world_from_toolbase)
 

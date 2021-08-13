@@ -43,6 +43,8 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
         tool_type = process.assembly.get_joint_attribute(joint_id, 'tool_type')
         tool = pop_tool_by_type(tool_type)
         if tool is not None:
+            if verbose:
+                print("|- Assigning %s(%s) to Joint (%s)"%(tool_type, tool.name, joint_id))
             previous_tool_id = process.assembly.get_joint_attribute(joint_id, 'tool_id')
             if previous_tool_id != tool.name:
                 process.assembly.set_joint_attribute(joint_id, 'tool_id', tool.name)
