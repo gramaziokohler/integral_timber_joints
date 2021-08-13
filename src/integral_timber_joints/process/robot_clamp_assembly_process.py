@@ -695,6 +695,7 @@ class RobotClampAssemblyProcess(Data):
         ------------
         This functions sets the following beam_attribute
         - 'gripper_type'
+        - 'gripper_id'
 
         Return
         ------
@@ -707,11 +708,13 @@ class RobotClampAssemblyProcess(Data):
 
         # Do not change anything if gripper_type is already set
         if self.assembly.get_beam_attribute(beam_id, "gripper_type") is not None:
-            if verbose:
-                print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
-                      (beam_id, self.assembly.get_joint_attribute(beam_id, "gripper_type")))
-            return ComputationalResult.ValidNoChange
+            if self.assembly.get_beam_attribute(beam_id, "gripper_id") is not None:
+                if verbose:
+                    print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
+                        (beam_id, self.assembly.get_joint_attribute(beam_id, "gripper_type")))
+                return ComputationalResult.ValidNoChange
 
+        # Compute Gripper Type
         for gripper_type in self.available_gripper_types:
             gripper = self.get_one_gripper_by_type(gripper_type)
             # Check if beam length is within limits
@@ -729,6 +732,9 @@ class RobotClampAssemblyProcess(Data):
             return ComputationalResult.ValidCannotContinue
         # Set state and return
         self.assembly.set_beam_attribute(beam_id, "gripper_type", chosen_gripper_type)
+
+        gripper_id = self.get_one_tool_by_type(chosen_gripper_type).name
+        self.assembly.set_beam_attribute(beam_id, "gripper_id", gripper_id)
         if verbose:
             print("Gripper Type: %s assigned to %s" % (chosen_gripper_type, beam_id))
 
