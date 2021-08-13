@@ -7,7 +7,7 @@ from integral_timber_joints.planning.state import set_state, gantry_base_generat
 def get_ik_solutions(process, scene, options={}):
     viewer = options.get('viewer', False)
     reachable_range = options.get('reachable_range', (0.2, 2.8))
-    ik_gantry_attempts = options.get('ik_gantry_attempts', 10)
+    ik_gantry_attempts = options.get('ik_gantry_attempts', 100)
 
     # if not pp.is_connected():
     # * Connect to path planning backend and initialize robot parameters

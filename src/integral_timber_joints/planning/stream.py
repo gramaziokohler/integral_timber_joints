@@ -9,13 +9,11 @@ from collections import defaultdict
 
 from compas.geometry import Frame, distance_point_point, Transformation
 from compas_fab.robots import Configuration, Robot
-from trac_ik_python.trac_ik_wrap import TRAC_IK
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement
 from integral_timber_joints.process.state import get_object_from_flange
 
 import ikfast_abb_irb4600_40_255
-from trac_ik_python.trac_ik import IK
 TRAC_IK_TIMEOUT = 1.0 # 0.1
 TRAC_IK_TOL = 1e-6
 
@@ -263,6 +261,10 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     # gantry_joint_names = None
     # ik_info = IKInfo(sample_ik_fn, tool_link_name, ik_joint_names, gantry_joint_names) # 'base_link_name',
     # solver_type: Speed, Distance, Manipulation1, Manipulation2
+
+    # TODO try except loading trac_ik
+    from trac_ik_python.trac_ik_wrap import TRAC_IK
+    from trac_ik_python.trac_ik import IK
     trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=tool_link_name,
                         timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
                         urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))

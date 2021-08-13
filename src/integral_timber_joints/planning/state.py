@@ -107,18 +107,15 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
         # * Robot and Tool Changer
         robot_config = scene[process.robot_config_key]
         if robot_config is not None:
-            # if not robot_config.joint_names:
-                # cprint('Warning: robot conf joint_names not set : {}'.format(robot_config), 'yellow')
-                # robot_config.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
-            # client.set_robot_configuration(robot, robot_config)
-            # tool_link = link_from_name(robot_uid, flange_link_name)
-            # FK_tool_frame = frame_from_pose(get_link_pose(robot_uid, tool_link), scale=1/scale)
-            FK_tool_frame = client.forward_kinematics(robot, scene[process.robot_config_key], group=GANTRY_ARM_GROUP,
-                options={'link' : flange_link_name})
-            # ! in millimeter
-            FK_tool_frame.point *= 1/scale
+            client.set_robot_configuration(robot, robot_config)
+            tool_link = link_from_name(robot_uid, flange_link_name)
+            FK_tool_frame = frame_from_pose(get_link_pose(robot_uid, tool_link), scale=1/scale)
+            # TODO the client FK function is not working
+            # FK_tool_frame = client.forward_kinematics(robot, robot_config, group=GANTRY_ARM_GROUP,
+            #     options={'link' : flange_link_name})
+            # FK_tool_frame.point *= 1/scale
             if scene[('robot', 'f')] is None:
-                print('Overwrite: ', FK_tool_frame)
+                # print('Overwrite: ', FK_tool_frame)
                 scene[('robot', 'f')] = FK_tool_frame
             else:
                 # consistency check
@@ -130,7 +127,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                             cprint(msg, 'yellow')
                             cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
                             wait_for_user()
-                    print('Overwrite: ', FK_tool_frame)
+                    # print('Overwrite: new FK {} | old {}'.format(FK_tool_frame, robot_frame))
                     scene[('robot', 'f')] = FK_tool_frame
 
             if initialize:
