@@ -300,6 +300,7 @@ def main():
         assert False
         save_process(process, result_path)
         cprint('Recomputed process saved to %s' % result_path, 'green')
+
     #########
 
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)

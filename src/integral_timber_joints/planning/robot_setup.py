@@ -20,8 +20,9 @@ GANTRY_GROUP = 'robot11_gantry'
 # this set the other unused robot to the right configurations
 R11_INTER_CONF_VALS = convert_rfl_robot_conf_unit([21000.0, 0.0, -4900.0,
     0.0, -22.834741999999999, -30.711554, 0.0, 57.335655000000003, 0.0])
-R12_INTER_CONF_VALS = convert_rfl_robot_conf_unit([-12237, -4000.8486330000001,
+R12_INTER_CONF_VALS = convert_rfl_robot_conf_unit([-9237, -4000, #-4000.8486330000001,
     0.0, -80.0, 65.0, 65.0, 20.0, -20.0])
+
 R21_IDLE_CONF_VALS = convert_rfl_robot_conf_unit([38000, 0, -4915,
     0, 0, 0, 0, 0, 0])
 R22_IDLE_CONF_VALS = convert_rfl_robot_conf_unit([-12237, -4915,

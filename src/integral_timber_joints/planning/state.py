@@ -96,12 +96,12 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     ik_base_link_name = robot.get_base_link_name(group=GANTRY_ARM_GROUP)
     flange_link_name = robot.get_end_effector_link_name(group=GANTRY_ARM_GROUP)
 
-    from trac_ik_python.trac_ik import IK
-    from integral_timber_joints.planning.stream import TRAC_IK_TOL, TRAC_IK_TIMEOUT, get_solve_trac_ik_info
-    trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=flange_link_name,
-                        timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
-                        urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))
-    trac_ikinfo = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
+    # from trac_ik_python.trac_ik import IK
+    # from integral_timber_joints.planning.stream import TRAC_IK_TOL, TRAC_IK_TIMEOUT, get_solve_trac_ik_info
+    # trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=flange_link_name,
+    #                     timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
+    #                     urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))
+    # trac_ikinfo = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
 
     with LockRenderer(not debug):
         # * Robot and Tool Changer
@@ -118,7 +118,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             # ! in millimeter
             FK_tool_frame.point *= 1/scale
             if scene[('robot', 'f')] is None:
-                robot_frame = FK_tool_frame
+                print('Overwrite: ', FK_tool_frame)
                 scene[('robot', 'f')] = FK_tool_frame
             else:
                 # consistency check
@@ -130,6 +130,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                             cprint(msg, 'yellow')
                             cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
                             wait_for_user()
+                    print('Overwrite: ', FK_tool_frame)
                     scene[('robot', 'f')] = FK_tool_frame
 
             if initialize:
@@ -165,7 +166,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 current_frame.point *= scale
                 # * set pose according to state
                 client.set_object_frame('^{}$'.format(beam_id), current_frame, options={'color': color_from_object_id(beam_id)})
-
 
         # * Tools
         for tool_id in process.tool_ids:

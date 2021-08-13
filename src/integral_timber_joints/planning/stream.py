@@ -329,6 +329,10 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             end_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             end_t0cf_frame_temp = frame_from_pose(end_tool_pose, scale=1)
             if not end_t0cf_frame_temp.__eq__(end_t0cf_frame, tol=frame_jump_tolerance):
+                draw_pose(pose_from_frame(end_t0cf_frame_temp))
+                wait_for_user('Pose from conf')
+                draw_pose(pose_from_frame(end_t0cf_frame))
+                wait_for_user('Pose from encoded frame')
                 if verbose:
                     cprint('end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
                         distance_point_point(end_t0cf_frame_temp.point, end_t0cf_frame.point)), 'yellow')
