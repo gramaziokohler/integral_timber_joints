@@ -300,14 +300,16 @@ def add_env_model(process):
         print("No mesh selected.")
         return
     # Show all current env mesh
-    # todo
+    artist = get_process_artist()
+    artist.show_all_env_mesh()
 
     # Create compas mesh and add it to process.environment_models
     for guid in guids:
         rhinomesh = RhinoMesh.from_guid(guid)
         environment_model = rhinomesh.to_compas(EnvironmentModel)  # type: EnvironmentModel
         process.add_environment_model(environment_model)
-        # todo trigger artist to draw that mesh in correct layer
+    # trigger artist to draw that mesh in correct layer
+    artist.draw_all_env_mesh(delete_old=True)
 
 
 def delete_all_env_model(process):
@@ -321,6 +323,8 @@ def delete_all_env_model(process):
     if reconfirm is None:
         return
     if reconfirm.startswith("Y") or reconfirm.startswith("y"):
+        artist = get_process_artist()
+        artist.delete_all_env_mesh()
         process.environment_models = {}
 
         # todo trigger artist to remove that mesh
