@@ -64,14 +64,11 @@ def load_process():
     json_path = get_activedoc_process_path()
     exist = os.path.exists(json_path)
     if exist:
-        # Decode json for Process object
-        # f = open(json_path, 'r')
-        # json_str = f.read()
-        # f.close()
-        #process = jsonpickle.decode(json_str, keys=True, classes=[RobotClampAssemblyProcess])
-
         with open(json_path, 'r') as f:
-            process = json.load(f, cls=DataDecoder)
+            process = json.load(f, cls=DataDecoder) #type: RobotClampAssemblyProcess
+
+        # Also load RFL model from default location
+        process.load_robot_model()
 
         sc.sticky["itj_process"] = process
         success = True
