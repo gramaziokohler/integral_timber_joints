@@ -101,7 +101,7 @@ def print_current_state_info(process):
     prev_movement = all_movements[state_id - 1] if state_id > 0 else None  # type: Movement
     next_movement = all_movements[state_id] if state_id < len(all_movements) else None  # type: Movement
 
-    print ("-----------------------------------------------")
+    print("-----------------------------------------------")
 
     # * Printing Previous Movement Info
     if prev_movement is not None:
@@ -119,7 +119,7 @@ def print_current_state_info(process):
         config_string = " (Robot Config is Fixed!)"
     else:
         config_string = ""
-    print("- Current Scene: #%i [0 to %i]. %s" % (state_id , len(all_movements), config_string))
+    print("- Current Scene: #%i [0 to %i]. %s" % (state_id, len(all_movements), config_string))
 
     # * Printing Next Movement Info
     if next_movement is not None:
@@ -127,8 +127,33 @@ def print_current_state_info(process):
         if next_movement.operator_stop_before is not None:
             print("  - Operator Confirm: %s" % next_movement.operator_stop_before)
 
-    print ("-----------------------------------------------")
+    print("-----------------------------------------------")
 
+
+def ui_get_ik(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Retriving an IK solution for the current state.
+    The actual call would be to get the IK solution of the ending state of the previous movement.
+    """
+    artist = get_process_artist()
+    all_movements = process.movements
+    state_id = artist.selected_state_id
+    print("-----------------------------------------------")
+
+    if state_id == 0:
+        print("Warning - Cannot get IK solution for the initial state.")
+        return
+    print("Computing IK Solution for this State.")
+
+    # Retrive prev and next movement for information print out
+    prev_movement = all_movements[state_id - 1]
+    scene = process.get_movement_end_scene(prev_movement)
+    # from integral_timber_joints.planning.rhino_interface import get_ik_solutions
+    from compas.rpc import Proxy
+    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
+    result = rhino_interface.get_ik_solutions(process, scene)
+    print(result)
+    print("-----------------------------------------------")
 
 
 def ui_show_env_meshes(process):
@@ -147,6 +172,13 @@ def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
+
+    # Check if all computatations are up to date.
+    for beam_id in assembly.sequence:
+        if not process.dependency.beam_all_valid(beam_id):
+            process.dependency.compute_all(beam_id)
+            if not process.dependency.beam_all_valid(beam_id):
+                print("WARNING: Beam (%s) contains invalid computations that cannot be resolved. Visualization maybe incorrect." % beam_id)
 
     # Initial draw of the state (using previous selected_state_id)
     rs.EnableRedraw(False)
@@ -188,6 +220,8 @@ def show_menu(process):
             {'name': 'ShowEnv', 'action': ui_show_env_meshes
              },
             {'name': 'HideEnv', 'action': ui_hide_env_meshes
+             },
+            {'name': 'GetIK', 'action': ui_get_ik
              },
         ]
 
