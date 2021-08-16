@@ -1136,7 +1136,15 @@ class ProcessArtist(object):
 
         """
         if state is None:
-            state = self.process.get_movement_start_scene(self.process.movements[self.selected_state_id])
+            # Limit range
+            if self.selected_state_id < 0 : self.selected_state_id = 0
+            if self.selected_state_id > len(self.process.movements): self.selected_state_id = len(self.process.movements)
+
+            if self.selected_state_id == 0:
+                state = self.process.initial_state
+            else:
+                # Note state_id = 1 is referring to end of the first (0) movement.
+                state = self.process.get_movement_end_scene(self.process.movements[self.selected_state_id - 1])
 
         # Layer:
         rs.CurrentLayer(self.state_visualization_layer)
