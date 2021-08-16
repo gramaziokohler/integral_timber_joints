@@ -1792,9 +1792,11 @@ class RobotClampAssemblyProcess(Data):
         # Direct retrival of itj module.__file__ will only result in the Rhino Plugin folder
         # not the installation folder.
 
+        # Side effect of this workwround is that a Proxy server is started.
+
         if compas.is_rhino():
-            with Proxy('integral_timber_joints.module_info', autoreload=True) as info:
-                submodule_path = info.itj_submodule_folder()
+            info = Proxy('integral_timber_joints.module_info')
+            submodule_path = info.itj_submodule_folder()
         else:
             import integral_timber_joints.module_info as info
             submodule_path = info.itj_submodule_folder()
