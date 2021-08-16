@@ -50,7 +50,7 @@ def AddAnnotationText(frame, text, height, layer, redraw=True):
 
 
 class ProcessKeyPosition(object):
-    def __init__(self, process = None, beam_id = None, current_pos_num=0):
+    def __init__(self, process=None, beam_id=None, current_pos_num=0):
         # type: (RobotClampAssemblyProcess, str, int) -> None
         """Initializing the Key Positions accoring to the assembly method of beam."""
         if process is not None and beam_id is not None:
@@ -60,7 +60,6 @@ class ProcessKeyPosition(object):
             self.beam_tool_count = 0
             self.beam_assembly_method = BeamAssemblyMethod.UNDEFINED
         self.current_pos_num = current_pos_num
-
 
     # pos_name, beam_pos, gripper_pos, clamp_pos
     pos_names_for_beam_with_clamps = [
@@ -136,9 +135,8 @@ class ProcessKeyPosition(object):
     def _all_pos_names(self):
         return self.pos_names_for_beam_with_clamps +\
             self.pos_names_for_beam_without_clamps +\
-            self.pos_names_for_beam_with_screwdriver_with_gripper+\
+            self.pos_names_for_beam_with_screwdriver_with_gripper +\
             self.pos_names_for_beam_with_screwdriver_without_gripper
-
 
     @property
     def possible_beam_positions(self):
@@ -160,8 +158,6 @@ class ProcessKeyPosition(object):
         """All possible tool positions. Used for creating layers in Rhino"""
         positions = [names[3] for names in self._all_pos_names if names[3] is not None]
         return set(positions)
-
-
 
     def next_position(self):
         self.current_pos_num += 1
@@ -251,9 +247,9 @@ class ProcessKeyPosition(object):
     def to_data(self):
         # type: () -> dict[str, Any]
         data = {'current_pos_num': self.current_pos_num,
-        'beam_tool_count' : self.beam_tool_count,
-        'beam_assembly_method' : self.beam_assembly_method,
-        }
+                'beam_tool_count': self.beam_tool_count,
+                'beam_assembly_method': self.beam_assembly_method,
+                }
         return data
 
     @classmethod
@@ -286,6 +282,7 @@ class ProcessArtist(object):
     state_visualization_layer = 'itj::state_visualization'
     tools_in_storage_layer = 'itj::tools::in_storage'
     env_mesh_layer = 'itj::envmesh'
+    robot_layer = 'itj::robot'
 
     color_meaning = {
         'normal': (0, 0, 0),
@@ -322,6 +319,7 @@ class ProcessArtist(object):
         self._state_visualization_guids = {}  # type: dict[str, list[str]]
         self._tools_in_storage_guids = {}  # type: dict[str, list[str]]
         self._env_mesh_guids = {}  # type: dict[str, list[str]]
+        self._robot_guids = {'visual': [], 'collision': []}  # type: dict[str, list[str]]
 
         self.settings = {
             'color.vertex': (255, 255, 255),
@@ -342,6 +340,9 @@ class ProcessArtist(object):
         self._selected_beam_id = None  # type: str
         self.selected_state_id = 0  # type: str # State Id = Start State of Movement with the same ID"""
         self.selected_key_position = ProcessKeyPosition(process, self.selected_beam_id, 0)
+
+        # Robot
+        self.robot_artist = None
 
     #######################################
     # Functions to handle the guid records
@@ -670,7 +671,6 @@ class ProcessArtist(object):
         for layer in self.interactive_layers:
             yield layer
         for gripper_position in ProcessKeyPosition().possible_gripper_positions:
-            print (gripper_position)
             yield 'itj::gripper::' + gripper_position
         for tool_position in ProcessKeyPosition().possible_tool_positions:
             yield 'itj::tool::' + tool_position
@@ -679,6 +679,7 @@ class ProcessArtist(object):
         yield self.state_visualization_layer
         yield self.tools_in_storage_layer
         yield self.env_mesh_layer
+        yield self.robot_layer
 
     def empty_layers(self):
         # type:() -> None
@@ -1028,6 +1029,80 @@ class ProcessArtist(object):
     # Robot
     ######################
 
+    def draw_robot(self, configuration, draw_collision=True, auto_hide=True, redraw=False):
+        # type: (Configuration, bool, bool, bool) -> None
+        """Draws process.robot_model in Rhino viewport in mm scale.
+
+        `configuration` can be full or partial Configuration of the RobotModel.
+        If a partial config is given, the other values will be filled in from robot_initial_config.
+        It must be in meter scale as consistent with process.robot_initial_config
+
+        """
+        # Skip if robot model is not set
+        if self.process.robot_model is None:
+            return
+
+        # Create new Robot Artist (if None)
+        if self.robot_artist is None:
+            self.robot_artist = RobotModelArtist(self.process.robot_model, self.robot_layer)
+            self.robot_artist.scale(1000)
+            print("Creating new RobotModelArtist")
+
+        # Update config
+        merged_config = self.process.robot_initial_config.merged(configuration.scaled(1000))
+        self.robot_artist.update(merged_config)
+
+        # Clear old geometry
+        guid_key = 'collision' if draw_collision else 'visual'
+        purge_objects(self._robot_guids[guid_key], redraw=False)
+        self._robot_guids[guid_key] = []
+
+        # Redraw Robot
+        rs.EnableRedraw(False)
+        if auto_hide:
+            self.hide_robot()
+        if draw_collision:
+            self._robot_guids[guid_key] = self.robot_artist.draw_collision()
+        else:
+            self._robot_guids[guid_key] = self.robot_artist.draw_visual()
+
+        # Redraw
+        if redraw:
+            rs.EnableRedraw(True)
+
+    def show_robot_collision(self, redraw=False):
+        # type: (bool) -> None
+        rs.EnableRedraw(False)
+        for guid in self._robot_guids['collision']:
+            rs.ShowObject(guid)
+        print("Unhiding Robot collision")
+        # Redraw
+        if redraw:
+            rs.EnableRedraw(True)
+
+    def show_robot_visual(self, redraw=False):
+        # type: (bool) -> None
+        rs.EnableRedraw(False)
+        for guid in self._robot_guids['visual']:
+            rs.ShowObject(guid)
+        print("Unhiding Robot visual")
+        # Redraw
+        if redraw:
+            rs.EnableRedraw(True)
+
+    def hide_robot(self, redraw=False):
+        # type: (bool) -> None
+        """Hide the RobotModel in Rhino. Not deleting it"""
+        rs.EnableRedraw(False)
+
+        for guid in self._robot_guids['collision']:
+            rs.HideObject(guid)
+        for guid in self._robot_guids['visual']:
+            rs.HideObject(guid)
+
+        if redraw:
+            rs.EnableRedraw(True)
+
     ######################
     # State
     ######################
@@ -1061,7 +1136,15 @@ class ProcessArtist(object):
 
         """
         if state is None:
-            state = self.process.get_movement_start_scene(self.process.movements[self.selected_state_id])
+            # Limit range
+            if self.selected_state_id < 0 : self.selected_state_id = 0
+            if self.selected_state_id > len(self.process.movements): self.selected_state_id = len(self.process.movements)
+
+            if self.selected_state_id == 0:
+                state = self.process.initial_state
+            else:
+                # Note state_id = 1 is referring to end of the first (0) movement.
+                state = self.process.get_movement_end_scene(self.process.movements[self.selected_state_id - 1])
 
         # Layer:
         rs.CurrentLayer(self.state_visualization_layer)

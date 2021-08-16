@@ -43,6 +43,8 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
         tool_type = process.assembly.get_joint_attribute(joint_id, 'tool_type')
         tool = pop_tool_by_type(tool_type)
         if tool is not None:
+            if verbose:
+                print("|- Assigning %s(%s) to Joint (%s)"%(tool_type, tool.name, joint_id))
             previous_tool_id = process.assembly.get_joint_attribute(joint_id, 'tool_id')
             if previous_tool_id != tool.name:
                 process.assembly.set_joint_attribute(joint_id, 'tool_id', tool.name)
@@ -102,7 +104,7 @@ def _create_actions_for_clamped(process, beam_id, verbose=False):
 
     # move clamps from storage to structure
     joint_id_of_clamps = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
-    clamp_ids = [assembly.get_joint_attribute(joint_id, 'clamp_id') for joint_id in joint_id_of_clamps]
+    clamp_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_id_of_clamps]
 
     for joint_id in joint_id_of_clamps:
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')

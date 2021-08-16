@@ -687,11 +687,9 @@ class Assembly(Network):
         """Generator returning all the joint_ids on the given beam that require assembly tool.
         """
         if self.get_assembly_method(beam_id) <= BeamAssemblyMethod.GROUND_CONTACT:
-            return
+            return []
 
-        for neighbour_id in self.get_already_built_neighbors(beam_id):
-            joint_id = (neighbour_id, beam_id)
-            yield joint_id
+        return [(neighbour_id, beam_id) for neighbour_id in self.get_already_built_neighbors(beam_id)]
 
     def compute_joint_screw_hole(self, beam_id):
         # type: (Assembly, str) -> None

@@ -1,9 +1,10 @@
 from copy import deepcopy
 
+import compas
 from compas.data import Data
 from compas.datastructures import Mesh
 from compas.geometry import Frame, Transformation, Translation, Vector, dot_vectors
-from compas.robots.model.robot import RobotModel
+from compas.robots import RobotModel
 from compas.rpc import Proxy
 from compas_fab.robots import Configuration
 from itertools import chain
@@ -40,7 +41,6 @@ class RobotClampAssemblyProcess(Data):
                              debug_print_process_actions_movements, optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper, recompute_initial_state)
     from .process_screwdriver_compute import compute_screwdriver_positions
 
-
     # Constants for clamp jaw positions at different key positions.
     clamp_appraoch_position = 220
     clamp_inclamp_position = 210
@@ -63,7 +63,7 @@ class RobotClampAssemblyProcess(Data):
         self.attributes['grippers'] = {}
         self.attributes['screwdrivers'] = {}
 
-        self.attributes['robot_model'] = None                   # RobotModel
+        self._robot_model = None                                # RobotModel do not get saved with process
         self.attributes['robot_toolchanger'] = None             # ToolChanger
         self.attributes['robot_wrist'] = None                   # RobotWrist
         self.attributes['robot_initial_config'] = None          # tuple(list(float), flaot)
@@ -108,12 +108,12 @@ class RobotClampAssemblyProcess(Data):
     @property
     def robot_model(self):
         # type: () -> RobotModel
-        return self.attributes['robot_model']
+        return self._robot_model
 
     @robot_model.setter
     def robot_model(self, value):
         # type: (RobotModel) -> None
-        self.attributes['robot_model'] = value
+        self._robot_model = value
 
     @property
     def robot_toolchanger(self):
@@ -138,6 +138,15 @@ class RobotClampAssemblyProcess(Data):
     @property
     def robot_initial_config(self):
         # type: () -> Configuration
+        """Returns the `robot_initial_config` that is set by the user.
+        - If user have not set this attribute, and if the `process.robot_model` is present, the `zero_configuration()` is returned.
+        - Else, return None.
+        """
+
+        if self.attributes['robot_initial_config'] is None:
+            if self.robot_model is not None:
+                return self.robot_model.zero_configuration()
+
         return self.attributes['robot_initial_config']
 
     @robot_initial_config.setter
@@ -423,6 +432,8 @@ class RobotClampAssemblyProcess(Data):
         - The result can be used directly for path planning.
         """
         world_from_toolbase = self.assembly.get_joint_attribute(joint_id, position_name)
+        if world_from_toolbase is None:
+            print("Warning ! Attempt to process.get_tool_t0cf_at(%s, %s). Cannot find position name in joint attribute." % (str(joint_id), position_name))
         tool_changer = self.robot_toolchanger
         tool_changer.set_current_frame_from_tcp(world_from_toolbase)
 
@@ -693,6 +704,7 @@ class RobotClampAssemblyProcess(Data):
         ------------
         This functions sets the following beam_attribute
         - 'gripper_type'
+        - 'gripper_id'
 
         Return
         ------
@@ -705,11 +717,13 @@ class RobotClampAssemblyProcess(Data):
 
         # Do not change anything if gripper_type is already set
         if self.assembly.get_beam_attribute(beam_id, "gripper_type") is not None:
-            if verbose:
-                print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
-                      (beam_id, self.assembly.get_joint_attribute(beam_id, "gripper_type")))
-            return ComputationalResult.ValidNoChange
+            if self.assembly.get_beam_attribute(beam_id, "gripper_id") is not None:
+                if verbose:
+                    print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
+                          (beam_id, self.assembly.get_joint_attribute(beam_id, "gripper_type")))
+                return ComputationalResult.ValidNoChange
 
+        # Compute Gripper Type
         for gripper_type in self.available_gripper_types:
             gripper = self.get_one_gripper_by_type(gripper_type)
             # Check if beam length is within limits
@@ -727,6 +741,9 @@ class RobotClampAssemblyProcess(Data):
             return ComputationalResult.ValidCannotContinue
         # Set state and return
         self.assembly.set_beam_attribute(beam_id, "gripper_type", chosen_gripper_type)
+
+        gripper_id = self.get_one_tool_by_type(chosen_gripper_type).name
+        self.assembly.set_beam_attribute(beam_id, "gripper_id", gripper_id)
         if verbose:
             print("Gripper Type: %s assigned to %s" % (chosen_gripper_type, beam_id))
 
@@ -1761,6 +1778,46 @@ class RobotClampAssemblyProcess(Data):
                     movement.data = json.load(f, cls=DataDecoder).data
                 movements_modified.append(movement)
         return movements_modified
+
+    def load_robot_model(self):
+        # type: () -> None
+        """Load Robot model from URDF at default location
+        under the submodule in integral_timber_joint"""
+
+        import os
+
+        from compas.rpc import Proxy
+
+        # Workaround for fact that itj module is installed with a windows shortcut inside Rhino Plugin folder.
+        # Direct retrival of itj module.__file__ will only result in the Rhino Plugin folder
+        # not the installation folder.
+
+        # Side effect of this workwround is that a Proxy server is started.
+
+        if compas.is_rhino():
+            info = Proxy('integral_timber_joints.module_info')
+            submodule_path = info.itj_submodule_folder()
+        else:
+            import integral_timber_joints.module_info as info
+            submodule_path = info.itj_submodule_folder()
+
+        # Load files
+        if os.path.exists(os.path.join(submodule_path, 'rfl_description')):
+            print("Loading RobotModel from URDF at: %s" % submodule_path)
+
+            from compas.robots.model import RobotModel
+            from compas.robots.resources.basic import LocalPackageMeshLoader
+
+            # Example code from https://compas.dev/compas/latest/api/generated/compas.robots.RobotModel.load_geometry.html
+            loader = LocalPackageMeshLoader(os.path.join(submodule_path, 'rfl_description'), 'rfl_description')
+            urdf = loader.load_urdf('rfl_pybullet.urdf')
+            robot_model = RobotModel.from_urdf_file(urdf)
+            robot_model.load_geometry(loader)
+            self.robot_model = robot_model  # type: RobotModel
+            print("- %s Loaded: %i Links, %i Joints" % (robot_model.name, len(robot_model.links), len(robot_model.joints)))
+        else:
+            # You should have this repo https://github.com/yijiangh/rfl_description/tree/victor/cables as submodule
+            print("RobotModel submodule does not exist in: %s" % submodule_path)
 
 
 def _colored_is_none(value):

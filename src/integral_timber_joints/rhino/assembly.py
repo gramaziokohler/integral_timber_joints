@@ -259,8 +259,9 @@ def ui_change_assembly_vector(process):
         process.dependency.invalidate(beam_id, process.compute_gripper_grasp_pose)
         process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
         artist.delete_beam_all_positions(beam_id)
-        artist.delete_asstool_all_positions(beam_id)
         artist.delete_gripper_all_positions(beam_id)
+        for joint_id in process.assembly.get_joint_ids_of_beam(beam_id):
+            artist.delete_asstool_all_positions(joint_id, redraw=False)
 
 
 def ui_orient_assembly(process):
@@ -325,13 +326,14 @@ def ui_orient_assembly(process):
     for beam_id in assembly.sequence:
         artist.delete_beam_all_positions(beam_id, redraw=False)
         artist.delete_gripper_all_positions(beam_id, redraw=False)
-        artist.delete_asstool_all_positions(beam_id, redraw=False)
         artist.delete_interactive_beam_visualization(beam_id, redraw=False)
+        for joint_id in process.assembly.get_joint_ids_of_beam(beam_id):
+                artist.delete_asstool_all_positions(joint_id, redraw=False)
 
     assembly.transform(T)
     # Clear Actions and Movements because they are no longer valid.
     # It would be nice if there exist a function to update their frames, but sadly, no.
-    process.actions = []
+    process.dependency.invalidate(beam_id, process.compute_pickup_frame)
 
     # Prompt artist to redraw almost everything
     for beam_id in assembly.sequence:

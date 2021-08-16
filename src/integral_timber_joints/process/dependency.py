@@ -69,7 +69,6 @@ class ComputationalDependency(Graph):
 
         # Assigning Tools
         # -------
-        self.add_edge('assign_tool_type_to_joints', 'search_valid_clamp_orientation_with_guiding_vector')
         self.add_edge('assign_tool_type_to_joints', 'assign_tool_id_to_beam_joints')
 
         # Gripper / Grasp / Beam at Pickup
@@ -79,6 +78,7 @@ class ComputationalDependency(Graph):
 
         # Clamp Specific Computations (based on search_valid_clamp_orientation_with_guiding_vector)
         # ---------------------------
+        self.add_edge('assign_tool_id_to_beam_joints', 'search_valid_clamp_orientation_with_guiding_vector')
         function_names = [
             'compute_clamp_attachapproach_attachretract_detachapproach',
             'compute_clamp_detachretract',
@@ -103,9 +103,7 @@ class ComputationalDependency(Graph):
 
         # Compute Actions and Movements
         # -----------------------------
-        self.add_edge('assign_tool_id_to_beam_joints', 'create_actions_from_sequence')
 
-        # Automatically compute all
         terminal_function_names = [
             # Clamp Computations
             'compute_clamp_attachapproach_attachretract_detachapproach',
@@ -115,12 +113,13 @@ class ComputationalDependency(Graph):
             'compute_beam_pickupretract',
             'compute_beam_pickupapproach',
             'compute_beam_finalretract',
-            # Actions
-            'create_actions_from_sequence',
+            'assign_tool_id_to_beam_joints'
         ]
 
         for f in terminal_function_names:
-            self.add_edge(f, 'create_movements_from_action')
+            self.add_edge(f, 'create_actions_from_sequence')
+
+        self.add_edge('create_actions_from_sequence', 'create_movements_from_action')
 
         if self.process is not None and self.process.assembly is not None:
             for beam_id in self.process.assembly.beam_ids():

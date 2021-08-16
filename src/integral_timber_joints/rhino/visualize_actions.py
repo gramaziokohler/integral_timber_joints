@@ -23,7 +23,7 @@ def ui_next_step(process):
     artist = get_process_artist()
     all_movements = process.movements
 
-    if artist.selected_state_id <= len(all_movements):
+    if artist.selected_state_id < len(all_movements):
         artist.selected_state_id += 1
         artist.delete_state(redraw=False)
         artist.draw_state(redraw=True)  # Visualize the state
@@ -70,29 +70,90 @@ def ui_goto_state_by_beam_seq(process):
     print_current_state_info(process)
 
 
+def ui_goto_state_by_state_index(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+    all_movements = process.movements
+
+    # Ask use to chosse which beam (seq_id) to view
+    selected_state_id = rs.GetInteger("Which State to view, state_id = [0 to %i]" % (
+        len(all_movements)), 0, 0, len(all_movements))
+    if selected_state_id is None:
+        return
+    if selected_state_id > len(all_movements):
+        print("error: sequence_id must be between [0 to %i]" % (len(all_movements)))
+
+    # Select the start state of the first movement.
+    artist.selected_state_id = selected_state_id
+    artist.delete_state(redraw=False)
+    artist.draw_state(redraw=True)  # Visualize the state
+    print_current_state_info(process)
+
+
 def print_current_state_info(process):
     # type: (RobotClampAssemblyProcess) -> None
+    """Note when state_id = 1, it is referring to end of the first (0) movement."""
     artist = get_process_artist()
     all_movements = process.movements
     state_id = artist.selected_state_id
     # Retrive prev and next movement for information print out
     prev_movement = all_movements[state_id - 1] if state_id > 0 else None  # type: Movement
-    next_movement = all_movements[state_id] if state_id <= len(all_movements) else None  # type: Movement
+    next_movement = all_movements[state_id] if state_id < len(all_movements) else None  # type: Movement
 
-    config_string = " (! Robot config is SET !)" if process.movement_has_start_robot_config(all_movements[state_id]) else ""
+    print("-----------------------------------------------")
 
+    # * Printing Previous Movement Info
     if prev_movement is not None:
-        print("- The prev movement is: %s" % (prev_movement.tag))
-    print("- The current state is (%i of %i). %s" % (state_id, len(all_movements)+1, config_string))
+        print("- Prev Movement: %s" % (prev_movement.tag))
+        if isinstance(prev_movement, RoboticMovement):
+            if prev_movement.allowed_collision_matrix != []:
+                print("  - Prev Movement allowed_collision_matrix: %s" % prev_movement.allowed_collision_matrix)
+            if prev_movement.operator_stop_after is not None:
+                print("  - Operator Confirm: %s" % prev_movement.operator_stop_after)
+
+    # * Printing Current State Info
+    if state_id == 0:
+        config_string = "(Robot Initial State)"
+    elif process.movement_has_end_robot_config(prev_movement):
+        config_string = " (Robot Config is Fixed!)"
+    else:
+        config_string = ""
+    print("- Current Scene: #%i [0 to %i]. %s" % (state_id, len(all_movements), config_string))
+
+    # * Printing Next Movement Info
     if next_movement is not None:
-        print("- The next movement is: %s" % (next_movement.tag))
+        print("- Next Movement: %s" % (next_movement.tag))
         if next_movement.operator_stop_before is not None:
-            print("! Confirm Before Next movement: %s" % next_movement.operator_stop_before)
-        if next_movement.operator_stop_after is not None:
-            print("! Confirm After Next movement: %s" % next_movement.operator_stop_after)
-    if isinstance(next_movement, RoboticMovement):
-        if next_movement.allowed_collision_matrix != []:
-            print("* Next Movement allowed_collision_matrix: %s" % next_movement.allowed_collision_matrix)
+            print("  - Operator Confirm: %s" % next_movement.operator_stop_before)
+
+    print("-----------------------------------------------")
+
+
+def ui_get_ik(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Retriving an IK solution for the current state.
+    The actual call would be to get the IK solution of the ending state of the previous movement.
+    """
+    artist = get_process_artist()
+    all_movements = process.movements
+    state_id = artist.selected_state_id
+    print("-----------------------------------------------")
+
+    if state_id == 0:
+        print("Warning - Cannot get IK solution for the initial state.")
+        return
+    print("Computing IK Solution for this State.")
+
+    # Retrive prev and next movement for information print out
+    prev_movement = all_movements[state_id - 1]
+    scene = process.get_movement_end_scene(prev_movement)
+    # from integral_timber_joints.planning.rhino_interface import get_ik_solutions
+    from compas.rpc import Proxy
+    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
+    result = rhino_interface.get_ik_solutions(process, scene)
+    print(result)
+    print("-----------------------------------------------")
 
 
 def ui_show_env_meshes(process):
@@ -112,11 +173,20 @@ def show_menu(process):
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
 
-    # First ask user which beam to view.
-    ui_goto_state_by_beam_seq(process)
+    # Check if all computatations are up to date.
+    for beam_id in assembly.sequence:
+        if not process.dependency.beam_all_valid(beam_id):
+            process.dependency.compute_all(beam_id)
+            if not process.dependency.beam_all_valid(beam_id):
+                print("WARNING: Beam (%s) contains invalid computations that cannot be resolved. Visualization maybe incorrect." % beam_id)
+
+    # Initial draw of the state (using previous selected_state_id)
+    rs.EnableRedraw(False)
+    artist.delete_state(redraw=False)
+    artist.draw_state(redraw=False)  # Visualize the state
+    print_current_state_info(process)
 
     # Hide interactive beams and beams in positions
-    rs.EnableRedraw(False)
     for seq, beam_id in enumerate(assembly.sequence):
         artist.hide_interactive_beam(beam_id)
         artist.hide_beam_all_positions(beam_id)
@@ -145,9 +215,13 @@ def show_menu(process):
              },
             {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
              },
+            {'name': 'GoToState', 'action': ui_goto_state_by_state_index
+             },
             {'name': 'ShowEnv', 'action': ui_show_env_meshes
              },
             {'name': 'HideEnv', 'action': ui_hide_env_meshes
+             },
+            {'name': 'GetIK', 'action': ui_get_ik
              },
         ]
 
