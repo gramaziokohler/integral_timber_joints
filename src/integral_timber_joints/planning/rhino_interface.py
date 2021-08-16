@@ -5,6 +5,7 @@ from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_r
 from integral_timber_joints.planning.state import set_state, gantry_base_generator
 
 def get_ik_solutions(process, scene, options={}):
+    # TODO safeguard if a non-robotic movement is passed in
     viewer = options.get('viewer', False)
     reachable_range = options.get('reachable_range', (0.2, 2.8))
     ik_gantry_attempts = options.get('ik_gantry_attempts', 100)
@@ -20,7 +21,6 @@ def get_ik_solutions(process, scene, options={}):
         options={'debug' : False, 'include_env' : True, 'reinit_tool' : False})
 
     set_state(client, robot, process, scene)
-
     # else:
     #     # TODO how to recover the client and robot if one is running already?
     #     pass
