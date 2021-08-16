@@ -41,7 +41,6 @@ class RobotClampAssemblyProcess(Data):
                              debug_print_process_actions_movements, optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper, recompute_initial_state)
     from .process_screwdriver_compute import compute_screwdriver_positions
 
-
     # Constants for clamp jaw positions at different key positions.
     clamp_appraoch_position = 220
     clamp_inclamp_position = 210
@@ -139,6 +138,15 @@ class RobotClampAssemblyProcess(Data):
     @property
     def robot_initial_config(self):
         # type: () -> Configuration
+        """Returns the `robot_initial_config` that is set by the user.
+        - If user have not set this attribute, and if the `process.robot_model` is present, the `zero_configuration()` is returned.
+        - Else, return None.
+        """
+
+        if self.attributes['robot_initial_config'] is None:
+            if self.robot_model is not None:
+                return self.robot_model.zero_configuration()
+
         return self.attributes['robot_initial_config']
 
     @robot_initial_config.setter
@@ -712,7 +720,7 @@ class RobotClampAssemblyProcess(Data):
             if self.assembly.get_beam_attribute(beam_id, "gripper_id") is not None:
                 if verbose:
                     print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
-                        (beam_id, self.assembly.get_joint_attribute(beam_id, "gripper_type")))
+                          (beam_id, self.assembly.get_joint_attribute(beam_id, "gripper_type")))
                 return ComputationalResult.ValidNoChange
 
         # Compute Gripper Type
@@ -1803,12 +1811,11 @@ class RobotClampAssemblyProcess(Data):
             urdf = loader.load_urdf('rfl_pybullet.urdf')
             robot_model = RobotModel.from_urdf_file(urdf)
             robot_model.load_geometry(loader)
-            self.robot_model = robot_model
+            self.robot_model = robot_model  # type: RobotModel
             print("- %s Loaded: %i Links, %i Joints" % (robot_model.name, len(robot_model.links), len(robot_model.joints)))
         else:
             # You should have this repo https://github.com/yijiangh/rfl_description/tree/victor/cables as submodule
             print("RobotModel submodule does not exist in: %s" % submodule_path)
-
 
 
 def _colored_is_none(value):

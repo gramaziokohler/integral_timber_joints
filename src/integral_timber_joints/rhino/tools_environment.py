@@ -235,33 +235,6 @@ def replace_toolchanger(process):
 # Robot
 #######
 
-
-def replace_robot(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    # Ask user to open URFD location
-    from compas.robots.model import RobotModel
-    from compas.robots.resources.basic import LocalPackageMeshLoader
-    from compas.robots.resources.github import GithubPackageMeshLoader
-    from compas_fab.robots import Robot, RobotSemantics
-    from compas_rhino.artists import RobotModelArtist
-
-    pkg_path = rs.StringBox("Enter Robot URDF Package Root Path. Without trailing slash. ")
-    print(pkg_path)
-
-    rfl_loader = LocalPackageMeshLoader(os.path.join(pkg_path, 'rfl_description'), 'rfl_description')
-    abb_loader = LocalPackageMeshLoader(os.path.join(pkg_path), "abb_irb4600_40_255")
-
-    robot_model = RobotModel.from_urdf_string(rfl_loader.load_urdf('rfl_pybullet.urdf').read())
-    robot_model.load_geometry(rfl_loader, abb_loader)
-
-    # artist = RobotModelArtist(robot_model)
-    # robot_semantics = RobotSemantics.from_srdf_file(rfl_loader.build_path('urdf', 'rfl.srdf'), model)
-
-    # robot = Robot(model, artist, semantics=robot_semantics)
-    process.robot_model = robot_model
-    print(robot_model.to_data())
-
-
 def set_robot_initial_config(process):
     # type: (RobotClampAssemblyProcess) -> None
     # Ask user to pick a Configuration json
@@ -269,7 +242,7 @@ def set_robot_initial_config(process):
     if path:
         with open(path, 'r') as f:
             configuration = json.load(f, cls=DataDecoder)  # type: Configuration
-            assert isinstance(configuration, Configuration)
+            assert configuration.__class__.__name__ == Configuration.__name__
             process.robot_initial_config = configuration
             print("Robot Initial Config is successfully loaded from %s" % path)
 
@@ -595,6 +568,8 @@ def show_menu(process):
         # Have artist paint all the tools in storage position and env mesh
         for tool_id in process.tool_ids:
             artist.draw_tool_in_storage(tool_id)
+
+        artist.draw_robot(process.robot_initial_config)
         artist.draw_all_env_mesh(delete_old=True)
         rs.EnableRedraw(True)
 
@@ -637,7 +612,6 @@ def show_menu(process):
                 ]},
                 {'name': 'Robot', 'message': 'Process Robot is: %s' % process.robot_model, 'options': [
                     {'name': 'Back', 'action': 'Back'},
-                    {'name': 'ReplaceRobotModel', 'action': replace_robot},
                     {'name': 'SetInitialConfig', 'action': set_robot_initial_config},
                 ]},
                 {'name': 'RobotWrist', 'message': 'Process robot_wrist', 'options': [
@@ -668,6 +642,7 @@ def show_menu(process):
         if result is None or 'action' not in result:
             artist.hide_all_tools_in_storage()
             artist.hide_all_env_mesh()
+            artist.hide_robot()
             rs.EnableRedraw(True)
             print('Exit Function')
             return Rhino.Commands.Result.Cancel
@@ -678,6 +653,7 @@ def show_menu(process):
         if action == 'Exit':
             artist.hide_all_tools_in_storage()
             artist.hide_all_env_mesh()
+            artist.hide_robot()
             rs.EnableRedraw(True)
             print('Exit Function')
             return Rhino.Commands.Result.Cancel
