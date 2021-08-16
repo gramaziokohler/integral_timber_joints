@@ -23,7 +23,7 @@ def ui_next_step(process):
     artist = get_process_artist()
     all_movements = process.movements
 
-    if artist.selected_state_id <= len(all_movements):
+    if artist.selected_state_id < len(all_movements):
         artist.selected_state_id += 1
         artist.delete_state(redraw=False)
         artist.draw_state(redraw=True)  # Visualize the state
@@ -70,29 +70,65 @@ def ui_goto_state_by_beam_seq(process):
     print_current_state_info(process)
 
 
+def ui_goto_state_by_state_index(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+    all_movements = process.movements
+
+    # Ask use to chosse which beam (seq_id) to view
+    selected_state_id = rs.GetInteger("Which State to view, state_id = [0 to %i]" % (
+        len(all_movements)), 0, 0, len(all_movements))
+    if selected_state_id is None:
+        return
+    if selected_state_id > len(all_movements):
+        print("error: sequence_id must be between [0 to %i]" % (len(all_movements)))
+
+    # Select the start state of the first movement.
+    artist.selected_state_id = selected_state_id
+    artist.delete_state(redraw=False)
+    artist.draw_state(redraw=True)  # Visualize the state
+    print_current_state_info(process)
+
+
 def print_current_state_info(process):
     # type: (RobotClampAssemblyProcess) -> None
+    """Note when state_id = 1, it is referring to end of the first (0) movement."""
     artist = get_process_artist()
     all_movements = process.movements
     state_id = artist.selected_state_id
     # Retrive prev and next movement for information print out
     prev_movement = all_movements[state_id - 1] if state_id > 0 else None  # type: Movement
-    next_movement = all_movements[state_id] if state_id <= len(all_movements) else None  # type: Movement
+    next_movement = all_movements[state_id] if state_id < len(all_movements) else None  # type: Movement
 
-    config_string = " (! Robot config is SET !)" if process.movement_has_start_robot_config(all_movements[state_id]) else ""
+    print ("-----------------------------------------------")
 
+    # * Printing Previous Movement Info
     if prev_movement is not None:
-        print("- The prev movement is: %s" % (prev_movement.tag))
-    print("- The current state is (%i of %i). %s" % (state_id, len(all_movements)+1, config_string))
+        print("- Prev Movement: %s" % (prev_movement.tag))
+        if isinstance(prev_movement, RoboticMovement):
+            if prev_movement.allowed_collision_matrix != []:
+                print("  - Prev Movement allowed_collision_matrix: %s" % prev_movement.allowed_collision_matrix)
+            if prev_movement.operator_stop_after is not None:
+                print("  - Operator Confirm: %s" % prev_movement.operator_stop_after)
+
+    # * Printing Current State Info
+    if state_id == 0:
+        config_string = "(Robot Initial State)"
+    elif process.movement_has_end_robot_config(prev_movement):
+        config_string = " (Robot Config is Fixed!)"
+    else:
+        config_string = ""
+    print("- Current Scene: #%i [0 to %i]. %s" % (state_id , len(all_movements), config_string))
+
+    # * Printing Next Movement Info
     if next_movement is not None:
-        print("- The next movement is: %s" % (next_movement.tag))
+        print("- Next Movement: %s" % (next_movement.tag))
         if next_movement.operator_stop_before is not None:
-            print("! Confirm Before Next movement: %s" % next_movement.operator_stop_before)
-        if next_movement.operator_stop_after is not None:
-            print("! Confirm After Next movement: %s" % next_movement.operator_stop_after)
-    if isinstance(next_movement, RoboticMovement):
-        if next_movement.allowed_collision_matrix != []:
-            print("* Next Movement allowed_collision_matrix: %s" % next_movement.allowed_collision_matrix)
+            print("  - Operator Confirm: %s" % next_movement.operator_stop_before)
+
+    print ("-----------------------------------------------")
+
 
 
 def ui_show_env_meshes(process):
@@ -112,11 +148,13 @@ def show_menu(process):
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
 
-    # First ask user which beam to view.
-    ui_goto_state_by_beam_seq(process)
+    # Initial draw of the state (using previous selected_state_id)
+    rs.EnableRedraw(False)
+    artist.delete_state(redraw=False)
+    artist.draw_state(redraw=False)  # Visualize the state
+    print_current_state_info(process)
 
     # Hide interactive beams and beams in positions
-    rs.EnableRedraw(False)
     for seq, beam_id in enumerate(assembly.sequence):
         artist.hide_interactive_beam(beam_id)
         artist.hide_beam_all_positions(beam_id)
@@ -144,6 +182,8 @@ def show_menu(process):
             {'name': 'PrevStep', 'action': ui_prev_step
              },
             {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
+             },
+            {'name': 'GoToState', 'action': ui_goto_state_by_state_index
              },
             {'name': 'ShowEnv', 'action': ui_show_env_meshes
              },
