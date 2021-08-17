@@ -75,6 +75,7 @@ class ComputationalDependency(Graph):
         # --------------------------------
         self.add_edge('assign_gripper_to_beam', 'compute_gripper_grasp_pose')
         self.add_edge('compute_gripper_grasp_pose', 'compute_pickup_frame')
+        self.add_edge('compute_storeage_frame', 'compute_pickup_frame')
 
         # Clamp Specific Computations (based on search_valid_clamp_orientation_with_guiding_vector)
         # ---------------------------
@@ -165,6 +166,10 @@ class ComputationalDependency(Graph):
             self.set_solution_validity(beam_id, fx, ComputationalResult.Invalid)
         for dfx in self.get_downstream_fxs(fx):
             self.invalidate(beam_id, dfx)
+
+    def invalidate_all(self, beam_id):
+        for fx_name in self.nodes():
+            self.node_attribute(fx_name, beam_id, ComputationalResult.Invalid)
 
     def compute(self, beam_id, fx, attempt_all_parents_even_failure=False, verbose=True):
         # type: (str, Callable[[str], ComputationalResult], bool, bool) -> ComputationalResult

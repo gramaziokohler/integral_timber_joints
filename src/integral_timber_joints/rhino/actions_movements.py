@@ -41,7 +41,7 @@ def compute_states(process):
 
     invalid_beams = process.dependency.get_invalid_beam_ids()
     if len(invalid_beams) > 0:
-        print("Warning: The following beams are not yet computationally valid:" % invalid_beams)
+        print("Warning: The following beams are not yet computationally valid: %s" % invalid_beams)
         print("States are not valid.")
         return
 

@@ -744,7 +744,7 @@ class ProcessArtist(object):
             # Draw Gripper
             if verbose:
                 print("Drawing Gripper for Beam(%s) in position: %s" % (beam_id, attribute_name))
-            gripper = self.process.get_gripper_of_beam(beam_id, attribute_name)
+            gripper = self.process.get_gripper_of_beam_at(beam_id, attribute_name)
 
             # Set Tool State (better visualization)
             for state in tool_states:

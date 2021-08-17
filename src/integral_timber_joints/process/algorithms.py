@@ -23,6 +23,7 @@ from integral_timber_joints.tools import Clamp, Gripper, Tool
 # Beam level functions (as used in auto update)
 ###############################################
 
+
 def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> ComputationalResult
     """Assign available tool_ids to joints that require assembly tool.
@@ -44,7 +45,7 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
         tool = pop_tool_by_type(tool_type)
         if tool is not None:
             if verbose:
-                print("|- Assigning %s(%s) to Joint (%s)"%(tool_type, tool.name, joint_id))
+                print("|- Assigning %s(%s) to Joint (%s)" % (tool_type, tool.name, joint_id))
             previous_tool_id = process.assembly.get_joint_attribute(joint_id, 'tool_id')
             if previous_tool_id != tool.name:
                 process.assembly.set_joint_attribute(joint_id, 'tool_id', tool.name)
@@ -166,6 +167,7 @@ def _create_actions_for_clamped(process, beam_id, verbose=False):
     # Return results
     return ComputationalResult.ValidCanContinue
 
+
 def _create_actions_for_screwed(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
     """ Creating Action objects (process.actions)
@@ -175,6 +177,7 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
     This is specific to a single robot / multiple clamp and gripper scenario.
     """
     return ComputationalResult.ValidCanContinue
+
 
 def create_movements_from_action(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None

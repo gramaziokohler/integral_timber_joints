@@ -35,11 +35,40 @@ except:
 
 class RobotClampAssemblyProcess(Data):
 
-    # Beam level functions
-    # Process level functions
-    from .algorithms import (assign_tool_id_to_beam_joints, assign_tools_to_actions, assign_unique_action_numbers, create_actions_from_sequence, create_movements_from_action,
-                             debug_print_process_actions_movements, optimize_actions_place_pick_clamp, optimize_actions_place_pick_gripper, recompute_initial_state)
-    from .process_screwdriver_compute import compute_screwdriver_positions
+    # Importing functions from neighbouring files to reduce this file size.
+    from .algorithms import (
+        recompute_initial_state,
+        assign_tool_id_to_beam_joints,
+        assign_tools_to_actions,
+        assign_unique_action_numbers,
+        create_actions_from_sequence,
+        create_movements_from_action,
+        optimize_actions_place_pick_clamp,
+        optimize_actions_place_pick_gripper,
+        debug_print_process_actions_movements,
+    )
+
+    from .compute_process_screwdriver import (
+        compute_screwdriver_positions,
+    )
+
+    from .compute_process_gripper import(
+        assign_gripper_to_beam,
+        compute_gripper_grasp_pose,
+        set_grasp_face_following_assembly_direction,
+        set_grasp_face_following_guide_vector,
+        adjust_gripper_pos,
+        override_grasp_face,
+    )
+
+    from .compute_process_pickup import(
+        compute_pickup_frame,
+        compute_pickup_location_by_aligning_corner,
+        compute_beam_pickupapproach,
+        compute_beam_finalretract,
+        compute_beam_pickupretract,
+        compute_storeage_frame,
+    )
 
     # Constants for clamp jaw positions at different key positions.
     clamp_appraoch_position = 220
@@ -613,193 +642,9 @@ class RobotClampAssemblyProcess(Data):
 
         return ComputationalResult.ValidCanContinue
 
-    # ------------------------------
-    # Gripper / Grip Pose Algorithms
-    # ------------------------------
-
-    def override_grasp_face(self, beam_id, grasp_face):
-        """Manually override `gripper_grasp_face` for a specified beam
-        `grasp_face` can only be within 1 - 4, overrange value will be wrapped
-
-        State Change
-        ------------
-        This functions sets the following beam_attribute
-        - 'gripper_grasp_face'
-
-        Dependency Trigger
-        ------------------
-        Invalidate: 'compute_gripper_grasp_pose' and downstream
-
-        """
-        grasp_face = (grasp_face - 1) % 4 + 1
-        self.assembly.set_beam_attribute(beam_id, 'gripper_grasp_face', grasp_face)
-        # Dependency Trigger
-        self.dependency.invalidate(beam_id, self.compute_gripper_grasp_pose)
-        return True
-
-    def search_grasp_face_from_guide_vector_dir(self, beam_id):
-        # type: (str) -> Vector
-        """Return the best face number (1-4) for creating `gripper_tcp_in_ocf`
-        where the Z-Axis of the tcp_in_WCF, when beam is at 'assembly_wcf_final',
-        follows the direction of guide vector `design_guide_vector_grasp`
-
-        Side Effect
-        -----------
-        beam_attribute 'gripper_grasp_face' will be set.
-        """
-        # Get the guide Vector from beam_attribute
-        design_guide_vector_grasp = self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_grasp').unitized()
-        assert design_guide_vector_grasp is not None
-
-        # Try different grasp face and choose the one that aligns best.
-        beam = self.assembly.beam(beam_id)
-        best_face = 0
-        best_score = -1
-        for gripper_grasp_face in range(1, 5):
-            gripper_tcp_in_ocf = beam.grasp_frame_ocf(gripper_grasp_face, 0)
-            gripper_tcp_in_wcf = gripper_tcp_in_ocf.transformed(Transformation.from_frame(beam.frame))
-            # Compute the alignment score using dot product
-            alignment_score = gripper_tcp_in_wcf.zaxis.dot(design_guide_vector_grasp)
-            if alignment_score > best_score:
-                best_score = alignment_score
-                best_face = gripper_grasp_face
-
-        self.assembly.set_beam_attribute(beam_id, 'gripper_grasp_face', best_face)
-        return best_face
-
-    def search_grasp_face_from_joint_assembly_direction(self, beam_id):
-        # type: (str) -> Vector
-        """Return the best face number (1-4) for creating `gripper_tcp_in_ocf`
-        where grasp face normal is the opposite direction of the beam's assembly direction.
-
-        State Change
-        ------------
-        This functions sets the following beam_attribute
-        - 'gripper_grasp_face'
-
-        Dependency Trigger
-        ------------------
-        Invalidate: 'compute_gripper_grasp_pose' and downstream
-        """
-        beam = self.assembly.beam(beam_id)
-        for joint_id in self.assembly.get_joints_of_beam_connected_to_already_built(beam_id):
-            joint = self.assembly.joint(joint_id)
-            selected_face = (joint.face_id + 1) % 4 + 1
-            self.assembly.set_beam_attribute(beam_id, 'gripper_grasp_face', selected_face)
-            # Dependency Trigger
-            self.dependency.invalidate(beam_id, self.compute_gripper_grasp_pose)
-            # Only the first joint is considered
-            return True
-        return False
-        raise NotImplementedError
-
-    def assign_gripper_to_beam(self, beam_id, verbose=False):
-        """Assign a gripper type using available grippers based on the beam's length.
-        Beam must fit within gripper `beam_length_limits`, if multiple options allow,
-        the gripper with the closest `target_beam_length` will be chosen.
-
-        If the attribute `gripper_type` is already assigned, this function will not chage it.
-
-        State Change
-        ------------
-        This functions sets the following beam_attribute
-        - 'gripper_type'
-        - 'gripper_id'
-
-        Return
-        ------
-        `ComputationalResult.ValidCannotContinue` if no suitable gripper can be found
-        `ComputationalResult.ValidCanContinue` if a suitable gripper can be found
-        """
-        beam_length = self.assembly.beam(beam_id).length
-        chosen_gripper_type = None
-        chosen_gripper_ideal = None
-
-        # Do not change anything if gripper_type is already set
-        if self.assembly.get_beam_attribute(beam_id, "gripper_type") is not None:
-            if self.assembly.get_beam_attribute(beam_id, "gripper_id") is not None:
-                if verbose:
-                    print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
-                          (beam_id, self.assembly.get_joint_attribute(beam_id, "gripper_type")))
-                return ComputationalResult.ValidNoChange
-
-        # Compute Gripper Type
-        for gripper_type in self.available_gripper_types:
-            gripper = self.get_one_gripper_by_type(gripper_type)
-            # Check if beam length is within limits
-            if beam_length >= gripper.beam_length_limits[0] and beam_length <= gripper.beam_length_limits[1]:
-                # Compute beam length vs ideal length and make decision
-                length_to_ideal = abs(beam_length - gripper.target_beam_length)
-                if chosen_gripper_type is None or length_to_ideal < chosen_gripper_ideal:
-                    chosen_gripper_type = gripper_type
-                    chosen_gripper_ideal = length_to_ideal
-
-        # In cases no suitable gripper is available
-        if chosen_gripper_type is None:
-            if verbose:
-                print("No suitable gripper assigned to %s" % (beam_id))
-            return ComputationalResult.ValidCannotContinue
-        # Set state and return
-        self.assembly.set_beam_attribute(beam_id, "gripper_type", chosen_gripper_type)
-
-        gripper_id = self.get_one_tool_by_type(chosen_gripper_type).name
-        self.assembly.set_beam_attribute(beam_id, "gripper_id", gripper_id)
-        if verbose:
-            print("Gripper Type: %s assigned to %s" % (chosen_gripper_type, beam_id))
-
-        return ComputationalResult.ValidCanContinue
-
-    def compute_gripper_grasp_pose(self, beam_id):
-        """ Compute grasp pose for the beam and gripper.
-        Default values will be applied if 'gripper_grasp_dist_from_start' and 'gripper_grasp_face'
-        are not set. Otherwise previous values will be preserved to calculate 'gripper_tcp_in_ocf'.
-
-        Gripper should be assigned before.
-
-        State Change
-        ------------
-        This functions sets the following beam_attribute
-        - 'gripper_grasp_dist_from_start' (if default)
-        - 'gripper_grasp_face' (if default)
-        - 'gripper_tcp_in_ocf'
-
-        Return
-        ------
-        `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
-        `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
-
-        """
-        # Check to ensure prerequisite
-        if self.assembly.get_beam_attribute(beam_id, 'gripper_type') is None:
-            return ComputationalResult.ValidCannotContinue
-
-        beam = self.assembly.beam(beam_id)
-
-        # Use previous values if exist
-        def grasp_face(beam_id):
-            return self.assembly.get_beam_attribute(beam_id, "gripper_grasp_face")
-
-        gripper_grasp_dist_from_start = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
-
-        # Apply default values if None
-        if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Default method
-            gripper_grasp_face = self.search_grasp_face_from_joint_assembly_direction(beam_id)
-
-        if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Backup plan
-            gripper_grasp_face = self.search_grasp_face_from_guide_vector_dir(beam_id)
-
-        if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Default plan
-            self.assembly.set_beam_attribute(beam_id, "gripper_grasp_face", 1)
-            print("Someting wrong, gripper_grasp_face is not in [1,2,3,4] after search. Grasp face defaulted to ", 1)
-
-        if gripper_grasp_dist_from_start is None:
-            gripper_grasp_dist_from_start = beam.length / 2.0
-            self.assembly.set_beam_attribute(beam_id, "gripper_grasp_dist_from_start", gripper_grasp_dist_from_start)
-
-        # Compute gripper_tcp_in_ocf
-        gripper_tcp_in_ocf = beam.grasp_frame_ocf(grasp_face(beam_id), gripper_grasp_dist_from_start)
-        self.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
-        return ComputationalResult.ValidCanContinue
+    # ---------------------------------------------------------------
+    # Getting Tools (or their frames) positioned at specific location
+    # ---------------------------------------------------------------
 
     def get_gripper_baseframe_for_beam_at(self, beam_id, attribute_name):
         """ Returns the base frame (base frame) of the gripper (in WCF)
@@ -878,7 +723,7 @@ class RobotClampAssemblyProcess(Data):
         world_from_beam = world_from_gripper_tcp * gripper_tcp_from_beam_ocf
         return Frame.from_transformation(world_from_beam)
 
-    def get_gripper_of_beam(self, beam_id, beam_position_name='assembly_wcf_final'):
+    def get_gripper_of_beam_at(self, beam_id, beam_position_name='assembly_wcf_final'):
         # type: (str, bool) -> Gripper
         """Returns one of the gripper object being set at the specified position.
         The beam_position_name must be present in the beam attributes.
@@ -898,350 +743,6 @@ class RobotClampAssemblyProcess(Data):
         gripper.current_frame = gripper_wcf_final
 
         return gripper
-
-    def adjust_gripper_pos(self, beam_id, amount):
-        """ Modify the grasp pose 'gripper_grasp_dist_from_start'
-
-        'gripper_tcp_in_ocf'
-
-        Gripper should be assigned before.
-
-        State Change
-        ------------
-        This functions updates the following beam_attribute
-        - 'gripper_grasp_dist_from_start'
-        - 'gripper_tcp_in_ocf'
-
-        Return
-        ------
-        `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
-        `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
-
-        Dependency Trigger
-        ------------------
-        Invalidate: 'compute_gripper_grasp_pose' and downstream
-        """
-        # Check to ensure prerequisite
-        if self.assembly.get_beam_attribute(beam_id, 'gripper_type') is None:
-            return ComputationalResult.ValidCannotContinue
-
-        beam = self.assembly.beam(beam_id)
-
-        gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_face")
-        gripper_grasp_dist_from_start = self.assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
-        gripper_grasp_dist_from_start += amount
-        self.assembly.set_beam_attribute(beam_id, "gripper_grasp_dist_from_start", gripper_grasp_dist_from_start)
-
-        # Recompute beam grasp_frame
-        gripper_tcp_in_ocf = beam.grasp_frame_ocf(gripper_grasp_face, gripper_grasp_dist_from_start)
-        self.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
-        # Dependency Trigger
-        self.dependency.invalidate(beam_id, self.compute_gripper_grasp_pose)
-        return ComputationalResult.ValidCanContinue
-
-    # -------------------------------------------
-    # Beam Storage / Pick Up / Retract Algorithms
-    # -------------------------------------------
-
-    def compute_storeage_frame(self, beam_id):
-        # type(int) -> None
-        """Compute the storage frame.
-        This can be performed right after assigning sequence.
-        Or TODO optionally after changing grasp face.
-
-
-        State Change
-        ------------
-        This functions sets the following beam_attribute
-        - 'assembly_wcf_storage'
-        """
-        # Use the origin as storage frame if there is no beam_storage object
-        if self.beam_storage is None:
-            self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', Frame.worldXY())
-
-        beam = self.assembly.beam(beam_id)
-        storage_frame = self.beam_storage.get_storage_frame(self.assembly.sequence.index(beam_id), len(self.assembly.sequence))
-        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_storage', storage_frame)
-
-    def compute_pickup_frame(self, beam_id):
-        """ Compute the pickup frame of a beam
-        Beam assembly direcion must be valid. Grasp face and PickupStation and must be assigned before.
-
-        State Change
-        ------------
-        This functions sets the following beam_attribute
-        - 'assembly_wcf_pickup'
-
-        Return
-        ------
-        `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
-        `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
-
-        """
-        # Check to ensure prerequisite
-        if self.pickup_station is None:
-            return ComputationalResult.ValidCannotContinue
-
-        # Switching computation function depdns on the Pickup station type
-        if isinstance(self.pickup_station, StackedPickupStation):
-            print("StackedPickupStation not implemented at compute_pickup_frame")
-            return ComputationalResult.ValidCannotContinue
-        elif isinstance(self.pickup_station, GripperAlignedPickupStation):
-            if self.pickup_station.compute_pickup_frame(self, beam_id):
-                return ComputationalResult.ValidCanContinue
-            else:
-                return ComputationalResult.ValidCannotContinue
-        elif isinstance(self.pickup_station, PickupStation):
-            return self.compute_pickup_location_at_corner_aligning_pickup_location(beam_id)
-        else:
-            print("Unknown Pickupstation type for compute_pickup_frame")
-            return ComputationalResult.ValidCannotContinue
-
-    def compute_alignment_corner_from_grasp_face(self, beam_id, align_face_X0=True, align_face_Y0=True, align_face_Z0=True):
-        # type: (str, bool, bool, bool) -> int
-        """Returns one corner (int 1 - 8) of the chosen beam
-        in relation to the picking face set in 'gripper_grasp_face'.
-        There are 8 possible alignment relationship described by the three bool values.
-
-        The retrived int can be used in beam.corner_ocf(alignment_corner)
-        to retrive the corner coordinates in ocf of beam.
-
-        Example
-        -------
-        Beam-start, Y-Neg, bottom-slignment:  align_face_X0 = True, align_face_Y0 = True, align_face_Z0 = True (typical)
-        Beam-end, Y-Neg, bottom-slignment:  align_face_X0 = False, align_face_Y0 = False, align_face_Z0 = True
-        Beam-start, Y-Pos, bottom-slignment:  align_face_X0 = True, align_face_Y0 = False, align_face_Z0 = True
-        """
-        # Compute storage alignment corner based on 'gripper_grasp_face'
-        gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')  # type: int
-        assert gripper_grasp_face is not None
-        print('gripper_grasp_face = %s' % gripper_grasp_face)
-
-        corner = 0
-        if (not align_face_Z0) and align_face_Y0:
-            corner = 1
-        elif align_face_Z0 and align_face_Y0:
-            corner = 2
-        elif align_face_Z0 and (not align_face_Y0):
-            corner = 3
-        elif (not align_face_Z0) and (not align_face_Y0):
-            corner = 4
-        else:
-            raise Exception("Something is really wrong is aligning corners: compute_alignment_corner_from_grasp_face")
-
-        # For corners 1 - 4, adding the corner number will suffice because corner 1 to 4 are corresponding to face 1 - 4
-        corner = (gripper_grasp_face + corner - 2) % 4 + 1
-
-        # Corner 5-8 is only related to whether align_face_X0
-        if not align_face_X0:
-            corner = corner + 4
-
-        return corner
-
-    def compute_pickup_location_at_corner_aligning_pickup_location(self, beam_id):
-        # type: (str, PickupStation) -> None
-        """ Compute 'assembly_wcf_pickup' alignment frame
-        by aligning a choosen corner relative to the 'gripper_grasp_face'
-        to the given pickup_station_frame.
-
-        Note
-        ----
-        This function cannot be used for beam center alignment.
-
-        Side Effect
-        -----------
-        beam_attribute 'assembly_wcf_pickup' will be set.
-
-        Example
-        -------
-        For a beam-start alignment: align_face_X0 = True, align_face_Y0 = True, align_face_Z0 = True
-        For a beam-end alignment: align_face_X0 = False, align_face_Y0 = False, align_face_Z0 = True
-        e.g
-        """
-        if self.pickup_station is None:
-            return ComputationalResult.ValidCannotContinue
-
-        pickup_station_frame = self.pickup_station.alignment_frame
-        align_face_X0 = self.pickup_station.align_face_X0
-        align_face_Y0 = self.pickup_station.align_face_Y0
-        align_face_Z0 = self.pickup_station.align_face_Z0
-
-        # Compute alignment frame origin - self.compute_alignment_corner_from_grasp_face()
-        beam = self.assembly.beam(beam_id)  # type: Beam
-        alignment_corner = self.compute_alignment_corner_from_grasp_face(
-            beam_id,
-            self.pickup_station.align_face_X0,
-            self.pickup_station.align_face_Y0,
-            self.pickup_station.align_face_Z0)
-        #print ('alignment_corner = %s' % alignment_corner)
-        alignment_corner_ocf = beam.corner_ocf(alignment_corner)
-
-        # Compute alignment frame X and Y axis - derived from 'gripper_grasp_face' frame
-        gripper_grasp_face = self.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')
-        gripper_grasp_face_frame_ocf = beam.reference_side_ocf(gripper_grasp_face)
-        alignment_vector_X = gripper_grasp_face_frame_ocf.xaxis
-        alignment_vector_Y = gripper_grasp_face_frame_ocf.yaxis
-        if not align_face_X0:
-            alignment_vector_X.scale(-1.0)
-        if not align_face_Y0:
-            alignment_vector_Y.scale(-1.0)
-
-        # Alignment frame
-        alignment_frame_ocf = Frame(alignment_corner_ocf, alignment_vector_X, alignment_vector_Y)
-
-        # Compute the Transformation needed to bring beam OCF to meet with storage
-        T = Transformation.from_frame(beam.frame)
-        alignment_frame_wcf = alignment_frame_ocf.transformed(T)
-        T = Transformation.from_frame_to_frame(alignment_frame_wcf, pickup_station_frame)
-
-        # Compute the beam ocf in the storage position, save result 'assembly_wcf_pickup'
-        assembly_wcf_pickup = beam.frame.transformed(T)
-        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickup', assembly_wcf_pickup)
-
-        print("compute_pickup_location_at_corner_aligning_pickup_location computed")
-        return ComputationalResult.ValidCanContinue
-
-    def compute_gripper_approach_vector_wcf_final(self, beam_id, verbose=False):
-        # type: (str, bool) -> Vector
-        """Compute gripper approach_vector (wcf)
-        when beam is at final location (beam.frame)
-
-        Return
-        ------
-        'approach_vector_wcf_final'
-        """
-        beam = self.assembly.beam(beam_id)
-        if verbose:
-            print("beam_id = %s " % beam_id)
-
-        # Get approach vector from gripper
-        gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
-        assert gripper_type is not None
-        gripper = self.get_one_gripper_by_type(gripper_type)
-        approach_vector_tcf = gripper.approach_vector.transformed(gripper.transformation_from_t0cf_to_tcf)
-        if verbose:
-            print("approach_vector_tcf = %s " % approach_vector_tcf)
-
-        # Express the approach_vector in ocf of beam (beam.frame coordinate frame)
-        gripper_tcp_in_ocf = self.assembly.get_beam_attribute(beam_id, 'gripper_tcp_in_ocf')
-        T = Transformation.from_frame_to_frame(Frame.worldXY(), gripper_tcp_in_ocf)
-        approach_vector_ocf = approach_vector_tcf.transformed(T)
-        if verbose:
-            print("approach_vector_ocf = %s " % approach_vector_ocf)
-
-        # Express approach vector in World (wcf) for beam in 'assembly_wcf_final'
-        T = Transformation.from_frame_to_frame(Frame.worldXY(), beam.frame)
-        approach_vector_wcf_final = approach_vector_ocf.transformed(T)
-        if verbose:
-            print("approach_vector_wcf_final = %s " % approach_vector_wcf_final)
-
-        return approach_vector_wcf_final
-
-    def compute_beam_pickupapproach(self, beam_id):
-        """ Compute gripper retract positions from 'assembly_wcf_pickup'.
-        Approach vector is taken from gripper's approach vector (tcf) -> (beam ocf)
-
-        Gripper, Pickupstation and beam_attribute'assembly_wcf_pickup' should be set before hand
-
-        State Change
-        ------------
-        This functions sets the following beam_attribute
-        - 'assembly_wcf_pickupapproach'
-
-        Return
-        ------
-        `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
-        `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
-
-        """
-        # Check to ensure prerequisite
-        if self.pickup_station is None:
-            print("pickup_station is not set")
-            return ComputationalResult.ValidCannotContinue
-        if self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup') is None:
-            print("assembly_wcf_pickup is not set")
-            return ComputationalResult.ValidCannotContinue
-        if self.assembly.get_beam_attribute(beam_id, 'gripper_type') is None:
-            print("gripper_type is not set")
-            return ComputationalResult.ValidCannotContinue
-
-        approach_vector_wcf_final = self.compute_gripper_approach_vector_wcf_final(beam_id)
-
-        # Express approach vector in World (wcf) when beam is in 'assembly_wcf_pickup'
-        T = self.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_pickup')
-        approach_vector_wcf_storage = approach_vector_wcf_final.transformed(T)
-
-        # Compute assembly_wcf_pickupapproach (wcf)
-        T = Translation.from_vector(approach_vector_wcf_storage.scaled(-1))
-        assembly_wcf_pickup = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup')
-        assert assembly_wcf_pickup is not None
-        assembly_wcf_pickupapproach = assembly_wcf_pickup.transformed(T)
-        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupapproach', assembly_wcf_pickupapproach)
-
-        return ComputationalResult.ValidCanContinue
-
-    def compute_beam_finalretract(self, beam_id):
-        """ Compute gripper retract positions from 'assembly_wcf_final'.
-        Retraction direction and amount wcf) is taken from gripper attribute 'approach_vector', reversed.
-
-        Gripper should be assigned before hand.
-
-        State Change
-        ------------
-        This functions sets the following beam_attribute
-        - 'assembly_wcf_finalretract'
-
-        Return
-        ------
-        `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
-        `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
-
-        """
-        # Check to ensure prerequisite
-        if self.assembly.get_beam_attribute(beam_id, 'gripper_type') is None:
-            print("gripper_type is not set")
-            return ComputationalResult.ValidCannotContinue
-
-        approach_vector_wcf_final = self.compute_gripper_approach_vector_wcf_final(beam_id)
-
-        # Compute assembly_wcf_finalretract (wcf)
-        T = Translation.from_vector(approach_vector_wcf_final.scaled(-1))
-        assembly_wcf_final = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_final')
-        assembly_wcf_finalretract = assembly_wcf_final.transformed(T)
-        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_finalretract', assembly_wcf_finalretract)
-
-        return ComputationalResult.ValidCanContinue
-
-    def compute_beam_pickupretract(self, beam_id):
-        # type: (str) -> None
-        """Compute 'assembly_wcf_pickupretract' from beam attributes:
-        by transforming 'assembly_wcf_pickup' along 'PickupStation.pickup_retract_vector'.
-
-        State Change
-        ------------
-        This functions sets the following beam_attribute
-        - 'assembly_wcf_pickupretract'
-
-        Return
-        ------
-        `ComputationalResult.ValidCannotContinue` if prerequisite not satisfied
-        `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
-
-        """
-        # Check to ensure prerequisite
-        if self.pickup_station is None:
-            print("pickup_station is not set")
-            return ComputationalResult.ValidCannotContinue
-
-        retract_vector = self.pickup_station.pickup_retract_vector
-
-        # Compute assembly_wcf_pickupretract
-        assembly_wcf_pickup = self.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup')
-        T = Translation.from_vector(retract_vector)
-        assembly_wcf_pickupretract = assembly_wcf_pickup.transformed(T)
-        self.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupretract', assembly_wcf_pickupretract)
-
-        return ComputationalResult.ValidCanContinue
 
     # -----------------
     # Clamps Algorithms
@@ -1506,13 +1007,6 @@ class RobotClampAssemblyProcess(Data):
             if verbose:
                 print("|  |- clamp_wcf_detachretract2 = %s" % clamp_wcf_detachretract2)
         return ComputationalResult.ValidCanContinue
-
-    # ----------------------
-    # Dependency Computation
-    # ----------------------
-
-    def copy(self):
-        return deepcopy(self)
 
     # -----------------
     # Environment Model
