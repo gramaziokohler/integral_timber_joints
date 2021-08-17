@@ -179,6 +179,7 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
     """
     assembly = process.assembly  # type: Assembly
     actions = []  # type: List[Action]
+    assembly_method = process.assembly.get_assembly_method(beam_id)
 
     # Action number and sequence number
     def act_n(reset=False):
@@ -190,22 +191,52 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
         return act_n.counter
     seq_n = assembly.sequence.index(beam_id)
 
-    # Operator Load Beam
+    # * Operator Load Beam
     act = LoadBeamAction(seq_n, act_n(), beam_id)
     actions.append(act)
 
-    # Actions to Attach Screwdriver
-    joint_id_of_screwdrivers = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
-    for joint_id in joint_id_of_screwdrivers:
+    # * Actions to Attach Screwdriver
+    joint_ids = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
+    tool_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
+
+    for joint_id, tool_id in zip(joint_ids, tool_ids):
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
-        tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
         actions.append(OperatorAttachScrewdriverAction(seq_n, act_n(), beam_id, joint_id, tool_type, tool_id))
 
-    # Actions to Pick up Beam
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
+        # * Action to Pick Gripper From Storage
+        gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
+        gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
+        act = PickGripperFromStorageAction(seq_n, act_n(), gripper_type, gripper_id)
+        actions.append(act)
+
+        # * Action to pick beam with Gripper
+        act = PickBeamWithAttachedToolsAction(seq_n, act_n(), beam_id, gripper_id, tool_ids) # ! Todo
+        actions.append(act)
+
+        # * Action to Place Beam with Screwdriver and Gripper
+        act = AssembleBeamWithScrewdriversAndGripperAction(seq_n, act_n(), beam_id, joint_ids, tool_ids, gripper_id) # ! Todo
+        actions.append(act)
+
+        # * Action to Open Gripper and Retract Screw while robot-sync backing away
+        act = DetachAndRetractScrewdriverAction(seq_n, act_n(), beam_id, joint_ids, tool_ids, gripper_id) # ! Todo
+        actions.append(act)
+
+        # * Action to Open Gripper and Retract Screw while robot-sync backing away
+        act = DetachAndRetractScrewdriverAction(seq_n, act_n(), beam_id, joint_ids, tool_ids, gripper_id) # ! Todo
+        actions.append(act)
+
 
     # Actions to Assemble
 
     # Actions to Detach Screwdriver
+
+
+
+    if verbose:
+        for act in actions:
+            print('|- ' + act.__str__())
+
     process.assembly.set_beam_attribute(beam_id, 'actions', actions)
     return ComputationalResult.ValidCanContinue
 
