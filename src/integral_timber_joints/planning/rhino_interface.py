@@ -55,6 +55,7 @@ def get_ik_solutions(process, movement, options={}):
             if conf is not None and not client.check_collisions(robot, conf, options=options):
                 break
         else:
+            client.disconnect() # This is necessary to cleanly exit the script. Otherwise it corrupt the rpc server.
             raise RuntimeError('no attach conf found after {} attempts.'.format(ik_gantry_attempts))
 
     # if temp_name in client.extra_disabled_collision_links:
