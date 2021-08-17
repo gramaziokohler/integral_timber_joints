@@ -441,7 +441,8 @@ class RobotClampAssemblyProcess(Data):
                     return None
             tool_wcf = self.assembly.get_joint_attribute(joint_id, position_name)
             # print("Setting it to position %s = %s"  % (position_name, tool_wcf))
-            assert tool_wcf is not None
+            if tool_wcf is None:
+                raise KeyError("get_tool_of_joint(joint_id, position_name): cannot find `%s` in joint attribute `%s`" % (joint_id, position_name))
             tool.current_frame = tool_wcf
         return tool
 

@@ -1,15 +1,12 @@
 try:
-    from typing import Dict, List, Optional, Tuple
+    from typing import Dict, List, Optional, Tuple, cast
 
     from integral_timber_joints.process import RobotClampAssemblyProcess
 except:
     pass
 
 from itertools import chain
-from integral_timber_joints.process.movement import (Movement,
-                                                     RoboticMovement, ClampsJawMovement, RoboticFreeMovement,
-                                                     RoboticLinearMovement, OperatorLoadBeamMovement, RoboticClampSyncLinearMovement,
-                                                     RoboticDigitalOutput, DigitalOutput)
+from integral_timber_joints.process.movement import *
 from integral_timber_joints.tools import Clamp, Gripper
 from compas.geometry.transformations.translation import Translation
 
@@ -220,7 +217,7 @@ class DetachBeamAction(RobotIOAction):
 
 class LoadBeamAction(OperatorAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None):
-        # type: (str, int, int) -> None
+        # type: (int, int, str) -> None
         super(LoadBeamAction, self).__init__()
         # OperatorAction.__init__(self)
         self.seq_n = seq_n
@@ -255,7 +252,7 @@ class LoadBeamAction(OperatorAction):
 
 class PickToolFromStorageAction(RobotAction, AttachToolAction):
     def __init__(self, seq_n=0, act_n=0, tool_type=None, tool_id=None):
-        # type: (str, int , int, str) -> None
+        # type: (int, int, str, str) -> None
         RobotAction.__init__(self)
         AttachToolAction.__init__(self, tool_type, tool_id)
         self.seq_n = seq_n
@@ -267,7 +264,7 @@ class PickToolFromStorageAction(RobotAction, AttachToolAction):
 
 class PlaceToolToStorageAction(RobotAction, DetachToolAction):
     def __init__(self, seq_n=0, act_n=0, tool_type=None, tool_id=None):
-        # type: (str, int , int, str) -> None
+        # type: (int, int, str, str) -> None
         RobotAction.__init__(self)
         DetachToolAction.__init__(self, tool_type, tool_id)
         self.seq_n = seq_n
@@ -288,7 +285,7 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
         """ Movement for picking Clamp (and other tools) from Storage
         """
         self.movements = []
-        tool = process.tool(self.tool_id)  # type: Clamp
+        tool = process.tool(self.tool_id)  # type: Gripper
         toolchanger = process.robot_toolchanger
         tool_storage_frame_wcf = tool.tool_storage_frame
         tool_storage_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_storage_frame_wcf)
@@ -460,6 +457,75 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
                                                     ))  # Tool Storage Retract
 
         # Assign Unique Movement IDs to all movements
+        self.assign_movement_ids()
+
+
+class OperatorAttachScrewdriverAction(OperatorAction):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_id=None, tool_type=None, tool_id=None, beam_position=None):
+        # type: (int, int, str, tuple[str, str], str, str, str) -> None
+        super(OperatorAttachScrewdriverAction, self).__init__()
+        # OperatorAction.__init__(self)
+        self.seq_n = seq_n
+        self.act_n = act_n
+        self.beam_id = beam_id
+        self.joint_id = joint_id
+        self.tool_type = tool_type
+        self.tool_id = tool_id
+        self.beam_position = beam_position
+
+    @property
+    def data(self):
+        data = super(OperatorAttachScrewdriverAction, self).data
+        data['beam_id'] = self.beam_id
+        data['joint_id'] = self.joint_id
+        data['tool_type'] = self.tool_type
+        data['tool_id'] = self.tool_id
+        data['beam_position'] = self.beam_position
+        return data
+
+    @property
+    def _tool_string(self):
+        if self.tool_id:
+            return "%s ('%s')" % (self.tool_type, self.tool_id)
+        else:
+            return "%s (?)" % (self.tool_type)
+
+    @property
+    def _joint_string(self):
+        return "Joint (%s-%s) of Beam (%s)" % (self.joint_id[0], self.joint_id[1], self.beam_id)
+
+    @data.setter
+    def data(self, data):
+        super(OperatorAttachScrewdriverAction, type(self)).data.fset(self, data)
+        self.beam_id = data['beam_id']
+        self.joint_id = data['joint_id']
+        self.tool_type = data['tool_type']
+        self.tool_id = data['tool_id']
+        self.beam_position = data['beam_position']
+
+    def __str__(self):
+        return "Operator attach %s to %s." % (self._tool_string, self._joint_string)
+
+    def create_movements(self, process):
+        # type: (RobotClampAssemblyProcess) -> None
+        self.movements = []
+        beam_id = self.beam_id
+        joint_id = self.joint_id
+        beam = process.assembly.beam(self.beam_id)
+
+        # Obtaining the screwdriver set at assembled and attached state.
+
+        screwdriver = process.get_tool_of_joint(joint_id, 'screwdriver_pickup_attached')
+        screwdriver_frame_at_position = screwdriver.current_frame
+        # Moving it to whereever the beam location is (self.beam_position)
+        # t_BeamFinal_BeamAtPosition = process.assembly.get_beam_transformaion_to(beam_id, self.beam_position)
+        # assert t_BeamFinal_BeamAtPosition is not None
+        # screwdriver_frame_at_position = screwdriver.current_frame.transformed(t_BeamFinal_BeamAtPosition)
+
+        self.movements.append(OperatorAttachToolMovement(self.beam_id, self.joint_id, self.tool_type, self.tool_id,
+                                                    target_frame=screwdriver_frame_at_position,
+                                                    tag="Opeartor Attach %s to %s." % (self._tool_string, self._joint_string),
+                                                    ))
         self.assign_movement_ids()
 
 ############################################

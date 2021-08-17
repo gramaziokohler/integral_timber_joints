@@ -90,6 +90,7 @@ def _create_actions_for_clamped(process, beam_id, verbose=False):
     assembly = process.assembly  # type: Assembly
     actions = []  # type: List[Action]
 
+    # Action number and sequence number
     def act_n(reset=False):
         # Fuction to keep count of act_n
         if hasattr(act_n, 'counter'):
@@ -176,6 +177,36 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
     This is specific to the general action framework for a clamp and gripper assembly streategy.
     This is specific to a single robot / multiple clamp and gripper scenario.
     """
+    assembly = process.assembly  # type: Assembly
+    actions = []  # type: List[Action]
+
+    # Action number and sequence number
+    def act_n(reset=False):
+        # Fuction to keep count of act_n
+        if hasattr(act_n, 'counter'):
+            act_n.counter += 1
+        else:
+            act_n.counter = 0
+        return act_n.counter
+    seq_n = assembly.sequence.index(beam_id)
+
+    # Operator Load Beam
+    act = LoadBeamAction(seq_n, act_n(), beam_id)
+    actions.append(act)
+
+    # Actions to Attach Screwdriver
+    joint_id_of_screwdrivers = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
+    for joint_id in joint_id_of_screwdrivers:
+        tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
+        tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
+        actions.append(OperatorAttachScrewdriverAction(seq_n, act_n(), beam_id, joint_id, tool_type, tool_id))
+
+    # Actions to Pick up Beam
+
+    # Actions to Assemble
+
+    # Actions to Detach Screwdriver
+    process.assembly.set_beam_attribute(beam_id, 'actions', actions)
     return ComputationalResult.ValidCanContinue
 
 
