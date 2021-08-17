@@ -85,6 +85,7 @@ def show_menu(process):
         if assembly.get_beam_sequence(artist.selected_beam_id) == 0:
             return
         member_seq_affected_by_swap = assembly.shift_beam_sequence(artist.selected_beam_id, -1)
+        [process.dependency.invalidate_all(beam_id) for beam_id in member_seq_affected_by_swap]
         [artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False) for beam_id in member_seq_affected_by_swap]
         show_sequence_color(process, artist.selected_beam_id)
         rs.EnableRedraw(True)
@@ -96,6 +97,7 @@ def show_menu(process):
         if assembly.get_beam_sequence(artist.selected_beam_id) == len(assembly.sequence) - 1:
             return
         member_seq_affected_by_swap = assembly.shift_beam_sequence(artist.selected_beam_id, +1)
+        [process.dependency.invalidate_all(beam_id) for beam_id in member_seq_affected_by_swap]
         [artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False) for beam_id in member_seq_affected_by_swap]
         show_sequence_color(process, artist.selected_beam_id)
         rs.EnableRedraw(True)
@@ -121,6 +123,7 @@ def show_menu(process):
                 shift = shift + 1
             member_seq_affected_by_swap = assembly.shift_beam_sequence(beam_id, shift)
             artist.selected_beam_id = beam_id
+            [process.dependency.invalidate_all(beam_id) for beam_id in member_seq_affected_by_swap]
             [artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False) for beam_id in member_seq_affected_by_swap]
             show_sequence_color(process, artist.selected_beam_id)
             rs.EnableRedraw(True)

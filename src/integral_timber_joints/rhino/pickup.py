@@ -150,7 +150,7 @@ def create_beam_storage(process):
     # Save beam_storage to process and recompute storage frame
     process.beam_storage = beam_storage
     for beam_id in process.assembly.sequence:
-        process.compute_storeage_frame(beam_id)
+        process.dependency.invalidate(beam_id, process.compute_storeage_frame)
         artist.delete_beam_at_position(beam_id, 'assembly_wcf_storage')
 
     print('BeamStorage Defined')

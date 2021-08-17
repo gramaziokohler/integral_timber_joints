@@ -297,10 +297,10 @@ def show_menu(process):
 
     def gripper_follow_ass_dir():
         """ Function invoked by user to change grasp face.
-        This triggers search_grasp_face_from_joint_assembly_direction
+        This triggers set_grasp_face_following_assembly_direction
         """
         beam_id = artist.selected_beam_id
-        process.search_grasp_face_from_joint_assembly_direction(beam_id)
+        process.set_grasp_face_following_assembly_direction(beam_id)
         process.dependency.compute_all(beam_id)
 
         # Redraw Visualization

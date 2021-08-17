@@ -8,6 +8,17 @@ try:
     from integral_timber_joints.tools.screwdriver import Screwdriver
 except:
     pass
+# ---------------------------------------------------------------
+# This file contains functions to be imported into Process class.
+# They are separated here to keep individual files smaller.
+# ---------------------------------------------------------------
+
+# Computing Screwdriver Related Attributes
+# ----------------------------------------
+
+# Automatically Invoked Functions
+# -------------------------------------
+
 
 def compute_screwdriver_positions(process, beam_id):
     # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
@@ -25,7 +36,7 @@ def compute_screwdriver_positions(process, beam_id):
         return ComputationalResult.ValidNoChange
     # For every joint we compute the screwdriver position
     for joint_id in assembly.get_joint_ids_with_tools_for_beam(beam_id):
-        tool = process.get_tool_of_joint(joint_id, None) # type: Screwdriver
+        tool = process.get_tool_of_joint(joint_id, None)  # type: Screwdriver
         if tool is None:
             return ComputationalResult.ValidCannotContinue
 
@@ -34,18 +45,14 @@ def compute_screwdriver_positions(process, beam_id):
         neighbout_joint_id = (joint_id[1], joint_id[0])
         joint = assembly.joint(neighbout_joint_id)
         clamp_attachment_frames = joint.get_clamp_frames(assembly.beam(beam_id))
-        selected_frame = clamp_attachment_frames[0] # ! Just picking the first frame
+        selected_frame = clamp_attachment_frames[0]  # ! Just picking the first frame
 
         # Set clamp tcp to selected_frame and compute tool vectors in wcf
         tool.set_current_frame_from_tcp(selected_frame)
         approach_vector_wcf = tool.current_frame.to_world_coordinates(tool.approach_vector)
         detachretract_vector_wcf = tool.current_frame.to_world_coordinates(tool.detachretract_vector)
 
-
         assembly.set_joint_attribute(joint_id, 'screwdriver_assembled_attached', tool.current_frame)
-
-
-
 
         # Calculation of Beam Positions
         # -----------------------------
@@ -61,10 +68,8 @@ def compute_screwdriver_positions(process, beam_id):
         f_assembleapproach = beam.frame.transformed(Translation.from_vector(v_assembleapproach.scaled(-1)))
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_assembleapproach', f_assembleapproach)
 
-
         # Calculation of Tool Positions
         # -----------------------------
-
 
         # * screwdriver_assembled_detached
         # Moving tool backwards along tool.detachretract_vector.
@@ -89,4 +94,3 @@ def compute_screwdriver_positions(process, beam_id):
         assembly.set_joint_attribute(joint_id, 'screwdriver_assembleapproach_attached', frame)
 
     return ComputationalResult.ValidCanContinue
-
