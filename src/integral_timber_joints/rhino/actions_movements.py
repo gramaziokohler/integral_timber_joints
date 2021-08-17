@@ -31,9 +31,9 @@ def compute_states(process):
     # process.optimize_actions_place_pick_clamp()
 
     # Ask user if recompute actions
-    recompute_initial_states = rs.GetString("Recompute Initial States?", "No", ["No", "Yes"])
-    if recompute_initial_states == "Yes":
-        process.recompute_initial_state()
+    # recompute_initial_states = rs.GetString("Recompute Initial States?", "No", ["No", "Yes"])
+    # if recompute_initial_states == "Yes":
+    process.recompute_initial_state()
 
     # Make sure everything is computed and nothing is missing
     for beam_id in process.assembly.sequence:
