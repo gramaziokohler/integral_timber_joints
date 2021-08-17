@@ -427,7 +427,7 @@ def optimize_actions_place_pick_clamp(process, verbose=True):
     process.actions = [action for i, action in enumerate(process.actions) if i not in to_be_removed]
 
 
-def recompute_initial_state(process, verbose=True):
+def recompute_initial_state(process, verbose=False):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
     """Compute the initial scene state. This is the begining of the assembly process
 
@@ -474,8 +474,16 @@ def recompute_initial_state(process, verbose=True):
     # Tool Chagner is attached to the robot
     process.initial_state[('tool_changer', 'a')] = True
 
+    # Perform FK to find the tool_changer location based on initial robot config.
+    # This can only happen if the RobotModel is laoded.
     if process.robot_model is not None:
-        robot_frame = process.robot_model.forward_kinematics(process.robot_initial_config, process.ROBOT_END_LINK)
+        # * Note that FK result is not scaled by default.
+        configuration = process.robot_initial_config.scaled(1000)
+        robot_frame = process.robot_model.forward_kinematics(configuration, process.ROBOT_END_LINK)
+        if verbose:
+            print("Robot Frame computed with FK...")
+            print("Robot Config: %s" % configuration)
+            print("Robot Frame: %s" % robot_frame)
         process.initial_state[('robot', 'f')] = robot_frame
         process.initial_state[('tool_changer', 'f')] = robot_frame
     else:

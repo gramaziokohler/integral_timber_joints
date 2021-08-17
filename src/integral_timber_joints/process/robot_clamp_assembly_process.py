@@ -1277,7 +1277,18 @@ class RobotClampAssemblyProcess(Data):
     def load_robot_model(self):
         # type: () -> None
         """Load Robot model from URDF at default location
-        under the submodule in integral_timber_joint"""
+        under the submodule in integral_timber_joint
+
+        The RobotModel is stored in process.robot_model()
+        This RobotModel is scaled by 1000 to be used with mm scale.
+
+        For example
+        -----------
+        ```
+        robot_frame = process.robot_model.forward_kinematics(process.robot_initial_config.scaled(1000), process.ROBOT_END_LINK)
+        ```
+
+        """
 
         import os
 
@@ -1308,6 +1319,7 @@ class RobotClampAssemblyProcess(Data):
             urdf = loader.load_urdf('rfl_pybullet.urdf')
             robot_model = RobotModel.from_urdf_file(urdf)
             robot_model.load_geometry(loader)
+            robot_model.scale(1000)
             self.robot_model = robot_model  # type: RobotModel
             print("- %s Loaded: %i Links, %i Joints" % (robot_model.name, len(robot_model.links), len(robot_model.joints)))
         else:
