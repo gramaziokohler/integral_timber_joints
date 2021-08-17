@@ -67,3 +67,60 @@ def get_ik_solutions(process, movement_index, options={}):
     client.disconnect()
 
     return conf
+
+
+if __name__ == "__main__":
+    import os
+    import sys
+    import time
+    import json
+    import datetime
+    import integral_timber_joints
+    from integral_timber_joints.process import RobotClampAssemblyProcess
+    from compas.utilities import DataDecoder
+
+    def load_process(json_path):
+        # type: (str) -> RobotClampAssemblyProcess
+        exist = os.path.exists(json_path)
+        if exist:
+            with open(json_path, 'r') as f:
+                process = json.load(f, cls=DataDecoder)
+                c_time = datetime.datetime.fromtimestamp(os.path.getmtime(json_path))
+                print("Process loaded from: %s (%i Beams). File last modified on %s." % (os.path.basename(json_path), len(list(process.assembly.beams())), c_time))
+                return process
+        else:
+            print("json_path not exist")
+
+    def get_ik_no_proxy(process, state_id, viewer):
+        options = {}
+        options = {'viewer': viewer}
+        result = get_ik_solutions(process, state_id - 1, options)
+        print("IK result: %s" % result)
+
+    def get_ik_via_proxy(process, state_id):
+        from compas.rpc import Proxy
+        rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
+        try:
+            result = rhino_interface.get_ik_solutions(process, state_id - 1)
+        except:
+            result = None
+        print("IK result: %s" % result)
+
+    ##########################
+
+    path_to_json = os.path.realpath(os.path.join(os.path.dirname(integral_timber_joints.__file__), '..', '..', 'external', 'itj_design_study', '210605_ScrewdriverTestProcess', 'nine_pieces_process.json'))
+    process = load_process(path_to_json) # type: RobotClampAssemblyProcess
+
+    # Which state to get IK
+    # ---------------------
+    # state_id = 225 # Only TC attached, result ok (no proxy) , result ok (via Proxy)
+    # state_id = 226 # Only TC touch with Tool, result ok (no proxy) , result ok (via Proxy)
+    state_id = 229 # Linear retract 1 after Tool Attached, result None
+    # state_id = 230 # Linear retract 2 after Tool Attached, result None
+    # state_id = 233 # Linear Approach 2 of 2 to attach CL3 ('c1') to structure., result None
+    # state_id = 236 # Linear Retract after attaching CL3 ('c1') on structure, result None (Sphere sampling error?)
+    state_id = 249 # Free Move reach Storage Approach Frame of PG500 ('g1'), to get tool. result ok (no proxy), ok (via Proxy)
+
+
+    get_ik_no_proxy(process, state_id, True)
+    # get_ik_via_proxy(process, state_id)
