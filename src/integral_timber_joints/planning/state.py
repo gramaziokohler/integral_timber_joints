@@ -20,6 +20,8 @@ from pybullet_planning import get_sample_fn, link_from_name, joint_from_name, li
 from pybullet_planning import uniform_pose_generator
 
 from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
+from integral_timber_joints.planning.robot_setup import to_rlf_robot_full_conf, \
+    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
 from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names
 from integral_timber_joints.planning.visualization import color_from_object_id
 from integral_timber_joints.planning.parsing import PLANNING_DATA_DIR
@@ -89,7 +91,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             client.set_robot_configuration(robot, robot_config)
             tool_link = link_from_name(robot_uid, flange_link_name)
             FK_tool_frame = frame_from_pose(get_link_pose(robot_uid, tool_link), scale=1/scale)
-            wait_if_gui()
+            # wait_if_gui()
             # TODO the client FK function is not working
             # FK_tool_frame = client.forward_kinematics(robot, robot_config, group=GANTRY_ARM_GROUP,
             #     options={'link' : flange_link_name})
@@ -109,7 +111,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                                 robot_frame.point, FK_tool_frame.point, robot_config.joint_values
                             ))
                             wait_for_user()
-                    # print('Overwrite: new FK {} | old {}'.format(FK_tool_frame, robot_frame))
                     scene[('robot', 'f')] = FK_tool_frame
 
             if initialize:
@@ -146,9 +147,9 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 # * set pose according to state
                 client.set_object_frame('^{}$'.format(beam_id), current_frame, options={'color': color_from_object_id(beam_id)})
 
-        # * Tools
-        for tool_id in process.tool_ids:
-            tool = process.tool(tool_id)
+        # * Tools and Tool changer
+        for tool_id in chain(['tool_changer'], process.tool_ids):
+            tool = process.robot_toolchanger if tool_id == 'tool_changer' else process.tool(tool_id)
             if initialize:
                 urdf_path = tool.get_urdf_path(PLANNING_DATA_DIR)
                 if reinit_tool or not os.path.exists(urdf_path):
@@ -165,16 +166,17 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 # * set pose according to state
                 client.set_object_frame('^{}$'.format(tool_id), current_frame, options={'color': color_from_object_id(tool_id)})
 
-            # * Setting Kinematics
-            # this might be in millimeter, but that's not related to pybullet's business (if we use static meshes)
-            tool._set_kinematic_state(scene[tool_id, 'c'])
-            tool_conf = tool.current_configuration.scaled(1e-3)
-            tool_bodies = client._get_bodies('^{}$'.format(tool_id))
-            for b in tool_bodies:
-                client._set_body_configuration(b, tool_conf)
+            if tool_id != 'tool_changer':
+                # * Setting Kinematics
+                # this might be in millimeter, but that's not related to pybullet's business (if we use static meshes)
+                tool._set_kinematic_state(scene[tool_id, 'c'])
+                tool_conf = tool.current_configuration.scaled(1e-3)
+                tool_bodies = client._get_bodies('^{}$'.format(tool_id))
+                for b in tool_bodies:
+                    client._set_body_configuration(b, tool_conf)
 
-        for object_id in chain(process.assembly.sequence, process.tool_ids, 'tool_changer'):
-            # * attachment management
+        # * attachment management
+        for object_id in chain(process.assembly.sequence, process.tool_ids, ['tool_changer']):
             wildcard = '^{}$'.format(object_id)
             # -1 if not attached and not collision object
             # 0 if collision object, 1 if attached
@@ -197,22 +199,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     flange_frame.point *= scale
                     object_frame.point *= scale
                     robot_flange_from_tool = Transformation.from_frame_to_frame(flange_frame, object_frame)
-
-                    # # * sample from a ball near the pose
-                    # # TODO set the object to the flange instead of the opposite
-                    # gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0)
-                    # with HideOutput():
-                    #     for _, base_conf in zip(range(ik_gantry_attempts), gantry_base_gen_fn):
-                    #         # TODO a more formal gantry_base_from_world_base
-                    #         conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
-                    #                                          options={'avoid_collisions': False})
-                    #         if conf is not None:
-                    #             break
-                    #     else:
-                    #         raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_id, ik_gantry_attempts))
-                    # client.set_robot_configuration(robot, conf)
-                    # if trac_ikinfo.ik_fn(pose_from_frame(flange_frame)) is None:
-                    #     raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, ik_gantry_attempts))
 
                     # * create attachments
                     wildcard = '^{}$'.format(object_id)
@@ -267,3 +253,23 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                                 ((parent_body, None), (child_body, None))
                             )
             # end if attached_to_robot
+
+#################################
+
+def set_initial_state(client, robot, process, disable_env=False, reinit_tool=True, debug=False):
+    # set all other unused robot
+    # full_start_conf = to_rlf_robot_full_conf(R11_INTER_CONF_VALS, R12_INTER_CONF_VALS)
+    # client.set_robot_configuration(robot, full_start_conf)
+    process.set_initial_state_robot_config(process.robot_initial_config)
+    try:
+        set_state(client, robot, process, process.initial_state, initialize=True,
+            options={'debug' : debug, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
+    except:
+        cprint('Recomputing Actions and States', 'cyan')
+        for beam_id in process.assembly.beam_ids():
+            process.dependency.compute_all(beam_id)
+        set_state(client, robot, process, process.initial_state, initialize=True,
+            options={'debug' : debug, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
+    # # * collision sanity check
+    # assert not client.check_collisions(robot, full_start_conf, options={'diagnosis':True})
+

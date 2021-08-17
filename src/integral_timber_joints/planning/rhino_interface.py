@@ -1,11 +1,16 @@
+from itertools import product
 import pybullet_planning as pp
 
-from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
-    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP
+from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
 from integral_timber_joints.planning.state import set_state, gantry_base_generator
+from integral_timber_joints.process import RoboticMovement
 
-def get_ik_solutions(process, scene, options={}):
-    # TODO safeguard if a non-robotic movement is passed in
+def get_ik_solutions(process, movement, options={}):
+    # TODO how to recover the client and robot if one is running already?
+    if not isinstance(movement, RoboticMovement):
+        print('{} not an robotic movement, return None'.format(movement.short_summary))
+        return None
+
     viewer = options.get('viewer', False)
     reachable_range = options.get('reachable_range', (0.2, 2.8))
     ik_gantry_attempts = options.get('ik_gantry_attempts', 100)
@@ -13,35 +18,33 @@ def get_ik_solutions(process, scene, options={}):
     # if not pp.is_connected():
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=viewer)
-    full_start_conf = to_rlf_robot_full_conf(R11_INTER_CONF_VALS, R12_INTER_CONF_VALS)
-    client.set_robot_configuration(robot, full_start_conf)
-    # wait_if_gui('Pre Initial state.')
     process.set_initial_state_robot_config(process.robot_initial_config)
     set_state(client, robot, process, process.initial_state, initialize=True,
         options={'debug' : False, 'include_env' : True, 'reinit_tool' : False})
 
-    set_state(client, robot, process, scene)
-    # else:
-    #     # TODO how to recover the client and robot if one is running already?
-    #     pass
+    # start_scene = process.get_movement_start_scene(movement)
+    # set_state(client, robot, process, start_scene)
 
-    flange_frame = scene[('robot', 'f')].copy()
+    end_scene = process.get_movement_end_scene(movement)
+    set_state(client, robot, process, end_scene)
+
+    flange_frame = end_scene[('robot', 'f')].copy()
     assert flange_frame is not None
     # convert to meter
     flange_frame.point *= 1e-3
 
-    # temp_name = '_tmp'
-    # for o1_name, o2_name in movement.allowed_collision_matrix:
-    #     o1_bodies = client._get_bodies('^{}$'.format(o1_name))
-    #     o2_bodies = client._get_bodies('^{}$'.format(o2_name))
-    #     for parent_body, child_body in product(o1_bodies, o2_bodies):
-    #         client.extra_disabled_collision_links[temp_name].add(
-    #             ((parent_body, None), (child_body, None))
-    #         )
+    temp_name = '_tmp'
+    for o1_name, o2_name in movement.allowed_collision_matrix:
+        o1_bodies = client._get_bodies('^{}$'.format(o1_name))
+        o2_bodies = client._get_bodies('^{}$'.format(o2_name))
+        for parent_body, child_body in product(o1_bodies, o2_bodies):
+            client.extra_disabled_collision_links[temp_name].add(
+                ((parent_body, None), (child_body, None))
+            )
 
     # TODO use track ik or ikfast here
     # sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
-
+    conf = None
     # * sample from a ball near the pose
     gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0)
     with pp.HideOutput():
@@ -54,5 +57,8 @@ def get_ik_solutions(process, scene, options={}):
         else:
             raise RuntimeError('no attach conf found after {} attempts.'.format(ik_gantry_attempts))
 
+    # if temp_name in client.extra_disabled_collision_links:
+    #     del client.extra_disabled_collision_links[temp_name]
     client.disconnect()
+
     return conf

@@ -2,24 +2,18 @@ import os
 import time
 import numpy as np
 import argparse
-import json
-import sys
-from os import path
 from pybullet_planning.motion_planners.utils import elapsed_time
 
 from termcolor import cprint, colored
-from copy import copy, deepcopy
-from compas.utilities import DataEncoder
-from collections import namedtuple
+from copy import deepcopy
 
 from compas.robots import Joint
 from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver, HideOutput
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
-from integral_timber_joints.planning.robot_setup import load_RFL_world, to_rlf_robot_full_conf, \
-    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS, GANTRY_ARM_GROUP
+from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
 from integral_timber_joints.planning.utils import notify, print_title
-from integral_timber_joints.planning.state import set_state
+from integral_timber_joints.planning.state import set_state, set_initial_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 from integral_timber_joints.planning.solve import get_movement_status, MovementStatus, compute_selected_movements
 
@@ -211,26 +205,6 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     if args.verbose:
         notify('A plan has been found for beam id {}!'.format(beam_id))
     return success
-
-#################################
-
-def set_initial_state(client, robot, process, disable_env=False, reinit_tool=True, debug=False):
-    # set all other unused robot
-    full_start_conf = to_rlf_robot_full_conf(R11_INTER_CONF_VALS, R12_INTER_CONF_VALS)
-    client.set_robot_configuration(robot, full_start_conf)
-    # wait_if_gui('Pre Initial state.')
-    process.set_initial_state_robot_config(process.robot_initial_config)
-    try:
-        set_state(client, robot, process, process.initial_state, initialize=True,
-            options={'debug' : debug, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
-    except:
-        cprint('Recomputing Actions and States', 'cyan')
-        for beam_id in process.assembly.beam_ids():
-            process.dependency.compute_all(beam_id)
-        set_state(client, robot, process, process.initial_state, initialize=True,
-            options={'debug' : debug, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
-    # # * collision sanity check
-    # assert not client.check_collisions(robot, full_start_conf, options={'diagnosis':True})
 
 #################################
 
