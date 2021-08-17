@@ -13,6 +13,7 @@ def main():
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `results`')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
+    parser.add_argument('--debug', action='store_true', help='debug mode')
     args = parser.parse_args()
     print('Arguments:', args)
     print('='*10)
@@ -27,7 +28,7 @@ def main():
     # * Connect to path planning backend and initialize robot parameters
     # viewer or diagnosis or view_states or watch or step_sim,
     client, robot, _ = load_RFL_world(viewer=args.viewer, verbose=False)
-    set_initial_state(client, robot, process, disable_env=False, reinit_tool=False)
+    set_initial_state(client, robot, process, disable_env=False, reinit_tool=False, debug=args.debug)
 
     pp.wait_if_gui('Initial state loaded.')
 

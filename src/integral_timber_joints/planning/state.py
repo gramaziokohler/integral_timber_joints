@@ -1,10 +1,11 @@
 import os
 import numpy as np
+from pybullet_planning.interfaces.env_manager.user_io import wait_if_gui
 from termcolor import cprint
 from copy import copy, deepcopy
 from itertools import product, chain
 
-from compas.geometry import distance_point_point
+from compas.geometry import distance_point_point, Transformation
 from compas.geometry.primitives.frame import Frame
 from compas.datastructures.mesh.triangulation import mesh_quads_to_triangles
 from compas_fab.robots import AttachedCollisionMesh, Configuration, CollisionMesh, Robot
@@ -58,29 +59,7 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
 
 
 def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, scene: SceneState, initialize=False, scale=1e-3, options=None):
-    """Set the pybullet client to a given state
-
-    Parameters
-    ----------
-    client : [type]
-        [description]
-    robot : [type]
-        [description]
-    process : [type]
-        [description]
-    scene : SceneState
-        state dictionary for objects in the scene
-    initialize : bool, optional
-        [description], by default False
-    scale : [type], optional
-        [description], by default 1e-3
-    options : [type], optional
-        [description], by default None
-
-    Raises
-    ------
-    RuntimeError
-        [description]
+    """Set the pybullet client to a given scene state
     """
     options = options or {}
     ik_gantry_attempts = options.get('ik_gantry_attempts') or 5000
@@ -110,6 +89,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             client.set_robot_configuration(robot, robot_config)
             tool_link = link_from_name(robot_uid, flange_link_name)
             FK_tool_frame = frame_from_pose(get_link_pose(robot_uid, tool_link), scale=1/scale)
+            wait_if_gui()
             # TODO the client FK function is not working
             # FK_tool_frame = client.forward_kinematics(robot, robot_config, group=GANTRY_ARM_GROUP,
             #     options={'link' : flange_link_name})
@@ -125,7 +105,9 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                         if verbose:
                             msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point))
                             cprint(msg, 'yellow')
-                            cprint('!!! Overwriting the current_frame by the given robot conf\'s FK. Please confirm this.')
+                            cprint('!!! Overwriting the current_frame {} by the given robot conf\'s FK {} | robot conf {}. Please confirm this.'.format(
+                                robot_frame.point, FK_tool_frame.point, robot_config.joint_values
+                            ))
                             wait_for_user()
                     # print('Overwrite: new FK {} | old {}'.format(FK_tool_frame, robot_frame))
                     scene[('robot', 'f')] = FK_tool_frame
@@ -191,7 +173,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             for b in tool_bodies:
                 client._set_body_configuration(b, tool_conf)
 
-
         for object_id in chain(process.assembly.sequence, process.tool_ids, 'tool_changer'):
             # * attachment management
             wildcard = '^{}$'.format(object_id)
@@ -215,19 +196,21 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # convert to meter
                     flange_frame.point *= scale
                     object_frame.point *= scale
+                    robot_flange_from_tool = Transformation.from_frame_to_frame(flange_frame, object_frame)
 
-                    # * sample from a ball near the pose
-                    gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0)
-                    with HideOutput():
-                        for _, base_conf in zip(range(ik_gantry_attempts), gantry_base_gen_fn):
-                            # TODO a more formal gantry_base_from_world_base
-                            conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
-                                                             options={'avoid_collisions': False})
-                            if conf is not None:
-                                break
-                        else:
-                            raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_id, ik_gantry_attempts))
-                    client.set_robot_configuration(robot, conf)
+                    # # * sample from a ball near the pose
+                    # # TODO set the object to the flange instead of the opposite
+                    # gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0)
+                    # with HideOutput():
+                    #     for _, base_conf in zip(range(ik_gantry_attempts), gantry_base_gen_fn):
+                    #         # TODO a more formal gantry_base_from_world_base
+                    #         conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
+                    #                                          options={'avoid_collisions': False})
+                    #         if conf is not None:
+                    #             break
+                    #     else:
+                    #         raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_id, ik_gantry_attempts))
+                    # client.set_robot_configuration(robot, conf)
                     # if trac_ikinfo.ik_fn(pose_from_frame(flange_frame)) is None:
                     #     raise RuntimeError('no attach conf found for {} after {} attempts.'.format(object_state, ik_gantry_attempts))
 
@@ -237,7 +220,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
 
                     # touched_links is only for the adjacent Robot links
                     touched_links = []
-                    attached_child_link_name = None
+                    attached_child_link_name = None # default to use BASE_LINK if None
                     if object_id == 'tool_changer':
                         # tool changer
                         attached_child_link_name = process.robot_toolchanger.get_base_link_name()
@@ -251,8 +234,13 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
 
                     for name in collision_object_names:
                         # a faked AttachedCM since we are not adding a new mesh, just promoting collision meshes to AttachedCMes
-                        client.add_attached_collision_mesh(AttachedCollisionMesh(CollisionMesh(None, name),
-                                                                                 flange_link_name, touch_links=touched_links), options={'robot': robot, 'attached_child_link_name': attached_child_link_name})
+                        client.add_attached_collision_mesh(
+                            AttachedCollisionMesh(CollisionMesh(None, name),
+                                                  flange_link_name, touch_links=touched_links),
+                            options={'robot': robot,
+                                     'attached_child_link_name': attached_child_link_name,
+                                     'parent_link_from_child_link_transformation' : robot_flange_from_tool,
+                                     })
 
                     # * attachments disabled collisions
                     # list of bodies that should not collide with the current object_id
