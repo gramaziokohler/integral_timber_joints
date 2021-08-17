@@ -278,6 +278,59 @@ class OperatorLoadBeamMovement(Movement):
         self.state_diff[(self.beam_id, 'f')] = self.target_frame
 
 
+class OperatorAttachToolMovement(Movement):
+    """ Manual movement to attach a tool to a beam
+    This does not include movement of the gripper
+    Default: operator_stop_after = True
+    """
+
+    def __init__(self, beam_id=None, joint_id=None, tool_type=None, tool_id=None, target_frame=None, tag=None):
+        # type: (str, tuple[str, str], str, str, Frame, str) -> OperatorAttachToolMovement
+        Movement.__init__(self, operator_stop_after="Confirm Tool placed.", planning_priority=-1, tag=tag)
+        self.beam_id = beam_id
+        self.joint_id = joint_id
+        self.tool_type = tool_type
+        self.tool_id = tool_id
+        self.target_frame = target_frame
+        self.tag = tag or "Opeartor Attach Tool to Beam"
+
+    def __str__(self):
+        return "Load Beam ('%s') for pickup at %s (Side %s face up)." % (self.beam_id, self.target_frame, self.grasp_face)
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(OperatorAttachToolMovement, self).data
+        data['beam_id'] = self.beam_id
+        data['joint_id'] = self.joint_id
+        data['tool_type'] = self.tool_type
+        data['tool_id'] = self.tool_id
+        data['target_frame'] = self.target_frame
+        data['tag'] = self.tag
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(OperatorAttachToolMovement, type(self)).data.fset(self, data)
+        self.beam_id = data.get('beam_id', None)
+        self.joint_id = data.get('joint_id', None)
+        self.tool_type = data.get('tool_type', None)
+        self.tool_id = data.get('tool_id', None)
+        self.target_frame = data.get('target_frame', None)
+        self.tag = data.get('tag', None)
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}
+        self.state_diff[(self.tool_id, 'f')] = self.target_frame
+        self.state_diff[(self.tool_id, 'a')] = True
+
+
+
 class RoboticFreeMovement(RoboticMovement):
 
     def __str__(self):

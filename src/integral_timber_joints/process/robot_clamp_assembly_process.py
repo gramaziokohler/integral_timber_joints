@@ -36,7 +36,7 @@ except:
 class RobotClampAssemblyProcess(Data):
 
     # Importing functions from neighbouring files to reduce this file size.
-    from .algorithms import (
+    from .compute_process_action_movement import (
         recompute_initial_state,
         assign_tool_id_to_beam_joints,
         assign_tools_to_actions,
@@ -441,7 +441,8 @@ class RobotClampAssemblyProcess(Data):
                     return None
             tool_wcf = self.assembly.get_joint_attribute(joint_id, position_name)
             # print("Setting it to position %s = %s"  % (position_name, tool_wcf))
-            assert tool_wcf is not None
+            if tool_wcf is None:
+                raise KeyError("get_tool_of_joint(joint_id, position_name): cannot find `%s` in joint attribute `%s`" % (joint_id, position_name))
             tool.current_frame = tool_wcf
         return tool
 
@@ -1276,7 +1277,18 @@ class RobotClampAssemblyProcess(Data):
     def load_robot_model(self):
         # type: () -> None
         """Load Robot model from URDF at default location
-        under the submodule in integral_timber_joint"""
+        under the submodule in integral_timber_joint
+
+        The RobotModel is stored in process.robot_model()
+        This RobotModel is scaled by 1000 to be used with mm scale.
+
+        For example
+        -----------
+        ```
+        robot_frame = process.robot_model.forward_kinematics(process.robot_initial_config.scaled(1000), process.ROBOT_END_LINK)
+        ```
+
+        """
 
         import os
 
@@ -1307,6 +1319,7 @@ class RobotClampAssemblyProcess(Data):
             urdf = loader.load_urdf('rfl_pybullet.urdf')
             robot_model = RobotModel.from_urdf_file(urdf)
             robot_model.load_geometry(loader)
+            robot_model.scale(1000)
             self.robot_model = robot_model  # type: RobotModel
             print("- %s Loaded: %i Links, %i Joints" % (robot_model.name, len(robot_model.links), len(robot_model.joints)))
         else:

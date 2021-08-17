@@ -342,7 +342,12 @@ class ProcessArtist(object):
         self.selected_key_position = ProcessKeyPosition(process, self.selected_beam_id, 0)
 
         # Robot
-        self.robot_artist = None
+        if self.process.robot_model is not None:
+            print("Creating new RobotModelArtist")
+            self.robot_artist = RobotModelArtist(self.process.robot_model, self.robot_layer)
+            self.robot_artist.scale(1000)
+        else:
+            self.robot_artist = None
 
     #######################################
     # Functions to handle the guid records
@@ -1041,12 +1046,6 @@ class ProcessArtist(object):
         # Skip if robot model is not set
         if self.process.robot_model is None:
             return
-
-        # Create new Robot Artist (if None)
-        if self.robot_artist is None:
-            self.robot_artist = RobotModelArtist(self.process.robot_model, self.robot_layer)
-            self.robot_artist.scale(1000)
-            print("Creating new RobotModelArtist")
 
         # Update config
         merged_config = self.process.robot_initial_config.merged(configuration.scaled(1000))

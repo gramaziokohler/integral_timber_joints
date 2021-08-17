@@ -90,6 +90,7 @@ def _create_actions_for_clamped(process, beam_id, verbose=False):
     assembly = process.assembly  # type: Assembly
     actions = []  # type: List[Action]
 
+    # Action number and sequence number
     def act_n(reset=False):
         # Fuction to keep count of act_n
         if hasattr(act_n, 'counter'):
@@ -176,6 +177,36 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
     This is specific to the general action framework for a clamp and gripper assembly streategy.
     This is specific to a single robot / multiple clamp and gripper scenario.
     """
+    assembly = process.assembly  # type: Assembly
+    actions = []  # type: List[Action]
+
+    # Action number and sequence number
+    def act_n(reset=False):
+        # Fuction to keep count of act_n
+        if hasattr(act_n, 'counter'):
+            act_n.counter += 1
+        else:
+            act_n.counter = 0
+        return act_n.counter
+    seq_n = assembly.sequence.index(beam_id)
+
+    # Operator Load Beam
+    act = LoadBeamAction(seq_n, act_n(), beam_id)
+    actions.append(act)
+
+    # Actions to Attach Screwdriver
+    joint_id_of_screwdrivers = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
+    for joint_id in joint_id_of_screwdrivers:
+        tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
+        tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
+        actions.append(OperatorAttachScrewdriverAction(seq_n, act_n(), beam_id, joint_id, tool_type, tool_id))
+
+    # Actions to Pick up Beam
+
+    # Actions to Assemble
+
+    # Actions to Detach Screwdriver
+    process.assembly.set_beam_attribute(beam_id, 'actions', actions)
     return ComputationalResult.ValidCanContinue
 
 
@@ -396,7 +427,7 @@ def optimize_actions_place_pick_clamp(process, verbose=True):
     process.actions = [action for i, action in enumerate(process.actions) if i not in to_be_removed]
 
 
-def recompute_initial_state(process, verbose=True):
+def recompute_initial_state(process, verbose=False):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
     """Compute the initial scene state. This is the begining of the assembly process
 
@@ -443,8 +474,16 @@ def recompute_initial_state(process, verbose=True):
     # Tool Chagner is attached to the robot
     process.initial_state[('tool_changer', 'a')] = True
 
+    # Perform FK to find the tool_changer location based on initial robot config.
+    # This can only happen if the RobotModel is laoded.
     if process.robot_model is not None:
-        robot_frame = process.robot_model.forward_kinematics(process.robot_initial_config, process.ROBOT_END_LINK)
+        # * Note that FK result is not scaled by default.
+        configuration = process.robot_initial_config.scaled(1000)
+        robot_frame = process.robot_model.forward_kinematics(configuration, process.ROBOT_END_LINK)
+        if verbose:
+            print("Robot Frame computed with FK...")
+            print("Robot Config: %s" % configuration)
+            print("Robot Frame: %s" % robot_frame)
         process.initial_state[('robot', 'f')] = robot_frame
         process.initial_state[('tool_changer', 'f')] = robot_frame
     else:
