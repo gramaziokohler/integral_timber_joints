@@ -1048,7 +1048,7 @@ class ProcessArtist(object):
             return
 
         # Update config
-        merged_config = self.process.robot_initial_config.merged(configuration.scaled(1000))
+        merged_config = self.process.robot_initial_config.scaled(1000).merged(configuration.scaled(1000))
         self.robot_artist.update(merged_config)
 
         # Clear old geometry
