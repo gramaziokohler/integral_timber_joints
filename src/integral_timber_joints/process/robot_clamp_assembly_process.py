@@ -36,7 +36,7 @@ except:
 class RobotClampAssemblyProcess(Data):
 
     # Importing functions from neighbouring files to reduce this file size.
-    from .algorithms import (
+    from .compute_process_action_movement import (
         recompute_initial_state,
         assign_tool_id_to_beam_joints,
         assign_tools_to_actions,
