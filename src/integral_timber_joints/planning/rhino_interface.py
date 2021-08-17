@@ -5,8 +5,12 @@ from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_A
 from integral_timber_joints.planning.state import set_state, gantry_base_generator
 from integral_timber_joints.process import RoboticMovement
 
-def get_ik_solutions(process, movement, options={}):
+
+def get_ik_solutions(process, movement_index, options={}):
     # TODO how to recover the client and robot if one is running already?
+    all_movements = process.movements
+    movement = process.movements[movement_index]
+
     if not isinstance(movement, RoboticMovement):
         print('{} not an robotic movement, return None'.format(movement.short_summary))
         return None
