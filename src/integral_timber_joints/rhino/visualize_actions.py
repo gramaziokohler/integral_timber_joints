@@ -105,7 +105,7 @@ def print_current_state_info(process):
 
     # * Printing Previous Movement Info
     if prev_movement is not None:
-        print("- Prev Movement: %s" % (prev_movement.tag))
+        print("- Prev Movement: %s (%s)" % (prev_movement.tag, prev_movement.movement_id))
         if isinstance(prev_movement, RoboticMovement):
             if prev_movement.allowed_collision_matrix != []:
                 print("  - Prev Movement allowed_collision_matrix: %s" % prev_movement.allowed_collision_matrix)
@@ -123,7 +123,7 @@ def print_current_state_info(process):
 
     # * Printing Next Movement Info
     if next_movement is not None:
-        print("- Next Movement: %s" % (next_movement.tag))
+        print("- Next Movement: %s (%s)" % (next_movement.tag, next_movement.movement_id))
         if next_movement.operator_stop_before is not None:
             print("  - Operator Confirm: %s" % next_movement.operator_stop_before)
 
