@@ -34,13 +34,12 @@ def main():
     # viewer or diagnosis or view_states or watch or step_sim,
     client, robot, _ = load_RFL_world(viewer=args.viewer, verbose=False)
     set_initial_state(client, robot, process, disable_env=False, reinit_tool=False, debug=False)
-    pp.wait_if_gui('Initial state loaded.')
+    # pp.wait_if_gui('Initial state loaded.')
 
     m = process.get_movement_by_movement_id(args.movement_id)
     print(m.short_summary)
 
     start_scene = process.get_movement_start_scene(m)
-
     options = {'debug' : args.debug, 'verbose' : True}
     set_state(client, robot, process, start_scene, options=options)
     wait_if_gui('Start scene.')
@@ -49,9 +48,11 @@ def main():
     set_state(client, robot, process, end_scene, options=options)
     wait_if_gui('End scene.')
 
-    conf = get_ik_solutions(process, m)
-    if conf:
-        client.set_robot_configuration(robot, conf)
+    with pp.LockRenderer(not args.debug):
+        result = get_ik_solutions(process, process.movements.index(m))
+    # conf = get_ik_solutions(process, 236)
+    if result[0]:
+        client.set_robot_configuration(robot, result[1])
     wait_if_gui('IK solution found.')
 
     client.disconnect()
