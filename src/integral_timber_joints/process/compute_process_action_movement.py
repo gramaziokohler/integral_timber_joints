@@ -265,117 +265,32 @@ def create_movements_from_action(process, beam_id, verbose=False):
 # Require sequential parsing of all Actions in the process
 #############################################################
 
+def assign_action_numbers(process, beam_id, verbose=True):
+    # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
+    """Assigns act_n to actions in one Beams.
+    First Action in a Beam gets action.act_n = 0.
+
+    Movement.movement_id are also updated.
+    """
+    act_n = 0
+    for action in process.get_actions_by_beam_id(beam_id):
+        action.act_n = act_n
+        act_n += 1
+        action.assign_movement_ids()
+
 
 def assign_unique_action_numbers(process, verbose=True):
     # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
-    """Assigns unique act_n to all actions
+    """Assigns unique act_n to all actions across the entire Process of all Beams.
+    action.act_n starts from 0.
+
+    Movement.movement_id are also updated.
     """
     act_n = 0
-
     for action in process.actions:
         action.act_n = act_n
         act_n += 1
-
-
-def assign_tools_to_actions(process, verbose=True):
-    # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
-    """ Assign Clamp and Gripper instances to actions
-    based on the gripper_type and tool_type attributes.
-
-    The functions also checks the consistancy of tool attach/detach actions:
-    - no beam is attached to tool before pick-beam
-    - beam is attached to tool before place-beam
-    - robot is holding a tool before place-tool
-    - robot is not holding a tool before pick-tool
-    - no beam is attached to tool before place-tool
-
-    """
-    # Variables for a procedural simulation to ensure process consistancy
-    print("deprecated Warning: assign_tools_to_actions should be retired. Use assign_tool_id_to_beam_joints() instead.")
-    tools_in_storage = [c for c in process.clamps] + [s for s in process.screwdrivers] + [g for g in process.grippers]
-
-    tool_at_robot = None  # type: Optional[Tool]
-    beam_id_at_robot = None  # type: Optional[str]
-
-    clamps_on_structure = {}  # type: Dict[Tuple[str, str], Tool]
-
-    def PopToolFromStorage(tool_type):
-        # type: (str) -> Tool
-        for tool in reversed(tools_in_storage):
-            if (tool.type_name == tool_type):
-                tools_in_storage.remove(tool)
-                return tool
-        raise Exception("Tool Not Found in Storage Error: tool_type = %s" % tool_type)
-
-    for action in process.actions:
-        if verbose:
-            print(action)
-        if isinstance(action, PickToolFromStorageAction):
-            if tool_at_robot is not None:  # Consistancy check to make sure tool is not already attached.
-                raise Exception("Unable to attach tool becuase %s is already attached to robot" % tool_at_robot)
-            tool = PopToolFromStorage(action.tool_type)
-            tool_at_robot = tool
-            action.tool_id = tool.name
-
-        if isinstance(action, PlaceToolToStorageAction):
-            if tool_at_robot is None:  # Consistancy check to make sure some tool is attached.
-                raise Exception("Unable to detach tool becuase No Tool is attached to robot")
-            tool = tool_at_robot
-            if (action.tool_type != tool_at_robot.type_name):
-                raise Exception("Detach action action.tool_type (%s) inconsistant with tool_at_robot.type_name (%s)" % (action.tool_type, tool_at_robot.type_name))
-            action.tool_id = tool.name
-            tools_in_storage.append(tool)
-            tool_at_robot = None
-
-        if isinstance(action, PickClampFromStructureAction):
-            if tool_at_robot is not None:  # Consistancy check to make sure tool is not already attached.
-                raise Exception("Unable to attach tool becuase %s is already attached to robot" % tool_at_robot)
-            tool = clamps_on_structure[action.joint_id]
-            tool_at_robot = tool
-            action.tool_id = tool.name
-
-        if isinstance(action, PlaceClampToStructureAction):
-            if tool_at_robot is None:  # Consistancy check to make sure some tool is attached.
-                raise Exception("Unable to detach tool becuase No Tool is attached to robot")
-            tool = tool_at_robot
-            if (action.tool_type != tool_at_robot.type_name):
-                raise Exception("Detach action action.tool_type (%s) inconsistant with tool_at_robot.type_name (%s)" % (action.tool_type, tool_at_robot.type_name))
-            action.tool_id = tool.name
-            process.assembly.set_joint_attribute(action.joint_id, 'tool_id', tool.name)
-            clamps_on_structure[action.joint_id] = tool
-            tool_at_robot = None
-
-        if isinstance(action, BeamPickupAction):
-            if tool_at_robot is None:
-                raise Exception("Unable to pick beam becuase No Tool is attached to robot")
-            beam_id_at_robot = action.beam_id
-            gripper_id = tool_at_robot.name
-            action.gripper_id = gripper_id
-            process.assembly.set_beam_attribute(action.beam_id, 'gripper_id', gripper_id)
-
-        if isinstance(action, BeamPlacementWithoutClampsAction):
-            if tool_at_robot is None:
-                raise Exception("Unable to place beam becuase No Tool is attached to robot")
-            if beam_id_at_robot is None:
-                raise Exception("Unable to place beam becuase No Beam is attached to robot")
-            if beam_id_at_robot != action.beam_id:
-                raise Exception("Unable to place beam becuase beam_id_at_robot (%s) is inconsistant with action.beam_id (%s)" % (beam_id_at_robot, action.beam_id))
-            beam_id_at_robot = None
-            action.gripper_id = tool_at_robot.name
-
-        if isinstance(action, BeamPlacementWithClampsAction):
-            if tool_at_robot is None:
-                raise Exception("Unable to place beam becuase No Tool is attached to robot")
-            if beam_id_at_robot is None:
-                raise Exception("Unable to place beam becuase No Beam is attached to robot")
-            if beam_id_at_robot != action.beam_id:
-                raise Exception("Unable to place beam becuase beam_id_at_robot (%s) is inconsistant with action.beam_id (%s)" % (beam_id_at_robot, action.beam_id))
-            beam_id_at_robot = None
-            action.gripper_id = tool_at_robot.name
-            for joint_id in action.joint_ids:
-                if joint_id not in clamps_on_structure:
-                    raise Exception("Joint (%s) require a clamp that was not placed" % joint_id)
-            action.clamp_ids = [clamps_on_structure[joint_id].name for joint_id in action.joint_ids]
+        action.assign_movement_ids()
 
 
 def optimize_actions_place_pick_gripper(process, verbose=True):
@@ -564,66 +479,6 @@ def debug_print_process_actions_movements(process, file_path=None):
                 print(line)
     if file_path is not None:
         f.close()
-
-
-def test_process_prepathplan(json_path_in, json_path_out):
-    #########################################################################
-    # Load process
-    #########################################################################
-
-    import jsonpickle
-    f = open(json_path_in, 'r')
-    json_str = f.read()
-    process = jsonpickle.decode(json_str, keys=True)  # type: RobotClampAssemblyProcess
-    f.close()
-
-    #########################################################################
-    # Pre computation
-    #########################################################################
-
-    # process.assign_tool_type_to_joints()
-    # for beam_id in process.assembly.sequence:
-    #     process.compute_clamp_attachapproach_attachretract(beam_id, verbose = True)
-
-    #########################################################################
-    # From process.sequence, create actions (high level actions)
-    #########################################################################
-
-    print("\n> > > create_actions_from_sequence(beam_id, process)\n")
-    for beam_id in process.assembly.sequence:
-        create_actions_from_sequence(process, beam_id, verbose=False)
-
-    print("\n> > > assign_tools_to_actions(process)\n")
-    assign_tools_to_actions(process, verbose=False)
-
-    print("\n> > > optimize_actions_place_pick_gripper(process)\n")
-    optimize_actions_place_pick_gripper(process, verbose=False)
-    print("\n> > > optimize_actions_place_pick_clamp(process)\n")
-    optimize_actions_place_pick_clamp(process, verbose=False)
-
-    #########################################################################
-    # Loop through each action, create movements (low level movements)
-    #########################################################################
-
-    print("\n> > > create_movements_from_action(process)\n")
-    for beam_id in process.assembly.sequence:
-        create_movements_from_action(process, beam_id)
-
-    #########################################################################
-    # List out actions and movements
-    #########################################################################
-
-    print("\n> > > debug_print_process_actions_movements(process)\n")
-    debug_print_process_actions_movements(process)
-
-    #########################################################################
-    # Save process
-    #########################################################################
-
-    print("\n> > > Saving Process to %s \n" % json_path_out)
-    f = open(json_path_out, 'w')
-    f.write(jsonpickle.encode(process, keys=True))
-    f.close()
 
 
 def test_process_pathPlan(json_path_in, json_path_out):

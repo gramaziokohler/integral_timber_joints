@@ -39,7 +39,6 @@ class RobotClampAssemblyProcess(Data):
     from .compute_process_action_movement import (
         recompute_initial_state,
         assign_tool_id_to_beam_joints,
-        assign_tools_to_actions,
         assign_unique_action_numbers,
         create_actions_from_sequence,
         create_movements_from_action,
