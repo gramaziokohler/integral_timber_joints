@@ -7,7 +7,7 @@ except:
 
 from itertools import chain
 from integral_timber_joints.process.movement import *
-from integral_timber_joints.tools import Clamp, Gripper
+from integral_timber_joints.tools import Clamp, Gripper, Screwdriver
 from compas.geometry.transformations.translation import Translation
 
 
@@ -536,6 +536,45 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
 
+
+class PlaceScrewdriverToStorageAction(PlaceToolToStorageAction):
+
+    def create_movements(self, process):
+        # type: (RobotClampAssemblyProcess) -> None
+        """ Movement for placing Clamp (and other tools) to Storage.
+        Modified from PickToolFromStorageAction.create_movements()
+        """
+        self.movements = []
+        tool = process.tool(self.tool_id)  # type: Screwdriver
+        toolchanger = process.robot_toolchanger
+        tool_storage_frame_wcf = tool.tool_storage_frame
+        tool_storage_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_storage_frame_wcf)
+
+        tool_pick_up_retract_frame_wcf = tool.tool_pick_up_retract_frame_in_wcf(tool_storage_frame_wcf)
+        tool_pick_up_retract_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_retract_frame_wcf)
+
+        self.movements.append(RoboticFreeMovement(tool_pick_up_retract_frame_t0cf.copy(), attached_tool_id=self.tool_id, speed_type='speed.transit.rapid',
+                                                  tag="Free Move to reach Storage Approach Frame of %s, to place tool in storage." % self._tool_string))  # Tool Storage Approach
+        tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
+        self.movements.append(RoboticLinearMovement(tool_storage_frame_t0cf.copy(), attached_tool_id=self.tool_id,
+                                                    speed_type='speed.toolchange.approach.withtool',
+                                                    target_configuration=tool.tool_storage_configuration,
+                                                    tag="Linear Advance to Storage Frame of %s, to place tool in storage." % self._tool_string,
+                                                    allowed_collision_matrix=tool_env_acm,
+                                                    ))  # Tool Storage Final
+
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.UnlockTool, self.tool_id,
+                                                   tag="Toolchanger Unlock %s" % self._tool_string))
+
+        tool_pick_up_frame_wcf = tool.tool_pick_up_frame_in_wcf(tool_storage_frame_wcf)
+        tool_pick_up_frame_t0cf = toolchanger.set_current_frame_from_tcp(tool_pick_up_frame_wcf)
+        self.movements.append(RoboticLinearMovement(tool_pick_up_frame_t0cf.copy(), speed_type='speed.toolchange.retract.notool',
+                                                    tag="Linear Retract from storage after placing %s in storage" % self._tool_string,
+                                                    allowed_collision_matrix=[('tool_changer', self.tool_id)],
+                                                    ))  # Tool Storage Retract
+
+        # Assign Unique Movement IDs to all movements
+        self.assign_movement_ids()
 
 ############################################
 # Actions for leaving Clamps on Structure

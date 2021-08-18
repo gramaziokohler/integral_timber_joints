@@ -265,7 +265,7 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
         # * Action to retract the Screwdriver that was acting as gripper and place it to storage
         actions.append(RetractScrewdriverFromBeamAction(seq_n, 0, beam_id, joint_id, gripper_type, gripper_id))  # ! Todo
 
-        actions.append(PlaceScrewdriverToStorage(seq_n, 0, beam_id, joint_id, gripper_type, gripper_id))  # ! Todo
+        actions.append(PlaceScrewdriverToStorageAction(seq_n, 0, beam_id, joint_id, gripper_type, gripper_id))  # ! Todo
 
     # * Actions to Detach Screwdriver from the Structure.
     for joint_id, tool_id in reversed(zip(joint_ids, tool_ids)):
@@ -282,7 +282,7 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
         # * Action to retract Screwdriver and place it to storage
         actions.append(RetractScrewdriverFromBeamAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id)) # ! Todo
 
-        actions.append(PlaceScrewdriverToStorage(seq_n, 0, beam_id, joint_id, tool_type, tool_id)) # ! Todo
+        actions.append(PlaceScrewdriverToStorageAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id)) # ! Todo
 
     # Print out newly added actions and return
     if verbose:
