@@ -12,8 +12,8 @@ def get_ik_solutions(process, movement_index, options={}):
     movement = process.movements[movement_index]
 
     if not isinstance(movement, RoboticMovement):
-        print('{} not an robotic movement, return None'.format(movement.short_summary))
-        return None
+        # print('{} not an robotic movement, return None'.format(movement.short_summary))
+        return (False, None, 'Not an robotic movement')
 
     viewer = options.get('viewer', False)
     debug = options.get('debug', False)
