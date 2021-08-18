@@ -127,7 +127,7 @@ class Movement(object):
         It is implemented as a dictionary where key is Tuple (object_id, ['f', 'a', 'c']),
         value is Any[Frame, bool, Configuration]
         """
-        raise NotImplementedError("Action.create_movements() is not implemented by child class")
+        raise NotImplementedError("Movement.create_state_diff() is not implemented by child class")
 
 
 class RoboticMovement(Movement):
@@ -202,7 +202,6 @@ class RoboticMovement(Movement):
             self.state_diff = {}
         # Change robot flange frame
         self.state_diff[('robot', 'f')] = self.target_frame
-        self.state_diff[('tool_changer', 'f')] = self.target_frame
 
         # If target_configuration is available, pass it to robot kinematic_config.
         if self.target_configuration is not None:
@@ -247,7 +246,7 @@ class OperatorLoadBeamMovement(Movement):
         self.beam_id = beam_id
         self.grasp_face = grasp_face
         self.target_frame = target_frame  # type: Frame
-        self.tag = tag or "Opeartor Load Beam to Pickup Location"
+        self.tag = tag or "Opeartor Load Beam (%s) to Pickup Location" % self.beam_id
 
     def __str__(self):
         return "Load Beam ('%s') for pickup at %s (Side %s face up)." % (self.beam_id, self.target_frame, self.grasp_face)
