@@ -150,7 +150,7 @@ def ui_get_ik(process):
     scene = process.get_movement_end_scene(prev_movement)
     # from integral_timber_joints.planning.rhino_interface import get_ik_solutions
     from compas.rpc import Proxy
-    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface', capture_output=False)
+    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
     try:
         result = rhino_interface.get_ik_solutions(process, state_id - 1)
     except:
