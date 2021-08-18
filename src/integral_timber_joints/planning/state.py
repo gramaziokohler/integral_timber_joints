@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from pybullet_planning.interfaces.env_manager.pose_transformation import multiply
 from pybullet_planning.interfaces.env_manager.user_io import wait_if_gui
 from termcolor import cprint
 from copy import copy, deepcopy
@@ -43,20 +44,20 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
     gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
 
     gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint: GANTRY_Z_LIMIT})
-    base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=reachable_range)
+
+    gantry_base_from_world_base = pp.get_relative_pose(robot_uid,
+        link_from_name(robot_uid, 'world'), link_from_name(robot_uid, 'x_rail'))
+    gantry_base_from_flange = multiply(gantry_base_from_world_base, flange_pose)
+    base_gen_fn = uniform_pose_generator(robot_uid, gantry_base_from_flange, reachable_range=reachable_range)
 
     while True:
-        # TODO a more formal gantry_base_from_world_base
         x, y, _ = next(base_gen_fn)
-        y *= -1
         z, = gantry_z_sample_fn()
-        # TODO
-        # if spherical_sampling:
-        #     if np.linalg.norm():
 
         gantry_xyz_vals = [x, y, z]
         gantry_base_conf = Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names)
         client.set_robot_configuration(robot, gantry_base_conf)
+
         yield gantry_base_conf
 
 
@@ -198,7 +199,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # convert to meter
                     flange_frame.point *= scale
                     object_frame.point *= scale
-                    robot_flange_from_tool = Transformation.from_frame_to_frame(flange_frame, object_frame)
+                    robot_flange_from_tool = Transformation.from_frame_to_frame(object_frame, flange_frame)
 
                     # * create attachments
                     wildcard = '^{}$'.format(object_id)

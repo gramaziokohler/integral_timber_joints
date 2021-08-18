@@ -153,12 +153,12 @@ def ui_get_ik(process):
     rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
     try:
         result = rhino_interface.get_ik_solutions(process, state_id - 1)
-    except:
-        result = None
-    print("IK result: %s" % result)
+    except Exception as err_msg:
+        result = (False, None, err_msg)
+    print("IK result: {}".format(result))
 
     # Draw Robot with IK results
-    if result is not None:
+    if result[0]:
         artist.draw_robot(result, True, True, True)
 
     print("-----------------------------------------------")
