@@ -222,6 +222,22 @@ class ComputationalDependency(Graph):
                 return False
         return True
 
+    def get_beginning_function_names(self):
+        """Functions that are not dependent on anything."""
+        fx_names = []
+        for node in self.nodes():
+            if len(list(self.neighbors_in(node))) == 0:
+                fx_names.append(node)
+        return fx_names
+
+    def get_terminal_function_names(self):
+        """Functions that have no dependents."""
+        fx_names = []
+        for node in self.nodes():
+            if len(list(self.neighbors_out(node))) == 0:
+                fx_names.append(node)
+        return fx_names
+
     def debug_print(self, beam_id):
         for key, data in self.nodes(data=True):
             print("%s: %s = %s" % (beam_id, key, data[beam_id]))

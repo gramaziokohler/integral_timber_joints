@@ -150,9 +150,17 @@ def ui_get_ik(process):
     scene = process.get_movement_end_scene(prev_movement)
     # from integral_timber_joints.planning.rhino_interface import get_ik_solutions
     from compas.rpc import Proxy
-    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
-    result = rhino_interface.get_ik_solutions(process, scene)
-    print(result)
+    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface', capture_output=False)
+    try:
+        result = rhino_interface.get_ik_solutions(process, state_id - 1)
+    except:
+        result = None
+    print("IK result: %s" % result)
+
+    # Draw Robot with IK results
+    if result is not None:
+        artist.draw_robot(result, True, True, True)
+
     print("-----------------------------------------------")
 
 
@@ -237,6 +245,7 @@ def show_menu(process):
         if result is None or 'action' not in result:
             print('Exit Function')
             artist.hide_all_env_mesh()
+            artist.hide_robot()
             show_interactive_beams_delete_state_vis()
             return Rhino.Commands.Result.Cancel
 
@@ -244,6 +253,7 @@ def show_menu(process):
         if result['action'] == 'Exit':
             print('Exit Function')
             artist.hide_all_env_mesh()
+            artist.hide_robot()
             show_interactive_beams_delete_state_vis()
             return Rhino.Commands.Result.Cancel
 
