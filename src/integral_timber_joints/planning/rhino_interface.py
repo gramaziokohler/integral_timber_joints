@@ -98,17 +98,19 @@ if __name__ == "__main__":
         else:
             print("json_path not exist")
 
-    def get_ik_no_proxy(process, state_id, viewer):
+    def get_ik_no_proxy(process, state_id, viewer, verbose = False):
         options = {}
         options = {'viewer': viewer, 'debug' : viewer}
         result = get_ik_solutions(process, state_id - 1, options)
-        print("IK result: {}".format(result))
+        if verbose: print("IK result: {}".format(result))
+        return result
 
-    def get_ik_via_proxy(process, state_id):
+    def get_ik_via_proxy(process, state_id, options = {}, verbose = False):
         from compas.rpc import Proxy
         rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
-        result = rhino_interface.get_ik_solutions(process, state_id - 1)
-        print("IK result: {}".format(result))
+        result = rhino_interface.get_ik_solutions(process, state_id - 1, options)
+        if verbose: print("IK result: {}".format(result))
+        return result
 
     ##########################
 
@@ -117,13 +119,30 @@ if __name__ == "__main__":
 
     # Which state to get IK
     # ---------------------
-    state_id = 225 # Only TC attached, result ok (no proxy) , result ok (via Proxy)
-    # state_id = 226 # Only TC touch with Tool, result ok (no proxy) , result ok (via Proxy)
-    # state_id = 229 # Linear retract 1 after Tool Attached, result None
-    # state_id = 230 # Linear retract 2 after Tool Attached, result None
-    # state_id = 233 # Linear Approach 2 of 2 to attach CL3 ('c1') to structure., result None
-    # state_id = 236 # Linear Retract after attaching CL3 ('c1') on structure, result None (Sphere sampling error?)
-    # state_id = 249 # Free Move reach Storage Approach Frame of PG500 ('g1'), to get tool. result ok (no proxy), ok (via Proxy)
+    # scene_id = 225 # Only TC attached, result ok (no proxy) , result ok (via Proxy)
+    # scene_id = 226 # Only TC touch with Tool, result ok (no proxy) , result ok (via Proxy)
+    # scene_id = 229 # Linear retract 1 after Tool Attached, result None
+    # scene_id = 230 # Linear retract 2 after Tool Attached, result None
+    # scene_id = 233 # Linear Approach 2 of 2 to attach CL3 ('c1') to structure., result None
+    # scene_id = 236 # Linear Retract after attaching CL3 ('c1') on structure, result None (Sphere sampling error?)
+    # scene_id = 249 # Free Move reach Storage Approach Frame of PG500 ('g1'), to get tool. result ok (no proxy), ok (via Proxy)
+    # scene_id = 210 #
 
-    get_ik_no_proxy(process, state_id, True)
-    get_ik_via_proxy(process, state_id)
+    # get_ik_no_proxy(process, scene_id, True)
+    # get_ik_via_proxy(process, state_id)
+
+    all_movements = process.movements
+    failed_indices = []
+    for i in range(len(all_movements)):
+        movement = all_movements[i]
+        if isinstance(movement, RoboticMovement):
+            print ("#%i (%s) %s" % (i, movement.__class__.__name__, movement.tag))
+            options = {'ik_gantry_attempts':100}
+            success, conf, msg = get_ik_via_proxy(process, i + 1, options)
+            if success:
+                print ("IK Success: %s" % msg)
+            else:
+                print ("- - - WARNING - - - IK Failed: %s" % msg)
+                failed_indices.append(i)
+
+    print("Failed Movement Indices: %s " % failed_indices)
