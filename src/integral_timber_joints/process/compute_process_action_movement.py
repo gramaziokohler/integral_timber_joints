@@ -70,12 +70,70 @@ def create_actions_from_sequence(process, beam_id, verbose=False):
 
     Beam attribute 'assembly_method' should be assigned prior.
     Joint attribute 'tool_type' and 'tool_id' should be assigned.
+
+    Action numbers are zeroed at the begining of the Beam, not
+    at the begining of the entire Process.
+
     """
+    # * Dispatching which sub functions gets to do the action creation
     assembly_method = process.assembly.get_assembly_method(beam_id)
-    if assembly_method == BeamAssemblyMethod.CLAMPED:
-        return _create_actions_for_clamped(process, beam_id, verbose)
-    else:
-        return _create_actions_for_screwed(process, beam_id, verbose)
+    if len(process.assembly.get_joint_ids_with_tools_for_beam()) == 0:
+        result = _create_actions_for_no_tools(process, beam_id, verbose)
+    elif assembly_method == BeamAssemblyMethod.CLAMPED:
+        result = _create_actions_for_clamped(process, beam_id, verbose)
+    elif assembly_method == BeamAssemblyMethod.CLAMPED:
+        result = _create_actions_for_screwed(process, beam_id, verbose)
+
+    # * Assign Actions Numbers
+    if result in ComputationalResult.ValidResults:
+        assign_action_numbers(process, beam_id, verbose)
+    return result
+
+
+def _create_actions_for_no_tools(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
+    """ Creating Action objects (process.actions)
+    for beams with no tools regardless of their assigned Assembly Method
+
+    This is implemented as a gripper pick and place scenario.
+    """
+
+    assembly = process.assembly  # type: Assembly
+    actions = []  # type: List[Action]
+    seq_n = assembly.sequence.index(beam_id)
+
+    if verbose:
+        print("Beam %s" % beam_id)
+
+    # * Operator Load Beam
+    act = LoadBeamAction(seq_n, 0, beam_id)
+    actions.append(act)
+
+    # * Action to attach gripper
+    gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
+    gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
+    act = PickGripperFromStorageAction(seq_n, 0, gripper_type, gripper_id)
+    actions.append(act)
+
+    # * Action to pick beam
+    act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id)
+    actions.append(act)
+
+    # * Syncronized clamp and move beam action
+    act = BeamPlacementWithoutClampsAction(seq_n, 0, beam_id, gripper_id)
+    actions.append(act)
+
+    # * Return gripper
+    act = PlaceGripperToStorageAction(seq_n, 0, gripper_type, gripper_id)
+    actions.append(act)
+
+    # Print out newly added actions and return
+    if verbose:
+        for act in actions:
+            print('|- ' + act.__str__())
+
+    process.assembly.set_beam_attribute(beam_id, 'actions', actions)
+    return ComputationalResult.ValidCanContinue
 
 
 def _create_actions_for_clamped(process, beam_id, verbose=False):
@@ -89,90 +147,62 @@ def _create_actions_for_clamped(process, beam_id, verbose=False):
 
     assembly = process.assembly  # type: Assembly
     actions = []  # type: List[Action]
-
-    # Action number and sequence number
-    def act_n(reset=False):
-        # Fuction to keep count of act_n
-        if hasattr(act_n, 'counter'):
-            act_n.counter += 1
-        else:
-            act_n.counter = 0
-        return act_n.counter
     seq_n = assembly.sequence.index(beam_id)
 
-    beam = assembly.beam(beam_id)  # type: Beam
     if verbose:
         print("Beam %s" % beam_id)
 
-    # move clamps from storage to structure
+    # * Actions to move clamps from storage to structure
     joint_id_of_clamps = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
     clamp_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_id_of_clamps]
 
     for joint_id in joint_id_of_clamps:
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
         tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
-        actions.append(PickClampFromStorageAction(seq_n, act_n(), tool_type, tool_id))
-        if verbose:
-            print('|- ' + actions[-1].__str__())
-        actions.append(PlaceClampToStructureAction(seq_n, act_n(), joint_id, tool_type, tool_id))
-        if verbose:
-            print('|- ' + actions[-1].__str__())
+        actions.append(PickClampFromStorageAction(seq_n, 0, tool_type, tool_id))
+        actions.append(PlaceClampToStructureAction(seq_n, 0, joint_id, tool_type, tool_id))
 
-        #if verbose: print ("|- Detatch Clamp at Joint %s-%s" % clamp)
+    # * Operator Load Beam
+    act = LoadBeamAction(seq_n, 0, beam_id)
+    actions.append(act)
 
-    # attach gripper
+    # * Actions to attach gripper
     gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
     gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
-    act = PickGripperFromStorageAction(seq_n, act_n(), gripper_type, gripper_id)
+    act = PickGripperFromStorageAction(seq_n, 0, gripper_type, gripper_id)
     actions.append(act)
-    if verbose:
-        print('|- ' + act.__str__())
 
     # pick place beam
-    act = BeamPickupAction(seq_n, act_n(), beam_id, gripper_id)
+    act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id)
     actions.append(act)
-    if verbose:
-        print('|- ' + act.__str__())
 
     # Syncronized clamp and move beam action
-
-    if len(joint_id_of_clamps) > 0:
-        act = BeamPlacementWithClampsAction(seq_n, act_n(), beam_id, joint_id_of_clamps, gripper_id, clamp_ids)
-        actions.append(act)
-        if verbose:
-            print('|- ' + act.__str__())
-    else:
-        act = BeamPlacementWithoutClampsAction(seq_n, act_n(), beam_id, gripper_id)
-        actions.append(act)
-        if verbose:
-            print('|- ' + act.__str__())
+    act = BeamPlacementWithClampsAction(seq_n, 0, beam_id, joint_id_of_clamps, gripper_id, clamp_ids)
+    actions.append(act)
 
     # return gripper
-    act = PlaceGripperToStorageAction(seq_n, act_n(), gripper_type, gripper_id)
+    act = PlaceGripperToStorageAction(seq_n, 0, gripper_type, gripper_id)
     actions.append(act)
-    if verbose:
-        print('|- ' + act.__str__())
 
     # remove clamps from structure to storage
     for joint_id in reversed(joint_id_of_clamps):
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
         tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
-        actions.append(PickClampFromStructureAction(seq_n, act_n(), joint_id, tool_type, tool_id))
-        if verbose:
-            print('|- ' + actions[-1].__str__())
-        actions.append(PlaceClampToStorageAction(seq_n, act_n(), tool_type, tool_id))
-        if verbose:
-            print('|- ' + actions[-1].__str__())
+        actions.append(PickClampFromStructureAction(seq_n, 0, joint_id, tool_type, tool_id))
+
+    # Print out newly added actions and return
+    if verbose:
+        for act in actions:
+            print('|- ' + act.__str__())
 
     process.assembly.set_beam_attribute(beam_id, 'actions', actions)
-    # Return results
     return ComputationalResult.ValidCanContinue
 
 
 def _create_actions_for_screwed(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
     """ Creating Action objects (process.actions)
-    for beams with `BeamAssemblyMethod.CLAMPED`.
+    for beams with `BeamAssemblyMethod.SCREWED` and .
 
     This is specific to the general action framework for a clamp and gripper assembly streategy.
     This is specific to a single robot / multiple clamp and gripper scenario.
@@ -180,19 +210,10 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
     assembly = process.assembly  # type: Assembly
     actions = []  # type: List[Action]
     assembly_method = process.assembly.get_assembly_method(beam_id)
-
-    # Action number and sequence number
-    def act_n(reset=False):
-        # Fuction to keep count of act_n
-        if hasattr(act_n, 'counter'):
-            act_n.counter += 1
-        else:
-            act_n.counter = 0
-        return act_n.counter
     seq_n = assembly.sequence.index(beam_id)
 
     # * Operator Load Beam
-    act = LoadBeamAction(seq_n, act_n(), beam_id)
+    act = LoadBeamAction(seq_n, 0, beam_id)
     actions.append(act)
 
     # * Actions to Attach Screwdriver
@@ -201,38 +222,69 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
 
     for joint_id, tool_id in zip(joint_ids, tool_ids):
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
-        actions.append(OperatorAttachScrewdriverAction(seq_n, act_n(), beam_id, joint_id, tool_type, tool_id))
+        actions.append(OperatorAttachScrewdriverAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id, 'assembly_wcf_pickup'))
+
+    # * Actions to Assemble
+    gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
+    gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
 
     if assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
         # * Action to Pick Gripper From Storage
-        gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
-        gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
-        act = PickGripperFromStorageAction(seq_n, act_n(), gripper_type, gripper_id)
+        act = PickGripperFromStorageAction(seq_n, 0, gripper_type, gripper_id)
         actions.append(act)
 
-        # * Action to pick beam with Gripper
-        act = PickBeamWithAttachedToolsAction(seq_n, act_n(), beam_id, gripper_id, tool_ids) # ! Todo
+        # * Action to pick beam with Gripper including retract
+        act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id, tool_ids)  # Includes all additionally attached tools
         actions.append(act)
 
-        # * Action to Place Beam with Screwdriver and Gripper
-        act = AssembleBeamWithScrewdriversAndGripperAction(seq_n, act_n(), beam_id, joint_ids, tool_ids, gripper_id) # ! Todo
-        actions.append(act)
-
-        # * Action to Open Gripper and Retract Screw while robot-sync backing away
-        act = DetachAndRetractScrewdriverAction(seq_n, act_n(), beam_id, joint_ids, tool_ids, gripper_id) # ! Todo
+        # * Action to Place Beam and Screw it with Screwdriver, not including retract
+        act = AssembleBeamWithScrewdriversAction(seq_n, 0, beam_id, joint_ids, tool_ids, gripper_id)  # ! Reusable Action  # ! Todo
         actions.append(act)
 
         # * Action to Open Gripper and Retract Screw while robot-sync backing away
-        act = DetachAndRetractScrewdriverAction(seq_n, act_n(), beam_id, joint_ids, tool_ids, gripper_id) # ! Todo
+        act = RetractGripperFromBeamAction(seq_n, 0, beam_id, joint_ids, tool_ids, gripper_id)  # ! Todo
         actions.append(act)
 
+        # * Action to Open Gripper and Retract Screw while robot-sync backing away
+        act = PlaceGripperToStorageAction(seq_n, 0, beam_id, joint_ids, tool_ids, gripper_id)
+        actions.append(act)
 
-    # Actions to Assemble
+    else:  # SCREWED_WITHOUT_GRIPPER
+        # * Action to Dock with Screwdriver at Storage
+        act = DockWithScrewdriverAction(seq_n, 0, joint_id, 'assembly_wcf_pickup', tool_type, tool_id)  # ! Todo
+        actions.append(act)
 
-    # Actions to Detach Screwdriver
+        # * Action to pickup Beam from Pickup Station after Docking
+        act = PickBeamWithScrewdriverAction(seq_n, 0, joint_id, 'assembly_wcf_pickup', tool_type, tool_id)
+        actions.append(act)
 
+        # * Action to Place Beam and Screw it with Screwdriver, not including retract
+        act = AssembleBeamWithScrewdriversAction(seq_n, 0, beam_id, joint_ids, tool_ids, gripper_id)  # ! Reusable Action  # ! Todo
+        actions.append(act)
 
+        # * Action to retract the Screwdriver that was acting as gripper and place it to storage
+        actions.append(RetractScrewdriverFromBeamAction(seq_n, 0, beam_id, joint_id, gripper_type, gripper_id))  # ! Todo
 
+        actions.append(PlaceScrewdriverToStorage(seq_n, 0, beam_id, joint_id, gripper_type, gripper_id))  # ! Todo
+
+    # * Actions to Detach Screwdriver from the Structure.
+    for joint_id, tool_id in reversed(zip(joint_ids, tool_ids)):
+        # Skip the screwdriver that acted as gripper
+        if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            if tool_id == gripper_id:
+                continue
+
+        tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
+
+        # * Action to Dock with Screwdriver at Storage
+        actions.append(DockWithScrewdriverAction(seq_n, 0, joint_id, 'assembly_wcf_final', tool_type, tool_id)) # ! Todo
+
+        # * Action to retract Screwdriver and place it to storage
+        actions.append(RetractScrewdriverFromBeamAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id)) # ! Todo
+
+        actions.append(PlaceScrewdriverToStorage(seq_n, 0, beam_id, joint_id, tool_type, tool_id)) # ! Todo
+
+    # Print out newly added actions and return
     if verbose:
         for act in actions:
             print('|- ' + act.__str__())
@@ -252,11 +304,11 @@ def create_movements_from_action(process, beam_id, verbose=False):
     """
     for action in process.get_actions_by_beam_id(beam_id):
         action.create_movements(process)
+        action.assign_movement_ids()
         for mov_n, movement in enumerate(action.movements):
             if verbose:
                 print("Processing Seq %i Action %i Movement %i: %s" % (action.seq_n, action.act_n, mov_n, movement.tag))
             movement.create_state_diff(process)
-
     return ComputationalResult.ValidCanContinue
 
 
