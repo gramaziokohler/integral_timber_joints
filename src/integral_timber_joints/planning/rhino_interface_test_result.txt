@@ -1,0 +1,552 @@
+pybullet build time: Aug  6 2021 15:05:25
+Process loaded from: nine_pieces_process.json (9 Beams). File last modified on 2021-08-18 11:27:42.878219.
+#0 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 2 attempts
+#1 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 3 attempts
+#4 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#5 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b0')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#7 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b0')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#10 (RoboticLinearMovement) Linear Retract after picking up Beam ('b0')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#11 (RoboticFreeMovement) Free Move to bring Beam ('b0') to final location
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#12 (RoboticLinearMovement) Linear Advance to Final Frame of Beam ('b0')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#14 (RoboticLinearMovement) Linear retract after placing Beam ('b0')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#15 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 28 attempts
+#16 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 14 attempts
+#19 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 3 attempts
+#20 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 5 attempts
+#21 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 11 attempts
+#24 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 2 attempts
+#25 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b1')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#27 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b1')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#30 (RoboticLinearMovement) Linear Retract after picking up Beam ('b1')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#31 (RoboticFreeMovement) Free Move to bring Beam ('b1') to final location
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#32 (RoboticLinearMovement) Linear Advance to Final Frame of Beam ('b1')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#34 (RoboticLinearMovement) Linear retract after placing Beam ('b1')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#35 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 3 attempts
+#36 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 25 attempts
+#39 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 13 attempts
+#40 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3M ('c3'), to get clamp.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#41 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3M ('c3'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 5 attempts
+#44 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3M ('c3') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#45 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3M ('c3') from storage.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#46 (RoboticFreeMovement) Free Move to bring CL3M ('c3') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#47 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3M ('c3') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#48 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3M ('c3') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#51 (RoboticLinearMovement) Linear Retract after attaching CL3M ('c3') on structure
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#52 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3M ('c4'), to get clamp.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#53 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3M ('c4'), to get tool.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#56 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3M ('c4') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#57 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3M ('c4') from storage.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#58 (RoboticFreeMovement) Free Move to bring CL3M ('c4') to structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#59 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3M ('c4') to structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#60 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3M ('c4') to structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#63 (RoboticLinearMovement) Linear Retract after attaching CL3M ('c4') on structure
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#64 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 14 attempts
+#65 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 3 attempts
+#68 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 23 attempts
+#69 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b2')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#71 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b2')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#74 (RoboticLinearMovement) Linear Retract after picking up Beam ('b2')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#75 (RoboticFreeMovement) Free Move to bring Beam ('b2') to approach clamps on structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#76 (RoboticLinearMovement) Linear Advance to bring Beam ('b2') into clamp jaws
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#78 (RoboticClampSyncLinearMovement) Robot and Clamps (['c3', 'c4']) syncronously move to clamp Beam ('b2')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#80 (RoboticLinearMovement) Linear retract after placing Beam ('b2')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#81 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 7 attempts
+#82 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#85 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 17 attempts
+#86 (RoboticFreeMovement) Free Move to reach CL3M ('c4') to detach it from structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#87 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3M ('c4') to detach it from structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#91 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3M ('c4') from structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#92 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3M ('c4') from structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#93 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3M ('c4'), to place clamp in storage.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#94 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3M ('c4') in storage.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#95 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3M ('c4') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#98 (RoboticLinearMovement) Linear Retract from storage after placing CL3M ('c4') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 1 attempts
+#99 (RoboticFreeMovement) Free Move to reach CL3M ('c3') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#100 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3M ('c3') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#104 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3M ('c3') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#105 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3M ('c3') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#106 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3M ('c3'), to place clamp in storage.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#107 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3M ('c3') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#108 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3M ('c3') in storage.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#111 (RoboticLinearMovement) Linear Retract from storage after placing CL3M ('c3') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 55 attempts
+#112 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 4 attempts
+#113 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#116 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 15 attempts
+#117 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b5')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#119 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b5')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#122 (RoboticLinearMovement) Linear Retract after picking up Beam ('b5')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#123 (RoboticFreeMovement) Free Move to bring Beam ('b5') to final location
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#124 (RoboticLinearMovement) Linear Advance to Final Frame of Beam ('b5')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#126 (RoboticLinearMovement) Linear retract after placing Beam ('b5')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#127 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 9 attempts
+#128 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 42 attempts
+#131 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 1 attempts
+#132 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c1'), to get clamp.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#133 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3 ('c1'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#136 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3 ('c1') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 7 attempts
+#137 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3 ('c1') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#138 (RoboticFreeMovement) Free Move to bring CL3 ('c1') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#139 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3 ('c1') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#140 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3 ('c1') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#143 (RoboticLinearMovement) Linear Retract after attaching CL3 ('c1') on structure
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#144 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c2'), to get clamp.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#145 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3 ('c2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#148 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3 ('c2') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#149 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3 ('c2') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#150 (RoboticFreeMovement) Free Move to bring CL3 ('c2') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#151 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3 ('c2') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#152 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3 ('c2') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#155 (RoboticLinearMovement) Linear Retract after attaching CL3 ('c2') on structure
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#156 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG500 ('g1'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#157 (RoboticLinearMovement) Linear Advance to Storage Frame of PG500 ('g1'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 1 attempts
+#160 (RoboticLinearMovement) Linear Retract after getting PG500 ('g1') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#161 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b6')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#163 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b6')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#166 (RoboticLinearMovement) Linear Retract after picking up Beam ('b6')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#167 (RoboticFreeMovement) Free Move to bring Beam ('b6') to approach clamps on structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#168 (RoboticLinearMovement) Linear Advance to bring Beam ('b6') into clamp jaws
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#170 (RoboticClampSyncLinearMovement) Robot and Clamps (['c1', 'c2']) syncronously move to clamp Beam ('b6')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#172 (RoboticLinearMovement) Linear retract after placing Beam ('b6')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#173 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG500 ('g1'), to place tool in storage.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#174 (RoboticLinearMovement) Linear Advance to Storage Frame of PG500 ('g1'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#177 (RoboticLinearMovement) Linear Retract from storage after placing PG500 ('g1') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#178 (RoboticFreeMovement) Free Move to reach CL3 ('c2') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#179 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3 ('c2') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#183 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3 ('c2') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#184 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3 ('c2') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#185 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c2'), to place clamp in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#186 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3 ('c2') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#187 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3 ('c2') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#190 (RoboticLinearMovement) Linear Retract from storage after placing CL3 ('c2') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#191 (RoboticFreeMovement) Free Move to reach CL3 ('c1') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#192 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3 ('c1') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#196 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3 ('c1') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#197 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3 ('c1') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#198 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c1'), to place clamp in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#199 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3 ('c1') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#200 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3 ('c1') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#203 (RoboticLinearMovement) Linear Retract from storage after placing CL3 ('c1') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#204 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 50 attempts
+#205 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 9 attempts
+#208 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#209 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b7')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#211 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b7')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#214 (RoboticLinearMovement) Linear Retract after picking up Beam ('b7')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#215 (RoboticFreeMovement) Free Move to bring Beam ('b7') to final location
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#216 (RoboticLinearMovement) Linear Advance to Final Frame of Beam ('b7')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#218 (RoboticLinearMovement) Linear retract after placing Beam ('b7')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#219 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 5 attempts
+#220 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 17 attempts
+#223 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 19 attempts
+#224 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c1'), to get clamp.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#225 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3 ('c1'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 16 attempts
+#228 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3 ('c1') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#229 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3 ('c1') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#230 (RoboticFreeMovement) Free Move to bring CL3 ('c1') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#231 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3 ('c1') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#232 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3 ('c1') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#235 (RoboticLinearMovement) Linear Retract after attaching CL3 ('c1') on structure
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#236 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c2'), to get clamp.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#237 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3 ('c2'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#240 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3 ('c2') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#241 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3 ('c2') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#242 (RoboticFreeMovement) Free Move to bring CL3 ('c2') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#243 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3 ('c2') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#244 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3 ('c2') to structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#247 (RoboticLinearMovement) Linear Retract after attaching CL3 ('c2') on structure
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#248 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG500 ('g1'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 5 attempts
+#249 (RoboticLinearMovement) Linear Advance to Storage Frame of PG500 ('g1'), to get tool.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 6 attempts
+#252 (RoboticLinearMovement) Linear Retract after getting PG500 ('g1') from storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#253 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b8')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#255 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b8')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#258 (RoboticLinearMovement) Linear Retract after picking up Beam ('b8')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#259 (RoboticFreeMovement) Free Move to bring Beam ('b8') to approach clamps on structure.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#260 (RoboticLinearMovement) Linear Advance to bring Beam ('b8') into clamp jaws
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#262 (RoboticClampSyncLinearMovement) Robot and Clamps (['c1', 'c2']) syncronously move to clamp Beam ('b8')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#264 (RoboticLinearMovement) Linear retract after placing Beam ('b8')
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#265 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG500 ('g1'), to place tool in storage.
+Reconnecting to an existing server proxy.
+- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+#266 (RoboticLinearMovement) Linear Advance to Storage Frame of PG500 ('g1'), to place tool in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#269 (RoboticLinearMovement) Linear Retract from storage after placing PG500 ('g1') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#270 (RoboticFreeMovement) Free Move to reach CL3 ('c2') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#271 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3 ('c2') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#275 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3 ('c2') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#276 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3 ('c2') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#277 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c2'), to place clamp in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 2 attempts
+#278 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3 ('c2') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#279 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3 ('c2') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#282 (RoboticLinearMovement) Linear Retract from storage after placing CL3 ('c2') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#283 (RoboticFreeMovement) Free Move to reach CL3 ('c1') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#284 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3 ('c1') to detach it from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#288 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3 ('c1') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#289 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3 ('c1') from structure.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#290 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c1'), to place clamp in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 8 attempts
+#291 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3 ('c1') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#292 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3 ('c1') in storage.
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+#295 (RoboticLinearMovement) Linear Retract from storage after placing CL3 ('c1') in storage
+Reconnecting to an existing server proxy.
+IK Success: IK found after 0 attempts
+Failed Movement Indices: [5, 7, 10, 11, 12, 14, 25, 27, 30, 31, 32, 34, 45, 52, 53, 57, 58, 59, 60, 63, 69, 71, 74, 75, 76, 78, 80, 86, 87, 91, 92, 93, 94, 106, 108, 117, 119, 122, 123, 124, 126, 161, 163, 166, 167, 168, 170, 172, 173, 209, 211, 214, 215, 216, 218, 253, 255, 258, 259, 260, 262, 264, 265]
