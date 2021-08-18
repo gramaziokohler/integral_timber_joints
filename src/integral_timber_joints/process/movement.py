@@ -343,20 +343,32 @@ class RoboticLinearMovement(RoboticMovement):
 
 
 class RoboticDigitalOutput(Movement):
-    def __init__(self, digital_output=None, tool_id=None, beam_id=None, operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
-        # type: (DigitalOutput, str, str, str, str, str, int) -> RoboticDigitalOutput
+
+    def __init__(self, digital_output=None, tool_id=None, attached_objects = [], operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
+        # type: (DigitalOutput, str, list[str], str, str, str, int) -> RoboticDigitalOutput
         """ `tool_id` relates to the tool that is being operated.
         `beam_id` should be filled in for Open or Close Gripper movements that
         involved letting go or picking up a beam. This helps the state manage to figure
         out which beam is picked up and attached or no longer attached.
 
-        For Clamp Closing Gripper to attach to a fixed beam, `beam_id` should be left None.
+        State Diff
+        ----------
+
+        `DigitalOutput.LockTool` and `CloseGripper` will change the attached status
+        of the `attached_objects` to True.
+
+        `DigitalOutput.UnlockTool` and `OpenGripper` will change the attached status
+        of the `attached_objects` to False.
+
+        `DigitalOutput.LockTool` and `UnlockTool` will change the attached status of the tool
+
+        `DigitalOutput.CloseGripper` and `OpenGripper` will change the kinematic configuration of the tool
         """
         Movement.__init__(self, operator_stop_before=operator_stop_before,
                           operator_stop_after=operator_stop_after, planning_priority=planning_priority)
         self.digital_output = digital_output
         self.tool_id = tool_id
-        self.beam_id = beam_id
+        self.attached_objects = attached_objects
 
         # Default tags for IO actions
         if self.digital_output == DigitalOutput.LockTool:
@@ -387,6 +399,7 @@ class RoboticDigitalOutput(Movement):
         data['digital_output'] = self.digital_output
         data['tool_id'] = self.tool_id
         data['beam_id'] = self.beam_id
+        data['attached_objects'] = self.attached_objects
         return data
 
     @data.setter
@@ -397,33 +410,39 @@ class RoboticDigitalOutput(Movement):
         self.digital_output = data['digital_output']
         self.tool_id = data.get('tool_id', None)
         self.beam_id = data.get('beam_id', None)
+        self.attached_objects = data.get('attached_objects', [])
 
     def create_state_diff(self, process, clear=True):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
         if clear:
             self.state_diff = {}
         tool_id = self.tool_id
+
+        # Changing Tool States
         if self.digital_output == DigitalOutput.LockTool:
             self.state_diff[(tool_id, 'a')] = True
 
-        if self.digital_output == DigitalOutput.UnlockTool:
+        elif self.digital_output == DigitalOutput.UnlockTool:
             self.state_diff[(tool_id, 'a')] = False
 
         # OpenGripper and CloseGripper type affects the tool and the beam
-        if self.digital_output == DigitalOutput.OpenGripper:
+        elif self.digital_output == DigitalOutput.OpenGripper:
             gripper = process.tool(self.tool_id)
             gripper.open_gripper()
             self.state_diff[(tool_id, 'c')] = gripper._get_kinematic_state()
-            if self.beam_id is not None:
-                self.state_diff[(self.beam_id, 'a')] = False
 
-        if self.digital_output == DigitalOutput.CloseGripper:
+        elif self.digital_output == DigitalOutput.CloseGripper:
             gripper = process.tool(self.tool_id)
             gripper.close_gripper()
             self.state_diff[(tool_id, 'c')] = gripper._get_kinematic_state()
-            if self.beam_id is not None:
-                self.state_diff[(self.beam_id, 'a')] = True
 
+        # Changing States for attached objects
+        if self.digital_output in [DigitalOutput.LockTool, DigitalOutput.CloseGripper]:
+            for object_id in self.attached_objects:
+                self.state_diff[(object_id, 'a')] = True
+        elif self.digital_output in [DigitalOutput.UnlockTool, DigitalOutput.OpenGripper]:
+            for object_id in self.attached_objects:
+                self.state_diff[(object_id, 'a')] = False
 
 class DigitalOutput(object):
     LockTool = 1

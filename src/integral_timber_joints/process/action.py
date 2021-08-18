@@ -523,9 +523,9 @@ class OperatorAttachScrewdriverAction(OperatorAction):
         # screwdriver_frame_at_position = screwdriver.current_frame.transformed(t_BeamFinal_BeamAtPosition)
 
         self.movements.append(OperatorAttachToolMovement(self.beam_id, self.joint_id, self.tool_type, self.tool_id,
-                                                    target_frame=screwdriver_frame_at_position,
-                                                    tag="Opeartor Attach %s to %s." % (self._tool_string, self._joint_string),
-                                                    ))
+                                                         target_frame=screwdriver_frame_at_position,
+                                                         tag="Opeartor Attach %s to %s." % (self._tool_string, self._joint_string),
+                                                         ))
         self.assign_movement_ids()
 
 ############################################
@@ -820,7 +820,8 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
                                                     attached_beam_id=self.beam_id, planning_priority=1, speed_type='speed.assembly.noclamp',
                                                     tag="Linear Advance to Final Frame of Beam ('%s')" % (self.beam_id),
                                                     allowed_collision_matrix=acm))
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id, self.beam_id,
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id,
+                                                   attached_objects=[self.beam_id],
                                                    operator_stop_before="Confirm Beam Temporary Support In Place", operator_stop_after="Confirm Gripper Cleared Beam",
                                                    tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id, speed_type='speed.gripper.retract',
@@ -908,7 +909,8 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
                                                              allowed_collision_matrix=acm))
 
         # Open gripper and retract
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id, self.beam_id,
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.OpenGripper, self.gripper_id,
+                                                   attached_objects=[self.beam_id],
                                                    operator_stop_before="Confirm Beam Is Stable", operator_stop_after="Confirm Gripper Cleared Beam",
                                                    tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)))
         self.movements.append(RoboticLinearMovement(assembly_wcf_finalretract.copy(), attached_tool_id=self.gripper_id, speed_type='speed.gripper.retract',
