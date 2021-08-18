@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 try:
-    from typing import Dict, Iterator, List, Optional, Tuple
+    from typing import Dict, Iterator, List, Optional, Tuple, Generator
 except:
     pass
 
@@ -683,8 +683,9 @@ class Assembly(Network):
     # --------------------------------------------
 
     def get_joint_ids_with_tools_for_beam(self, beam_id):
-        # type: (str) -> list[tuple[str, str]]
-        """Generator returning all the joint_ids on the given beam that require assembly tool.
+        # type: (str) -> List[tuple[str, str]]
+        """Returning a list of joint_ids on the given beam that require assembly tool.
+        Format is: (neighbour_id, beam_id)
         """
         if self.get_assembly_method(beam_id) <= BeamAssemblyMethod.GROUND_CONTACT:
             return []

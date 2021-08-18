@@ -682,18 +682,37 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.assign_movement_ids()
 
 
-class BeamPickupAction(RobotAction, AttachBeamAction):
-    def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None):
-        # type: (str, int , int, str, str) -> None
+######################################
+# Actions for Picking and Placing Beam
+######################################
+
+class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
+        # type: (int, int, str, str, list[str]) -> None
+        """
+        Both `beam_id` and `additional_attached_objects` will be attached to the robot.
+        """
         RobotAction.__init__(self)
         AttachBeamAction.__init__(self, beam_id, gripper_id)
         self.seq_n = seq_n
         self.act_n = act_n
+        self.additional_attached_objects = additional_attached_objects
 
     def __str__(self):
         object_str = "Beam ('%s')" % (self.beam_id)
-        location_str = "Storage"
-        return "Pick %s from %s" % (object_str, location_str)
+        location_str = "PickupPoint"
+        return "Pick %s from %s using Gripper(%s)" % (object_str, location_str, self.gripper_id)
+
+    @property
+    def data(self):
+        data = super(PickBeamWithGripperAction, self).data
+        data['additional_attached_objects'] = self.additional_attached_objects
+        return data
+
+    @data.setter
+    def data(self, data):
+        super(PickBeamWithGripperAction, type(self)).data.fset(self, data)
+        self.additional_attached_objects = data.get('additional_attached_objects', [])
 
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
@@ -717,15 +736,44 @@ class BeamPickupAction(RobotAction, AttachBeamAction):
                                                     tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id),
                                                     target_configuration=process.pickup_station.beam_pickup_configuration))  # Tool Final Frame at structure
 
-        # Opeartor load beam into jaw of gripper
-        grasp_face = process.assembly.get_beam_attribute(self.beam_id, 'gripper_grasp_face')
-        beam_pickup_frame_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_pickup')
-        self.movements.append(OperatorLoadBeamMovement(self.beam_id, grasp_face, beam_pickup_frame_wcf))
-
         # Close Gripper and
-        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.gripper_id, self.beam_id,
-                                                   operator_stop_after="Confirm Beam Held",
+        self.movements.append(RoboticDigitalOutput(DigitalOutput.CloseGripper, self.gripper_id,
+                                                   attached_objects=[self.beam_id] + self.additional_attached_objects,
+                                                   operator_stop_before="Confirm Gripper Ready to close ",
+                                                   operator_stop_after="Confirm Grip OK",
                                                    tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
+        self.movements.append(RoboticLinearMovement(assembly_wcf_pickupretract.copy(), attached_tool_id=self.gripper_id,
+                                                    attached_beam_id=self.beam_id, speed_type='speed.transfer.caution',
+                                                    tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)))
+
+        # Assign Unique Movement IDs to all movements
+        self.assign_movement_ids()
+
+
+class PickBeamWithScrewdriverAction(PickBeamWithGripperAction):
+    """
+    - largely copied from `PickBeamWithGripperAction`
+    - the difference is the movements it creates is based on the retraction of the screwdriver
+    - there is no approach Movement because that is handled by `DockWithScrewdriverAction`
+    """
+
+    def __str__(self):
+        object_str = "Beam ('%s')" % (self.beam_id)
+        location_str = "PickupPoint"
+        return "Pick %s from %s using Screwdriver(%s)" % (object_str, location_str, self.gripper_id)
+
+    def create_movements(self, process):
+        # type: (RobotClampAssemblyProcess) -> None
+        """ Movement for picking Beam (with a tool) from Storage
+        """
+        self.movements = []
+        tool = process.tool(self.gripper_id)  # type: Clamp
+
+        assembly_wcf_pickupapproach = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_pickupapproach')
+        assembly_wcf_pickup = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_pickup')
+        assembly_wcf_pickupretract = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_pickupretract')
+        assert assembly_wcf_pickupapproach is not None and assembly_wcf_pickup is not None and assembly_wcf_pickupretract is not None
+
         self.movements.append(RoboticLinearMovement(assembly_wcf_pickupretract.copy(), attached_tool_id=self.gripper_id,
                                                     attached_beam_id=self.beam_id, speed_type='speed.transfer.caution',
                                                     tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)))
