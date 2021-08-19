@@ -1,7 +1,7 @@
 import os
 import time
 
-from compas.geometry.primitives.frame import Frame
+from compas.geometry import Frame, Transformation, multiply_matrices
 from compas_fab.robots import Configuration
 from compas_fab.robots.trajectory import JointTrajectory
 
@@ -144,14 +144,14 @@ class RoboticMovement(Movement):
 
     """
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before=None,
+    def __init__(self, target_frame=None, attached_objects=[], t_flange_from_attached_objects=[], planning_priority=0, operator_stop_before=None,
                  operator_stop_after=None, speed_type="", target_configuration=None, allowed_collision_matrix=[], tag=None, seed=None):
-        # type: (Frame, str, str, int, str, str, str, Configuration, list(tuple(str,str)), str, int) -> RoboticMovement
+        # type: (Frame, List[str], List[Transformation], int, str, str, str, Configuration, list(tuple(str,str)), str, int) -> RoboticMovement
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after,
                           planning_priority=planning_priority, tag=tag)
         self.target_frame = target_frame  # type: Frame
-        self.attached_tool_id = attached_tool_id  # type: Optional[str]
-        self.attached_beam_id = attached_beam_id  # type: Optional[str]
+        self.attached_objects = attached_objects  # type: List[str]
+        self.t_flange_from_attached_objects = t_flange_from_attached_objects  # type: List[Transformation]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
         self.path_from_link = None  # Optional[dictionary: robot link name[str] -> list(Frame)]
@@ -166,8 +166,8 @@ class RoboticMovement(Movement):
         """
         data = super(RoboticMovement, self).data
         data['target_frame'] = self.target_frame
-        data['attached_tool_id'] = self.attached_tool_id
-        data['attached_beam_id'] = self.attached_beam_id
+        data['attached_objects'] = self.attached_objects
+        data['t_flange_from_attached_objects'] = self.t_flange_from_attached_objects
         data['trajectory'] = self.trajectory
         data['path_from_link'] = self.path_from_link
         data['speed_type'] = self.speed_type
@@ -182,8 +182,8 @@ class RoboticMovement(Movement):
         """
         super(RoboticMovement, type(self)).data.fset(self, data)
         self.target_frame = data['target_frame']
-        self.attached_tool_id = data['attached_tool_id']
-        self.attached_beam_id = data['attached_beam_id']
+        self.attached_objects = data.get('attached_objects', [])
+        self.t_flange_from_attached_objects = data.get('t_flange_from_attached_objects', [])
         self.trajectory = data.get('trajectory', None)
         self.path_from_link = data.get('path_from_link', None)
         self.speed_type = data.get('speed_type', "")
@@ -211,23 +211,10 @@ class RoboticMovement(Movement):
         self.state_diff[('tool_changer', 'f')] = self.target_frame
 
         # Change attached tool location
-        if self.attached_tool_id is not None:
-            tool_id = self.attached_tool_id
-            # Using the Toolchanger to compute Tool Frame
-            process.robot_toolchanger.current_frame = self.target_frame
-            tool_base_frame = process.robot_toolchanger.current_tcf
-            self.state_diff[(tool_id, 'f')] = tool_base_frame
-
-            # Change beam location
-            if self.attached_beam_id is not None:
-                # Beam is attached to gripper
-                beam_id = self.attached_beam_id
-                # Find out `gripper tcp` and beam attribute `gripper_tcp_in_ocf`
-                tool = process.tool(tool_id)
-                tool.current_frame = tool_base_frame
-
-                beam_frame = process.get_beam_frame_from_gripper(beam_id, tool)
-                self.state_diff[(beam_id, 'f')] = beam_frame
+        for attached_object_id, t_flange_from_attached_object in zip(self.attached_objects, self.t_flange_from_attached_objects):
+            t_world_from_flange = Transformation.from_frame(self.target_frame)
+            object_frame = Frame.from_transformation(t_world_from_flange* t_flange_from_attached_object)
+            self.state_diff[(attached_object_id, 'f')] = object_frame
 
 
 ######################################
@@ -493,10 +480,10 @@ class ClampsJawMovement(Movement):
 
 class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="",
+    def __init__(self, target_frame=None, attached_objects=[], t_flange_from_attached_objects=[], jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="",
                  allowed_collision_matrix=[], tag=None):
         tag = tag or "Robot and Clamp Sync Move"
-        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority,
+        RoboticMovement.__init__(self, target_frame, attached_objects, t_flange_from_attached_objects, planning_priority=planning_priority,
                                  speed_type=speed_type, allowed_collision_matrix=allowed_collision_matrix, tag=tag)
         ClampsJawMovement.__init__(self, jaw_positions, clamp_ids,
                                    planning_priority=planning_priority, speed_type=speed_type, tag=tag)
