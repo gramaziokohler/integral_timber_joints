@@ -389,7 +389,7 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_pick_up_retract_frame_t0cf,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.retract.withtool',
             tag="Linear Retract after getting %s from storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm
@@ -447,7 +447,7 @@ class PickClampFromStorageAction(PickToolFromStorageAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_storage_retract_frame1_t0cf,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.retract.withtool',
             tag="Linear Retract 1 of 2 after getting %s from storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm
@@ -455,7 +455,7 @@ class PickClampFromStorageAction(PickToolFromStorageAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_storage_retract_frame2_t0cf,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.retract.withtool',
             tag="Linear Retract 2 of 2 after getting %s from storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm
@@ -504,7 +504,7 @@ class PlaceGripperToStorageAction(PlaceToolToStorageAction):
         self.movements.append(RoboticFreeMovement(
             target_frame=tool_pick_up_retract_frame_t0cf,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.transit.rapid',
             tag="Free Move to reach Storage Approach Frame of %s, to place tool in storage." % self._tool_string
         ))  # Tool Storage Approach
@@ -512,7 +512,7 @@ class PlaceGripperToStorageAction(PlaceToolToStorageAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_storage_frame_t0cf,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.approach.withtool',
             target_configuration=tool.tool_storage_configuration,
             tag="Linear Advance to Storage Frame of %s, to place tool in storage." % self._tool_string,
@@ -559,7 +559,7 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
         self.movements.append(RoboticFreeMovement(
             target_frame=tool_storage_approach_frame1_t0cf,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.transit.rapid',
             tag="Free Move reach Storage Approach Frame of %s, to place clamp in storage." % self._tool_string
         ))  # Tool Storage Approach
@@ -568,7 +568,7 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_storage_approach_frame2_t0cf,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.approach.withtool',
             tag="Linear Approach 1 of 2 to place %s in storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm
@@ -580,7 +580,7 @@ class PlaceClampToStorageAction(PlaceToolToStorageAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_storage_frame_t0cf,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.approach.withtool',
             target_configuration=tool.tool_storage_configuration,
             tag="Linear Approach 2 of 2 to place %s in storage." % self._tool_string,
@@ -630,7 +630,7 @@ class PlaceScrewdriverToStorageAction(PlaceToolToStorageAction):
         self.movements.append(RoboticFreeMovement(
             target_frame=tool_pick_up_retract_frame_t0cf.copy(),
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.transit.rapid',
             tag="Free Move to reach Storage Approach Frame of %s, to place tool in storage." % self._tool_string
         ))  # Tool Storage Approach
@@ -638,7 +638,7 @@ class PlaceScrewdriverToStorageAction(PlaceToolToStorageAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_storage_frame_t0cf.copy(),
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.approach.withtool',
             target_configuration=tool.tool_storage_configuration,
             tag="Linear Advance to Storage Frame of %s, to place tool in storage." % self._tool_string,
@@ -750,7 +750,7 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=clamp_wcf_detachretract1,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.retract.clamp_on_structure',
             tag="Linear Retract 1 of 2 to storage after picking up %s from structure." % self._tool_string,
             allowed_collision_matrix=acm
@@ -758,7 +758,7 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=clamp_wcf_detachretract2,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.retract.clamp_on_structure',
             tag="Linear Retract 2 of 2 to storage after picking up %s from structure." % self._tool_string,
             allowed_collision_matrix=acm
@@ -813,7 +813,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.movements.append(RoboticFreeMovement(
             target_frame=clamp_wcf_attachapproach1,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.transit.rapid',
             tag="Free Move to bring %s to structure." % self._tool_string
         ))  # Tool Approach Frame where tool is at structure
@@ -825,7 +825,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=clamp_wcf_attachapproach2,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.approach.clamp_on_structure',
             tag="Linear Approach 1 of 2 to attach %s to structure." % self._tool_string,
             allowed_collision_matrix=acm
@@ -833,7 +833,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=clamp_wcf_final,
             attached_objects=[self.tool_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.approach.clamp_on_structure',
             tag="Linear Approach 2 of 2 to attach %s to structure." % self._tool_string,
             allowed_collision_matrix=acm
@@ -912,7 +912,7 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
         self.movements.append(RoboticFreeMovement(
             target_frame=assembly_wcf_pickupapproach,
             attached_objects=[self.gripper_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.transit.rapid',
             tag="Free Move to reach Pickup Approach Frame of Beam ('%s')" % (self.beam_id)
         ))  # Tool Approach Frame where tool is at structure
@@ -924,7 +924,7 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_pickup,
             attached_objects=[self.gripper_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.gripper.approach',
             tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id),
             target_configuration=process.pickup_station.beam_pickup_configuration
@@ -942,7 +942,7 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
             target_frame=assembly_wcf_pickupretract,
             attached_objects=[self.gripper_id, self.beam_id],
             t_flange_from_attached_objects=[
-                toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf * t_gripper_tcf_from_beam
             ],
             speed_type='speed.transfer.caution',
@@ -983,7 +983,7 @@ class PickBeamWithScrewdriverAction(PickBeamWithGripperAction):
             target_frame=assembly_wcf_pickupretract,
             attached_objects=[self.gripper_id, self.beam_id],
             t_flange_from_attached_objects=[
-                toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf * t_gripper_tcf_from_beam
             ],
             speed_type='speed.transfer.caution',
@@ -1025,7 +1025,7 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
             target_frame=assembly_wcf_inclamp,
             attached_objects=[self.gripper_id, self.beam_id],
             t_flange_from_attached_objects=[
-                toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf * t_gripper_tcf_from_beam,
             ],
             speed_type='speed.transfer.rapid',
@@ -1042,7 +1042,7 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
             target_frame=assembly_wcf_final,
             attached_objects=[self.gripper_id, self.beam_id],
             t_flange_from_attached_objects=[
-                toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf * t_gripper_tcf_from_beam,
             ],
             planning_priority=1,
@@ -1061,7 +1061,7 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_finalretract,
             attached_objects=[self.gripper_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.gripper.retract',
             tag="Linear retract after placing Beam ('%s')" % self.beam_id,
         ))
@@ -1124,7 +1124,7 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
             target_frame=assembly_wcf_inclampapproach,
             attached_objects=[self.gripper_id, self.beam_id],
             t_flange_from_attached_objects=[
-                toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf * t_gripper_tcf_from_beam,
             ],
             speed_type='speed.transfer.rapid',
@@ -1137,7 +1137,7 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
             target_frame=assembly_wcf_inclamp.copy(),
             attached_objects=[self.gripper_id, self.beam_id],
             t_flange_from_attached_objects=[
-                toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf * t_gripper_tcf_from_beam,
             ],
             speed_type='speed.assembly.inclamp',
@@ -1163,7 +1163,7 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
             target_frame=target_frame,
             attached_objects=[self.gripper_id, self.beam_id],
             t_flange_from_attached_objects=[
-                toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf * t_gripper_tcf_from_beam,
             ],
             jaw_positions=jaw_positions,
@@ -1186,10 +1186,35 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_finalretract,
             attached_objects=[self.gripper_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.gripper.retract',
             tag="Linear retract after placing Beam ('%s')" % self.beam_id,
         ))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
+
+
+
+##################
+# Backward support
+##################
+class BackwardCompatibilityAction():
+
+    def __init__(self):
+        # type: () -> None
+        print("WARNING: Deprecated Action Class Used BeamPickupAction. Recompute Actions to fix.")
+
+    @property
+    def data(self):
+        data = {}
+
+    @data.setter
+    def data(self, data):
+        pass
+
+    @classmethod
+    def from_data(cls, data):
+        return cls()
+
+BeamPickupAction = BackwardCompatibilityAction
