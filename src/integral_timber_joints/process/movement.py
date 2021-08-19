@@ -334,9 +334,10 @@ class RoboticDigitalOutput(Movement):
     def __init__(self, digital_output=None, tool_id=None, attached_objects = [], operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
         # type: (DigitalOutput, str, list[str], str, str, str, int) -> RoboticDigitalOutput
         """ `tool_id` relates to the tool that is being operated.
-        `beam_id` should be filled in for Open or Close Gripper movements that
-        involved letting go or picking up a beam. This helps the state manage to figure
-        out which beam is picked up and attached or no longer attached.
+        `attached_objects` should be filled in for Open or Close Gripper movements that
+        involved letting go or picking up a beam or other objects.
+        This helps the state manage to figure
+        out what objects is picked up and attached or no longer attached.
 
         State Diff
         ----------
@@ -385,7 +386,6 @@ class RoboticDigitalOutput(Movement):
         data = super(RoboticDigitalOutput, self).data
         data['digital_output'] = self.digital_output
         data['tool_id'] = self.tool_id
-        data['beam_id'] = self.beam_id
         data['attached_objects'] = self.attached_objects
         return data
 
@@ -396,7 +396,6 @@ class RoboticDigitalOutput(Movement):
         super(RoboticDigitalOutput, type(self)).data.fset(self, data)
         self.digital_output = data['digital_output']
         self.tool_id = data.get('tool_id', None)
-        self.beam_id = data.get('beam_id', None)
         self.attached_objects = data.get('attached_objects', [])
 
     def create_state_diff(self, process, clear=True):
