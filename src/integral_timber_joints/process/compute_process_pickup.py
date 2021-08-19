@@ -302,7 +302,7 @@ def _compute_gripper_approach_vector_wcf_final(process, beam_id, verbose=False):
     gripper_type = process.assembly.get_beam_attribute(beam_id, 'gripper_type')
     assert gripper_type is not None
     gripper = process.get_one_gripper_by_type(gripper_type)
-    approach_vector_tcf = gripper.approach_vector.transformed(gripper.transformation_from_t0cf_to_tcf)
+    approach_vector_tcf = gripper.approach_vector.transformed(gripper.t_t0cf_from_tcf)
     if verbose:
         print("approach_vector_tcf = %s " % approach_vector_tcf)
 

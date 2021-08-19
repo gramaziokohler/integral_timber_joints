@@ -266,11 +266,11 @@ class Tool (ToolModel):
         return base_frame.copy()
 
     @property
-    def transformation_from_tcf_to_t0cf(self):
-        return self.transformation_from_t0cf_to_tcf.inverse()
+    def t_tcf_from_t0cf(self):
+        return self.t_t0cf_from_tcf.inverse()
 
     @property
-    def transformation_from_t0cf_to_tcf(self):
+    def t_t0cf_from_tcf(self):
         return Transformation.from_frame(self.tool_coordinate_frame)
 
     def tool_pick_up_frame_in_wcf(self, current_frame):

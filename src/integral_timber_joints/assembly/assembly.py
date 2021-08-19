@@ -18,6 +18,7 @@ from integral_timber_joints.geometry import Beamcut, Joint
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
 
+
 class BeamAssemblyMethod(object):
     """
     Values > GROUND_CONTACT imply assembly tools are used.
@@ -124,7 +125,7 @@ class Assembly(Network):
             'gripper_tcp_in_ocf': None,             # Gripper grasp pose expressed in TCP location relative to the OCF
             'design_guide_vector_grasp': Vector(1, 1, 1),      # Gripper grasp pose guide Vector (align with Z of TCP in WFC)
             'beam_cuts': None,                         # Beamcut objects at the start or end or anywhere on the beam. Can be empty
-            'assembly_method': BeamAssemblyMethod.UNDEFINED, # AssemblyMethod determine how individual beam is assembled.
+            'assembly_method': BeamAssemblyMethod.UNDEFINED,  # AssemblyMethod determine how individual beam is assembled.
             'actions': [],                         # List of high-level Assembly Actions
         })
         # Default attributes for joints (edge)
@@ -635,6 +636,26 @@ class Assembly(Network):
         # print(features)
         self.beam(beam_id).update_cached_mesh(features)
 
+    def get_t_gripper_tcf_from_beam(self, beam_id):
+        # type: (str) -> Transformation
+        """ Returns the transformation from `gripper_tcp` to `beam_ocf`
+
+        The grasp is retrived from beam attribute `gripper_tcp_in_ocf`
+
+        ### Credits:
+        YiJiang contributed this rather clear way of expressing everytihing in Transformation.
+        If one day we have time, we should all switch to this notation to be consistent with
+        robotics code community.
+
+        x_from_y, means Y expressed in the X's coordinate system
+        """
+        # Grasp
+        beam_ocf_from_gripper_tcp = Transformation.from_frame(self.get_beam_attribute(beam_id, "gripper_tcp_in_ocf"))
+
+        # gripper_inverse
+        gripper_tcp_from_beam = beam_ocf_from_gripper_tcp.inverse()
+        return gripper_tcp_from_beam
+
     def get_beam_transformaion_to(self, beam_id, attribute_name):
         # type: (str, str) -> Optional[Transformation]
         """ Get the transformation from the beam's assembly_wcf_final to a frame specified in attributes"""
@@ -656,7 +677,6 @@ class Assembly(Network):
         """
         sequence_i_of_beam = self.get_beam_sequence(beam_id)
         return [(beam_id, neighbor_id) for neighbor_id in self.get_already_built_neighbors(beam_id)]
-
 
     def get_already_built_beams(self, beam_id):
         # type: (str) -> list[str]
@@ -703,8 +723,8 @@ class Assembly(Network):
         """
         for joint_id in self.get_joints_of_beam_connected_to_already_built(beam_id):
             inverse_joint_id = (joint_id[1], joint_id[0])
-            print (self.get_assembly_method(beam_id))
-            print (BeamAssemblyMethod.screw_methods)
+            print(self.get_assembly_method(beam_id))
+            print(BeamAssemblyMethod.screw_methods)
             if self.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
                 # print("Screwing Joint %s, %s" % (joint_id, self.joint(joint_id)))
                 self.joint(joint_id).has_screw = True
@@ -716,7 +736,6 @@ class Assembly(Network):
                 # print("Notscrewing Joint %s, %s" % (joint_id, self.joint(joint_id)))
                 self.joint(joint_id).has_screw = False
                 self.joint(inverse_joint_id).has_screw = False
-
 
     # -------------------------------------
     # Computing joints and joint directions

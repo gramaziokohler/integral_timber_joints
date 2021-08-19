@@ -265,7 +265,7 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
         # * Action to retract the Screwdriver that was acting as gripper and place it to storage
         actions.append(RetractScrewdriverFromBeamAction(seq_n, 0, beam_id, joint_id, gripper_type, gripper_id))  # ! Todo
 
-        actions.append(PlaceScrewdriverToStorageAction(seq_n, 0, beam_id, joint_id, gripper_type, gripper_id))  # ! Todo
+        actions.append(PlaceScrewdriverToStorageAction(seq_n, 0, beam_id, joint_id, gripper_type, gripper_id))
 
     # * Actions to Detach Screwdriver from the Structure.
     for joint_id, tool_id in reversed(zip(joint_ids, tool_ids)):
@@ -277,12 +277,12 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
 
         # * Action to Dock with Screwdriver at Storage
-        actions.append(DockWithScrewdriverAction(seq_n, 0, joint_id, 'assembly_wcf_final', tool_type, tool_id)) # ! Todo
+        actions.append(DockWithScrewdriverAction(seq_n, 0, joint_id, 'assembly_wcf_final', tool_type, tool_id))  # ! Todo
 
         # * Action to retract Screwdriver and place it to storage
-        actions.append(RetractScrewdriverFromBeamAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id)) # ! Todo
+        actions.append(RetractScrewdriverFromBeamAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id))  # ! Todo
 
-        actions.append(PlaceScrewdriverToStorageAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id)) # ! Todo
+        actions.append(PlaceScrewdriverToStorageAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id))
 
     # Print out newly added actions and return
     if verbose:

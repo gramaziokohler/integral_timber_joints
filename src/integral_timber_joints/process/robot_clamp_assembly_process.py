@@ -697,30 +697,19 @@ class RobotClampAssemblyProcess(Data):
         return tool_changer.current_frame.copy()
 
     def get_beam_frame_from_gripper(self, beam_id, gripper):
+        # type: (str, Gripper) -> Frame
         """ Returns the beam frame (in WCF) from the position of a gripper.
         This is effectively the final step of the forward kinematics
 
         The grasp is retrived from beam attribute `gripper_tcp_in_ocf`
         The gripper.current_frame should be set to the intended location
 
-        ### Credits:
-        YiJiang contributed this rather clear way of expressing everytihing in Transformation.
-        If one day we have time, we should all switch to this notation to be consistent with
-        robotics code community.
-
-        x_from_y, means Y expressed in the X's coordinate system
         """
         # Gripper TCP expressed in world's coordinate
         world_from_gripper_tcp = Transformation.from_frame(gripper.current_tcf)
 
-        # Grasp
-        beam_ocf_from_gripper_tcp = Transformation.from_frame(self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf"))
-
-        # gripper_inverse
-        gripper_tcp_from_beam_ocf = beam_ocf_from_gripper_tcp.inverse()
-
         # Beam frame expressed in the world's coordinate
-        world_from_beam = world_from_gripper_tcp * gripper_tcp_from_beam_ocf
+        world_from_beam = world_from_gripper_tcp * self.assembly.get_t_gripper_tcf_from_beam(beam_id)
         return Frame.from_transformation(world_from_beam)
 
     def get_gripper_of_beam_at(self, beam_id, beam_position_name='assembly_wcf_final'):
