@@ -77,11 +77,11 @@ def create_actions_from_sequence(process, beam_id, verbose=False):
     """
     # * Dispatching which sub functions gets to do the action creation
     assembly_method = process.assembly.get_assembly_method(beam_id)
-    if len(process.assembly.get_joint_ids_with_tools_for_beam()) == 0:
+    if len(process.assembly.get_joint_ids_with_tools_for_beam(beam_id)) == 0:
         result = _create_actions_for_no_tools(process, beam_id, verbose)
     elif assembly_method == BeamAssemblyMethod.CLAMPED:
         result = _create_actions_for_clamped(process, beam_id, verbose)
-    elif assembly_method == BeamAssemblyMethod.CLAMPED:
+    elif assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER or assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         result = _create_actions_for_screwed(process, beam_id, verbose)
 
     # * Assign Actions Numbers
@@ -207,6 +207,10 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
     This is specific to the general action framework for a clamp and gripper assembly streategy.
     This is specific to a single robot / multiple clamp and gripper scenario.
     """
+
+    process.assembly.set_beam_attribute(beam_id, 'actions', [])
+    return ComputationalResult.ValidCanContinue
+
     assembly = process.assembly  # type: Assembly
     actions = []  # type: List[Action]
     assembly_method = process.assembly.get_assembly_method(beam_id)
@@ -589,17 +593,5 @@ def test_process_pathPlan(json_path_in, json_path_out):
 
 if __name__ == "__main__":
 
-    test_process_prepathplan(
-        "examples/process_design_example/frame_ortho_lap_joints_no_rfl_process.json",
-        "examples/process_design_example/frame_ortho_lap_joints_no_rfl_pathplan.json",
-    )
-
-    test_process_pathPlan(
-        "examples/process_design_example/frame_ortho_lap_joints_no_rfl_process.json",
-        "examples/process_design_example/frame_ortho_lap_joints_no_rfl_pathplan.json",
-    )
-    # Result Goal 1: Visualize action, movement, trajectory by visualizing scene objects and robots.
-
-    # Result Goal 2: Execute movements
 
     pass
