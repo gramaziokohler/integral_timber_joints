@@ -105,7 +105,7 @@ def print_current_state_info(process):
 
     # * Printing Previous Movement Info
     if prev_movement is not None:
-        print("- Prev Movement: %s" % (prev_movement.tag))
+        print("- Prev Movement: %s (%s)" % (prev_movement.tag, prev_movement.movement_id))
         if isinstance(prev_movement, RoboticMovement):
             if prev_movement.allowed_collision_matrix != []:
                 print("  - Prev Movement allowed_collision_matrix: %s" % prev_movement.allowed_collision_matrix)
@@ -123,7 +123,7 @@ def print_current_state_info(process):
 
     # * Printing Next Movement Info
     if next_movement is not None:
-        print("- Next Movement: %s" % (next_movement.tag))
+        print("- Next Movement: %s (%s)" % (next_movement.tag, next_movement.movement_id))
         if next_movement.operator_stop_before is not None:
             print("  - Operator Confirm: %s" % next_movement.operator_stop_before)
 
@@ -135,31 +135,39 @@ def ui_get_ik(process):
     """Retriving an IK solution for the current state.
     The actual call would be to get the IK solution of the ending state of the previous movement.
     """
+    # * Check against computing for initial state.
     artist = get_process_artist()
-    all_movements = process.movements
     state_id = artist.selected_state_id
-    print("-----------------------------------------------")
-
     if state_id == 0:
-        print("Warning - Cannot get IK solution for the initial state.")
+        print("Sorry - Cannot get IK solution for the initial state.")
         return
-    print("Computing IK Solution for this State.")
 
-    # Retrive prev and next movement for information print out
+    # * Check against computing for non Robotic Movements
+    all_movements = process.movements
     prev_movement = all_movements[state_id - 1]
-    scene = process.get_movement_end_scene(prev_movement)
-    # from integral_timber_joints.planning.rhino_interface import get_ik_solutions
+    if not isinstance(prev_movement, RoboticMovement):
+        print("Sorry - Cannot get IK solution for State after non Robotic Movement.")
+        return
+
+    # * Get Ik call to Yijiang's rhino_interface
+    print("-----------------------------------------------")
+    print("Computing IK :")
+
     from compas.rpc import Proxy
-    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface', capture_output=False)
+    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
     try:
-        result = rhino_interface.get_ik_solutions(process, state_id - 1)
-    except:
-        result = None
-    print("IK result: %s" % result)
+        success, conf, msg = rhino_interface.get_ik_solutions(process, state_id - 1)
+    except Exception as err_msg:
+        success, conf, msg = (False, None, err_msg)
+
+    if success:
+        print("IK Success: {} | {}".format(msg, conf))
+    else:
+        print("IK Failed: {} ".format(msg))
 
     # Draw Robot with IK results
-    if result is not None:
-        artist.draw_robot(result, True, True, True)
+    if success:
+        artist.draw_robot(conf, True, True, True)
 
     print("-----------------------------------------------")
 
