@@ -194,7 +194,11 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # convert to meter
                     flange_frame.point *= scale
                     object_frame.point *= scale
-                    robot_flange_from_tool = Transformation.from_frame_to_frame(object_frame, flange_frame)
+
+                    # * Derive transformation robot_flange_from_tool  for attachment
+                    t_world_object = Transformation.from_frame(object_frame)
+                    t_world_robot = Transformation.from_frame(flange_frame)
+                    robot_flange_from_tool = t_world_robot.inverse() * t_world_object
 
                     # * create attachments
                     wildcard = '^{}$'.format(object_id)
