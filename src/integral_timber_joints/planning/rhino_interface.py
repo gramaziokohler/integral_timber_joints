@@ -2,22 +2,24 @@ from itertools import product
 import pybullet_planning as pp
 from pybullet_planning.interfaces.env_manager.user_io import wait_if_gui
 
+from compas.robots import Configuration
+from compas_fab_pychoreo.conversions import pose_from_frame
+
+from integral_timber_joints.process import RoboticMovement
 from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
 from integral_timber_joints.planning.state import set_state, gantry_base_generator
-from integral_timber_joints.process import RoboticMovement
+from integral_timber_joints.planning.stream import _get_sample_bare_arm_ik_fn
 
 
 def get_ik_solutions(process, movement_index, options={}):
     # TODO how to recover the client and robot if one is running already?
     movement = process.movements[movement_index]
-
     if not isinstance(movement, RoboticMovement):
-        # print('{} not an robotic movement, return None'.format(movement.short_summary))
         return (False, None, 'Not an robotic movement')
 
     viewer = options.get('viewer', False)
     debug = options.get('debug', False)
-    reachable_range = options.get('reachable_range', (0.2, 2.8))
+    reachable_range = options.get('reachable_range', (0.0, 1.5))
     ik_gantry_attempts = options.get('ik_gantry_attempts', 500)
 
     # if not pp.is_connected():
@@ -48,20 +50,37 @@ def get_ik_solutions(process, movement_index, options={}):
             )
 
     # TODO use track ik or ikfast here
-    # sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
+    sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
+    gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+    gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
+
     conf = None
     success = False
     # * sample from a ball near the pose
+    # print(flange_frame)
+    # pp.draw_pose(pose_from_frame(flange_frame, scale=1))
+
     gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0)
-    with pp.HideOutput():
+    with pp.LockRenderer(False):
         for attempt, base_conf in zip(range(ik_gantry_attempts), gantry_base_gen_fn):
-            # TODO a more formal gantry_base_from_world_base
-            conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
-                                             options={'avoid_collisions': False})
-            if conf is not None and not client.check_collisions(robot, conf, options=options):
-                msg = 'IK found after {} attempts'.format(attempt)
-                success = True
-                break
+            # print(base_conf.joint_values)
+            # conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
+            #                                  options={'avoid_collisions': False})
+            # * bare-arm IK sampler
+            arm_conf_vals = sample_ik_fn(pose_from_frame(flange_frame, scale=1))
+            for ik_iter, arm_conf_val in enumerate(arm_conf_vals):
+                if arm_conf_val is None:
+                    continue
+                conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
+                    gantry_arm_joint_types, gantry_arm_joint_names)
+                # if debug:
+                #         client.set_robot_configuration(robot, conf)
+                #         print(conf.joint_values)
+                #         wait_if_gui('Sampled start conf')
+                if not client.check_collisions(robot, conf, options=options):
+                    msg = 'IK found after {} attempts'.format(attempt)
+                    success = True
+                    break
         else:
             msg = 'no attach conf found after {} attempts.'.format(ik_gantry_attempts)
 

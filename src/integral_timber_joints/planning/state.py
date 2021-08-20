@@ -47,12 +47,15 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
 
     gantry_base_from_world = pp.get_relative_pose(robot_uid,
         link_from_name(robot_uid, 'world'), link_from_name(robot_uid, 'x_rail'))
-    # gantry_base_from_world * world_from_flange = gantry_base_from_flange
+    # ? gantry_base_from_flange = gantry_base_from_world * world_from_flange
     gantry_base_from_flange = multiply(gantry_base_from_world, flange_pose)
     base_gen_fn = uniform_pose_generator(robot_uid, gantry_base_from_flange, reachable_range=reachable_range)
 
     while True:
         x, y, _ = next(base_gen_fn)
+        # x joint: lower="0.0" upper="37.206"
+        # y joint: lower="-9.65" upper="0.0"
+        y *= -1
         z, = gantry_z_sample_fn()
 
         gantry_xyz_vals = [x, y, z]
@@ -66,7 +69,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     """Set the pybullet client to a given scene state
     """
     options = options or {}
-    ik_gantry_attempts = options.get('ik_gantry_attempts') or 5000
     debug = options.get('debug', False)
     verbose = options.get('verbose', True)
     include_env = options.get('include_env', True)
