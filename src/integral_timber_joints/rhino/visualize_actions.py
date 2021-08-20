@@ -161,9 +161,9 @@ def ui_get_ik(process):
         success, conf, msg = (False, None, err_msg)
 
     if success:
-        print("IK Success: %s " % (conf))
+        print("IK Success: {} | {}".format(msg, conf))
     else:
-        print("IK Failed: %s" % msg)
+        print("IK Failed: {} | {}".format(msg))
 
     # Draw Robot with IK results
     if success:
