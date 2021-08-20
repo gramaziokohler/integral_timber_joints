@@ -121,11 +121,14 @@ class Movement(object):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
         """The create_state_diff() functions are are implemented within each of the Movement child class.
 
-        They record the changed state of objects in the scene.
-        For any changed state, the new state is recorded.
+        Create entry(s) to `state_diff` regarding object(s) that have changed
+        (`a` = attachment status,`f` = frame or `c` = configuration) during this movement.
 
-        It is implemented as a dictionary where key is Tuple (object_id, ['f', 'a', 'c']),
+        `self.state_diff` is implemented as a dictionary where key is Tuple (object_id, ['f', 'a', 'c']),
         value is Any[Frame, bool, Configuration]
+
+        `clear` can be set to `False` when multiple `create_state_diff()` are
+        being call by multi-inhereted child class.
         """
         raise NotImplementedError("Movement.create_state_diff() is not implemented by child class")
 
@@ -144,9 +147,25 @@ class RoboticMovement(Movement):
 
     """
 
-    def __init__(self, target_frame=None, attached_objects=[], t_flange_from_attached_objects=[], planning_priority=0, operator_stop_before=None,
-                 operator_stop_after=None, speed_type="", target_configuration=None, allowed_collision_matrix=[], tag=None, seed=None):
-        # type: (Frame, List[str], List[Transformation], int, str, str, str, Configuration, list(tuple(str,str)), str, int) -> RoboticMovement
+    def __init__(
+        self,
+        target_frame=None,  # type: Frame # Target of the Robotic Movement
+        attached_objects=[],  # type: List[str]
+        t_flange_from_attached_objects=[],  # type: List[Transformation]
+        planning_priority=0,  # type: int
+        operator_stop_before=None,  # type: str
+        operator_stop_after=None,  # type: str
+        speed_type="",  # type: str # A string linking to a setting
+        target_configuration=None,  # type: Optional[Configuration]
+        allowed_collision_matrix=[],  # type: list(tuple(str,str))
+        tag=None,  # type: str
+        seed=None  # type: int
+    ):
+        # type: (...) -> RoboticMovement
+        """
+        `speed_type` - a string linking to a speed setting in execution controller
+        """
+
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after,
                           planning_priority=planning_priority, tag=tag)
         self.target_frame = target_frame  # type: Frame
@@ -213,7 +232,7 @@ class RoboticMovement(Movement):
         # Change attached tool location
         for attached_object_id, t_flange_from_attached_object in zip(self.attached_objects, self.t_flange_from_attached_objects):
             t_world_from_flange = Transformation.from_frame(self.target_frame)
-            object_frame = Frame.from_transformation(t_world_from_flange* t_flange_from_attached_object)
+            object_frame = Frame.from_transformation(t_world_from_flange * t_flange_from_attached_object)
             self.state_diff[(attached_object_id, 'f')] = object_frame
 
 
@@ -316,7 +335,6 @@ class OperatorAttachToolMovement(Movement):
         self.state_diff[(self.tool_id, 'a')] = True
 
 
-
 class RoboticFreeMovement(RoboticMovement):
 
     def __str__(self):
@@ -331,7 +349,7 @@ class RoboticLinearMovement(RoboticMovement):
 
 class RoboticDigitalOutput(Movement):
 
-    def __init__(self, digital_output=None, tool_id=None, attached_objects = [], operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
+    def __init__(self, digital_output=None, tool_id=None, attached_objects=[], operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
         # type: (DigitalOutput, str, list[str], str, str, str, int) -> RoboticDigitalOutput
         """ `tool_id` relates to the tool that is being operated.
         `attached_objects` should be filled in for Open or Close Gripper movements that
@@ -430,6 +448,7 @@ class RoboticDigitalOutput(Movement):
             for object_id in self.attached_objects:
                 self.state_diff[(object_id, 'a')] = False
 
+
 class DigitalOutput(object):
     LockTool = 1
     UnlockTool = 2
@@ -507,3 +526,75 @@ class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
         RoboticMovement.create_state_diff(self, process, clear)
         ClampsJawMovement.create_state_diff(self, process, clear=False)
+
+
+class RobotScrewdriverSyncLinearMovement(RoboticMovement):
+    def __init__(
+            self,
+            target_frame=None,  # type: Frame
+            attached_objects=[],  # type: List[str]
+            t_flange_from_attached_objects=[],  # type: List[Transformation]
+            screw_positions=[],  # type: List[float]
+            screwdriver_ids=[],  # type: List[str]
+            planning_priority=1,  # type: int
+            speed_type="",  # type: str
+            allowed_collision_matrix=[],  # type: List[Tuple[str,str]]
+            tag=None  # type: str
+    ):
+        """Syncronized linear movement between screwdrivers and robot.
+
+        The `attached_objects` and `t_flange_from_attached_objects` lists should contain the
+        screwdriver_ids in the `screwdriver_ids`.
+
+        `screw_positions` are relative distances (mm) from the start of the movement.
+        Positive means tightening, negative means retracting.
+
+        State_diff
+        ----------
+        Robot Frame is updated
+        All the screwdriver's frame are updated
+        """
+
+        RoboticMovement.__init__(
+            self,
+            target_frame=target_frame,
+            attached_objects=attached_objects,
+            t_flange_from_attached_objects=t_flange_from_attached_objects,
+            planning_priority=planning_priority,
+            speed_type=speed_type,
+            allowed_collision_matrix=allowed_collision_matrix,
+            tag=tag or "Robot and Clamp Sync Move")
+        self.screw_positions = screw_positions
+        self.screwdriver_ids = screwdriver_ids
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(RobotScrewdriverSyncLinearMovement, self).data
+        data['screw_position'] = self.screw_positions
+        data['screwdriver_ids'] = self.screwdriver_ids
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(RobotScrewdriverSyncLinearMovement, type(self)).data.fset(self, data)
+        self.screw_positions = data.get('screw_positions', [])
+        self.screwdriver_ids = data.get('screwdriver_ids', [])
+
+    def __str__(self):
+        return "Robot-Screwdriver Linear Sync Move to %s. Screwdrivers %s Move by %s mm." % (self.target_frame, self.screwdriver_ids, self.screw_positions)
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        RoboticMovement.create_state_diff(self, process, clear)
+
+
+class AcquireDockingOffset(Movement):
+    pass
+
+
+class CancelRobotOffset(Movement):
+    pass
