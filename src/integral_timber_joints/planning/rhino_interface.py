@@ -19,8 +19,8 @@ def get_ik_solutions(process, movement_index, options={}):
 
     viewer = options.get('viewer', False)
     debug = options.get('debug', False)
-    reachable_range = options.get('reachable_range', (0.0, 1.5))
-    ik_gantry_attempts = options.get('ik_gantry_attempts', 500)
+    reachable_range = options.get('reachable_range', (0.2, 2.5))
+    ik_gantry_attempts = options.get('ik_gantry_attempts', 100)
 
     # if not pp.is_connected():
     # * Connect to path planning backend and initialize robot parameters
@@ -49,38 +49,44 @@ def get_ik_solutions(process, movement_index, options={}):
                 ((parent_body, None), (child_body, None))
             )
 
-    # TODO use track ik or ikfast here
+    # TODO use trac-ik  here
     sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
     gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
 
     conf = None
     success = False
-    # * sample from a ball near the pose
     # print(flange_frame)
     # pp.draw_pose(pose_from_frame(flange_frame, scale=1))
 
     gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0)
-    with pp.LockRenderer(False):
+    with pp.LockRenderer(not debug):
+        # * sample from a ball near the pose
         for attempt, base_conf in zip(range(ik_gantry_attempts), gantry_base_gen_fn):
-            # print(base_conf.joint_values)
-            # conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
-            #                                  options={'avoid_collisions': False})
-            # * bare-arm IK sampler
-            arm_conf_vals = sample_ik_fn(pose_from_frame(flange_frame, scale=1))
-            for ik_iter, arm_conf_val in enumerate(arm_conf_vals):
-                if arm_conf_val is None:
-                    continue
-                conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
-                    gantry_arm_joint_types, gantry_arm_joint_names)
-                # if debug:
-                #         client.set_robot_configuration(robot, conf)
-                #         print(conf.joint_values)
-                #         wait_if_gui('Sampled start conf')
-                if not client.check_collisions(robot, conf, options=options):
-                    msg = 'IK found after {} attempts'.format(attempt)
-                    success = True
+            # * pybullet gradient-based IK
+            conf = client.inverse_kinematics(robot, flange_frame, group=GANTRY_ARM_GROUP,
+                                             options={'avoid_collisions': True})
+            # conf = None
+            if not conf:
+                # * bare-arm IKfast sampler
+                arm_conf_vals = sample_ik_fn(pose_from_frame(flange_frame, scale=1))
+                # in total, 8 ik solutions for the 6-axis arm
+                for ik_iter, arm_conf_val in enumerate(arm_conf_vals):
+                    if arm_conf_val is None:
+                        continue
+                    conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
+                        gantry_arm_joint_types, gantry_arm_joint_names)
+                    if not client.check_collisions(robot, conf, options=options):
+                        msg = 'IK found with IKFast after {} gantry attempts - {} ik attempts'.format(attempt, ik_iter)
+                        success = True
+                        break
+                if success:
                     break
+            else:
+                # pb finds a solution
+                success = True
+                msg = 'IK found with pb-IK after {} gantry attempts'.format(attempt)
+                break
         else:
             msg = 'no attach conf found after {} attempts.'.format(ik_gantry_attempts)
 
