@@ -1,552 +1,736 @@
 pybullet build time: May  8 2021 05:58:46
 Process loaded from: nine_pieces_process.json (9 Beams). File last modified on 2021-08-18 12:20:24.179525.
+==========
 #0 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.731
+==========
 #1 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.690
+==========
 #4 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.688
+==========
 #5 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b0')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.721
+==========
 #7 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b0')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.782
+==========
 #10 (RoboticLinearMovement) Linear Retract after picking up Beam ('b0')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.705
+==========
 #11 (RoboticFreeMovement) Free Move to bring Beam ('b0') to final location
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.762
+==========
 #12 (RoboticLinearMovement) Linear Advance to Final Frame of Beam ('b0')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.781
+==========
 #14 (RoboticLinearMovement) Linear retract after placing Beam ('b0')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.706
+==========
 #15 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.691
+==========
 #16 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.735
+==========
 #19 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.702
+==========
 #20 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.681
+==========
 #21 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.696
+==========
 #24 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.753
+==========
 #25 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b1')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.688
+==========
 #27 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b1')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.701
+==========
 #30 (RoboticLinearMovement) Linear Retract after picking up Beam ('b1')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.684
+==========
 #31 (RoboticFreeMovement) Free Move to bring Beam ('b1') to final location
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.725
+==========
 #32 (RoboticLinearMovement) Linear Advance to Final Frame of Beam ('b1')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.690
+==========
 #34 (RoboticLinearMovement) Linear retract after placing Beam ('b1')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.679
+==========
 #35 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.735
+==========
 #36 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.679
+==========
 #39 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.716
+==========
 #40 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3M ('c3'), to get clamp.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.689
+==========
 #41 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3M ('c3'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.740
+==========
 #44 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3M ('c3') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.775
+==========
 #45 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3M ('c3') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.693
+==========
 #46 (RoboticFreeMovement) Free Move to bring CL3M ('c3') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.748
+==========
 #47 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3M ('c3') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.674
+==========
 #48 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3M ('c3') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.674
+==========
 #51 (RoboticLinearMovement) Linear Retract after attaching CL3M ('c3') on structure
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.669
+==========
 #52 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3M ('c4'), to get clamp.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.722
+==========
 #53 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3M ('c4'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 0 gantry attempts - 4 ik attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.668
+==========
 #56 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3M ('c4') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.699
+==========
 #57 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3M ('c4') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.796
+==========
 #58 (RoboticFreeMovement) Free Move to bring CL3M ('c4') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.692
+==========
 #59 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3M ('c4') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 1 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.755
+==========
 #60 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3M ('c4') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.702
+==========
 #63 (RoboticLinearMovement) Linear Retract after attaching CL3M ('c4') on structure
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 5 gantry attempts - 0 ik attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.682
+==========
 #64 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.677
+==========
 #65 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.735
+==========
 #68 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.707
+==========
 #69 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b2')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.707
+==========
 #71 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b2')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.730
+==========
 #74 (RoboticLinearMovement) Linear Retract after picking up Beam ('b2')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.681
+==========
 #75 (RoboticFreeMovement) Free Move to bring Beam ('b2') to approach clamps on structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.689
+==========
 #76 (RoboticLinearMovement) Linear Advance to bring Beam ('b2') into clamp jaws
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.690
+==========
 #78 (RoboticClampSyncLinearMovement) Robot and Clamps (['c3', 'c4']) syncronously move to clamp Beam ('b2')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.679
+==========
 #80 (RoboticLinearMovement) Linear retract after placing Beam ('b2')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 1 gantry attempts
+IK Success: IK found with pb-IK after 2/10 gantry attempts | total time 0.762
+==========
 #81 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.681
+==========
 #82 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.674
+==========
 #85 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.679
+==========
 #86 (RoboticFreeMovement) Free Move to reach CL3M ('c4') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.675
+==========
 #87 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3M ('c4') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.675
+==========
 #91 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3M ('c4') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.688
+==========
 #92 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3M ('c4') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 1 gantry attempts - 2 ik attempts
+IK Success: IK found with pb-IK after 2/10 gantry attempts | total time 0.763
+==========
 #93 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3M ('c4'), to place clamp in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.737
+==========
 #94 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3M ('c4') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.737
+==========
 #95 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3M ('c4') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.739
+==========
 #98 (RoboticLinearMovement) Linear Retract from storage after placing CL3M ('c4') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.700
+==========
 #99 (RoboticFreeMovement) Free Move to reach CL3M ('c3') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.679
+==========
 #100 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3M ('c3') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.673
+==========
 #104 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3M ('c3') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.679
+==========
 #105 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3M ('c3') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.678
+==========
 #106 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3M ('c3'), to place clamp in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.682
+==========
 #107 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3M ('c3') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.704
+==========
 #108 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3M ('c3') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.690
+==========
 #111 (RoboticLinearMovement) Linear Retract from storage after placing CL3M ('c3') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.685
+==========
 #112 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.695
+==========
 #113 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.680
+==========
 #116 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.683
+==========
 #117 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b5')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.730
+==========
 #119 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b5')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.739
+==========
 #122 (RoboticLinearMovement) Linear Retract after picking up Beam ('b5')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.668
+==========
 #123 (RoboticFreeMovement) Free Move to bring Beam ('b5') to final location
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.689
+==========
 #124 (RoboticLinearMovement) Linear Advance to Final Frame of Beam ('b5')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.686
+==========
 #126 (RoboticLinearMovement) Linear retract after placing Beam ('b5')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.681
+==========
 #127 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.683
+==========
 #128 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.685
+==========
 #131 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.705
+==========
 #132 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c1'), to get clamp.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.685
+==========
 #133 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3 ('c1'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.667
+==========
 #136 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3 ('c1') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.678
+==========
 #137 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3 ('c1') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.680
+==========
 #138 (RoboticFreeMovement) Free Move to bring CL3 ('c1') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with IKFast after 1/10 gantry attempts - 0 ik attempts / total 2 IKFast solutions | total time 0.774
+==========
 #139 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3 ('c1') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.805
+==========
 #140 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3 ('c1') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 1 gantry attempts
+IK Success: IK found with pb-IK after 3/10 gantry attempts | total time 1.428
+==========
 #143 (RoboticLinearMovement) Linear Retract after attaching CL3 ('c1') on structure
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 2 gantry attempts
+IK Success: IK found with pb-IK after 3/10 gantry attempts | total time 1.582
+==========
 #144 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c2'), to get clamp.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.753
+==========
 #145 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3 ('c2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.701
+==========
 #148 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3 ('c2') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.695
+==========
 #149 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3 ('c2') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 2/10 gantry attempts | total time 0.792
+==========
 #150 (RoboticFreeMovement) Free Move to bring CL3 ('c2') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 3 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.715
+==========
 #151 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3 ('c2') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.756
+==========
 #152 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3 ('c2') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.797
+==========
 #155 (RoboticLinearMovement) Linear Retract after attaching CL3 ('c2') on structure
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.703
+==========
 #156 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG500 ('g1'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.722
+==========
 #157 (RoboticLinearMovement) Linear Advance to Storage Frame of PG500 ('g1'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.685
+==========
 #160 (RoboticLinearMovement) Linear Retract after getting PG500 ('g1') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.722
+==========
 #161 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b6')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 3/10 gantry attempts | total time 1.399
+==========
 #163 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b6')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.719
+==========
 #166 (RoboticLinearMovement) Linear Retract after picking up Beam ('b6')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.702
+==========
 #167 (RoboticFreeMovement) Free Move to bring Beam ('b6') to approach clamps on structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.716
+==========
 #168 (RoboticLinearMovement) Linear Advance to bring Beam ('b6') into clamp jaws
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.727
+==========
 #170 (RoboticClampSyncLinearMovement) Robot and Clamps (['c1', 'c2']) syncronously move to clamp Beam ('b6')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.711
+==========
 #172 (RoboticLinearMovement) Linear retract after placing Beam ('b6')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.824
+==========
 #173 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG500 ('g1'), to place tool in storage.
 Reconnecting to an existing server proxy.
-- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+- - - WARNING - - - IK Failed: no IK solotion found after 10 gantry attempts | total time 3.218
+==========
 #174 (RoboticLinearMovement) Linear Advance to Storage Frame of PG500 ('g1'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.723
+==========
 #177 (RoboticLinearMovement) Linear Retract from storage after placing PG500 ('g1') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.731
+==========
 #178 (RoboticFreeMovement) Free Move to reach CL3 ('c2') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 1 gantry attempts
+IK Success: IK found with IKFast after 1/10 gantry attempts - 0 ik attempts / total 8 IKFast solutions | total time 0.736
+==========
 #179 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3 ('c2') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 4 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.740
+==========
 #183 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3 ('c2') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.737
+==========
 #184 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3 ('c2') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 0 gantry attempts - 0 ik attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.711
+==========
 #185 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c2'), to place clamp in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.717
+==========
 #186 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3 ('c2') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.759
+==========
 #187 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3 ('c2') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.715
+==========
 #190 (RoboticLinearMovement) Linear Retract from storage after placing CL3 ('c2') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.759
+==========
 #191 (RoboticFreeMovement) Free Move to reach CL3 ('c1') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with IKFast after 1/10 gantry attempts - 2 ik attempts / total 4 IKFast solutions | total time 0.934
+==========
 #192 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3 ('c1') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.739
+==========
 #196 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3 ('c1') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.718
+==========
 #197 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3 ('c1') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 0 gantry attempts - 0 ik attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.712
+==========
 #198 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c1'), to place clamp in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.719
+==========
 #199 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3 ('c1') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.721
+==========
 #200 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3 ('c1') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.717
+==========
 #203 (RoboticLinearMovement) Linear Retract from storage after placing CL3 ('c1') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.696
+==========
 #204 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.709
+==========
 #205 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.707
+==========
 #208 (RoboticLinearMovement) Linear Retract after getting PG1000 ('g2') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.709
+==========
 #209 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b7')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.715
+==========
 #211 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b7')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.712
+==========
 #214 (RoboticLinearMovement) Linear Retract after picking up Beam ('b7')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.710
+==========
 #215 (RoboticFreeMovement) Free Move to bring Beam ('b7') to final location
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.700
+==========
 #216 (RoboticLinearMovement) Linear Advance to Final Frame of Beam ('b7')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.716
+==========
 #218 (RoboticLinearMovement) Linear retract after placing Beam ('b7')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.765
+==========
 #219 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.777
+==========
 #220 (RoboticLinearMovement) Linear Advance to Storage Frame of PG1000 ('g2'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.711
+==========
 #223 (RoboticLinearMovement) Linear Retract from storage after placing PG1000 ('g2') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.705
+==========
 #224 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c1'), to get clamp.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.699
+==========
 #225 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3 ('c1'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.711
+==========
 #228 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3 ('c1') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.728
+==========
 #229 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3 ('c1') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.710
+==========
 #230 (RoboticFreeMovement) Free Move to bring CL3 ('c1') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.702
+==========
 #231 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3 ('c1') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.711
+==========
 #232 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3 ('c1') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with IKFast after 4/10 gantry attempts - 0 ik attempts / total 8 IKFast solutions | total time 1.155
+==========
 #235 (RoboticLinearMovement) Linear Retract after attaching CL3 ('c1') on structure
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 1 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.781
+==========
 #236 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c2'), to get clamp.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.727
+==========
 #237 (RoboticLinearMovement) Linear Advance to Storage Frame of CL3 ('c2'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.840
+==========
 #240 (RoboticLinearMovement) Linear Retract 1 of 2 after getting CL3 ('c2') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.804
+==========
 #241 (RoboticLinearMovement) Linear Retract 2 of 2 after getting CL3 ('c2') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.762
+==========
 #242 (RoboticFreeMovement) Free Move to bring CL3 ('c2') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 1 gantry attempts - 0 ik attempts
+IK Success: IK found with IKFast after 7/10 gantry attempts - 0 ik attempts / total 4 IKFast solutions | total time 1.828
+==========
 #243 (RoboticLinearMovement) Linear Approach 1 of 2 to attach CL3 ('c2') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 4 gantry attempts - 0 ik attempts
+IK Success: IK found with IKFast after 4/10 gantry attempts - 0 ik attempts / total 4 IKFast solutions | total time 1.481
+==========
 #244 (RoboticLinearMovement) Linear Approach 2 of 2 to attach CL3 ('c2') to structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 3 gantry attempts - 0 ik attempts
+IK Success: IK found with pb-IK after 2/10 gantry attempts | total time 1.093
+==========
 #247 (RoboticLinearMovement) Linear Retract after attaching CL3 ('c2') on structure
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 0 gantry attempts - 0 ik attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.752
+==========
 #248 (RoboticFreeMovement) Free Move reach Storage Approach Frame of PG500 ('g1'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.728
+==========
 #249 (RoboticLinearMovement) Linear Advance to Storage Frame of PG500 ('g1'), to get tool.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.786
+==========
 #252 (RoboticLinearMovement) Linear Retract after getting PG500 ('g1') from storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.765
+==========
 #253 (RoboticFreeMovement) Free Move to reach Pickup Approach Frame of Beam ('b8')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with IKFast after 1/10 gantry attempts - 0 ik attempts / total 8 IKFast solutions | total time 0.847
+==========
 #255 (RoboticLinearMovement) Linear Advance to Storage Frame of Beam ('b8')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.801
+==========
 #258 (RoboticLinearMovement) Linear Retract after picking up Beam ('b8')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.720
+==========
 #259 (RoboticFreeMovement) Free Move to bring Beam ('b8') to approach clamps on structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.713
+==========
 #260 (RoboticLinearMovement) Linear Advance to bring Beam ('b8') into clamp jaws
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 1 gantry attempts
+IK Success: IK found with pb-IK after 4/10 gantry attempts | total time 1.331
+==========
 #262 (RoboticClampSyncLinearMovement) Robot and Clamps (['c1', 'c2']) syncronously move to clamp Beam ('b8')
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 1 gantry attempts - 1 ik attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.762
+==========
 #264 (RoboticLinearMovement) Linear retract after placing Beam ('b8')
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 1 gantry attempts
+IK Success: IK found with IKFast after 1/10 gantry attempts - 1 ik attempts / total 4 IKFast solutions | total time 0.938
+==========
 #265 (RoboticFreeMovement) Free Move to reach Storage Approach Frame of PG500 ('g1'), to place tool in storage.
 Reconnecting to an existing server proxy.
-- - - WARNING - - - IK Failed: no attach conf found after 100 attempts.
+- - - WARNING - - - IK Failed: no IK solotion found after 10 gantry attempts | total time 4.011
+==========
 #266 (RoboticLinearMovement) Linear Advance to Storage Frame of PG500 ('g1'), to place tool in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.739
+==========
 #269 (RoboticLinearMovement) Linear Retract from storage after placing PG500 ('g1') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.740
+==========
 #270 (RoboticFreeMovement) Free Move to reach CL3 ('c2') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 1 gantry attempts - 2 ik attempts
+IK Success: IK found with IKFast after 1/10 gantry attempts - 0 ik attempts / total 4 IKFast solutions | total time 0.809
+==========
 #271 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3 ('c2') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 1 gantry attempts - 0 ik attempts
+IK Success: IK found with pb-IK after 9/10 gantry attempts | total time 1.900
+==========
 #275 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3 ('c2') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 0 gantry attempts - 0 ik attempts
+IK Success: IK found with IKFast after 4/10 gantry attempts - 0 ik attempts / total 4 IKFast solutions | total time 1.576
+==========
 #276 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3 ('c2') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with IKFast after 1 gantry attempts - 0 ik attempts
+IK Success: IK found with IKFast after 1/10 gantry attempts - 0 ik attempts / total 4 IKFast solutions | total time 1.477
+==========
 #277 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c2'), to place clamp in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.725
+==========
 #278 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3 ('c2') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.748
+==========
 #279 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3 ('c2') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.732
+==========
 #282 (RoboticLinearMovement) Linear Retract from storage after placing CL3 ('c2') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.706
+==========
 #283 (RoboticFreeMovement) Free Move to reach CL3 ('c1') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.723
+==========
 #284 (RoboticLinearMovement) Linear Advance to mate toolchanger of CL3 ('c1') to detach it from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.717
+==========
 #288 (RoboticLinearMovement) Linear Retract 1 of 2 to storage after picking up CL3 ('c1') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.790
+==========
 #289 (RoboticLinearMovement) Linear Retract 2 of 2 to storage after picking up CL3 ('c1') from structure.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.710
+==========
 #290 (RoboticFreeMovement) Free Move reach Storage Approach Frame of CL3 ('c1'), to place clamp in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.728
+==========
 #291 (RoboticLinearMovement) Linear Approach 1 of 2 to place CL3 ('c1') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.719
+==========
 #292 (RoboticLinearMovement) Linear Approach 2 of 2 to place CL3 ('c1') in storage.
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.728
+==========
 #295 (RoboticLinearMovement) Linear Retract from storage after placing CL3 ('c1') in storage
 Reconnecting to an existing server proxy.
-IK Success: IK found with pb-IK after 0 gantry attempts
+IK Success: IK found with pb-IK after 1/10 gantry attempts | total time 0.702
 Failed Movement Indices: [173, 265]
+Total checking time: 235.901

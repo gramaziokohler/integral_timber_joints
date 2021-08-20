@@ -74,7 +74,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
     frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL*1e3)
-    reachable_range = options.get('reachable_range') or (0.2, 2.8)
 
     # robot needed for creating attachments
     robot_uid = client.get_robot_pybullet_uid(robot)

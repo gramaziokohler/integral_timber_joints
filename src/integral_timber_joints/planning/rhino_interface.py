@@ -1,4 +1,6 @@
+import time
 from itertools import product
+from termcolor import cprint
 import pybullet_planning as pp
 from pybullet_planning.interfaces.env_manager.user_io import wait_if_gui
 
@@ -20,24 +22,25 @@ def get_ik_solutions(process, movement_index, options={}):
     viewer = options.get('viewer', False)
     debug = options.get('debug', False)
     reachable_range = options.get('reachable_range', (0.2, 2.5))
-    ik_gantry_attempts = options.get('ik_gantry_attempts', 100)
+    ik_gantry_attempts = options.get('ik_gantry_attempts', 10)
+
+    start_time = time.time()
 
     # if not pp.is_connected():
     # * Connect to path planning backend and initialize robot parameters
+    # ! initial state must be set to make robot R12 conf correct
     client, robot, _ = load_RFL_world(viewer=viewer)
     process.set_initial_state_robot_config(process.robot_initial_config)
     set_state(client, robot, process, process.initial_state, initialize=True,
-        options={'debug' : False, 'include_env' : True, 'reinit_tool' : False})
-
-    # start_scene = process.get_movement_start_scene(movement)
-    # set_state(client, robot, process, start_scene)
+        options={'include_env' : True, 'reinit_tool' : False})
 
     end_scene = process.get_movement_end_scene(movement)
     set_state(client, robot, process, end_scene)
 
     flange_frame = end_scene[('robot', 'f')].copy()
-    assert flange_frame is not None
-    # convert to meter
+    if flange_frame is None:
+        client.disconnect()
+        return (False, None, 'No robot target frame is specified in the end scene.')
     flange_frame.point *= 1e-3
 
     temp_name = '_tmp'
@@ -77,21 +80,27 @@ def get_ik_solutions(process, movement_index, options={}):
                     conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
                         gantry_arm_joint_types, gantry_arm_joint_names)
                     if not client.check_collisions(robot, conf, options=options):
-                        msg = 'IK found with IKFast after {} gantry attempts - {} ik attempts'.format(attempt, ik_iter)
+                        msg = 'IK found with IKFast after {}/{} gantry attempts - {} ik attempts / total {} IKFast solutions | total time {:.3f}'.format(
+                            attempt+1, ik_gantry_attempts, ik_iter, len(arm_conf_vals), pp.elapsed_time(start_time))
                         success = True
+                        # ! break the ikfast sol loop
                         break
                 if success:
+                    # ! break the gantry sampling loop
                     break
             else:
                 # pb finds a solution
                 success = True
-                msg = 'IK found with pb-IK after {} gantry attempts'.format(attempt)
+                msg = 'IK found with pb-IK after {}/{} gantry attempts | total time {:.3f}'.format(
+                    attempt+1, ik_gantry_attempts, pp.elapsed_time(start_time))
+                # ! break the gantry sampling loop
                 break
         else:
-            msg = 'no attach conf found after {} attempts.'.format(ik_gantry_attempts)
+            msg = 'no IK solotion found after {} gantry attempts | total time {:.3f}'.format(ik_gantry_attempts, pp.elapsed_time(start_time))
 
     if debug and success:
         client.set_robot_configuration(robot, conf)
+        cprint((success, conf.joint_values, msg), 'green' if success else 'red')
         wait_if_gui('Conf found!')
 
     if temp_name in client.extra_disabled_collision_links:
@@ -156,18 +165,21 @@ if __name__ == "__main__":
     # get_ik_no_proxy(process, scene_id, True)
     # get_ik_via_proxy(process, state_id)
 
+    start_time = time.time()
     all_movements = process.movements
     failed_indices = []
     for i in range(len(all_movements)):
         movement = all_movements[i]
         if isinstance(movement, RoboticMovement):
+            print('='*10)
             print ("#%i (%s) %s" % (i, movement.__class__.__name__, movement.tag))
-            options = {'ik_gantry_attempts':100}
+            options = {'ik_gantry_attempts':10}
             success, conf, msg = get_ik_via_proxy(process, i + 1, options)
             if success:
-                print ("IK Success: %s" % msg)
+                cprint ("IK Success: %s" % msg, 'green')
             else:
-                print ("- - - WARNING - - - IK Failed: %s" % msg)
+                cprint ("- - - WARNING - - - IK Failed: %s" % msg, 'red')
                 failed_indices.append(i)
 
     print("Failed Movement Indices: %s " % failed_indices)
+    print('Total checking time: {:.3f}'.format(pp.elapsed_time(start_time)))
