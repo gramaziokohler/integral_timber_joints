@@ -104,7 +104,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                             cprint('!!! Overwriting the current_frame {} by the given robot conf\'s FK {} | robot conf {}. Please confirm this.'.format(
                                 robot_frame.point, FK_tool_frame.point, robot_config.joint_values
                             ))
-                            wait_for_user()
+                            wait_if_gui()
                     scene[('robot', 'f')] = FK_tool_frame
 
             if initialize:
