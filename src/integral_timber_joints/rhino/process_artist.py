@@ -1053,8 +1053,7 @@ class ProcessArtist(object):
 
         # Clear old geometry
         guid_key = 'collision' if draw_collision else 'visual'
-        purge_objects(self._robot_guids[guid_key], redraw=False)
-        self._robot_guids[guid_key] = []
+        self.delete_robot(guid_key)
 
         # Redraw Robot
         rs.EnableRedraw(False)
@@ -1068,6 +1067,18 @@ class ProcessArtist(object):
         # Redraw
         if redraw:
             rs.EnableRedraw(True)
+
+    def delete_robot(self, guid_key=None, redraw=False):
+        # type: (str, bool) -> None
+        if guid_key is None:
+            guid_keys = ['collision' ,'visual']
+        else:
+            guid_keys = [guid_key]
+
+        for guid_key in guid_keys:
+            purge_objects(self._robot_guids[guid_key], redraw=False)
+            self._robot_guids[guid_key] = []
+
 
     def show_robot_collision(self, redraw=False):
         # type: (bool) -> None
@@ -1127,23 +1138,23 @@ class ProcessArtist(object):
             rs.EnableRedraw(True)
         return guids
 
-    def draw_state(self, state=None, redraw=True):
+    def draw_state(self, scene=None, redraw=True):
         # type: (SceneState, bool) -> None
         """Draw objects that relates to a specific object state dictionary.
 
         Please call delete_state() to erase previous geometry before calling this.
 
         """
-        if state is None:
+        if scene is None:
             # Limit range
             if self.selected_state_id < 0 : self.selected_state_id = 0
             if self.selected_state_id > len(self.process.movements): self.selected_state_id = len(self.process.movements)
 
             if self.selected_state_id == 0:
-                state = self.process.initial_state
+                scene = self.process.initial_state
             else:
                 # Note state_id = 1 is referring to end of the first (0) movement.
-                state = self.process.get_movement_end_scene(self.process.movements[self.selected_state_id - 1])
+                scene = self.process.get_movement_end_scene(self.process.movements[self.selected_state_id - 1])
 
         # Layer:
         rs.CurrentLayer(self.state_visualization_layer)
@@ -1155,18 +1166,18 @@ class ProcessArtist(object):
         # * Beams
         for beam_id in self.process.assembly.sequence:
             beam = self.process.assembly.beam(beam_id)
-            object_state = ObjectState(state[(beam_id, 'f')], state[(beam_id, 'a')], None)
+            object_state = ObjectState(scene[(beam_id, 'f')], scene[(beam_id, 'a')], None)
             meshes[beam_id] = beam.draw_state(object_state)
 
         # * Tools
         for tool_id in self.process.tool_ids:
             tool = self.process.tool(tool_id)
-            object_state = ObjectState(state[(tool_id, 'f')], state[(tool_id, 'a')], state[(tool_id, 'c')])
+            object_state = ObjectState(scene[(tool_id, 'f')], scene[(tool_id, 'a')], scene[(tool_id, 'c')])
             meshes[tool_id] = tool.draw_state(object_state)
 
         # * Tool Changer
         tool_changer_key = ('tool_changer', 'f')
-        object_state = ObjectState(state[tool_changer_key], True, None)
+        object_state = ObjectState(scene[tool_changer_key], True, None)
         meshes['tool_changer'] = self.process.robot_toolchanger.draw_state(object_state)
 
         # * Draw meshes to Rhinoand add guids to tracking dict
@@ -1176,8 +1187,17 @@ class ProcessArtist(object):
                 self.state_visualization_guids(object_id).extend(guids)
                 # Add a color to the objects that are attached-to-robot
                 attachment_key = (object_id, 'a')
-                if attachment_key in state and state[attachment_key]:
+                if attachment_key in scene and scene[attachment_key]:
                     meshes_apply_color(guids, (0.7, 1, 1, 1))
+
+        # * Draw Robot if state has robot config
+        # Drawing Robot Geometry in Rhino and GUIDs is not managed by the draw method above.
+        # It is directly managed by the draw_robot() function
+        if ('robot', 'c') in scene and scene[('robot', 'c')] is not None:
+            configuration = scene[('robot', 'c')]
+            self.draw_robot(configuration)
+        else:
+            self.delete_robot()
 
         # Enable Redraw
         if redraw:

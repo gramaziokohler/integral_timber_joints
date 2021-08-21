@@ -16,6 +16,16 @@ from integral_timber_joints.rhino.load import get_process, get_process_artist, p
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
 
+try:
+    from typing import Dict, List, Optional, Tuple, cast
+except:
+    pass
+
+def redraw_state(process):
+    artist = get_process_artist()
+    artist.delete_state(redraw=False)
+    artist.draw_state(redraw=True)  # Visualize the state
+    print_current_state_info(process)
 
 def ui_next_step(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -25,9 +35,7 @@ def ui_next_step(process):
 
     if artist.selected_state_id < len(all_movements):
         artist.selected_state_id += 1
-        artist.delete_state(redraw=False)
-        artist.draw_state(redraw=True)  # Visualize the state
-        print_current_state_info(process)
+        redraw_state(process)
 
 
 def ui_prev_step(process):
@@ -38,9 +46,7 @@ def ui_prev_step(process):
 
     if artist.selected_state_id > 0:
         artist.selected_state_id -= 1
-        artist.delete_state(redraw=False)
-        artist.draw_state(redraw=True)  # Visualize the state
-        print_current_state_info(process)
+        redraw_state(process)
 
 
 def ui_goto_state_by_beam_seq(process):
@@ -65,30 +71,28 @@ def ui_goto_state_by_beam_seq(process):
     # Select the start state of the first movement.
     mov_id = all_movements.index(selected_movement)
     artist.selected_state_id = mov_id
-    artist.delete_state(redraw=False)
-    artist.draw_state(redraw=True)  # Visualize the state
-    print_current_state_info(process)
+    redraw_state(process)
 
 
-def ui_goto_state_by_state_index(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def ui_goto_state_by_state_index(process, selected_state_id = None):
+    # type: (RobotClampAssemblyProcess, Optional[int]) -> None
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
     all_movements = process.movements
 
     # Ask use to chosse which beam (seq_id) to view
-    selected_state_id = rs.GetInteger("Which State to view, state_id = [0 to %i]" % (
-        len(all_movements)), 0, 0, len(all_movements))
-    if selected_state_id is None:
-        return
-    if selected_state_id > len(all_movements):
-        print("error: sequence_id must be between [0 to %i]" % (len(all_movements)))
+    if not selected_state_id:
+        selected_state_id = rs.GetInteger("Which State to view, state_id = [0 to %i]" % (
+            len(all_movements)), artist.selected_state_id, 0, len(all_movements))
+        if selected_state_id is None:
+            return
+        if selected_state_id > len(all_movements):
+            print("error: sequence_id must be between [0 to %i]" % (len(all_movements)))
+            return
 
     # Select the start state of the first movement.
     artist.selected_state_id = selected_state_id
-    artist.delete_state(redraw=False)
-    artist.draw_state(redraw=True)  # Visualize the state
-    print_current_state_info(process)
+    redraw_state(process)
 
 
 def print_current_state_info(process):
@@ -221,7 +225,7 @@ def show_menu(process):
 
     # Menu for user
     config = {
-        'message': "Visualize Actions and Movements:",
+        'message': "Choose Options or Type in State Number directly:",
         'options': [
             {'name': 'Finish', 'action': 'Exit'
              },
@@ -249,21 +253,28 @@ def show_menu(process):
         # Create Menu
         result = CommandMenu(config).select_action()
 
-        # User cancel command by Escape
-        if result is None or 'action' not in result:
+        def on_exit_ui():
             print('Exit Function')
             artist.hide_all_env_mesh()
             artist.hide_robot()
             show_interactive_beams_delete_state_vis()
             return Rhino.Commands.Result.Cancel
 
+        # User cancel command by Escape
+        if result is None:
+            return on_exit_ui()
+
+        # Shortcut to allow user to type in state directly
+        if isinstance(result, str):
+            if result.isnumeric():
+                ui_goto_state_by_state_index(process, int(result))
+                continue
+            else:
+                continue # CAtch other unknown input that are not numbers.
+
         # User click Exit Button
         if result['action'] == 'Exit':
-            print('Exit Function')
-            artist.hide_all_env_mesh()
-            artist.hide_robot()
-            show_interactive_beams_delete_state_vis()
-            return Rhino.Commands.Result.Cancel
+            return on_exit_ui()
 
         # Add the repeat options after the first loop
         if command_to_run is None:
