@@ -16,6 +16,16 @@ from integral_timber_joints.rhino.load import get_process, get_process_artist, p
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
 
+try:
+    from typing import Dict, List, Optional, Tuple, cast
+except:
+    pass
+
+def redraw_state(process):
+    artist = get_process_artist()
+    artist.delete_state(redraw=False)
+    artist.draw_state(redraw=True)  # Visualize the state
+    print_current_state_info(process)
 
 def ui_next_step(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -25,9 +35,7 @@ def ui_next_step(process):
 
     if artist.selected_state_id < len(all_movements):
         artist.selected_state_id += 1
-        artist.delete_state(redraw=False)
-        artist.draw_state(redraw=True)  # Visualize the state
-        print_current_state_info(process)
+        redraw_state(process)
 
 
 def ui_prev_step(process):
@@ -38,9 +46,7 @@ def ui_prev_step(process):
 
     if artist.selected_state_id > 0:
         artist.selected_state_id -= 1
-        artist.delete_state(redraw=False)
-        artist.draw_state(redraw=True)  # Visualize the state
-        print_current_state_info(process)
+        redraw_state(process)
 
 
 def ui_goto_state_by_beam_seq(process):
@@ -65,30 +71,28 @@ def ui_goto_state_by_beam_seq(process):
     # Select the start state of the first movement.
     mov_id = all_movements.index(selected_movement)
     artist.selected_state_id = mov_id
-    artist.delete_state(redraw=False)
-    artist.draw_state(redraw=True)  # Visualize the state
-    print_current_state_info(process)
+    redraw_state(process)
 
 
-def ui_goto_state_by_state_index(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def ui_goto_state_by_state_index(process, selected_state_id = None):
+    # type: (RobotClampAssemblyProcess, Optional[int]) -> None
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
     all_movements = process.movements
 
     # Ask use to chosse which beam (seq_id) to view
-    selected_state_id = rs.GetInteger("Which State to view, state_id = [0 to %i]" % (
-        len(all_movements)), 0, 0, len(all_movements))
-    if selected_state_id is None:
-        return
-    if selected_state_id > len(all_movements):
-        print("error: sequence_id must be between [0 to %i]" % (len(all_movements)))
+    if not selected_state_id:
+        selected_state_id = rs.GetInteger("Which State to view, state_id = [0 to %i]" % (
+            len(all_movements)), artist.selected_state_id, 0, len(all_movements))
+        if selected_state_id is None:
+            return
+        if selected_state_id > len(all_movements):
+            print("error: sequence_id must be between [0 to %i]" % (len(all_movements)))
+            return
 
     # Select the start state of the first movement.
     artist.selected_state_id = selected_state_id
-    artist.delete_state(redraw=False)
-    artist.draw_state(redraw=True)  # Visualize the state
-    print_current_state_info(process)
+    redraw_state(process)
 
 
 def print_current_state_info(process):
@@ -105,7 +109,7 @@ def print_current_state_info(process):
 
     # * Printing Previous Movement Info
     if prev_movement is not None:
-        print("- Prev Movement: %s" % (prev_movement.tag))
+        print("- Prev Movement: %s (%s)" % (prev_movement.tag, prev_movement.movement_id))
         if isinstance(prev_movement, RoboticMovement):
             if prev_movement.allowed_collision_matrix != []:
                 print("  - Prev Movement allowed_collision_matrix: %s" % prev_movement.allowed_collision_matrix)
@@ -123,7 +127,7 @@ def print_current_state_info(process):
 
     # * Printing Next Movement Info
     if next_movement is not None:
-        print("- Next Movement: %s" % (next_movement.tag))
+        print("- Next Movement: %s (%s)" % (next_movement.tag, next_movement.movement_id))
         if next_movement.operator_stop_before is not None:
             print("  - Operator Confirm: %s" % next_movement.operator_stop_before)
 
@@ -135,34 +139,60 @@ def ui_get_ik(process):
     """Retriving an IK solution for the current state.
     The actual call would be to get the IK solution of the ending state of the previous movement.
     """
+    # * Check against computing for initial state.
     artist = get_process_artist()
-    all_movements = process.movements
     state_id = artist.selected_state_id
-    print("-----------------------------------------------")
+    movement_id = state_id - 1
 
     if state_id == 0:
-        print("Warning - Cannot get IK solution for the initial state.")
+        print("Sorry - Cannot get IK solution for the initial state.")
         return
-    print("Computing IK Solution for this State.")
 
-    # Retrive prev and next movement for information print out
-    prev_movement = all_movements[state_id - 1]
-    scene = process.get_movement_end_scene(prev_movement)
-    # from integral_timber_joints.planning.rhino_interface import get_ik_solutions
+    # * Check against computing for non Robotic Movements
+    all_movements = process.movements
+    prev_movement = all_movements[movement_id]
+    if not isinstance(prev_movement, RoboticMovement):
+        print("Sorry - Cannot get IK solution for State after non Robotic Movement.")
+        return
+
+    # * Get Ik call to Yijiang's rhino_interface
+    print("-----------------------------------------------")
+    print("Computing IK :")
+
     from compas.rpc import Proxy
-    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface', capture_output=False)
+    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface', autoreload=False)
     try:
-        result = rhino_interface.get_ik_solutions(process, state_id - 1)
-    except:
-        result = None
-    print("IK result: %s" % result)
+        success, configuration, msg = rhino_interface.get_ik_solutions(process, movement_id)
+    except Exception as err_msg:
+        success, configuration, msg = (False, None, err_msg)
 
-    # Draw Robot with IK results
-    if result is not None:
-        artist.draw_robot(result, True, True, True)
+    if success:
+        print("IK Success: {} | {}".format(msg, configuration))
+        # Draw Robot with IK results
+        artist.draw_robot(configuration, True, True, True)
+        process.temp_ik[movement_id] = configuration
+
+    else:
+        print("IK Failed: {} ".format(msg))
 
     print("-----------------------------------------------")
 
+
+def ui_save_ik(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Retriving an IK solution for the current state.
+    The actual call would be to get the IK solution of the ending state of the previous movement.
+    """
+    artist = get_process_artist()
+    state_id = artist.selected_state_id
+    movement_id = state_id - 1
+
+    # * Save IK
+    all_movements = process.movements
+    prev_movement = all_movements[movement_id]
+    if movement_id in process.temp_ik and process.temp_ik[movement_id] is not None:
+        process.set_movement_end_robot_config(prev_movement, process.temp_ik[movement_id])
+        print("IK Saved at end of %s : %s" % (prev_movement.__class__.__name__, prev_movement.tag))
 
 def ui_show_env_meshes(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -180,6 +210,10 @@ def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
+
+    # Temporary storage of IK solution when using ui_get_ik and ui_save_ik
+    if not hasattr(process, 'temp_ik'):
+        process.temp_ik = {}
 
     # Check if all computatations are up to date.
     for beam_id in assembly.sequence:
@@ -211,55 +245,69 @@ def show_menu(process):
         rs.EnableRedraw(True)
         sc.doc.Views.Redraw()
 
-    # Menu for user
-    config = {
-        'message': "Visualize Actions and Movements:",
-        'options': [
-            {'name': 'Finish', 'action': 'Exit'
-             },
-            {'name': 'NextStep', 'action': ui_next_step
-             },
-            {'name': 'PrevStep', 'action': ui_prev_step
-             },
-            {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
-             },
-            {'name': 'GoToState', 'action': ui_goto_state_by_state_index
-             },
-            {'name': 'ShowEnv', 'action': ui_show_env_meshes
-             },
-            {'name': 'HideEnv', 'action': ui_hide_env_meshes
-             },
-            {'name': 'GetIK', 'action': ui_get_ik
-             },
-        ]
+    def construct_menu():
+        # Menu for user
+        artist = get_process_artist()
+        state_id = artist.selected_state_id
+        prev_movement_id = state_id - 1
+        menu = {
+            'message': "Choose Options or Type in State Number directly:",
+            'options': [
+                {'name': 'Finish', 'action': 'Exit'
+                },
+                {'name': 'NextStep', 'action': ui_next_step
+                },
+                {'name': 'PrevStep', 'action': ui_prev_step
+                },
+                {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
+                },
+                {'name': 'GoToState', 'action': ui_goto_state_by_state_index
+                },
+                {'name': 'ShowEnv', 'action': ui_show_env_meshes
+                },
+                {'name': 'HideEnv', 'action': ui_hide_env_meshes
+                },
+                {'name': 'GetIK', 'action': ui_get_ik
+                },
+            ]
+        }
+        # Add the repeat options when command_to_run is available
+        if command_to_run is not None:
+            menu['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
 
-    }
+        if prev_movement_id in process.temp_ik and process.temp_ik[prev_movement_id] is not None:
+            menu['options'].append({'name': 'SaveIK', 'action': ui_save_ik})
+
+        return menu
 
     command_to_run = None
     while (True):
 
         # Create Menu
-        result = CommandMenu(config).select_action()
+        result = CommandMenu(construct_menu()).select_action()
 
-        # User cancel command by Escape
-        if result is None or 'action' not in result:
+        def on_exit_ui():
             print('Exit Function')
             artist.hide_all_env_mesh()
             artist.hide_robot()
             show_interactive_beams_delete_state_vis()
             return Rhino.Commands.Result.Cancel
+
+        # User cancel command by Escape
+        if result is None:
+            return on_exit_ui()
+
+        # Shortcut to allow user to type in state directly
+        if isinstance(result, str):
+            if result.isnumeric():
+                ui_goto_state_by_state_index(process, int(result))
+                continue
+            else:
+                continue # CAtch other unknown input that are not numbers.
 
         # User click Exit Button
         if result['action'] == 'Exit':
-            print('Exit Function')
-            artist.hide_all_env_mesh()
-            artist.hide_robot()
-            show_interactive_beams_delete_state_vis()
-            return Rhino.Commands.Result.Cancel
-
-        # Add the repeat options after the first loop
-        if command_to_run is None:
-            config['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
+            return on_exit_ui()
 
         # Set command-to-run according to selection, else repeat previous command.
         if result['action'] != 'Repeat':

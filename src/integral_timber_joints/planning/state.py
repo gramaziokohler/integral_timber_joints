@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from pybullet_planning.interfaces.env_manager.pose_transformation import multiply
 from pybullet_planning.interfaces.env_manager.user_io import wait_if_gui
 from termcolor import cprint
 from copy import copy, deepcopy
@@ -43,20 +44,24 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
     gantry_z_joint = joint_from_name(robot_uid, sorted_gantry_joint_names[2])
 
     gantry_z_sample_fn = get_sample_fn(robot_uid, [gantry_z_joint], custom_limits={gantry_z_joint: GANTRY_Z_LIMIT})
-    base_gen_fn = uniform_pose_generator(robot_uid, flange_pose, reachable_range=reachable_range)
+
+    gantry_base_from_world = pp.get_relative_pose(robot_uid,
+        link_from_name(robot_uid, 'world'), link_from_name(robot_uid, 'x_rail'))
+    # ? gantry_base_from_flange = gantry_base_from_world * world_from_flange
+    gantry_base_from_flange = multiply(gantry_base_from_world, flange_pose)
+    base_gen_fn = uniform_pose_generator(robot_uid, gantry_base_from_flange, reachable_range=reachable_range)
 
     while True:
-        # TODO a more formal gantry_base_from_world_base
         x, y, _ = next(base_gen_fn)
+        # x joint: lower="0.0" upper="37.206"
+        # y joint: lower="-9.65" upper="0.0"
         y *= -1
         z, = gantry_z_sample_fn()
-        # TODO
-        # if spherical_sampling:
-        #     if np.linalg.norm():
 
         gantry_xyz_vals = [x, y, z]
         gantry_base_conf = Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names)
         client.set_robot_configuration(robot, gantry_base_conf)
+
         yield gantry_base_conf
 
 
@@ -64,25 +69,15 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     """Set the pybullet client to a given scene state
     """
     options = options or {}
-    ik_gantry_attempts = options.get('ik_gantry_attempts') or 5000
     debug = options.get('debug', False)
     verbose = options.get('verbose', True)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
     frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL*1e3)
-    reachable_range = options.get('reachable_range') or (0.2, 2.8)
 
     # robot needed for creating attachments
     robot_uid = client.get_robot_pybullet_uid(robot)
-    ik_base_link_name = robot.get_base_link_name(group=GANTRY_ARM_GROUP)
     flange_link_name = robot.get_end_effector_link_name(group=GANTRY_ARM_GROUP)
-
-    # from trac_ik_python.trac_ik import IK
-    # from integral_timber_joints.planning.stream import TRAC_IK_TOL, TRAC_IK_TIMEOUT, get_solve_trac_ik_info
-    # trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=flange_link_name,
-    #                     timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
-    #                     urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))
-    # trac_ikinfo = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
 
     with LockRenderer(not debug):
         # * Robot and Tool Changer
@@ -110,7 +105,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                             cprint('!!! Overwriting the current_frame {} by the given robot conf\'s FK {} | robot conf {}. Please confirm this.'.format(
                                 robot_frame.point, FK_tool_frame.point, robot_config.joint_values
                             ))
-                            wait_for_user()
+                            wait_if_gui()
                     scene[('robot', 'f')] = FK_tool_frame
 
             if initialize:
@@ -198,7 +193,11 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # convert to meter
                     flange_frame.point *= scale
                     object_frame.point *= scale
-                    robot_flange_from_tool = Transformation.from_frame_to_frame(flange_frame, object_frame)
+
+                    # * Derive transformation robot_flange_from_tool  for attachment
+                    t_world_object = Transformation.from_frame(object_frame)
+                    t_world_robot = Transformation.from_frame(flange_frame)
+                    robot_flange_from_tool = t_world_robot.inverse() * t_world_object
 
                     # * create attachments
                     wildcard = '^{}$'.format(object_id)
