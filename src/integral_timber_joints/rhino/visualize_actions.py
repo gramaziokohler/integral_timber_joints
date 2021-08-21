@@ -142,13 +142,15 @@ def ui_get_ik(process):
     # * Check against computing for initial state.
     artist = get_process_artist()
     state_id = artist.selected_state_id
+    movement_id = state_id - 1
+
     if state_id == 0:
         print("Sorry - Cannot get IK solution for the initial state.")
         return
 
     # * Check against computing for non Robotic Movements
     all_movements = process.movements
-    prev_movement = all_movements[state_id - 1]
+    prev_movement = all_movements[movement_id]
     if not isinstance(prev_movement, RoboticMovement):
         print("Sorry - Cannot get IK solution for State after non Robotic Movement.")
         return
@@ -160,21 +162,37 @@ def ui_get_ik(process):
     from compas.rpc import Proxy
     rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface', autoreload=False)
     try:
-        success, conf, msg = rhino_interface.get_ik_solutions(process, state_id - 1)
+        success, configuration, msg = rhino_interface.get_ik_solutions(process, movement_id)
     except Exception as err_msg:
-        success, conf, msg = (False, None, err_msg)
+        success, configuration, msg = (False, None, err_msg)
 
     if success:
-        print("IK Success: {} | {}".format(msg, conf))
+        print("IK Success: {} | {}".format(msg, configuration))
+        # Draw Robot with IK results
+        artist.draw_robot(configuration, True, True, True)
+        process.temp_ik[movement_id] = configuration
+
     else:
         print("IK Failed: {} ".format(msg))
 
-    # Draw Robot with IK results
-    if success:
-        artist.draw_robot(conf, True, True, True)
-
     print("-----------------------------------------------")
 
+
+def ui_save_ik(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Retriving an IK solution for the current state.
+    The actual call would be to get the IK solution of the ending state of the previous movement.
+    """
+    artist = get_process_artist()
+    state_id = artist.selected_state_id
+    movement_id = state_id - 1
+
+    # * Save IK
+    all_movements = process.movements
+    prev_movement = all_movements[movement_id]
+    if movement_id in process.temp_ik and process.temp_ik[movement_id] is not None:
+        process.set_movement_end_robot_config(prev_movement, process.temp_ik[movement_id])
+        print("IK Saved at end of %s : %s" % (prev_movement.__class__.__name__, prev_movement.tag))
 
 def ui_show_env_meshes(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -192,6 +210,10 @@ def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
+
+    # Temporary storage of IK solution when using ui_get_ik and ui_save_ik
+    if not hasattr(process, 'temp_ik'):
+        process.temp_ik = {}
 
     # Check if all computatations are up to date.
     for beam_id in assembly.sequence:
@@ -223,35 +245,46 @@ def show_menu(process):
         rs.EnableRedraw(True)
         sc.doc.Views.Redraw()
 
-    # Menu for user
-    config = {
-        'message': "Choose Options or Type in State Number directly:",
-        'options': [
-            {'name': 'Finish', 'action': 'Exit'
-             },
-            {'name': 'NextStep', 'action': ui_next_step
-             },
-            {'name': 'PrevStep', 'action': ui_prev_step
-             },
-            {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
-             },
-            {'name': 'GoToState', 'action': ui_goto_state_by_state_index
-             },
-            {'name': 'ShowEnv', 'action': ui_show_env_meshes
-             },
-            {'name': 'HideEnv', 'action': ui_hide_env_meshes
-             },
-            {'name': 'GetIK', 'action': ui_get_ik
-             },
-        ]
+    def construct_menu():
+        # Menu for user
+        artist = get_process_artist()
+        state_id = artist.selected_state_id
+        prev_movement_id = state_id - 1
+        menu = {
+            'message': "Choose Options or Type in State Number directly:",
+            'options': [
+                {'name': 'Finish', 'action': 'Exit'
+                },
+                {'name': 'NextStep', 'action': ui_next_step
+                },
+                {'name': 'PrevStep', 'action': ui_prev_step
+                },
+                {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
+                },
+                {'name': 'GoToState', 'action': ui_goto_state_by_state_index
+                },
+                {'name': 'ShowEnv', 'action': ui_show_env_meshes
+                },
+                {'name': 'HideEnv', 'action': ui_hide_env_meshes
+                },
+                {'name': 'GetIK', 'action': ui_get_ik
+                },
+            ]
+        }
+        # Add the repeat options when command_to_run is available
+        if command_to_run is not None:
+            menu['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
 
-    }
+        if prev_movement_id in process.temp_ik and process.temp_ik[prev_movement_id] is not None:
+            menu['options'].append({'name': 'SaveIK', 'action': ui_save_ik})
+
+        return menu
 
     command_to_run = None
     while (True):
 
         # Create Menu
-        result = CommandMenu(config).select_action()
+        result = CommandMenu(construct_menu()).select_action()
 
         def on_exit_ui():
             print('Exit Function')
@@ -275,10 +308,6 @@ def show_menu(process):
         # User click Exit Button
         if result['action'] == 'Exit':
             return on_exit_ui()
-
-        # Add the repeat options after the first loop
-        if command_to_run is None:
-            config['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
 
         # Set command-to-run according to selection, else repeat previous command.
         if result['action'] != 'Repeat':
