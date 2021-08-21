@@ -154,7 +154,7 @@ def ui_get_ik(process):
     print("Computing IK :")
 
     from compas.rpc import Proxy
-    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
+    rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface', autoreload=False)
     try:
         success, conf, msg = rhino_interface.get_ik_solutions(process, state_id - 1)
     except Exception as err_msg:
