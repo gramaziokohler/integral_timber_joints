@@ -16,7 +16,7 @@ class RobotWrist (ToolChanger):
                  ):
 
         # Call Tool init
-        super(RobotWrist, self).__init__(name, Frame.worldXY(), collision_mesh, type_name)
+        super(RobotWrist, self).__init__(name, Frame.worldXY(), None, collision_mesh, type_name)
 
     @property
     def root_link_name(self):
