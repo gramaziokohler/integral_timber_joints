@@ -78,16 +78,16 @@ def compute_screwdriver_positions(process, beam_id):
         f_assembled_attached = tool.current_frame
         assembly.set_joint_attribute(joint_id, 'screwdriver_assembled_attached', f_assembled_attached)
 
-        # * screwdriver_assembled_detached
+        # * screwdriver_assembled_retracted
         # Moving tool backwards along tool.detachretract_vector.
         f_assembled_detached = f_assembled_attached.transformed(Translation.from_vector(detachretract_vector_wcf))
-        assembly.set_joint_attribute(joint_id, 'screwdriver_assembled_detached', f_assembled_detached)
+        assembly.set_joint_attribute(joint_id, 'screwdriver_assembled_retracted', f_assembled_detached)
 
-        # * screwdriver_assembled_retracted
+        # * screwdriver_assembled_retractedfurther
         # Moving tool backwards along tool.detachretract_vector + a little more distance
         detachretracted_vector_wcf = detachretract_vector_wcf.unitized().scaled(SCREWDRIVER_APPROACH_AMOUNT + detachretract_vector_wcf.length)
         f_assembled_retracted = f_assembled_attached.transformed(Translation.from_vector(detachretracted_vector_wcf))
-        assembly.set_joint_attribute(joint_id, 'screwdriver_assembled_retracted', f_assembled_retracted)
+        assembly.set_joint_attribute(joint_id, 'screwdriver_assembled_retractedfurther', f_assembled_retracted)
 
         # * screwdriver_assemblebegin_attached
         # Moving tool backwards along reversed tool.approach_vector.
@@ -103,7 +103,7 @@ def compute_screwdriver_positions(process, beam_id):
         # Calculation of Tool Positions in pickup area
         # -------------------------------------------------------------
 
-        # * screwdriver_assembled_detached
+        # * screwdriver_assembled_retracted
         # Moving tool backwards along tool.detachretract_vector.
         f_pickup_attached = f_assembled_attached.transformed(process.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_pickup'))
         assembly.set_joint_attribute(joint_id, 'screwdriver_pickup_attached', f_pickup_attached)

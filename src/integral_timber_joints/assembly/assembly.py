@@ -142,8 +142,8 @@ class Assembly(Network):
             'screwdriver_assembleapproach_attached': None,   # Screwdriver position when beam = assemble approach, tool = attached.
             'screwdriver_assemblebegin_attached': None,   # Screwdriver position when beam = assemble approach, tool = attached.
             'screwdriver_assembled_attached': None,   # Screwdriver position when beam = assembled, tool = attached.
-            'screwdriver_assembled_detached': None,   # Screwdriver position when beam = assembled, tool = retracted from beam.
-            'screwdriver_assembled_retracted': None,   # Screwdriver position when beam = assembled, tool = retractedfurther from beam.
+            'screwdriver_assembled_retracted': None,   # Screwdriver position when beam = assembled, tool = retracted from beam.
+            'screwdriver_assembled_retractedfurther': None,   # Screwdriver position when beam = assembled, tool = retractedfurther from beam.
 
             'tool_type': None,
             'tool_id': None,

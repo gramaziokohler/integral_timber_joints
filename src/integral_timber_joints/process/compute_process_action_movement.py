@@ -208,8 +208,8 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
     This is specific to a single robot / multiple clamp and gripper scenario.
     """
 
-    process.assembly.set_beam_attribute(beam_id, 'actions', [])
-    return ComputationalResult.ValidCanContinue
+    # process.assembly.set_beam_attribute(beam_id, 'actions', [])
+    # return ComputationalResult.ValidCanContinue
 
     assembly = process.assembly  # type: Assembly
     actions = []  # type: List[Action]
