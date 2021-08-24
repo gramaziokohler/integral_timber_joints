@@ -236,13 +236,13 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                         tool_count = 0
                         for tool_id in process.tool_ids:
                             if scene[tool_id, 'a']:
-                                extra_disabled_bodies = client._get_bodies('^{}$'.format(tool_id))
+                                extra_disabled_bodies.extend(client._get_bodies('^{}$'.format(tool_id)))
                                 tool_count += 1
                         assert tool_count > 0, 'At least one tool should be attached to the robot when the beam is attached.'
 
                     elif object_id in process.tool_ids:
                         # tool_changer and a tool
-                        extra_disabled_bodies = client._get_bodies('^{}$'.format('tool_changer'))
+                        extra_disabled_bodies.extend(client._get_bodies('^{}$'.format('tool_changer')))
 
                     for name in collision_object_names:
                         at_bodies = client._get_attached_bodies('^{}$'.format(name))
