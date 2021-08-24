@@ -1332,9 +1332,10 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             tag="Free Move to bring Beam ('%s') to assemble_approach position on structure." % self.beam_id
         ))
 
-        acm = [(self.beam_id, tool_id) for tool_id in self.screwdriver_ids]  # Between beam and all screwdrivers
-
         # Slow linear movement to the `assembly_wcf_assemblebegin`
+        neighbour_beam_ids = [joint_id[0] for joint_id in self.joint_ids]
+        acm = [(nbr_id, tool_id) for tool_id, nbr_id in zip(self.screwdriver_ids, neighbour_beam_ids)]  # Between beam and all screwdrivers
+
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_assemblebegin,
             attached_objects=[self.gripper_id, self.beam_id] + self.screwdriver_ids_without_gripper,
