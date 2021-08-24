@@ -81,14 +81,16 @@ def ui_goto_state_by_state_index(process, selected_state_id = None):
     all_movements = process.movements
 
     # Ask use to chosse which beam (seq_id) to view
-    if not selected_state_id:
+    if selected_state_id is None:
         selected_state_id = rs.GetInteger("Which State to view, state_id = [0 to %i]" % (
             len(all_movements)), artist.selected_state_id, 0, len(all_movements))
         if selected_state_id is None:
             return
-        if selected_state_id > len(all_movements):
-            print("error: sequence_id must be between [0 to %i]" % (len(all_movements)))
-            return
+
+    # Check if entry is within bound
+    if selected_state_id > len(all_movements):
+        print("error: sequence_id must be between [0 to %i]" % (len(all_movements)))
+        return
 
     # Select the start state of the first movement.
     artist.selected_state_id = selected_state_id
@@ -109,7 +111,8 @@ def print_current_state_info(process):
 
     # * Printing Previous Movement Info
     if prev_movement is not None:
-        print("- Prev Movement: %s (%s)" % (prev_movement.tag, prev_movement.movement_id))
+        action = process.get_action_of_movement(prev_movement)
+        print("- Prev Movement: %s (%s) (A:%s M:%s)" % (prev_movement.tag, prev_movement.movement_id, action.__class__.__name__, prev_movement.__class__.__name__))
         if isinstance(prev_movement, RoboticMovement):
             if prev_movement.allowed_collision_matrix != []:
                 print("  - Prev Movement allowed_collision_matrix: %s" % prev_movement.allowed_collision_matrix)
@@ -127,7 +130,8 @@ def print_current_state_info(process):
 
     # * Printing Next Movement Info
     if next_movement is not None:
-        print("- Next Movement: %s (%s)" % (next_movement.tag, next_movement.movement_id))
+        action = process.get_action_of_movement(next_movement)
+        print("- Next Movement: %s (%s) (A:%s M:%s)" % (next_movement.tag, next_movement.movement_id, action.__class__.__name__, next_movement.__class__.__name__))
         if next_movement.operator_stop_before is not None:
             print("  - Operator Confirm: %s" % next_movement.operator_stop_before)
 
