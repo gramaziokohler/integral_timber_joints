@@ -881,6 +881,10 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
         # type: (int, int, str, str, list[str]) -> None
         """
+
+        This Action can be used for picking up beams with or without flying tools.
+        `additional_attached_objects` can only be screwdriver_id
+
         Both `beam_id` and `additional_attached_objects` will be attached to the robot.
         """
         RobotAction.__init__(self)
@@ -910,7 +914,7 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
         """ Movement for picking Beam (with a tool) from Storage
         """
         self.movements = []
-        tool = process.tool(self.gripper_id)  # type: Clamp
+        gripper = process.tool(self.gripper_id)  # type: Clamp
         toolchanger = process.robot_toolchanger
 
         assembly_wcf_pickupapproach = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_pickupapproach')
@@ -949,13 +953,29 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
             operator_stop_before="Confirm Gripper Ready to close ",
             operator_stop_after="Confirm Grip OK",
             tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
+
+        # Compute Attached Screwdrives transformations
+
+        gripper = process.get_gripper_of_beam(self.beam_id)
+        attached_screwdrivers_id = []
+        t_flange_from_attached_screwdrivers = []
+        for joint_id in process.assembly.get_joint_ids_with_tools_for_beam(self.beam_id):
+            screwdriver = process.get_tool_of_joint(joint_id)
+            if screwdriver.name in self.additional_attached_objects:
+                attached_screwdrivers_id.append(screwdriver.name)
+
+                f_world_screwdriver_base = screwdriver.current_frame
+                f_world_gripper_base = process.get_gripper_of_beam(self.beam_id, 'assembly_wcf_final').current_frame
+                t_gripper_base_from_world = Transformation.from_frame(f_world_gripper_base).inverse()
+                t_flange_from_attached_screwdrivers.append(toolchanger.t_t0cf_from_tcf * t_gripper_base_from_world * Transformation.from_frame(f_world_screwdriver_base))
+
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_pickupretract,
-            attached_objects=[self.gripper_id, self.beam_id],
+            attached_objects=[self.gripper_id, self.beam_id] + attached_screwdrivers_id,
             t_flange_from_attached_objects=[
                 toolchanger.t_t0cf_from_tcf,
-                toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf * t_gripper_tcf_from_beam
-            ],
+                toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+            ] + t_flange_from_attached_screwdrivers,
             speed_type='speed.transfer.caution',
             tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)
         ))
@@ -991,13 +1011,26 @@ class PickBeamWithScrewdriverAction(PickBeamWithGripperAction):
         assert assembly_wcf_pickupretract is not None
         t_gripper_tcf_from_beam = process.assembly.get_t_gripper_tcf_from_beam(self.beam_id)
 
+        # Compute Attached Screwdrives transformations (not including self.gripper_id)
+        flying_screwdrivers_id = []
+        t_flange_from_attached_screwdrivers = []
+        for joint_id in process.assembly.get_joint_ids_with_tools_for_beam(self.beam_id):
+            screwdriver = process.get_tool_of_joint(joint_id)
+            if screwdriver.name in self.additional_attached_objects and screwdriver.name != self.gripper_id:
+                flying_screwdrivers_id.append(screwdriver.name)
+
+                f_world_screwdriver_base = screwdriver.current_frame
+                f_world_gripper_base = process.get_gripper_of_beam(self.beam_id, 'assembly_wcf_final').current_frame
+                t_gripper_base_from_world = Transformation.from_frame(f_world_gripper_base).inverse()
+                t_flange_from_attached_screwdrivers.append(toolchanger.t_t0cf_from_tcf * t_gripper_base_from_world * Transformation.from_frame(f_world_screwdriver_base))
+
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_pickupretract,
-            attached_objects=[self.gripper_id, self.beam_id],
+            attached_objects=[self.gripper_id, self.beam_id] + flying_screwdrivers_id,
             t_flange_from_attached_objects=[
                 toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * tool.t_t0cf_from_tcf * t_gripper_tcf_from_beam
-            ],
+            ] + t_flange_from_attached_screwdrivers,
             speed_type='speed.transfer.caution',
             tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)
         ))
@@ -1235,7 +1268,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
 
     @property
     def data(self):
-        data = super(BeamPlacementWithClampsAction, self).data
+        data = super(AssembleBeamWithScrewdriversAction, self).data
         data['beam_id'] = self.beam_id
         data['joint_ids'] = self.joint_ids
         data['gripper_id'] = self.gripper_id
@@ -1248,7 +1281,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
 
     @data.setter
     def data(self, data):
-        super(BeamPlacementWithClampsAction, type(self)).data.fset(self, data)
+        super(AssembleBeamWithScrewdriversAction, type(self)).data.fset(self, data)
         self.joint_ids = data.get('joint_ids', [])
         self.clamp_ids = data.get('clamp_ids', [])
 
@@ -1256,7 +1289,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         object_str = "Beam ('%s')" % (self.beam_id)
         joint_str = ["%s-%s" % (joint_id[0], joint_id[1]) for joint_id in self.joint_ids]
         location_str = "final location with clamps at %s" % joint_str
-        clamp_id_str = [("?" if clamp_id is None else clamp_id) for clamp_id in self.clamp_ids]
+        clamp_id_str = [("?" if clamp_id is None else clamp_id) for clamp_id in self.screwdriver_ids]
         return "Place %s to Joint %s using Clamp %s" % (object_str, location_str, clamp_id_str)
 
     def create_movements(self, process):
@@ -1282,9 +1315,10 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         for screwdriver_id in self.screwdriver_ids_without_gripper:
             joint_id = self.joint_ids[self.screwdriver_ids.index(screwdriver_id)]
 
-            f_world_gripper_base = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_final')
+            f_world_gripper_base = process.get_gripper_of_beam(self.beam_id, 'assembly_wcf_final').current_frame
+            t_gripper_base_from_world = Transformation.from_frame(f_world_gripper_base).inverse()
             f_world_screwdriver_base = process.assembly.get_joint_attribute(joint_id, 'screwdriver_assembled_attached')
-            t_flange_from_attached_screwdrivers.append(toolchanger.t_t0cf_from_tcf * Transformation.from_frame(f_world_gripper_base).inverse() * Transformation.from_frame(f_world_screwdriver_base))
+            t_flange_from_attached_screwdrivers.append(toolchanger.t_t0cf_from_tcf * t_gripper_base_from_world * Transformation.from_frame(f_world_screwdriver_base))
 
         # Derive linear move amount
         sync_linear_move_amount = assembly_wcf_assemblebegin.point.distance_to_point(assembly_wcf_final.point)
@@ -1412,14 +1446,14 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
 
     @property
     def data(self):
-        data = super(RetractGripperFromBeamAction, self).data
+        data = super(RetractScrewdriverFromBeamAction, self).data
         data['joint_id'] = self.joint_id
         data['additional_attached_objects'] = self.additional_attached_objects
         return data
 
     @data.setter
     def data(self, data):
-        super(RetractGripperFromBeamAction, type(self)).data.fset(self, data)
+        super(RetractScrewdriverFromBeamAction, type(self)).data.fset(self, data)
         self.joint_id = data.get('joint_id', None)
         self.additional_attached_objects = data.get('additional_attached_objects', [])
 
@@ -1429,9 +1463,10 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
         """
         self.movements = []
 
-        screwdriver_assembled_attached = process.assembly.get_joint_attribute(self.joint_id, 'screwdriver_assembled_attached')
-        screwdriver_assembled_retracted = process.assembly.get_joint_attribute(self.joint_id, 'screwdriver_assembled_retracted')
-        screwdriver_assembled_retractedfurther = process.assembly.get_joint_attribute(self.joint_id, 'screwdriver_assembled_retractedfurther')
+        screwdriver_assembled_attached = process.get_tool_t0cf_at(self.joint_id, 'screwdriver_assembled_attached')
+        screwdriver_assembled_retracted = process.get_tool_t0cf_at(self.joint_id, 'screwdriver_assembled_retracted')
+        screwdriver_assembled_retractedfurther = process.get_tool_t0cf_at(self.joint_id, 'screwdriver_assembled_retractedfurther')
+
         assert screwdriver_assembled_retracted is not None and screwdriver_assembled_retractedfurther is not None
 
         self.movements.append(RoboticDigitalOutput(
@@ -1499,7 +1534,9 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
         - linear movement to dock TC
         - Finally lock tool to TC.
 
-        Any other objects (except the tool) that are attached together with this docking should be added to additional_attached_objects
+
+        The DigitalOutput.LockTool Movement will only attach the tool_id to robot.
+        If the `beam` or other objects had to be attached, it should be included in the `additional_attached_objects`.
         """
         RobotAction.__init__(self)
         AttachToolAction.__init__(self, tool_type, tool_id)
@@ -1523,7 +1560,7 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
 
     @property
     def data(self):
-        data = super(PickClampFromStructureAction, self).data
+        data = super(DockWithScrewdriverAction, self).data
         data['joint_id'] = self.joint_id
         data['tool_position'] = self.tool_position
         data['additional_attached_objects'] = self.additional_attached_objects
@@ -1531,7 +1568,7 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
 
     @data.setter
     def data(self, data):
-        super(PickClampFromStructureAction, type(self)).data.fset(self, data)
+        super(DockWithScrewdriverAction, type(self)).data.fset(self, data)
         self.joint_id = data.get('joint_id', None)
         self.tool_position = data.get('tool_position', None)
         self.additional_attached_objects = data.get('additional_attached_objects', [])
@@ -1589,7 +1626,7 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticDigitalOutput(
             digital_output=DigitalOutput.LockTool,
             tool_id=self.tool_id,
-            attached_objects=[beam_id] + self.additional_attached_objects,
+            attached_objects=self.additional_attached_objects,
             operator_stop_after="Confirm ToolChanger Locked",
             tag="Toolchanger Lock %s" % self._tool_string
         ))

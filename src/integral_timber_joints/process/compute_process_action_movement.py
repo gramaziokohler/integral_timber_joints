@@ -188,7 +188,8 @@ def _create_actions_for_clamped(process, beam_id, verbose=False):
     for joint_id in reversed(joint_id_of_clamps):
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
         tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
-        actions.append(PickClampFromStructureAction(seq_n, 0, joint_id, tool_type, tool_id))
+        actions.append(PickClampFromStructureAction(joint_id=joint_id, tool_type=tool_type, tool_id=tool_id))
+        actions.append(PlaceClampToStorageAction(tool_type=tool_type, tool_id=tool_id))
 
     # Print out newly added actions and return
     if verbose:
@@ -255,9 +256,13 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
 
     else:  # SCREWED_WITHOUT_GRIPPER
         flying_tools_id = [t_id for t_id in tool_ids if t_id != gripper_id]
+        # Figure out the joint_id where the screwdriver-gripper is attached to
+        for _joint_id in joint_ids:
+            if process.assembly.get_joint_attribute(_joint_id, 'tool_id') == gripper_id:
+                joint_id = _joint_id
 
         # * Action to Dock with Screwdriver at Storage
-        act = DockWithScrewdriverAction(joint_id=joint_id, tool_position='screwdriver_pickup_attached', tool_type=gripper_type, tool_id=gripper_id, additional_attached_objects=flying_tools_id)
+        act = DockWithScrewdriverAction(joint_id=joint_id, tool_position='screwdriver_pickup_attached', tool_type=gripper_type, tool_id=gripper_id, additional_attached_objects=[beam_id] + flying_tools_id)
         actions.append(act)
 
         # * Action to pickup Beam from Pickup Station after Docking
@@ -288,7 +293,7 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
         # * Action to retract Screwdriver and place it to storage
         actions.append(RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=joint_id, tool_id=tool_id))
 
-        actions.append(PlaceScrewdriverToStorageAction(tool_type=gripper_type, tool_id=gripper_id))
+        actions.append(PlaceScrewdriverToStorageAction(tool_type=tool_type, tool_id=tool_id))
 
     # Print out newly added actions and return
     if verbose:

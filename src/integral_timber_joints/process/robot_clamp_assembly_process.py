@@ -432,12 +432,12 @@ class RobotClampAssemblyProcess(Data):
         # Setting position
         if position_name is not None:
             if position_name == "":
-                if self.assembly.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
+                if isinstance(tool, Screwdriver):
                     position_name = 'screwdriver_assembled_attached'
-                elif self.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.CLAMPED:
+                elif isinstance(tool, Clamp):
                     position_name = 'clamp_wcf_final'
                 else:
-                    return None
+                    raise KeyError("get_tool_of_joint: %s('%s') is not a Clamp or Screwdriver." % (tool_type, tool_id))
             tool_wcf = self.assembly.get_joint_attribute(joint_id, position_name)
             # print("Setting it to position %s = %s"  % (position_name, tool_wcf))
             if tool_wcf is None:
@@ -467,7 +467,6 @@ class RobotClampAssemblyProcess(Data):
         tool_changer.set_current_frame_from_tcp(world_from_toolbase)
 
         return tool_changer.current_frame.copy()
-
 
     def get_gripper_of_beam(self, beam_id, position_name=''):
         # type: (str, Optional[str]) -> Gripper

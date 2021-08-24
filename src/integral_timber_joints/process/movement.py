@@ -332,7 +332,6 @@ class OperatorAttachToolMovement(Movement):
         if clear:
             self.state_diff = {}
         self.state_diff[(self.tool_id, 'f')] = self.target_frame
-        self.state_diff[(self.tool_id, 'a')] = True
 
 
 class RoboticFreeMovement(RoboticMovement):
@@ -649,7 +648,7 @@ class CancelRobotOffset(Movement):
     def data(self):
         """ Sub class specific data added to the dictionary of the parent class
         """
-        data = super(AcquireDockingOffset, self).data
+        data = super(CancelRobotOffset, self).data
         data['tool_id'] = self.tool_id
         return data
 
@@ -657,7 +656,7 @@ class CancelRobotOffset(Movement):
     def data(self, data):
         """ Sub class specific data loaded
         """
-        super(AcquireDockingOffset, type(self)).data.fset(self, data)
+        super(CancelRobotOffset, type(self)).data.fset(self, data)
         self.tool_id = data.get('tool_id', None)
 
     def __str__(self):
