@@ -1490,7 +1490,7 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
             planning_priority=1,
             speed_type='speed.assembly.screwing',
             tag="Robot and Screwdriver (%s) syncronously move to retract from Beam ('%s')" % (self.gripper_id, self.beam_id),
-            allowed_collision_matrix=[(self.gripper_id, self.beam_id)]
+            allowed_collision_matrix=[(self.gripper_id, self.joint_id[0]), (self.gripper_id, self.joint_id[1])]
         ))
 
         self.movements.append(RoboticLinearMovement(
