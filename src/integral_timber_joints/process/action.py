@@ -969,6 +969,7 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
                 t_gripper_base_from_world = Transformation.from_frame(f_world_gripper_base).inverse()
                 t_flange_from_attached_screwdrivers.append(toolchanger.t_t0cf_from_tcf * t_gripper_base_from_world * Transformation.from_frame(f_world_screwdriver_base))
 
+        acm = [(self.beam_id, env_id) for env_id in process.environment_models.keys()]
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_pickupretract,
             attached_objects=[self.gripper_id, self.beam_id] + attached_screwdrivers_id,
@@ -977,7 +978,8 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
                 toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
             ] + t_flange_from_attached_screwdrivers,
             speed_type='speed.transfer.caution',
-            tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id)
+            tag="Linear Retract after picking up Beam ('%s')" % (self.beam_id),
+            allowed_collision_matrix=acm
         ))
 
         # Assign Unique Movement IDs to all movements
