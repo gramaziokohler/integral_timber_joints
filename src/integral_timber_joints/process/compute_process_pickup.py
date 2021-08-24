@@ -181,6 +181,9 @@ def compute_beam_pickupapproach(process, beam_id):
 
     Gripper, Pickupstation and beam_attribute'assembly_wcf_pickup' should be set before hand
 
+    If assembly_method of beam is `SCREWED_WITHOUT_GRIPPER` , the function will not compute anything
+    and will return `ComputationalResult.ValidCanContinue` immediately
+
     State Change
     ------------
     This functions sets the following beam_attribute
@@ -192,6 +195,11 @@ def compute_beam_pickupapproach(process, beam_id):
     `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
 
     """
+
+    # Check for Assembly Type
+    if process.assembly.get_assembly_method(beam_id=beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+        return ComputationalResult.ValidCanContinue
+
     # Check to ensure prerequisite
     if process.pickup_station is None:
         print("pickup_station is not set")
@@ -226,6 +234,9 @@ def compute_beam_finalretract(process, beam_id):
 
     Gripper should be assigned before hand.
 
+    If assembly_method of beam is `SCREWED_WITHOUT_GRIPPER` , the function will not compute anything
+    and will return `ComputationalResult.ValidCanContinue` immediately
+
     State Change
     ------------
     This functions sets the following beam_attribute
@@ -237,6 +248,10 @@ def compute_beam_finalretract(process, beam_id):
     `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
 
     """
+    # Check for Assembly Type
+    if process.assembly.get_assembly_method(beam_id=beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+        return ComputationalResult.ValidCanContinue
+
     # Check to ensure prerequisite
     if process.assembly.get_beam_attribute(beam_id, 'gripper_type') is None:
         print("gripper_type is not set")

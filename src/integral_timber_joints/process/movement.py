@@ -130,7 +130,7 @@ class Movement(object):
         `clear` can be set to `False` when multiple `create_state_diff()` are
         being call by multi-inhereted child class.
         """
-        raise NotImplementedError("Movement.create_state_diff() is not implemented by child class")
+        raise NotImplementedError("Movement.create_state_diff() is not implemented by child class: %s" % (self.__class__.__name__))
 
 
 class RoboticMovement(Movement):
@@ -593,8 +593,77 @@ class RobotScrewdriverSyncLinearMovement(RoboticMovement):
 
 
 class AcquireDockingOffset(Movement):
-    pass
+    def __init__(
+        self,
+        target_frame=None,  # type: Frame
+        tool_id=None,  # type: str
+        tag=None  # type: str
+    ):
+        Movement.__init__(
+            self,
+            operator_stop_after="Confirm Docking Offset",
+            tag=tag or "Acquire Docking Offset"
+        )
+        self.target_frame = target_frame,  # type: Frame
+        self.tool_id = tool_id,  # type: str
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(AcquireDockingOffset, self).data
+        data['target_frame'] = self.target_frame
+        data['tool_id'] = self.tool_id
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(AcquireDockingOffset, type(self)).data.fset(self, data)
+        self.target_frame = data.get('target_frame', None)
+        self.tool_id = data.get('tool_id', None)
+
+    def __str__(self):
+        return "Aquire docking offset for Tool ('%s')" % self.tool_id
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}
 
 
 class CancelRobotOffset(Movement):
-    pass
+    def __init__(
+        self,
+        tool_id=None,  # type: str
+        tag=None  # type: str
+    ):
+        Movement.__init__(
+            self,
+            tag=tag or "Cancel Docking Offset"
+        )
+        self.tool_id = tool_id,  # type: str
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(AcquireDockingOffset, self).data
+        data['tool_id'] = self.tool_id
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(AcquireDockingOffset, type(self)).data.fset(self, data)
+        self.tool_id = data.get('tool_id', None)
+
+    def __str__(self):
+        return "Cancel docking offset for Tool ('%s')" % self.tool_id
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}

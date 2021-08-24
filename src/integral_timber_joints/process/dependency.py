@@ -70,6 +70,7 @@ class ComputationalDependency(Graph):
         # Assigning Tools
         # -------
         self.add_edge('assign_tool_type_to_joints', 'assign_tool_id_to_beam_joints')
+        self.add_edge('assign_tool_id_to_beam_joints', 'assign_gripper_to_beam')  # Gripper for SCREWED_WITHOUT_GRIPPER will depend on the assigned screwdrivers.
 
         # Gripper / Grasp / Beam at Pickup
         # --------------------------------
