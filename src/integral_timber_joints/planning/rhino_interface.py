@@ -134,14 +134,14 @@ if __name__ == "__main__":
 
     def get_ik_no_proxy(process, state_id, viewer, verbose = False):
         options = {}
-        options = {'viewer': viewer, 'debug' : viewer}
+        options = {'viewer': viewer, 'debug' : viewer, 'ik_gantry_attempts':25}
         result = get_ik_solutions(process, state_id - 1, options)
         if verbose: print("IK result: {}".format(result))
         return result
 
     def get_ik_via_proxy(process, state_id, options = {}, verbose = False):
         from compas.rpc import Proxy
-        rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface')
+        rhino_interface = Proxy('integral_timber_joints.planning.rhino_interface', autoreload=False)
         result = rhino_interface.get_ik_solutions(process, state_id - 1, options)
         if verbose: print("IK result: {}".format(result))
         return result
@@ -173,8 +173,9 @@ if __name__ == "__main__":
         if isinstance(movement, RoboticMovement):
             print('='*10)
             print ("#%i (%s) %s" % (i, movement.__class__.__name__, movement.tag))
-            options = {'ik_gantry_attempts':10}
-            success, conf, msg = get_ik_via_proxy(process, i + 1, options)
+            options = {'ik_gantry_attempts':20}
+            # success, conf, msg = get_ik_via_proxy(process, i + 1, options)
+            success, conf, msg = get_ik_no_proxy(process, i + 1, viewer=False)
             if success:
                 cprint ("IK Success: %s" % msg, 'green')
             else:
