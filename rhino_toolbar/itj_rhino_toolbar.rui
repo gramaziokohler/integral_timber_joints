@@ -19,7 +19,7 @@
         </text>
         <tool_bar_id>31c43b10-774f-4f68-b2f1-8f742d6de8c3</tool_bar_id>
       </tool_bar_group_item>
-      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59474" mru_width="868" point_pos="0,60" float_point="10,86" rect_mru_dock_pos="0,60,1920,98" dock_location_u="59419" dock_location="top" float_size="768,62" />
+      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59475" mru_width="868" point_pos="0,60" float_point="10,86" rect_mru_dock_pos="0,60,1920,98" dock_location_u="59419" dock_location="top" float_size="768,62" />
     </tool_bar_group>
   </tool_bar_groups>
   <tool_bars>
@@ -302,7 +302,10 @@ _-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
         <locale_1033>Macro 13</locale_1033>
       </menu_text>
       <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
--RunPythonScript "integral_timber_joints.rhino.actions_movements.py"</script>
+-RunPythonScript "integral_timber_joints.rhino.actions_movements.py"
+R
+C
+F</script>
     </macro_item>
     <macro_item guid="54158ea1-b0f6-4f6b-9802-1760d1e21c1a" bitmap_id="6e811e87-614c-44d9-936c-abb9a7753d77">
       <text>
@@ -550,7 +553,7 @@ _-RunPythonScript "integral_timber_joints.rhino.tools_environment.py"</script>
       <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
       <bitmap_item guid="b0d90019-6990-43a3-8f5b-3f2a6e6f6763" index="5" />
       <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAABgCAYAAAAU0fKgAAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
-AAAOwAAADsABataJCQAAAB1JREFUWEftwTEBAAAAwqD1T20GfyAAAAAAAIBLDRhgAAE4ETi3AAAA
+AAAOvgAADr4B6kKxwAAAAB1JREFUWEftwTEBAAAAwqD1T20GfyAAAAAAAIBLDRhgAAE4ETi3AAAA
 AElFTkSuQmCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
@@ -563,7 +566,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
       <bitmap_item guid="b0d90019-6990-43a3-8f5b-3f2a6e6f6763" index="5" />
       <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAACQCAYAAAASlKtNAAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
-AAAOwAAADsABataJCQAAACVJREFUaEPtwYEAAAAAw6D5Ux/hAlUAAAAAAAAAAAAAAAAAcNUANpAA
+AAAOvgAADr4B6kKxwAAAACVJREFUaEPtwYEAAAAAw6D5Ux/hAlUAAAAAAAAAAAAAAAAAcNUANpAA
 AS/kIYwAAAAASUVORK5CYIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
@@ -576,7 +579,7 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
       <bitmap_item guid="b0d90019-6990-43a3-8f5b-3f2a6e6f6763" index="5" />
       <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAADACAYAAABlPmF2AAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
-AAAOwAAADsABataJCQAAAC5JREFUeF7twQEBAAAAgiD/r25IQAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAOvgAADr4B6kKxwAAAAC5JREFUeF7twQEBAAAAgiD/r25IQAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAwLkaYMAAAeEoYg8AAAAASUVORK5CYIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
