@@ -101,7 +101,7 @@ class ComputationalDependency(Graph):
 
         # Screwdriver related Computations
         # -------------------------------
-        self.add_edge('assign_tool_id_to_beam_joints', 'compute_screwdriver_positions')
+        self.add_edge('compute_pickup_frame', 'compute_screwdriver_positions')
         self.add_edge('compute_screwdriver_positions', 'create_actions_from_sequence')
 
         # Compute Actions and Movements
