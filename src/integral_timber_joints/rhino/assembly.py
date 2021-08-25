@@ -1,9 +1,10 @@
 import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
-from compas.geometry.primitives.frame import Frame
-from compas.geometry.primitives.vector import Vector
-from compas.geometry.transformations.transformation import Transformation
-from compas_rhino.geometry import RhinoCurve
+import scriptcontext
+
+from compas.geometry import Frame, Vector, Point, bounding_box
+from compas.geometry import Transformation
+from compas_rhino.geometry import RhinoCurve, RhinoSurface
 from compas_rhino.ui import CommandMenu
 # from compas_rhino.utilities import delete_objects
 from compas_rhino.utilities.objects import get_object_name, get_object_names
@@ -20,43 +21,23 @@ try:
 except:
     pass
 
-def ui_add_beam_from_lines(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    ''' Ask user for line(s) to create new beams.
-    '''
-    # ask user to pick lines
-    # guids = select_lines("Select Lines (no curve or polyline)")
-    guids = rs.GetObjects("Select Lines (not curve or polyline)", filter=rs.filter.curve)
-
-    print(guids)
-    width = 100
-    height = 100
-
-    # Create Beams form lines
+def _add_beams_to_assembly(process, beams):
+    # type: (RobotClampAssemblyProcess, list[Beam]) -> None
+    """Shared function to add newly created Beams to Assembly, create Joints and redraw changes in Rhino
+    This function can probably be refactered into Assembly class.
+    """
+    assembly = process.assembly
     new_beam_ids = []
     affected_neighbours = []
-    assembly = process.assembly  # type: Assembly
-    for guid in guids:
-        rhinoline = RhinoCurve.from_guid(guid)  # RhinoLine is not implemented sigh... RhinoCurve is used.
-        centerline = rhinoline.to_compas()
-        centerline_vector = Vector.from_start_end(centerline.start, centerline.end)
-        # Compute guide vector: For vertical lines, guide vector points to world X
-        # Otherwise, guide vector points to Z,
 
-        if centerline_vector.angle(Vector(0, 0, 1)) < 0.001:
-            guide_vector = Vector(1, 0, 0)
-        else:
-            guide_vector = Vector(0, 0, 1)
-
-        # Create Beam object
+    for beam in beams:
         beam_id = assembly.get_new_beam_id()
-        beam = Beam.from_centerline(centerline, guide_vector, width, height)
         beam.name = beam_id
         print('New Beam: %s' % beam_id)
+        new_beam_ids.append(beam_id)
 
         # Add to assembly
         assembly.add_beam(beam)
-        new_beam_ids.append(beam_id)
 
         # Check for new Joints
         for exist_beam in assembly.beams():
@@ -74,7 +55,6 @@ def ui_add_beam_from_lines(process):
     for beam_id in set(affected_neighbours + new_beam_ids):
         recompute_dependent_solutions(process, beam_id)
 
-    print('Show Assembly color')
     # Draw newly added beams and neighbours affected by new joint
     artist = get_process_artist()
     for beam_id in set(affected_neighbours + new_beam_ids):
@@ -82,6 +62,104 @@ def ui_add_beam_from_lines(process):
     show_assembly_color(process, set(affected_neighbours + new_beam_ids), redraw=True)
 
     print('%i Beams added to the assembly.' % len(new_beam_ids))
+
+def ui_add_beam_from_lines(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    ''' Ask user for line(s) to create new beams.
+    '''
+    # ask user to pick lines
+    # guids = select_lines("Select Lines (no curve or polyline)")
+    guids = rs.GetObjects("Select Lines (not curve or polyline)", filter=rs.filter.curve)
+
+    print(guids)
+    width = 100
+    height = 100
+
+    # Create Beams form lines
+    assembly = process.assembly  # type: Assembly
+    new_beams = []
+    for guid in guids:
+        rhinoline = RhinoCurve.from_guid(guid)  # RhinoLine is not implemented sigh... RhinoCurve is used.
+        centerline = rhinoline.to_compas()
+        centerline_vector = Vector.from_start_end(centerline.start, centerline.end)
+        # Compute guide vector: For vertical lines, guide vector points to world X
+        # Otherwise, guide vector points to Z,
+
+        if centerline_vector.angle(Vector(0, 0, 1)) < 0.001:
+            guide_vector = Vector(1, 0, 0)
+        else:
+            guide_vector = Vector(0, 0, 1)
+
+        # Create Beam object
+
+        beam = Beam.from_centerline(centerline, guide_vector, width, height)
+        new_beams.append(beam)
+
+    _add_beams_to_assembly(process, new_beams)
+
+
+def ui_add_beam_from_brep_box(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    ''' Ask user for line(s) to create new beams.
+    '''
+    assembly = process.assembly  # type: Assembly
+    # ask user to pick boxes
+    guids = rs.GetObjects("Select Brep (uncut 6 sided box only)", filter=rs.filter.polysurface)
+    # print(guids)
+
+    def beam_frame_from_vectors(vectors):
+        # type: (list[Vector]) -> Frame
+
+        # Pick longest vector as X axis
+        vectors.sort(key=lambda v: v.length, reverse=True)
+        x_vector = vectors[0]
+        # Pick shortest vector to be Z Axis
+        vectors.sort(key=lambda v: v.length)
+        for vector in vectors:
+            if Vector.cross(vector, x_vector).length > 1e-4:
+                z_vector = vector
+                break
+        frame = Frame([0,0,0], x_vector, Vector.cross(x_vector, z_vector).scaled(-1))
+        return frame
+
+    if guids is None:
+        return
+
+    new_beams = []
+    for guid in guids:
+        brep = rs.coercebrep(guid) # type: Rhino.Geometry.Brep
+        edges = brep.DuplicateEdgeCurves(False)
+        vectors = [] # type: list[Vector]
+        corners = []
+        for edge in edges:
+            start = [edge.Line.From.X, edge.Line.From.Y, edge.Line.From.Z]
+            end = [edge.Line.To.X, edge.Line.To.Y, edge.Line.To.Z]
+            vector = Vector.from_start_end(start, end)
+            vectors.append(vector)
+            corners.append(start)
+            corners.append(end)
+        # Find the frame of the beam (no origin yet)
+        beam_frame = beam_frame_from_vectors(vectors)
+
+        # Find the origin of the beam frame
+        aligned_corners = [beam_frame.to_local_coordinates(point) for point in  corners]
+        bb = bounding_box(aligned_corners)
+        bounds_in_wcf = [beam_frame.to_world_coordinates(point) for point in bb]
+        min_corner = bounds_in_wcf[0]
+        max_corner = bounds_in_wcf[6]
+        beam_frame.point = min_corner
+
+        # Find the size of the beam from the aligned bounding box.
+        bb_size = Vector.from_start_end(bb[0], bb[6])
+        length = bb_size.x
+        height = bb_size.y
+        width = bb_size.z
+
+        # Construct beam object
+        beam = Beam(frame=beam_frame, length=length, width=width, height=height)
+        new_beams.append(beam)
+
+    _add_beams_to_assembly(process, new_beams)
 
 
 def ui_delete_beams(process):
@@ -396,7 +474,7 @@ def show_menu(process):
                 {'name': 'AddBeam', 'message': 'Add Beams ...', 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'FromLines', 'action': ui_add_beam_from_lines},
-                    {'name': 'FromMesh', 'action': something},
+                    {'name': 'FromBrepBox', 'action': ui_add_beam_from_brep_box},
                 ]},
                 {'name': 'DeleteBeam', 'action': ui_delete_beams},
                 {'name': 'MoveAssembly', 'action': ui_orient_assembly},
