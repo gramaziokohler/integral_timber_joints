@@ -39,7 +39,6 @@ class RobotClampAssemblyProcess(Data):
     from .compute_process_action_movement import (
         recompute_initial_state,
         assign_tool_id_to_beam_joints,
-        assign_tools_to_actions,
         assign_unique_action_numbers,
         create_actions_from_sequence,
         create_movements_from_action,
@@ -433,12 +432,12 @@ class RobotClampAssemblyProcess(Data):
         # Setting position
         if position_name is not None:
             if position_name == "":
-                if self.assembly.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
+                if isinstance(tool, Screwdriver):
                     position_name = 'screwdriver_assembled_attached'
-                elif self.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.CLAMPED:
+                elif isinstance(tool, Clamp):
                     position_name = 'clamp_wcf_final'
                 else:
-                    return None
+                    raise KeyError("get_tool_of_joint: %s('%s') is not a Clamp or Screwdriver." % (tool_type, tool_id))
             tool_wcf = self.assembly.get_joint_attribute(joint_id, position_name)
             # print("Setting it to position %s = %s"  % (position_name, tool_wcf))
             if tool_wcf is None:
@@ -468,6 +467,58 @@ class RobotClampAssemblyProcess(Data):
         tool_changer.set_current_frame_from_tcp(world_from_toolbase)
 
         return tool_changer.current_frame.copy()
+
+    def get_gripper_of_beam(self, beam_id, position_name=''):
+        # type: (str, Optional[str]) -> Gripper
+        """Returns the gripper used for a beam specified by beam_attribute
+        'gripper_id' and 'gripper_type'. It can be a Clamp/Screwdriver/Gripper
+        object.
+
+        If 'gripper_id' is set, the exact tool object is returned
+        otherwise a random tool of the correct type (from 'gripper_type') is returned.
+
+        - If 'position_name' is given, the gripper will be set at the position where
+        the beam is at `position_name`.
+        - If left at default value '', it will be translated to
+        'assembly_wcf_final', refering to the assembled position of the beam.
+        - If 'position_name' = None, gripper frame will not be modified.
+
+        Warning: This gripper object is not deep-copied.
+        Modifying it will change its definition in the process.
+        """
+        # * Fetching the correct tool object
+        gripper_id = self.assembly.get_beam_attribute(beam_id, 'gripper_id')
+        gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
+        if gripper_id is not None and gripper_id in self.tool_ids:
+            gripper = self.tool(gripper_id)
+            # print("Getting Joint(%s) Tool %s (%s)" % (joint_id, tool_type, tool_id))
+        else:
+            gripper = self.get_one_tool_by_type(gripper_type)
+            # print("Getting Joint(%s) get_one_tool_by_type Tool %s (%s)" % (joint_id, tool_type, tool_id))
+
+        # * Resolve position_name
+        if position_name is None:
+            return gripper
+        elif position_name == "":
+            position_name = 'assembly_wcf_final'
+
+        # * Set Beam position and gripper position
+        # Get the Gripper Tip Frame (TCP) at the beam's final-frame (gripper_tcp_in_wcf)
+        gripper_tcp_in_ocf = self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf")
+        if gripper_tcp_in_ocf is None:
+            raise KeyError("gripper_tcp_in_ocf is None for Beam %s" % (beam_id))
+        t_beam_from_grippertip = Transformation.from_frame(gripper_tcp_in_ocf)
+
+        f_world_from_beam = self.assembly.get_beam_attribute(beam_id, position_name)
+        if f_world_from_beam is None:
+            raise KeyError("f_world_from_beam is None for Beam %s" % (beam_id))
+        t_world_from_beam = Transformation.from_frame(f_world_from_beam)
+
+        # Main formular from world to gripper tip
+        t_world_from_grippertip = t_world_from_beam * t_beam_from_grippertip
+        gripper.set_current_frame_from_tcp(Frame.from_transformation(t_world_from_grippertip))
+
+        return gripper
 
     # -----------------------
     # Jaw Approach Algorithms
@@ -651,31 +702,19 @@ class RobotClampAssemblyProcess(Data):
         """ Returns the base frame (base frame) of the gripper (in WCF)
         when the beam is at different key position.
 
-        beam_attribute `gripper_type` and the various `assembly_wcf_*` must be set before calling this function.
+        beam_attribute (`gripper_id` or `gripper_type` )
+        and the specified `assembly_wcf_*` must be set before calling this function.
 
         Note
         ----
         - This is not the robot flange, we still have the toolchanger
+
         - The result can be used directly for gripper.current_frame = get_gripper_baseframe_for_beam_at()
         """
         # Get Gripper Object
-        gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
-        gripper = self.get_one_gripper_by_type(gripper_type)
+        gripper = self.get_gripper_of_beam(beam_id, attribute_name)
 
-        # Get the Gripper Tip Frame (TCP) at the beam's final-frame (gripper_tcp_in_wcf)
-        gripper_tcp_in_ocf = self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf")
-        beam_frame_wcf = self.assembly.beam(beam_id).frame
-        gripper_tcp_in_wcf = gripper_tcp_in_ocf.transformed(Transformation.from_frame(beam_frame_wcf))
-
-        # Move that TCP Frame (gripper_tcp_in_wcf) to the given beam's location (attribute_name)
-        T = self.assembly.get_beam_transformaion_to(beam_id, attribute_name)
-        if T is None:
-            return None
-        gripper_tcp_in_wcf = gripper_tcp_in_wcf.transformed(T)
-
-        # Find Gripper Base Frame from Gripper Tip Frame (TCP)
-        T = Transformation.from_frame_to_frame(gripper.tool_coordinate_frame, gripper_tcp_in_wcf)
-        return Frame.worldXY().transformed(T)
+        return gripper.current_frame
 
     def get_gripper_t0cp_for_beam_at(self, beam_id, attribute_name):
         """ Returns the t0cp (flange frame) of the robot (in WCF)
@@ -698,52 +737,20 @@ class RobotClampAssemblyProcess(Data):
         return tool_changer.current_frame.copy()
 
     def get_beam_frame_from_gripper(self, beam_id, gripper):
+        # type: (str, Gripper) -> Frame
         """ Returns the beam frame (in WCF) from the position of a gripper.
         This is effectively the final step of the forward kinematics
 
         The grasp is retrived from beam attribute `gripper_tcp_in_ocf`
         The gripper.current_frame should be set to the intended location
 
-        ### Credits:
-        YiJiang contributed this rather clear way of expressing everytihing in Transformation.
-        If one day we have time, we should all switch to this notation to be consistent with
-        robotics code community.
-
-        x_from_y, means Y expressed in the X's coordinate system
         """
         # Gripper TCP expressed in world's coordinate
         world_from_gripper_tcp = Transformation.from_frame(gripper.current_tcf)
 
-        # Grasp
-        beam_ocf_from_gripper_tcp = Transformation.from_frame(self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf"))
-
-        # gripper_inverse
-        gripper_tcp_from_beam_ocf = beam_ocf_from_gripper_tcp.inverse()
-
         # Beam frame expressed in the world's coordinate
-        world_from_beam = world_from_gripper_tcp * gripper_tcp_from_beam_ocf
+        world_from_beam = world_from_gripper_tcp * self.assembly.get_t_gripper_tcf_from_beam(beam_id)
         return Frame.from_transformation(world_from_beam)
-
-    def get_gripper_of_beam_at(self, beam_id, beam_position_name='assembly_wcf_final'):
-        # type: (str, bool) -> Gripper
-        """Returns one of the gripper object being set at the specified position.
-        The beam_position_name must be present in the beam attributes.
-
-        If the beam_position_name is not specified, 'assembly_wcf_final' will be used.
-        Refering to the assembled position of the beam.
-
-        Warning: The returned gripper object is not deep-copied.
-        Modifying it will change its definition in the process.
-        """
-        gripper_type = self.assembly.get_beam_attribute(beam_id, 'gripper_type')
-        gripper = self.get_one_gripper_by_type(gripper_type)
-
-        # Set the
-        gripper_wcf_final = self.get_gripper_baseframe_for_beam_at(beam_id, beam_position_name)
-        assert gripper_wcf_final is not None
-        gripper.current_frame = gripper_wcf_final
-
-        return gripper
 
     # -----------------
     # Clamps Algorithms

@@ -116,7 +116,7 @@ class ProcessKeyPosition(object):
         ('screwdriver_retracted',
          'assembly_wcf_final',
          None,
-         'screwdriver_assembled_retracted.open_gripper'),
+         'screwdriver_assembled_retractedfurther.open_gripper'),
     ]
 
     # pos_name, beam_pos, gripper_pos, screwdriver_pos
@@ -128,7 +128,7 @@ class ProcessKeyPosition(object):
          None,                                      'screwdriver_assembled_attached.close_gripper'),
 
         ('screwdriver_retracted',                   'assembly_wcf_final',
-         None,                                      'screwdriver_assembled_detached.open_gripper'),
+         None,                                      'screwdriver_assembled_retracted.open_gripper'),
     ]
 
     @property
@@ -749,7 +749,7 @@ class ProcessArtist(object):
             # Draw Gripper
             if verbose:
                 print("Drawing Gripper for Beam(%s) in position: %s" % (beam_id, attribute_name))
-            gripper = self.process.get_gripper_of_beam_at(beam_id, attribute_name)
+            gripper = self.process.get_gripper_of_beam(beam_id, attribute_name)
 
             # Set Tool State (better visualization)
             for state in tool_states:

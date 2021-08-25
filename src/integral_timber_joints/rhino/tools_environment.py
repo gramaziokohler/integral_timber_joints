@@ -438,8 +438,8 @@ def copy_all(process):
 ##############################
 
 
-def ui_ask_user_for_tool_id(process, message="Which Tool ID", print_existing_tools=True, include_clamp=True, inclde_gripper=True):
-    # type: (RobotClampAssemblyProcess,str, bool,bool, bool) -> str
+def ui_ask_user_for_tool_id(process, message="Which Tool ID", print_existing_tools=True, include_clamp=True, inclde_gripper=True, inclde_screwdriver=True):
+    # type: (RobotClampAssemblyProcess,str, bool, bool, bool, bool) -> str
     """Note that the list of tools names available must start with a letter character, cannot be numbers"""
     ids = []
     if include_clamp:
@@ -449,6 +449,13 @@ def ui_ask_user_for_tool_id(process, message="Which Tool ID", print_existing_too
             ids.append(clamp.name)
             if print_existing_tools:
                 print("  Clamp (id = %s) type = %s)" % (clamp.name, clamp.type_name))
+    if inclde_screwdriver:
+        if print_existing_tools:
+            print("-- Existing Clamps --")
+        for screwdriver in process.screwdrivers:
+            ids.append(screwdriver.name)
+            if print_existing_tools:
+                print("  Screwdriver (id = %s) type = %s)" % (screwdriver.name, screwdriver.type_name))
 
     if inclde_gripper:
         if print_existing_tools:

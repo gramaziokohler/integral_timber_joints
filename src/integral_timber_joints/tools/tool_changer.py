@@ -1,5 +1,5 @@
 from compas.datastructures import Mesh
-from compas.geometry import Frame, Transformation
+from compas.geometry import Frame, Transformation, Vector, Translation
 from compas_fab.robots import Configuration
 
 from integral_timber_joints.tools import Tool
@@ -9,6 +9,7 @@ class ToolChanger (Tool):
     def __init__(self,
                  name,
                  tool_coordinate_frame,     #type: Frame # The frame that connects to the tool
+                 approach_vector = None,           #type: Vector # The frame that connects to the tool
                  collision_mesh = None,     #type: list[Mesh]
                  type_name = "ToolChanger"
                  ):
@@ -17,6 +18,7 @@ class ToolChanger (Tool):
         super(ToolChanger, self).__init__(name, type_name, tool_coordinate_frame)
 
         self.collision_mesh = collision_mesh
+        self.approach_vector = approach_vector
 
     # --------------------------------------------------------------
     # The collision mesh is stored in a Link object
@@ -43,6 +45,21 @@ class ToolChanger (Tool):
             gripper_base = self.add_link('toolchanger_base', visual_meshes = collision_mesh, collision_meshes = collision_mesh)
             self.root = gripper_base
             self._create(self.root, Transformation())
+
+    @property
+    def approach_vector(self):
+        # type: () -> Vector
+        """Vector for gripper to approach beam
+        """
+        return self.attributes.get('approach_vector', None)
+
+    @approach_vector.setter
+    def approach_vector(self, v):
+        self.attributes['approach_vector'] = v
+
+    @property
+    def t_approach(self):
+        return Translation.from_vector(self.approach_vector)
 
     # --------------------------------------------------------------
     # This ToolChanger has no Kinematics

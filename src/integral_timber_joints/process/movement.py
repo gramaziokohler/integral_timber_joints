@@ -1,7 +1,7 @@
 import os
 import time
 
-from compas.geometry.primitives.frame import Frame
+from compas.geometry import Frame, Transformation, multiply_matrices
 from compas_fab.robots import Configuration
 from compas_fab.robots.trajectory import JointTrajectory
 
@@ -121,13 +121,16 @@ class Movement(object):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
         """The create_state_diff() functions are are implemented within each of the Movement child class.
 
-        They record the changed state of objects in the scene.
-        For any changed state, the new state is recorded.
+        Create entry(s) to `state_diff` regarding object(s) that have changed
+        (`a` = attachment status,`f` = frame or `c` = configuration) during this movement.
 
-        It is implemented as a dictionary where key is Tuple (object_id, ['f', 'a', 'c']),
+        `self.state_diff` is implemented as a dictionary where key is Tuple (object_id, ['f', 'a', 'c']),
         value is Any[Frame, bool, Configuration]
+
+        `clear` can be set to `False` when multiple `create_state_diff()` are
+        being call by multi-inhereted child class.
         """
-        raise NotImplementedError("Action.create_movements() is not implemented by child class")
+        raise NotImplementedError("Movement.create_state_diff() is not implemented by child class: %s" % (self.__class__.__name__))
 
 
 class RoboticMovement(Movement):
@@ -144,14 +147,30 @@ class RoboticMovement(Movement):
 
     """
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, planning_priority=0, operator_stop_before=None,
-                 operator_stop_after=None, speed_type="", target_configuration=None, allowed_collision_matrix=[], tag=None, seed=None):
-        # type: (Frame, str, str, int, str, str, str, Configuration, list(tuple(str,str)), str, int) -> RoboticMovement
+    def __init__(
+        self,
+        target_frame=None,  # type: Frame # Target of the Robotic Movement
+        attached_objects=[],  # type: List[str]
+        t_flange_from_attached_objects=[],  # type: List[Transformation]
+        planning_priority=0,  # type: int
+        operator_stop_before=None,  # type: str
+        operator_stop_after=None,  # type: str
+        speed_type="",  # type: str # A string linking to a setting
+        target_configuration=None,  # type: Optional[Configuration]
+        allowed_collision_matrix=[],  # type: list(tuple(str,str))
+        tag=None,  # type: str
+        seed=None  # type: int
+    ):
+        # type: (...) -> RoboticMovement
+        """
+        `speed_type` - a string linking to a speed setting in execution controller
+        """
+
         Movement.__init__(self, operator_stop_before=operator_stop_before, operator_stop_after=operator_stop_after,
                           planning_priority=planning_priority, tag=tag)
         self.target_frame = target_frame  # type: Frame
-        self.attached_tool_id = attached_tool_id  # type: Optional[str]
-        self.attached_beam_id = attached_beam_id  # type: Optional[str]
+        self.attached_objects = attached_objects  # type: List[str]
+        self.t_flange_from_attached_objects = t_flange_from_attached_objects  # type: List[Transformation]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
         self.path_from_link = None  # Optional[dictionary: robot link name[str] -> list(Frame)]
@@ -166,8 +185,8 @@ class RoboticMovement(Movement):
         """
         data = super(RoboticMovement, self).data
         data['target_frame'] = self.target_frame
-        data['attached_tool_id'] = self.attached_tool_id
-        data['attached_beam_id'] = self.attached_beam_id
+        data['attached_objects'] = self.attached_objects
+        data['t_flange_from_attached_objects'] = self.t_flange_from_attached_objects
         data['trajectory'] = self.trajectory
         data['path_from_link'] = self.path_from_link
         data['speed_type'] = self.speed_type
@@ -182,8 +201,8 @@ class RoboticMovement(Movement):
         """
         super(RoboticMovement, type(self)).data.fset(self, data)
         self.target_frame = data['target_frame']
-        self.attached_tool_id = data['attached_tool_id']
-        self.attached_beam_id = data['attached_beam_id']
+        self.attached_objects = data.get('attached_objects', [])
+        self.t_flange_from_attached_objects = data.get('t_flange_from_attached_objects', [])
         self.trajectory = data.get('trajectory', None)
         self.path_from_link = data.get('path_from_link', None)
         self.speed_type = data.get('speed_type', "")
@@ -202,7 +221,6 @@ class RoboticMovement(Movement):
             self.state_diff = {}
         # Change robot flange frame
         self.state_diff[('robot', 'f')] = self.target_frame
-        self.state_diff[('tool_changer', 'f')] = self.target_frame
 
         # If target_configuration is available, pass it to robot kinematic_config.
         if self.target_configuration is not None:
@@ -212,23 +230,10 @@ class RoboticMovement(Movement):
         self.state_diff[('tool_changer', 'f')] = self.target_frame
 
         # Change attached tool location
-        if self.attached_tool_id is not None:
-            tool_id = self.attached_tool_id
-            # Using the Toolchanger to compute Tool Frame
-            process.robot_toolchanger.current_frame = self.target_frame
-            tool_base_frame = process.robot_toolchanger.current_tcf
-            self.state_diff[(tool_id, 'f')] = tool_base_frame
-
-            # Change beam location
-            if self.attached_beam_id is not None:
-                # Beam is attached to gripper
-                beam_id = self.attached_beam_id
-                # Find out `gripper tcp` and beam attribute `gripper_tcp_in_ocf`
-                tool = process.tool(tool_id)
-                tool.current_frame = tool_base_frame
-
-                beam_frame = process.get_beam_frame_from_gripper(beam_id, tool)
-                self.state_diff[(beam_id, 'f')] = beam_frame
+        for attached_object_id, t_flange_from_attached_object in zip(self.attached_objects, self.t_flange_from_attached_objects):
+            t_world_from_flange = Transformation.from_frame(self.target_frame)
+            object_frame = Frame.from_transformation(t_world_from_flange * t_flange_from_attached_object)
+            self.state_diff[(attached_object_id, 'f')] = object_frame
 
 
 ######################################
@@ -247,7 +252,7 @@ class OperatorLoadBeamMovement(Movement):
         self.beam_id = beam_id
         self.grasp_face = grasp_face
         self.target_frame = target_frame  # type: Frame
-        self.tag = tag or "Opeartor Load Beam to Pickup Location"
+        self.tag = tag or "Opeartor Load Beam (%s) to Pickup Location" % self.beam_id
 
     def __str__(self):
         return "Load Beam ('%s') for pickup at %s (Side %s face up)." % (self.beam_id, self.target_frame, self.grasp_face)
@@ -327,8 +332,6 @@ class OperatorAttachToolMovement(Movement):
         if clear:
             self.state_diff = {}
         self.state_diff[(self.tool_id, 'f')] = self.target_frame
-        self.state_diff[(self.tool_id, 'a')] = True
-
 
 
 class RoboticFreeMovement(RoboticMovement):
@@ -344,20 +347,33 @@ class RoboticLinearMovement(RoboticMovement):
 
 
 class RoboticDigitalOutput(Movement):
-    def __init__(self, digital_output=None, tool_id=None, beam_id=None, operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
-        # type: (DigitalOutput, str, str, str, str, str, int) -> RoboticDigitalOutput
-        """ `tool_id` relates to the tool that is being operated.
-        `beam_id` should be filled in for Open or Close Gripper movements that
-        involved letting go or picking up a beam. This helps the state manage to figure
-        out which beam is picked up and attached or no longer attached.
 
-        For Clamp Closing Gripper to attach to a fixed beam, `beam_id` should be left None.
+    def __init__(self, digital_output=None, tool_id=None, attached_objects=[], operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
+        # type: (DigitalOutput, str, list[str], str, str, str, int) -> RoboticDigitalOutput
+        """ `tool_id` relates to the tool that is being operated.
+        `attached_objects` should be filled in for Open or Close Gripper movements that
+        involved letting go or picking up a beam or other objects.
+        This helps the state manage to figure
+        out what objects is picked up and attached or no longer attached.
+
+        State Diff
+        ----------
+
+        `DigitalOutput.LockTool` and `CloseGripper` will change the attached status
+        of the `attached_objects` to True.
+
+        `DigitalOutput.UnlockTool` and `OpenGripper` will change the attached status
+        of the `attached_objects` to False.
+
+        `DigitalOutput.LockTool` and `UnlockTool` will change the attached status of the tool
+
+        `DigitalOutput.CloseGripper` and `OpenGripper` will change the kinematic configuration of the tool
         """
         Movement.__init__(self, operator_stop_before=operator_stop_before,
                           operator_stop_after=operator_stop_after, planning_priority=planning_priority)
         self.digital_output = digital_output
         self.tool_id = tool_id
-        self.beam_id = beam_id
+        self.attached_objects = attached_objects
 
         # Default tags for IO actions
         if self.digital_output == DigitalOutput.LockTool:
@@ -387,7 +403,7 @@ class RoboticDigitalOutput(Movement):
         data = super(RoboticDigitalOutput, self).data
         data['digital_output'] = self.digital_output
         data['tool_id'] = self.tool_id
-        data['beam_id'] = self.beam_id
+        data['attached_objects'] = self.attached_objects
         return data
 
     @data.setter
@@ -397,33 +413,39 @@ class RoboticDigitalOutput(Movement):
         super(RoboticDigitalOutput, type(self)).data.fset(self, data)
         self.digital_output = data['digital_output']
         self.tool_id = data.get('tool_id', None)
-        self.beam_id = data.get('beam_id', None)
+        self.attached_objects = data.get('attached_objects', [])
 
     def create_state_diff(self, process, clear=True):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
         if clear:
             self.state_diff = {}
         tool_id = self.tool_id
+
+        # Changing Tool States
         if self.digital_output == DigitalOutput.LockTool:
             self.state_diff[(tool_id, 'a')] = True
 
-        if self.digital_output == DigitalOutput.UnlockTool:
+        elif self.digital_output == DigitalOutput.UnlockTool:
             self.state_diff[(tool_id, 'a')] = False
 
         # OpenGripper and CloseGripper type affects the tool and the beam
-        if self.digital_output == DigitalOutput.OpenGripper:
+        elif self.digital_output == DigitalOutput.OpenGripper:
             gripper = process.tool(self.tool_id)
             gripper.open_gripper()
             self.state_diff[(tool_id, 'c')] = gripper._get_kinematic_state()
-            if self.beam_id is not None:
-                self.state_diff[(self.beam_id, 'a')] = False
 
-        if self.digital_output == DigitalOutput.CloseGripper:
+        elif self.digital_output == DigitalOutput.CloseGripper:
             gripper = process.tool(self.tool_id)
             gripper.close_gripper()
             self.state_diff[(tool_id, 'c')] = gripper._get_kinematic_state()
-            if self.beam_id is not None:
-                self.state_diff[(self.beam_id, 'a')] = True
+
+        # Changing States for attached objects
+        if self.digital_output in [DigitalOutput.LockTool, DigitalOutput.CloseGripper]:
+            for object_id in self.attached_objects:
+                self.state_diff[(object_id, 'a')] = True
+        elif self.digital_output in [DigitalOutput.UnlockTool, DigitalOutput.OpenGripper]:
+            for object_id in self.attached_objects:
+                self.state_diff[(object_id, 'a')] = False
 
 
 class DigitalOutput(object):
@@ -475,10 +497,10 @@ class ClampsJawMovement(Movement):
 
 class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
-    def __init__(self, target_frame=None, attached_tool_id=None, attached_beam_id=None, jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="",
+    def __init__(self, target_frame=None, attached_objects=[], t_flange_from_attached_objects=[], jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="",
                  allowed_collision_matrix=[], tag=None):
         tag = tag or "Robot and Clamp Sync Move"
-        RoboticMovement.__init__(self, target_frame, attached_tool_id, attached_beam_id, planning_priority=planning_priority,
+        RoboticMovement.__init__(self, target_frame, attached_objects, t_flange_from_attached_objects, planning_priority=planning_priority,
                                  speed_type=speed_type, allowed_collision_matrix=allowed_collision_matrix, tag=tag)
         ClampsJawMovement.__init__(self, jaw_positions, clamp_ids,
                                    planning_priority=planning_priority, speed_type=speed_type, tag=tag)
@@ -503,3 +525,144 @@ class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
         RoboticMovement.create_state_diff(self, process, clear)
         ClampsJawMovement.create_state_diff(self, process, clear=False)
+
+
+class RobotScrewdriverSyncLinearMovement(RoboticMovement):
+    def __init__(
+            self,
+            target_frame=None,  # type: Frame
+            attached_objects=[],  # type: List[str]
+            t_flange_from_attached_objects=[],  # type: List[Transformation]
+            screw_positions=[],  # type: List[float]
+            screwdriver_ids=[],  # type: List[str]
+            planning_priority=1,  # type: int
+            speed_type="",  # type: str
+            allowed_collision_matrix=[],  # type: List[Tuple[str,str]]
+            tag=None  # type: str
+    ):
+        """Syncronized linear movement between screwdrivers and robot.
+
+        The `attached_objects` and `t_flange_from_attached_objects` lists should contain the
+        screwdriver_ids in the `screwdriver_ids`.
+
+        `screw_positions` are relative distances (mm) from the start of the movement.
+        Positive means tightening, negative means retracting.
+
+        State_diff
+        ----------
+        Robot Frame is updated
+        All the screwdriver's frame are updated
+        """
+
+        RoboticMovement.__init__(
+            self,
+            target_frame=target_frame,
+            attached_objects=attached_objects,
+            t_flange_from_attached_objects=t_flange_from_attached_objects,
+            planning_priority=planning_priority,
+            speed_type=speed_type,
+            allowed_collision_matrix=allowed_collision_matrix,
+            tag=tag or "Robot and Clamp Sync Move")
+        self.screw_positions = screw_positions
+        self.screwdriver_ids = screwdriver_ids
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(RobotScrewdriverSyncLinearMovement, self).data
+        data['screw_position'] = self.screw_positions
+        data['screwdriver_ids'] = self.screwdriver_ids
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(RobotScrewdriverSyncLinearMovement, type(self)).data.fset(self, data)
+        self.screw_positions = data.get('screw_positions', [])
+        self.screwdriver_ids = data.get('screwdriver_ids', [])
+
+    def __str__(self):
+        return "Robot-Screwdriver Linear Sync Move to %s. Screwdrivers %s Move by %s mm." % (self.target_frame, self.screwdriver_ids, self.screw_positions)
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        RoboticMovement.create_state_diff(self, process, clear)
+
+
+class AcquireDockingOffset(Movement):
+    def __init__(
+        self,
+        target_frame=None,  # type: Frame
+        tool_id=None,  # type: str
+        tag=None  # type: str
+    ):
+        Movement.__init__(
+            self,
+            operator_stop_after="Confirm Docking Offset",
+            tag=tag or "Acquire Docking Offset"
+        )
+        self.target_frame = target_frame,  # type: Frame
+        self.tool_id = tool_id,  # type: str
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(AcquireDockingOffset, self).data
+        data['target_frame'] = self.target_frame
+        data['tool_id'] = self.tool_id
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(AcquireDockingOffset, type(self)).data.fset(self, data)
+        self.target_frame = data.get('target_frame', None)
+        self.tool_id = data.get('tool_id', None)
+
+    def __str__(self):
+        return "Aquire docking offset for Tool ('%s')" % self.tool_id
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}
+
+
+class CancelRobotOffset(Movement):
+    def __init__(
+        self,
+        tool_id=None,  # type: str
+        tag=None  # type: str
+    ):
+        Movement.__init__(
+            self,
+            tag=tag or "Cancel Docking Offset"
+        )
+        self.tool_id = tool_id,  # type: str
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(CancelRobotOffset, self).data
+        data['tool_id'] = self.tool_id
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(CancelRobotOffset, type(self)).data.fset(self, data)
+        self.tool_id = data.get('tool_id', None)
+
+    def __str__(self):
+        return "Cancel docking offset for Tool ('%s')" % self.tool_id
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}

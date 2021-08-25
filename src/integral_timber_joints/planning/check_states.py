@@ -46,7 +46,7 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--problem', default='twelve_pieces_process.json', # pavilion_process.json
+    parser.add_argument('-p', '--problem', default='nine_pieces_process.json', # pavilion_process.json
                         help='The name of the problem to solve')
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')
@@ -158,18 +158,18 @@ def main():
             start_state = process.get_movement_start_scene(m)
             end_state = process.get_movement_end_scene(m)
             start_conf = process.get_movement_start_robot_config(m)
-            if start_conf:
-                start_conf.joint_names = joint_names
+            # if start_conf:
+            #     start_conf.joint_names = joint_names
             end_conf = process.get_movement_end_robot_config(m)
-            if end_conf:
-                end_conf.joint_names = joint_names
+            # if end_conf:
+            #     end_conf.joint_names = joint_names
 
             in_collision = False
             joint_flip = False
             no_traj = False
-
+            m_index = process.movements.index(m)
             print('-'*10)
-            print_title('(Seq#{}-#{}) {}'.format(seq_i, i, m.short_summary))
+            print_title('(MovementIndex={}) (Seq#{}-#{}) {}'.format(m_index, seq_i, i, m.short_summary))
 
             if isinstance(m, RoboticMovement):
                 # movement-specific ACM
@@ -208,7 +208,8 @@ def main():
                             prev_conf = jpt
                         cprint('Trajectory in trouble: in_collision {} | joint_flip {}'.format(in_collision, joint_flip), 'red' if in_collision or joint_flip else 'green')
                         if in_collision or joint_flip:
-                            wait_for_user()
+                            if args.debug:
+                                wait_for_user()
                     else:
                         no_traj = True
                         cprint('No trajectory found!', 'red')
@@ -232,7 +233,7 @@ def main():
                         # wait_for_user()
                 else:
                     no_traj = True
-                    print('Start found: {} | End conf found: {}.'.format(start_conf is not None, end_conf is not None), 'yellow')
+                    cprint('Start found: {} | End conf found: {}.'.format(start_conf is not None, end_conf is not None), 'yellow')
                     # wait_for_user()
 
             if in_collision or joint_flip or no_traj:

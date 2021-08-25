@@ -45,33 +45,63 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
     chosen_gripper_ideal = None
 
     # Do not change anything if gripper_type is already set
+    already_set = False
     if process.assembly.get_beam_attribute(beam_id, "gripper_type") is not None:
+        if verbose:
+            print("assign_gripper_to_beam: gripper_type set")
         if process.assembly.get_beam_attribute(beam_id, "gripper_id") is not None:
             if verbose:
-                print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
-                      (beam_id, process.assembly.get_joint_attribute(beam_id, "gripper_type")))
-            return ComputationalResult.ValidNoChange
+                print("assign_gripper_to_beam: gripper_id set")
 
-    # Compute Gripper Type
-    for gripper_type in process.available_gripper_types:
-        gripper = process.get_one_gripper_by_type(gripper_type)
-        # Check if beam length is within limits
-        if beam_length >= gripper.beam_length_limits[0] and beam_length <= gripper.beam_length_limits[1]:
-            # Compute beam length vs ideal length and make decision
-            length_to_ideal = abs(beam_length - gripper.target_beam_length)
-            if chosen_gripper_type is None or length_to_ideal < chosen_gripper_ideal:
-                chosen_gripper_type = gripper_type
-                chosen_gripper_ideal = length_to_ideal
+            # Check that the gripper_id is sensible
+            if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+                if verbose:
+                    print("assign_gripper_to_beam: assembly method = %s " % process.assembly.get_assembly_method(beam_id))
 
-    # In cases no suitable gripper is available
-    if chosen_gripper_type is None:
+                if process.assembly.get_beam_attribute(beam_id, "gripper_id") in [tool.name for tool in process.screwdrivers]:
+                    if verbose:
+                        print("assign_gripper_to_beam: gripper_id %s is valid and will not be changed." % process.assembly.get_beam_attribute(beam_id, "gripper_id"))
+                    already_set = True
+            else:
+                if process.assembly.get_beam_attribute(beam_id, "gripper_id") in [tool.name for tool in process.grippers]:
+                    if verbose:
+                        print("assign_gripper_to_beam: gripper_id %s is valid and will not be changed." % process.assembly.get_beam_attribute(beam_id, "gripper_id"))
+                    already_set = True
+    if already_set:
         if verbose:
-            print("No suitable gripper assigned to %s" % (beam_id))
-        return ComputationalResult.ValidCannotContinue
-    # Set state and return
-    process.assembly.set_beam_attribute(beam_id, "gripper_type", chosen_gripper_type)
+            print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
+                (beam_id, process.assembly.get_beam_attribute(beam_id, "gripper_type")))
+        return ComputationalResult.ValidNoChange
 
-    gripper_id = process.get_one_tool_by_type(chosen_gripper_type).name
+    if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+        joint_ids = process.assembly.get_joint_ids_with_tools_for_beam(beam_id)
+        first_screwdriver = process.get_tool_of_joint(joint_ids[0])
+        chosen_gripper_type = first_screwdriver.type_name
+        gripper_id = first_screwdriver.name
+        if verbose:
+            print("chosen_gripper_type = %s" % chosen_gripper_type)
+            print("gripper_id = %s" % gripper_id)
+    else:
+        # Compute Gripper Type
+        for gripper_type in process.available_gripper_types:
+            gripper = process.get_one_gripper_by_type(gripper_type)
+            # Check if beam length is within limits
+            if beam_length >= gripper.beam_length_limits[0] and beam_length <= gripper.beam_length_limits[1]:
+                # Compute beam length vs ideal length and make decision
+                length_to_ideal = abs(beam_length - gripper.target_beam_length)
+                if chosen_gripper_type is None or length_to_ideal < chosen_gripper_ideal:
+                    chosen_gripper_type = gripper_type
+                    chosen_gripper_ideal = length_to_ideal
+
+        # In cases no suitable gripper is available
+        if chosen_gripper_type is None:
+            if verbose:
+                print("No suitable gripper assigned to %s" % (beam_id))
+            return ComputationalResult.ValidCannotContinue
+        gripper_id = process.get_one_tool_by_type(chosen_gripper_type).name
+
+    # Set gripper_type and gripper_id and return
+    process.assembly.set_beam_attribute(beam_id, "gripper_type", chosen_gripper_type)
     process.assembly.set_beam_attribute(beam_id, "gripper_id", gripper_id)
     if verbose:
         print("Gripper Type: %s assigned to %s" % (chosen_gripper_type, beam_id))
