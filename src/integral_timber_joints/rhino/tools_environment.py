@@ -404,9 +404,11 @@ def copy_env_models(process):
 
 
 def copy_all(process):
-    reconfirm = rs.GetString("There are %i Clamps, %i Grippers, ToolChanger, RobotWrist, %i Environment Model(es) in current file, do you want to delete them and replace by new ones?" % (
+    # type: (RobotClampAssemblyProcess) -> None
+    reconfirm = rs.GetString("There are %i Clamps, %i Screwdrivers, %i Grippers, ToolChanger, RobotWrist, %i Environment Model(es) in current file, do you want to delete them and replace by new ones?" % (
         len(process.environment_models),
         len(list(process.clamps)),
+        len(list(process.screwdrivers)),
         len(list(process.grippers))),
         "Delete", ["DeleteAndContinue", "Cancel"])
     if reconfirm is None:
@@ -423,7 +425,8 @@ def copy_all(process):
 
         process.attributes['clamps'] = another_process.attributes['clamps']
         process.attributes['grippers'] = another_process.attributes['grippers']
-        print("Old clamps and Grippers deleted, %i Clamps, %i Grippers imported." % (len(list(process.clamps)), len(list(process.grippers))))
+        process.attributes['screwdrivers'] = another_process.attributes['screwdrivers']
+        print("Old clamps and Grippers deleted, %i Clamps, %i Screwdrivers, %i Grippers imported." % (len(list(process.clamps)), len(list(process.screwdrivers)), len(list(process.grippers))))
 
         process.robot_toolchanger = another_process.robot_toolchanger
         process.robot_wrist = another_process.robot_wrist
@@ -582,7 +585,7 @@ def show_menu(process):
 
         # Create Menu
         config = {
-            'message': 'Assembly contains %i Clamps, %i Grippers, %i EnvMeshs:' % (len(list(process.clamps)), len(list(process.grippers)), len(process.environment_models)),
+            'message': 'Process contains %i Clamps, %i Screwdrivers, %i Grippers, %i EnvMeshs:' % (len(list(process.clamps)), len(list(process.screwdrivers)), len(list(process.grippers)), len(process.environment_models)),
             'options': [
                 {'name': 'Finish', 'action': 'Exit'
                  },
@@ -594,7 +597,7 @@ def show_menu(process):
                     {'name': 'DeleteClamp', 'action': delete_clamp},
                     {'name': 'ReplaceClamp', 'action': replace_clamp},
                 ]},
-                {'name': 'Screwdrivers', 'message': 'Process have %i Screwdrivers:' % len(list(process.clamps)), 'options': [
+                {'name': 'Screwdrivers', 'message': 'Process have %i Screwdrivers:' % len(list(process.screwdrivers)), 'options': [
                     {'name': 'Back', 'action': 'Back'},
                     {'name': 'AddScrewdriver', 'action': add_screwdriver},
                     {'name': 'DeleteScrewdriver', 'action': delete_screwdriver},
