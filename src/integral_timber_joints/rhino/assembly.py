@@ -132,8 +132,8 @@ def ui_add_beam_from_brep_box(process):
         vectors = [] # type: list[Vector]
         corners = []
         for edge in edges:
-            start = [edge.Line.From.X, edge.Line.From.Y, edge.Line.From.Z]
-            end = [edge.Line.To.X, edge.Line.To.Y, edge.Line.To.Z]
+            start = [edge.PointAtStart.X, edge.PointAtStart.Y, edge.PointAtStart.Z]
+            end = [edge.PointAtEnd.X, edge.PointAtEnd.Y, edge.PointAtEnd.Z]
             vector = Vector.from_start_end(start, end)
             vectors.append(vector)
             corners.append(start)
