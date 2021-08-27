@@ -1,6 +1,7 @@
 import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 import scriptcontext
+import re
 
 from compas.geometry import Frame, Vector, Point, bounding_box
 from compas.geometry import Transformation
@@ -17,9 +18,10 @@ from integral_timber_joints.rhino.load import get_process, get_process_artist, p
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
 
 try:
-    from typing import Dict, Iterator, List, Optional, Tuple
+    from typing import Dict, Iterator, List, Optional, Tuple, Any
 except:
     pass
+
 
 def _add_beams_to_assembly(process, beams):
     # type: (RobotClampAssemblyProcess, list[Beam]) -> None
@@ -63,6 +65,48 @@ def _add_beams_to_assembly(process, beams):
 
     print('%i Beams added to the assembly.' % len(new_beam_ids))
 
+
+def _beam_order_comparator(x, y):
+    # type: (Beam, Beam) -> int
+    """Creating a order based on `rhino_name` and `rhino_select_order` attribute.
+    Objects with names go first.
+    Otherwise, objects are listed based on selection order.
+    """
+
+    x_rhino_name = x.rhino_name if hasattr(x, 'rhino_name') else None
+    y_rhino_name = y.rhino_name if hasattr(y, 'rhino_name') else None
+    x_rhino_select_order = x.rhino_select_order if hasattr(x, 'rhino_select_order') else None
+    y_rhino_select_order = y.rhino_select_order if hasattr(y, 'rhino_select_order') else None
+
+    def atoi(text):
+        # type: (str) -> Any
+        return int(text) if text.isdigit() else text
+
+    def natural_keys(text):
+        # type: (str) -> Any
+        '''
+        alist.sort(key=natural_keys) sorts in human order
+        http://nedbatchelder.com/blog/200712/human_sorting.html
+        (See Toothy's implementation in the comments)
+        '''
+        return [atoi(c) for c in re.split(r'(\d+)', text)]
+
+    # Beams with both names will be compared.
+    if x_rhino_name is not None and y_rhino_name is not None:
+        return natural_keys(x_rhino_name) > natural_keys(y_rhino_name)
+    # Beams with no names go to the back of the sort.
+    if x_rhino_name is None and y_rhino_name is not None:
+        return 1
+    if y_rhino_name is None and x_rhino_name is not None:
+        return -1
+
+    if x_rhino_select_order is None and y_rhino_select_order is not None:
+        return -1
+    if y_rhino_select_order is None and x_rhino_select_order is not None:
+        return 1
+    return x_rhino_name > y_rhino_name
+
+
 def ui_add_beam_from_lines(process):
     # type: (RobotClampAssemblyProcess) -> None
     ''' Ask user for line(s) to create new beams.
@@ -78,7 +122,7 @@ def ui_add_beam_from_lines(process):
     # Create Beams form lines
     assembly = process.assembly  # type: Assembly
     new_beams = []
-    for guid in guids:
+    for rhino_select_order, guid in enumerate(guids):
         rhinoline = RhinoCurve.from_guid(guid)  # RhinoLine is not implemented sigh... RhinoCurve is used.
         centerline = rhinoline.to_compas()
         centerline_vector = Vector.from_start_end(centerline.start, centerline.end)
@@ -91,10 +135,16 @@ def ui_add_beam_from_lines(process):
             guide_vector = Vector(0, 0, 1)
 
         # Create Beam object
-
         beam = Beam.from_centerline(centerline, guide_vector, width, height)
+        # Find out the name in Rhino Properities for sorting
+        beam.rhino_name = rs.ObjectName(guid)
+        beam.rhino_select_order = rhino_select_order
+
         new_beams.append(beam)
 
+    # Sorting by human sorting natural keys
+    new_beams.sort(cmp=_beam_order_comparator)
+    # Add to assembly
     _add_beams_to_assembly(process, new_beams)
 
 
@@ -104,6 +154,7 @@ def ui_add_beam_from_brep_box(process):
     '''
     assembly = process.assembly  # type: Assembly
     # ask user to pick boxes
+    print("Object names in Rhino can be used to srot beams.")
     guids = rs.GetObjects("Select Brep (uncut 6 sided box only)", filter=rs.filter.polysurface)
     # print(guids)
 
@@ -119,17 +170,17 @@ def ui_add_beam_from_brep_box(process):
             if Vector.cross(vector, x_vector).length > 1e-4:
                 z_vector = vector
                 break
-        frame = Frame([0,0,0], x_vector, Vector.cross(x_vector, z_vector).scaled(-1))
+        frame = Frame([0, 0, 0], x_vector, Vector.cross(x_vector, z_vector).scaled(-1))
         return frame
 
     if guids is None:
         return
 
     new_beams = []
-    for guid in guids:
-        brep = rs.coercebrep(guid) # type: Rhino.Geometry.Brep
+    for rhino_select_order, guid in enumerate(guids):
+        brep = rs.coercebrep(guid)  # type: Rhino.Geometry.Brep
         edges = brep.DuplicateEdgeCurves(False)
-        vectors = [] # type: list[Vector]
+        vectors = []  # type: list[Vector]
         corners = []
         for edge in edges:
             start = [edge.PointAtStart.X, edge.PointAtStart.Y, edge.PointAtStart.Z]
@@ -142,7 +193,7 @@ def ui_add_beam_from_brep_box(process):
         beam_frame = beam_frame_from_vectors(vectors)
 
         # Find the origin of the beam frame
-        aligned_corners = [beam_frame.to_local_coordinates(point) for point in  corners]
+        aligned_corners = [beam_frame.to_local_coordinates(point) for point in corners]
         bb = bounding_box(aligned_corners)
         bounds_in_wcf = [beam_frame.to_world_coordinates(point) for point in bb]
         min_corner = bounds_in_wcf[0]
@@ -157,8 +208,15 @@ def ui_add_beam_from_brep_box(process):
 
         # Construct beam object
         beam = Beam(frame=beam_frame, length=length, width=width, height=height)
+        # Find out the name in Rhino Properities for sorting
+        beam.rhino_name = rs.ObjectName(guid)
+        beam.rhino_select_order = rhino_select_order
+
         new_beams.append(beam)
 
+    # Sorting by human sorting natural keys
+    new_beams.sort(cmp=_beam_order_comparator)
+    # Add to assembly
     _add_beams_to_assembly(process, new_beams)
 
 
@@ -255,7 +313,7 @@ def show_assembly_method_color(process):
     rs.EnableRedraw(True)
 
 
-def ui_change_assembly_method(process, preselection = []):
+def ui_change_assembly_method(process, preselection=[]):
     # type: (RobotClampAssemblyProcess, Optional[list[str]]) -> None
     '''Visualize beams assembly method in different colour.
     Options for user to change assembly method.
@@ -286,7 +344,7 @@ def ui_change_assembly_method(process, preselection = []):
                 for beam_id in beam_ids:
                     old_assembly_method = assembly.get_assembly_method(beam_id)
                     if new_assembly_method != old_assembly_method:
-                        #Changing assembly method
+                        # Changing assembly method
                         process.assembly.set_beam_attribute(beam_id, 'assembly_method', new_assembly_method)
                         # print ('Beam(%s) change from %s to %s' % (beam_id, old_assembly_method, new_assembly_method))
 
@@ -406,7 +464,7 @@ def ui_orient_assembly(process):
         artist.delete_gripper_all_positions(beam_id, redraw=False)
         artist.delete_interactive_beam_visualization(beam_id, redraw=False)
         for joint_id in process.assembly.get_joint_ids_of_beam(beam_id):
-                artist.delete_asstool_all_positions(joint_id, redraw=False)
+            artist.delete_asstool_all_positions(joint_id, redraw=False)
 
     assembly.transform(T)
     # Clear Actions and Movements because they are no longer valid.
