@@ -1067,8 +1067,8 @@ class RobotClampAssemblyProcess(Data):
         for i, m in enumerate(movements):
             start_state = self.get_movement_start_scene(m)
             end_state = self.get_movement_end_scene(m)
-            has_start_frame = start_state['robot'].current_frame is not None
-            has_end_frame = end_state['robot'].current_frame is not None
+            has_start_frame = start_state[('robot', 'f')] is not None
+            has_end_frame = end_state[('robot', 'f')] is not None
             print('---')
             print('({}) {} \npriority {} | has start conf {}, TCP {} | has end conf {}, TCP {}{}'.format(
                 i, _colored_movement_short_summary(m), _colored_planning_priority(m.planning_priority),
