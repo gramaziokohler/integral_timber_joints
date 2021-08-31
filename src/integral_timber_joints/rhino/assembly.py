@@ -13,7 +13,7 @@ from compas_rhino.utilities.objects import get_object_name, get_object_names
 from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint_halflap import Joint_halflap_from_beam_beam_intersection
-from integral_timber_joints.geometry.joint_non_planar_lap import non_planar_lap_joint_from_beam_beam_intersection
+from integral_timber_joints.geometry.joint_non_planar_lap import non_planar_lap_joint_from_beam_beam_intersection, JointNonPlanarLap
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
@@ -266,6 +266,8 @@ def ui_flip_beams(process):
     '''Ask User to select a beam for flipping the joints' direction
     Only joints to earlier beams are flipped.
 
+    Beams with non planar joints cannot be flipped.
+
     THis functions repeats until users press Enter without selecting beam.
     '''
     assembly = process.assembly  # type: Assembly
@@ -279,16 +281,22 @@ def ui_flip_beams(process):
             return
         beam_id = get_object_name(guids)
 
-        # Loop though alread_built_neighbors and swap joint
+        # * Check if any of its joints to previous beams are non planar.
+        for joint_id in process.assembly.get_joints_of_beam_connected_to_already_built(beam_id):
+            if isinstance(process.assembly.joint(joint_id), JointNonPlanarLap):
+                print("Sorry. Cannot flip beams with non planar joints. Offending joint: %s-%s" % joint_id)
+                continue
+
+        # * Loop though alread_built_neighbors and swap joint
         earlier_neighbors = assembly.get_already_built_neighbors(beam_id)
         for neighbour_id in earlier_neighbors:
             assembly.flip_lap_joint((beam_id, neighbour_id))
 
-        # Update drownstream computation
+        # * Update drownstream computation
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_final', None)
         recompute_dependent_solutions(process, beam_id)
 
-        # Update visualization of flipped beam and neighbors
+        # * Update visualization of flipped beam and neighbors
         for beam_id in earlier_neighbors + [beam_id]:
             artist.redraw_interactive_beam(beam_id, force_update=True)
         show_assembly_color(process, earlier_neighbors + [beam_id], redraw=True)
