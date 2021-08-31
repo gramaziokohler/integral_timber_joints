@@ -146,16 +146,19 @@ class AssemblyNurbsArtist(object):
                 negative_breps = [rs.coercebrep(guid) for guid in negative_brep_guids]
                 print(positive_breps, negative_breps)
                 boolean_result = rg.Brep.CreateBooleanDifference(positive_breps, negative_breps, TOL)
-                for brep in boolean_result:
-                    guid = add_brep(brep)
-                    if guid:
-                        guids.append(guid)
+                if boolean_result is None:
+                    print("Artist draw_beam(%s) Boolean Failure"% beam_id)
+                else:
+                    for brep in boolean_result:
+                        guid = add_brep(brep)
+                        if guid:
+                            guids.append(guid)
 
-                # Delete the original boolean set geometries
-                delete_objects(positive_brep_guids + negative_brep_guids, purge=True, redraw=False)
+                    # Save resulting guid(s) into dictionary
+                    self.beam_guids(beam_id).extend(guids)
 
-                # Save resulting guid(s) into dictionary
-                self.beam_guids(beam_id).extend(guids)
+                    # Delete the original boolean set geometries
+                    delete_objects(positive_brep_guids + negative_brep_guids, purge=True, redraw=False)
             else:
                 self.beam_guids(beam_id).extend(positive_brep_guids)
 
