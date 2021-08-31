@@ -14,7 +14,7 @@ from compas.geometry.transformations.rotation import Rotation
 
 from compas.rpc import Proxy
 
-from integral_timber_joints.geometry import Beamcut, Joint
+from integral_timber_joints.geometry import Beamcut, Joint, JointNonPlanarLap, non_planar_lap_joint_from_beam_beam_intersection
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
 
@@ -217,7 +217,10 @@ class Assembly(Network):
 
     def add_joint_pair(self, joint1, joint2, beam1_id, beam2_id):
         # type: (Joint, Joint, str, str) -> None
-        """Add a joint"""
+        """Add a pair of joint
+
+        If the joint already exist, the new joint object will orverwrite the old one.
+        """
         self.add_one_joint(joint1, beam1_id, beam2_id)
         self.add_one_joint(joint2, beam2_id, beam1_id)
         self.beam(beam1_id).cached_mesh = None
@@ -379,7 +382,8 @@ class Assembly(Network):
             return None
         return self.sequence.index(beam_id)
 
-    def shift_sequence_by_one(self, beam_id, shift_earlier=True):
+    def _shift_sequence_by_one(self, beam_id, shift_earlier=True):
+        # type: (str, bool) -> Tuple[str, str]
         """Swap the sequence of a beam with the previous or next item.
         Invalidly swapping [first item earlier, or last item later] will have no effect.
 
@@ -400,6 +404,8 @@ class Assembly(Network):
             return [sequence[i], sequence[i+1]]
 
     def shift_beam_sequence(self, beam_id, shift_amount, update_assembly_direction=True, allow_change_joint_direction=True):
+        # type: (str, int, bool, bool) -> List[str]
+
         """Move the sequence of a beam earlier or later by the shift_amount.
         Negative shift_amount means moving earlier.
 
@@ -417,22 +423,33 @@ class Assembly(Network):
 
         # Perform as many swaps as needed, before or after
         for _ in range(abs(shift_amount)):
-            affected_id_pair = self.shift_sequence_by_one(beam_id, shift_earlier=(shift_amount < 0))
+            affected_id_pair = self._shift_sequence_by_one(beam_id, shift_earlier=(shift_amount < 0))
             affected_ids = affected_ids.union(set(affected_id_pair))
 
         if update_assembly_direction:
-            # Compute which neighbour changed before-after relationship witht he shifted beam.
+            # Compute which neighbour changed before-after relationship with the shifted beam.
             now_earlier_neighbors = self.get_already_built_neighbors(beam_id)
             neighbour_with_joint_to_flip = set(org_earlier_neighbors).symmetric_difference(set(now_earlier_neighbors))
             all_affected_earlier_neighbours = set(org_earlier_neighbors).union(set(now_earlier_neighbors))
             print("neighbour_with_joint_to_flip %s" % neighbour_with_joint_to_flip)
 
-            # Flip those joints
-            for nbr in neighbour_with_joint_to_flip:
-                self.flip_lap_joint((beam_id, nbr))
+            # Flip those joints if they are flippable
+            for nbr_beam_id in neighbour_with_joint_to_flip:
+                # Non Planar joints are not flipped but are recreated.
+                if isinstance(self.joint((beam_id, nbr_beam_id)), JointNonPlanarLap):
 
-            # Recompute all affected beams assembly directions
+                    if self.sequence.index(beam_id) < self.sequence.index(nbr_beam_id):
+                        j2, j1 = non_planar_lap_joint_from_beam_beam_intersection(self.beam(nbr_beam_id), self.beam(beam_id))
+                    else:
+                        j1, j2 = non_planar_lap_joint_from_beam_beam_intersection(self.beam(beam_id), self.beam(nbr_beam_id))
+                    self.add_joint_pair(j1, j2, beam_id, nbr_beam_id)
+
+                else:
+                    self.flip_lap_joint((beam_id, nbr_beam_id))
+
+            # Recompute all affected beams screw hole, assembly directions and realign joints if needed.
             for _beam_id in list(neighbour_with_joint_to_flip) + [beam_id]:
+                self.compute_joint_screw_hole(beam_id)
                 self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
                 # If assembly direction is not valid, we try aligning its joints again to see.
                 if self.beam_problems(_beam_id):

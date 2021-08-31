@@ -101,8 +101,8 @@ class JointNonPlanarLap(Joint):
         # First compute which edge is the longest (0-4 or 1-5 or 2-6 or 3-7)
         longest_edge = 0
         longest_length = 0
-        for i in range (4):
-            j = i +4
+        for i in range(4):
+            j = i + 4
             length = distance_point_point(self.pt_jc[i], self.pt_jc[j])
             if length > longest_length:
                 longest_length = length
@@ -281,17 +281,6 @@ class JointNonPlanarLap(Joint):
         # print "Dist%s" % self.distance
         face_frame = beam.get_face_plane(self.face_id)
         return face_frame.normal.scaled(-1 * beam.get_face_height(self.face_id))
-
-    def swap_faceid_to_opposite_face(self):
-        # Face id flip
-        old_face_id = self.face_id
-        new_id = (old_face_id + 1) % 4 + 1
-        self.face_id = new_id
-
-        # Distance point change by angled_lead distance
-        self.distance = self.distance + self.angled_lead
-        # Angle flip
-        self.angle = 180 - self.angle
 
     @property
     def clamp_types(self):
