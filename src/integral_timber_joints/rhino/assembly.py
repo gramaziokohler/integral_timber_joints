@@ -26,7 +26,12 @@ except:
 
 def _add_beams_to_assembly(process, beams):
     # type: (RobotClampAssemblyProcess, list[Beam]) -> None
-    """Shared function to add newly created Beams to Assembly, create Joints and redraw changes in Rhino
+    """Shared function to add newly created Beams to Assembly
+
+    - Auto assign Assembly Method
+    - Compute Joint Screw
+    - create Joints and redraw changes in Rhino
+
     This function can probably be refactered into Assembly class.
     """
     assembly = process.assembly
@@ -43,6 +48,7 @@ def _add_beams_to_assembly(process, beams):
         # Add to assembly
         assembly.add_beam(beam)
 
+        new_joints = []
         for existing_beam in assembly.beams():
             if beam == existing_beam:
                 continue
@@ -53,9 +59,21 @@ def _add_beams_to_assembly(process, beams):
                 j1, j2 = non_planar_lap_joint_from_beam_beam_intersection(beam, existing_beam)
 
             if j1 is not None and j2 is not None:
-                print('New Joint (%s) : %s-%s added to assembly' % (j1.__class__.__name__, beam_id, existing_beam.name))
+                print('- New Joint (%s) : %s-%s added to assembly' % (j1.__class__.__name__, beam_id, existing_beam.name))
                 assembly.add_joint_pair(j1, j2, beam_id, existing_beam.name)
+                new_joints.append(j1)
                 affected_neighbours.append(existing_beam.name)
+
+        # * Automatically assign Assembly Method
+        if len(new_joints) == 0:
+            assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.GROUND_CONTACT)
+            print("- Automatically assigned Assembly method: GROUND_CONTACT")
+        elif any([isinstance(joint,JointNonPlanarLap) for joint in new_joints]):
+            assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.SCREWED_WITH_GRIPPER)
+            print("- Automatically assigned Assembly method: SCREWED_WITH_GRIPPER")
+        else:
+            assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.CLAMPED)
+            print("- Automatically assigned Assembly method: CLAMPED")
 
     # * Compute joint screw hole depth
     for beam_id in new_beam_ids:

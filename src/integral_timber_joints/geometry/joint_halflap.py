@@ -230,10 +230,10 @@ def Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0, dist_
         dist_tol = line1.length * 1e-5
         intersection_result = intersection_segment_segment(line1, line2, dist_tol)
         if intersection_result[0] is None:
-            print("Joint Intersection result is none")
+            # print("Joint Intersection result is none")
             return None
         if distance_point_point(intersection_result[0], intersection_result[1]) > dist_tol:
-            print("Joint Intersection result %s > tol: %s" % (distance_point_point(intersection_result[0], intersection_result[1]), dist_tol))
+            # print("Joint Intersection result %s > tol: %s" % (distance_point_point(intersection_result[0], intersection_result[1]), dist_tol))
             return None
         return distance_point_point(intersection_result[0], line1.start)
 
