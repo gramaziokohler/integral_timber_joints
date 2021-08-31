@@ -210,7 +210,9 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--problem', default='pavilion_process.json', # twelve_pieces_process.json
+    parser.add_argument('--design_dir', default='210605_ScrewdriverTestProcess',
+                        help='problem json\'s containing folder\'s name.')
+    parser.add_argument('--problem', default='pavilion_process.json', # twelve_pieces_process.json
                         help='The name of the problem to solve')
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `results`')
@@ -254,7 +256,7 @@ def main():
     #########
     # * Load process and recompute actions and states
     process = parse_process(args.problem, subdir=args.problem_subdir)
-    result_path = get_process_path(args.problem, subdir='results')
+    result_path = get_process_path(args.design_dir, args.problem, subdir='results')
 
     # Double check entire solution is valid
     for beam_id in process.assembly.sequence:

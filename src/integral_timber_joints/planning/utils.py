@@ -83,3 +83,6 @@ def notify(msg=''):
 def print_title(x):
     print('\n\n')
     cprint(x, 'blue', 'on_white', attrs=['bold'])
+
+def color_from_success(success : bool):
+    return 'green' if success else 'red'

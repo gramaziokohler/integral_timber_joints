@@ -21,15 +21,12 @@ from pybullet_planning import get_sample_fn, link_from_name, joint_from_name, li
 from pybullet_planning import uniform_pose_generator
 
 from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
-from integral_timber_joints.planning.robot_setup import to_rlf_robot_full_conf, \
-    R11_INTER_CONF_VALS, R12_INTER_CONF_VALS
 from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names
 from integral_timber_joints.planning.visualization import color_from_object_id
 from integral_timber_joints.planning.parsing import PLANNING_DATA_DIR
 from integral_timber_joints.planning.utils import FRAME_TOL
 from integral_timber_joints.process import SceneState
-from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement, ObjectState
-from typing import Dict, Tuple, Any
+from integral_timber_joints.process import  RobotClampAssemblyProcess
 
 ##############################
 
@@ -204,26 +201,26 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     collision_object_names = client._get_collision_object_names(wildcard)
 
                     # touched_links is only for the adjacent Robot links
-                    touched_links = []
-                    attached_child_link_name = None # default to use BASE_LINK if None
+                    touched_robot_links = []
+                    attached_object_base_link_name = None # default to use BASE_LINK if None
                     if object_id == 'tool_changer':
                         # tool changer
-                        attached_child_link_name = process.robot_toolchanger.get_base_link_name()
-                        touched_links = ['{}_tool0'.format(MAIN_ROBOT_ID), '{}_link_6'.format(MAIN_ROBOT_ID)]
+                        attached_object_base_link_name = process.robot_toolchanger.get_base_link_name()
+                        touched_robot_links = ['{}_tool0'.format(MAIN_ROBOT_ID), '{}_link_6'.format(MAIN_ROBOT_ID)]
                     elif object_id in process.tool_ids:
                         # tools
-                        attached_child_link_name = process.tool(object_id).get_base_link_name()
+                        attached_object_base_link_name = process.tool(object_id).get_base_link_name()
                     else:
                         # beams
-                        attached_child_link_name = None # process.tool(object_id).get_base_link_name()
+                        attached_object_base_link_name = None # process.tool(object_id).get_base_link_name()
 
                     for name in collision_object_names:
                         # a faked AttachedCM since we are not adding a new mesh, just promoting collision meshes to AttachedCMes
                         client.add_attached_collision_mesh(
                             AttachedCollisionMesh(CollisionMesh(None, name),
-                                                  flange_link_name, touch_links=touched_links),
+                                                  flange_link_name, touch_links=touched_robot_links),
                             options={'robot': robot,
-                                     'attached_child_link_name': attached_child_link_name,
+                                     'attached_child_link_name': attached_object_base_link_name,
                                      'parent_link_from_child_link_transformation' : robot_flange_from_tool,
                                      })
 
@@ -231,6 +228,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # list of bodies that should not collide with the current object_id
                     extra_disabled_bodies = []
                     if object_id in process.assembly.sequence:
+                        # ! disable collisions between the beam and gripper
                         # beam is the current object, iterating through all the tools to see which one is attached
                         # and disable collisions between them
                         tool_count = 0
@@ -241,7 +239,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                         assert tool_count > 0, 'At least one tool should be attached to the robot when the beam is attached.'
 
                     elif object_id in process.tool_ids:
-                        # tool_changer and a tool
+                        # ! disable collisions between the tool_changer and a tool
                         extra_disabled_bodies.extend(client._get_bodies('^{}$'.format('tool_changer')))
 
                     for name in collision_object_names:
@@ -256,9 +254,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
 #################################
 
 def set_initial_state(client, robot, process, disable_env=False, reinit_tool=True, debug=False):
-    # set all other unused robot
-    # full_start_conf = to_rlf_robot_full_conf(R11_INTER_CONF_VALS, R12_INTER_CONF_VALS)
-    # client.set_robot_configuration(robot, full_start_conf)
     process.set_initial_state_robot_config(process.robot_initial_config)
     try:
         set_state(client, robot, process, process.initial_state, initialize=True,
