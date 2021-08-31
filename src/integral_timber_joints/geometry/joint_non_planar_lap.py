@@ -7,7 +7,7 @@ from copy import deepcopy
 import compas
 from compas.datastructures import Mesh
 from compas.geometry import intersection_line_line, intersection_line_plane, intersection_segment_segment, subtract_vectors, norm_vector
-from compas.geometry import is_point_infront_plane, distance_point_point, dot_vectors
+from compas.geometry import is_point_infront_plane, distance_point_point, dot_vectors, distance_point_plane
 from compas.geometry import Frame, Line, Plane, Point, Vector
 from compas.geometry import Box, Polyhedron
 from compas.geometry import Projection, Translation
@@ -88,6 +88,31 @@ class JointNonPlanarLap(Joint):
             'name': self.name,
         }
         return data
+
+    @property
+    def face_id(self):
+        if self.is_joint_on_beam_move:
+            return self.beam_move_face_id
+        else:
+            return self.beam_stay_face_id
+
+    @property
+    def height(self):
+        # First compute which edge is the longest (0-4 or 1-5 or 2-6 or 3-7)
+        longest_edge = 0
+        longest_length = 0
+        for i in range (4):
+            j = i +4
+            length = distance_point_point(self.pt_jc[i], self.pt_jc[j])
+            if length > longest_length:
+                longest_length = length
+                longest_edge = i
+
+        # Return the projection distance of longest edge
+        if self.is_joint_on_beam_move:
+            return distance_point_plane(self.pt_jc[longest_edge+4], Plane.from_frame(self.center_frame))
+        else:
+            return distance_point_plane(self.pt_jc[longest_edge], Plane.from_frame(self.center_frame))
 
     @classmethod
     def from_data(cls, data):

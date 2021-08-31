@@ -723,8 +723,8 @@ class Assembly(Network):
         """
         for joint_id in self.get_joints_of_beam_connected_to_already_built(beam_id):
             inverse_joint_id = (joint_id[1], joint_id[0])
-            print(self.get_assembly_method(beam_id))
-            print(BeamAssemblyMethod.screw_methods)
+            # print(self.get_assembly_method(beam_id))
+            # print(BeamAssemblyMethod.screw_methods)
             if self.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
                 # print("Screwing Joint %s, %s" % (joint_id, self.joint(joint_id)))
                 self.joint(joint_id).has_screw = True
