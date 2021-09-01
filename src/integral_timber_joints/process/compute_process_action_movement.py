@@ -27,7 +27,12 @@ from integral_timber_joints.tools import Clamp, Gripper, Tool
 def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> ComputationalResult
     """Assign available tool_ids to joints that require assembly tool.
-    Based on the joint attribute `tool_type`
+    `tool_id` is assigned and set based on the joint attribute `tool_type`.
+
+    For beams that are using one tool as gripper.
+    The `tool_id` and `tool_type` for that joint is copied form beam_attribute `gripper_id` and `gripper_type`.
+
+
     """
     available_tools = sorted(process.tools, key=lambda tool: tool.name)
     something_failed = False
@@ -330,14 +335,18 @@ def create_movements_from_action(process, beam_id, verbose=False):
 
 def assign_action_numbers(process, beam_id, verbose=True):
     # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
-    """Assigns act_n to actions in one Beams.
+    """Assigns seq_n (beam ordering) act_n (sequential number) to actions in one Beam.
+
     First Action in a Beam gets action.act_n = 0.
+    `seq_n` is the index of the beam_id in assembly.sequence
 
     Movement.movement_id are also updated.
     """
     act_n = 0
+    seq_n = process.assembly.sequence.index(beam_id)
     for action in process.get_actions_by_beam_id(beam_id):
         action.act_n = act_n
+        action.seq_n = seq_n
         act_n += 1
         action.assign_movement_ids()
 

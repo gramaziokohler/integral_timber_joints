@@ -19,7 +19,7 @@
         </text>
         <tool_bar_id>31c43b10-774f-4f68-b2f1-8f742d6de8c3</tool_bar_id>
       </tool_bar_group_item>
-      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59475" mru_width="868" point_pos="0,60" float_point="10,86" rect_mru_dock_pos="0,60,1920,98" dock_location_u="59419" dock_location="top" float_size="768,62" />
+      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59476" mru_width="868" point_pos="0,60" float_point="10,86" rect_mru_dock_pos="0,60,1920,98" dock_location_u="59419" dock_location="top" float_size="768,62" />
     </tool_bar_group>
   </tool_bar_groups>
   <tool_bars>
@@ -27,7 +27,7 @@
       <text>
         <locale_1033>ITJ Main</locale_1033>
       </text>
-      <tool_bar_item guid="3ac15de0-4f56-4011-b77e-5d999451b122" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="ef6bc52e-b626-44f9-862f-71fd835bedb7" button_display_mode="text_only" display_style_from_parent="False">
+      <tool_bar_item guid="3ac15de0-4f56-4011-b77e-5d999451b122" button_display_mode="text_only" display_style_from_parent="False">
         <text>
           <locale_1033>Toolbar item 00</locale_1033>
         </text>
@@ -55,7 +55,7 @@
         <left_macro_id>a379106a-6770-4889-8044-a8e3bf200622</left_macro_id>
         <right_macro_id>30efa445-2e6c-4083-abeb-8751f8383f79</right_macro_id>
       </tool_bar_item>
-      <tool_bar_item guid="c61ce1e9-5198-4766-99b9-e594dceca0e4" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="87a2bac2-bea2-4a94-898a-3864a8b6fdd4" button_display_mode="text_only" display_style_from_parent="False">
+      <tool_bar_item guid="c61ce1e9-5198-4766-99b9-e594dceca0e4" button_display_mode="text_only" display_style_from_parent="False">
         <text>
           <locale_1033>Toolbar item 02</locale_1033>
         </text>
@@ -74,7 +74,7 @@
         </text>
         <left_macro_id>dc1de8be-ffe7-41d5-9d05-e5b13b804cc6</left_macro_id>
       </tool_bar_item>
-      <tool_bar_item guid="78bb6c18-bf39-488f-8068-b32b5950571c" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="ee7fd0b5-8cdd-4851-b8b9-6f6c78d17e6f" button_display_mode="text_only" display_style_from_parent="False">
+      <tool_bar_item guid="78bb6c18-bf39-488f-8068-b32b5950571c" button_display_mode="text_only" display_style_from_parent="False">
         <text>
           <locale_1033>Toolbar item 05</locale_1033>
         </text>
@@ -102,13 +102,6 @@
         <left_macro_id>ebca2004-2ea7-4865-8633-43fbf91e8ad2</left_macro_id>
         <right_macro_id>04088bfa-86eb-4212-84fb-d4bfbeaa8b68</right_macro_id>
       </tool_bar_item>
-      <tool_bar_item guid="cb3c756b-1fb5-43e3-8bbb-8349ac103d62" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="b4b99faf-443e-4e83-bd18-225f83cd176d" button_display_mode="text_only" display_style_from_parent="False">
-        <text>
-          <locale_1033>Toolbar item 09</locale_1033>
-        </text>
-        <left_macro_id>365d38bb-b43c-4131-8e3b-33ce37c176dc</left_macro_id>
-        <right_macro_id>13ea4d84-b1c1-43de-8ad4-16c131379825</right_macro_id>
-      </tool_bar_item>
       <tool_bar_item guid="7cd21190-4750-44b1-bccb-1bd81d5158b0" button_display_mode="text_only" display_style_from_parent="False">
         <text>
           <locale_1033>Toolbar item 09</locale_1033>
@@ -116,8 +109,12 @@
         <left_macro_id>e5bb2cfe-a0cb-4c06-9083-3a151e2a502c</left_macro_id>
         <right_macro_id>6aafb8be-a7cf-4a36-839a-22ee57813084</right_macro_id>
       </tool_bar_item>
-      <tool_bar_item guid="416a4413-e196-4bc8-8d77-7f3e0f5da45e">
-        <left_macro_id>c5a0b922-9dfa-49f4-9933-b8692e5f97e9</left_macro_id>
+      <tool_bar_item guid="cb3c756b-1fb5-43e3-8bbb-8349ac103d62" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="b4b99faf-443e-4e83-bd18-225f83cd176d" button_display_mode="text_only" display_style_from_parent="False">
+        <text>
+          <locale_1033>Toolbar item 09</locale_1033>
+        </text>
+        <left_macro_id>365d38bb-b43c-4131-8e3b-33ce37c176dc</left_macro_id>
+        <right_macro_id>13ea4d84-b1c1-43de-8ad4-16c131379825</right_macro_id>
       </tool_bar_item>
       <tool_bar_item guid="9ecbe4b0-88ec-4fc2-b307-41a00eebd2d1">
         <left_macro_id>827773d6-344b-43bd-ac75-ecebecd4d04c</left_macro_id>
@@ -125,7 +122,7 @@
     </tool_bar>
   </tool_bars>
   <macros>
-    <macro_item guid="df2c57bc-009c-44a1-b6d1-6ea19b9843bf" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="6a9e295b-6e26-4f7b-a4d5-3e8b67497566" bitmap_id="542f5c7d-c562-447b-8bcb-853969c5fc44">
+    <macro_item guid="df2c57bc-009c-44a1-b6d1-6ea19b9843bf" bitmap_id="542f5c7d-c562-447b-8bcb-853969c5fc44">
       <text>
         <locale_1033>Macro 00</locale_1033>
       </text>
@@ -135,9 +132,10 @@
       <button_text>
         <locale_1033>Load</locale_1033>
       </button_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.load.py"</script>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.load.py"</script>
     </macro_item>
-    <macro_item guid="9b97e08a-bb1b-4bf1-97bc-de97ddefa585" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="5601f7db-73b8-45c7-ba17-643a5576c5b1" bitmap_id="f8b1a1f2-d037-4ac3-a947-df1a027258a4">
+    <macro_item guid="9b97e08a-bb1b-4bf1-97bc-de97ddefa585" bitmap_id="f8b1a1f2-d037-4ac3-a947-df1a027258a4">
       <text>
         <locale_1033>Macro 05</locale_1033>
       </text>
@@ -147,14 +145,15 @@
       <button_text>
         <locale_1033>Load</locale_1033>
       </button_text>
-      <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"</script>
+      <script>! Cancel
+_-RunPythonScript R "integral_timber_joints.rhino.load.py"</script>
     </macro_item>
-    <macro_item guid="ec9c0385-8af3-490d-bc1a-8de6fe884e84" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="f2740d5c-4da3-467a-be7b-3a96ce981afd" bitmap_id="bd37c10a-0619-4499-9ed4-674c6fd56dee">
+    <macro_item guid="ec9c0385-8af3-490d-bc1a-8de6fe884e84" bitmap_id="bd37c10a-0619-4499-9ed4-674c6fd56dee">
       <text>
         <locale_1033>Macro 12</locale_1033>
       </text>
       <tooltip>
-        <locale_1033>Save Assembly and Process</locale_1033>
+        <locale_1033>Save Process - No Indent</locale_1033>
       </tooltip>
       <help_text>
         <locale_1033>Macro 00</locale_1033>
@@ -165,12 +164,17 @@
       <menu_text>
         <locale_1033>Macro 00</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.save.py"</script>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.save.py"
+N</script>
     </macro_item>
     <macro_item guid="29a43690-0968-4bb6-a2da-ee8659c65306" bitmap_id="6a53087f-22c5-4a50-a09e-f516ff62e3b6">
       <text>
         <locale_1033>Macro 05 - Copy 00</locale_1033>
       </text>
+      <tooltip>
+        <locale_1033>Save Process</locale_1033>
+      </tooltip>
       <help_text>
         <locale_1033>Macro 05</locale_1033>
       </help_text>
@@ -180,8 +184,10 @@
       <menu_text>
         <locale_1033>Macro 05</locale_1033>
       </menu_text>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.save.py"</script>
     </macro_item>
-    <macro_item guid="ef89716d-1e62-4420-a4eb-669d9dc8b93a" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="1967bf93-0532-416a-814e-28cc84be7b1d" bitmap_id="108f2113-a59a-4cc5-87fb-15c7100a0d0d">
+    <macro_item guid="ef89716d-1e62-4420-a4eb-669d9dc8b93a" bitmap_id="108f2113-a59a-4cc5-87fb-15c7100a0d0d">
       <text>
         <locale_1033>Macro 02</locale_1033>
       </text>
@@ -191,19 +197,24 @@
       <button_text>
         <locale_1033>Assembly</locale_1033>
       </button_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
     </macro_item>
     <macro_item guid="2e798e84-5164-47ca-b93e-ccddbcc593b0" bitmap_id="6b96369e-e98c-444b-b301-d9591cf31f8a">
       <text>
         <locale_1033>Macro 06</locale_1033>
       </text>
+      <tooltip>
+        <locale_1033>Assembly (Reload)</locale_1033>
+      </tooltip>
       <button_text>
         <locale_1033>Assembly</locale_1033>
       </button_text>
-      <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
+      <script>! Cancel
+_-RunPythonScript R "integral_timber_joints.rhino.load.py"
 _-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
     </macro_item>
-    <macro_item guid="f73bbccd-8abb-414f-9a85-b9e1e333a701" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="9a2eead1-c552-4a9a-80e0-ca434f47b06e" bitmap_id="a0728c26-fc48-4347-9b09-1be5f66f8a3b">
+    <macro_item guid="f73bbccd-8abb-414f-9a85-b9e1e333a701" bitmap_id="a0728c26-fc48-4347-9b09-1be5f66f8a3b">
       <text>
         <locale_1033>Macro 03</locale_1033>
       </text>
@@ -213,9 +224,10 @@ _-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
       <button_text>
         <locale_1033>Sequence</locale_1033>
       </button_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.sequence.py"</script>
+      <script>!Cancel
+_-RunPythonScript "integral_timber_joints.rhino.sequence.py"</script>
     </macro_item>
-    <macro_item guid="4f2dc14b-ee31-4e12-9b92-7c1a9aa30070" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="cdcb36af-6d7a-4263-a662-0b2bfa0761e2" bitmap_id="7c740bde-9b19-4a4f-a086-a0a09b4f5cc5">
+    <macro_item guid="4f2dc14b-ee31-4e12-9b92-7c1a9aa30070" bitmap_id="7c740bde-9b19-4a4f-a086-a0a09b4f5cc5">
       <text>
         <locale_1033>Macro 01</locale_1033>
       </text>
@@ -225,7 +237,8 @@ _-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
       <button_text>
         <locale_1033>Tools&amp;Env</locale_1033>
       </button_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.tools_environment.py"</script>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.tools_environment.py"</script>
     </macro_item>
     <macro_item guid="dc1de8be-ffe7-41d5-9d05-e5b13b804cc6" bitmap_id="d2584eb2-0549-4d5c-9c22-37c9fa5bc523">
       <text>
@@ -243,9 +256,10 @@ _-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
       <menu_text>
         <locale_1033>Macro 01</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.pickup.py"</script>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.pickup.py"</script>
     </macro_item>
-    <macro_item guid="6df8ff35-2843-4afd-ae3c-048f231abc3d" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="dfd941e1-1465-4825-837c-f2ec4b8f6873" bitmap_id="a4d78b76-179e-4185-a451-ecd4ee77ffb4">
+    <macro_item guid="6df8ff35-2843-4afd-ae3c-048f231abc3d" bitmap_id="a4d78b76-179e-4185-a451-ecd4ee77ffb4">
       <text>
         <locale_1033>Macro 04</locale_1033>
       </text>
@@ -255,12 +269,16 @@ _-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
       <button_text>
         <locale_1033>Grasp Pose</locale_1033>
       </button_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.grasp_pose.py"</script>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.grasp_pose.py"</script>
     </macro_item>
-    <macro_item guid="c269102b-59e4-47a4-a70e-e0c7d7466462" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="2f5e5dea-ca58-4e07-ad2d-9cd6a794ec83" bitmap_id="1083b848-4903-465d-ab38-657d5ce424eb">
+    <macro_item guid="c269102b-59e4-47a4-a70e-e0c7d7466462" bitmap_id="1083b848-4903-465d-ab38-657d5ce424eb">
       <text>
         <locale_1033>Macro 13</locale_1033>
       </text>
+      <tooltip>
+        <locale_1033>Grasp Pose (Reload)</locale_1033>
+      </tooltip>
       <button_text>
         <locale_1033>Grasp Pose</locale_1033>
       </button_text>
@@ -283,14 +301,15 @@ _-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
       <menu_text>
         <locale_1033>Macro 04</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.actions_movements.py"</script>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.actions_movements.py"</script>
     </macro_item>
     <macro_item guid="8818c20f-855d-4114-972b-f8f95b27e3e6" bitmap_id="63b21d28-a61a-40c4-bb06-75e6b6529697">
       <text>
         <locale_1033>Macro 13 - Copy</locale_1033>
       </text>
       <tooltip>
-        <locale_1033>Actions (Reset)</locale_1033>
+        <locale_1033>Actions (Reload and Recompute)</locale_1033>
       </tooltip>
       <help_text>
         <locale_1033>Macro 13</locale_1033>
@@ -301,7 +320,8 @@ _-RunPythonScript "integral_timber_joints.rhino.assembly.py"</script>
       <menu_text>
         <locale_1033>Macro 13</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
+      <script>! Cancel
+_-RunPythonScript R "integral_timber_joints.rhino.load.py"
 -RunPythonScript "integral_timber_joints.rhino.actions_movements.py"
 R
 C
@@ -330,12 +350,13 @@ F</script>
         <locale_1033>Macro 08</locale_1033>
       </text>
       <tooltip>
-        <locale_1033>Visualize Actions (Reset)</locale_1033>
+        <locale_1033>Visualize Movement (Reload)</locale_1033>
       </tooltip>
       <button_text>
-        <locale_1033>Visualize Actions</locale_1033>
+        <locale_1033>Visualize Movement</locale_1033>
       </button_text>
-      <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
+      <script>! Cancel
+_-RunPythonScript R "integral_timber_joints.rhino.load.py"
 -RunPythonScript "integral_timber_joints.rhino.visualize_actions.py"</script>
     </macro_item>
     <macro_item guid="82029e9d-c7ae-4f43-8fd9-b61b045f6647" bitmap_id="c1675f0a-d81d-4c62-abd7-5e710cba6e1b">
@@ -343,18 +364,19 @@ F</script>
         <locale_1033>Macro 11</locale_1033>
       </text>
       <tooltip>
-        <locale_1033>Visualize Actions</locale_1033>
+        <locale_1033>Visualize Movement</locale_1033>
       </tooltip>
       <help_text>
         <locale_1033>Macro 04</locale_1033>
       </help_text>
       <button_text>
-        <locale_1033>Visualize Actions</locale_1033>
+        <locale_1033>Visualize Movement</locale_1033>
       </button_text>
       <menu_text>
         <locale_1033>Macro 04</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.visualize_actions.py"</script>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.visualize_actions.py"</script>
     </macro_item>
     <macro_item guid="365d38bb-b43c-4131-8e3b-33ce37c176dc" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="81426d53-9f1c-4462-8108-f1ea37d6a3b8" bitmap_id="227af366-992c-4765-b00b-57c2ba4cf3f0">
       <text>
@@ -414,7 +436,7 @@ F</script>
       </button_text>
       <script>! _-RunPythonScript "integral_timber_joints.rhino.load_old_process.py"</script>
     </macro_item>
-    <macro_item guid="a379106a-6770-4889-8044-a8e3bf200622" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="1967bf93-0532-416a-814e-28cc84be7b1d" bitmap_id="47652f9a-9f70-47a9-9a61-99478ac108ea">
+    <macro_item guid="a379106a-6770-4889-8044-a8e3bf200622" bitmap_id="47652f9a-9f70-47a9-9a61-99478ac108ea">
       <text>
         <locale_1033>Macro 10</locale_1033>
       </text>
@@ -430,12 +452,16 @@ F</script>
       <menu_text>
         <locale_1033>Macro 02</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.trim.py"</script>
+      <script>!Cancel
+_-RunPythonScript "integral_timber_joints.rhino.trim.py"</script>
     </macro_item>
-    <macro_item guid="30efa445-2e6c-4083-abeb-8751f8383f79" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="2edfb21f-52df-4d27-8c0b-7f05287e60d3" bitmap_id="e9adad4a-119e-4b6c-94e1-e205bfc75fb0">
+    <macro_item guid="30efa445-2e6c-4083-abeb-8751f8383f79" bitmap_id="e9adad4a-119e-4b6c-94e1-e205bfc75fb0">
       <text>
         <locale_1033>Macro 06 - Copy</locale_1033>
       </text>
+      <tooltip>
+        <locale_1033 />
+      </tooltip>
       <help_text>
         <locale_1033>Macro 06</locale_1033>
       </help_text>
@@ -446,7 +472,7 @@ F</script>
         <locale_1033>Macro 06</locale_1033>
       </menu_text>
     </macro_item>
-    <macro_item guid="e5bb2cfe-a0cb-4c06-9083-3a151e2a502c" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="81426d53-9f1c-4462-8108-f1ea37d6a3b8" bitmap_id="8f4871e9-7487-4ef2-a300-f19159c0bd76">
+    <macro_item guid="e5bb2cfe-a0cb-4c06-9083-3a151e2a502c" bitmap_id="8f4871e9-7487-4ef2-a300-f19159c0bd76">
       <text>
         <locale_1033>Macro 16</locale_1033>
       </text>
@@ -462,12 +488,16 @@ F</script>
       <menu_text>
         <locale_1033>Macro 00</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.reports.py"</script>
+      <script>!Cancel
+_-RunPythonScript "integral_timber_joints.rhino.reports.py"</script>
     </macro_item>
-    <macro_item guid="6aafb8be-a7cf-4a36-839a-22ee57813084" ImportedFromFileGuid="0f7a9bae-04d2-426b-9022-65bf3554d80d" ImportedFromItemGuid="ce6497b9-0b78-4e45-9389-9c5b62986fc0" bitmap_id="bb516986-50b1-4b5f-89c0-5d912078fba4">
+    <macro_item guid="6aafb8be-a7cf-4a36-839a-22ee57813084" bitmap_id="bb516986-50b1-4b5f-89c0-5d912078fba4">
       <text>
         <locale_1033>Macro 05 - Copy - Copy</locale_1033>
       </text>
+      <tooltip>
+        <locale_1033 />
+      </tooltip>
       <help_text>
         <locale_1033>Macro 05</locale_1033>
       </help_text>
@@ -494,14 +524,15 @@ F</script>
       <menu_text>
         <locale_1033>Macro 04</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript "integral_timber_joints.rhino.visualize_trajectory.py"</script>
+      <script>! Cancel
+_-RunPythonScript "integral_timber_joints.rhino.visualize_trajectory.py"</script>
     </macro_item>
     <macro_item guid="04088bfa-86eb-4212-84fb-d4bfbeaa8b68" bitmap_id="b70c11b4-c602-445d-9e48-4ce8b66740cf">
       <text>
         <locale_1033>Macro 08 - Copy 00</locale_1033>
       </text>
       <tooltip>
-        <locale_1033>Visualize Actions (Reset)</locale_1033>
+        <locale_1033>Visualize Actions (Reload)</locale_1033>
       </tooltip>
       <help_text>
         <locale_1033>Macro 08</locale_1033>
@@ -512,7 +543,8 @@ F</script>
       <menu_text>
         <locale_1033>Macro 08</locale_1033>
       </menu_text>
-      <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
+      <script>! Cancel
+_-RunPythonScript R "integral_timber_joints.rhino.load.py"
 -RunPythonScript "integral_timber_joints.rhino.visualize_trajectory.py"</script>
     </macro_item>
     <macro_item guid="827773d6-344b-43bd-ac75-ecebecd4d04c" bitmap_id="da4b4ca7-6654-47c6-9b8d-92a21d55efa8">
@@ -537,10 +569,14 @@ F</script>
       <text>
         <locale_1033>Macro 19</locale_1033>
       </text>
+      <tooltip>
+        <locale_1033>Tools and Environment (Reload)</locale_1033>
+      </tooltip>
       <button_text>
         <locale_1033>Tools&amp;Env</locale_1033>
       </button_text>
-      <script>! _-RunPythonScript R "integral_timber_joints.rhino.load.py"
+      <script>! Cancel
+_-RunPythonScript R "integral_timber_joints.rhino.load.py"
 _-RunPythonScript "integral_timber_joints.rhino.tools_environment.py"</script>
     </macro_item>
   </macros>
@@ -552,9 +588,27 @@ _-RunPythonScript "integral_timber_joints.rhino.tools_environment.py"</script>
       <bitmap_item guid="b70c11b4-c602-445d-9e48-4ce8b66740cf" index="3" />
       <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
       <bitmap_item guid="b0d90019-6990-43a3-8f5b-3f2a6e6f6763" index="5" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAABgCAYAAAAU0fKgAAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
-AAAOvgAADr4B6kKxwAAAAB1JREFUWEftwTEBAAAAwqD1T20GfyAAAAAAAIBLDRhgAAE4ETi3AAAA
-AElFTkSuQmCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap_item guid="1457909c-dcd1-4175-ab28-9c68649989d0" index="6" />
+      <bitmap_item guid="e0a17150-b494-41fa-9f4f-58ef906e7595" index="7" />
+      <bitmap_item guid="e647c5f7-dc45-4d43-bcb5-c8f6857ad53d" index="8" />
+      <bitmap_item guid="2cd3ecdd-63a7-47c8-9d9a-4a5291ecad47" index="9" />
+      <bitmap_item guid="e85648c5-f735-4cdb-a73d-b8120746f13c" index="10" />
+      <bitmap_item guid="03a136c7-2aed-4be5-a56c-3c7d657db47e" index="11" />
+      <bitmap_item guid="563577fe-99fe-403b-aec4-d53a094ed6f7" index="12" />
+      <bitmap_item guid="1ef408f9-9c96-4031-b124-8aa70ba67080" index="13" />
+      <bitmap_item guid="cf61caa8-578a-4264-94e5-3ca4168719e3" index="14" />
+      <bitmap_item guid="36ea2030-cbd0-4483-8053-3f14ba361ae9" index="15" />
+      <bitmap_item guid="b6a1955f-209b-4646-937c-7c9555c15e9a" index="16" />
+      <bitmap_item guid="184fe935-d18b-43c1-b764-d94753822c6a" index="17" />
+      <bitmap_item guid="254cfa47-2683-4730-80e1-2875717be9a0" index="18" />
+      <bitmap_item guid="64ebc29b-969d-44bf-9724-3bafff22c327" index="19" />
+      <bitmap_item guid="af581952-4e7d-4303-b792-f72b2a2deb88" index="20" />
+      <bitmap_item guid="2032db6e-c475-49ad-90f8-a4c0d8a5e18a" index="21" />
+      <bitmap_item guid="2c4ecec7-0468-4cae-8c3c-7862a3a85161" index="22" />
+      <bitmap_item guid="337d635b-ec36-4918-af4d-d1c1748edb34" index="23" />
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAAGACAYAAACk4uKWAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAvSURBVHhe7cEBDQAAAMKg909tDjcgAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAACAazVhgAABTbkX7gAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </small_bitmap>
@@ -565,10 +619,28 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="b70c11b4-c602-445d-9e48-4ce8b66740cf" index="3" />
       <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
       <bitmap_item guid="b0d90019-6990-43a3-8f5b-3f2a6e6f6763" index="5" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAACQCAYAAAASlKtNAAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
-AAAOvgAADr4B6kKxwAAAACVJREFUaEPtwYEAAAAAw6D5Ux/hAlUAAAAAAAAAAAAAAAAAcNUANpAA
-AS/kIYwAAAAASUVORK5CYIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap_item guid="1457909c-dcd1-4175-ab28-9c68649989d0" index="6" />
+      <bitmap_item guid="e0a17150-b494-41fa-9f4f-58ef906e7595" index="7" />
+      <bitmap_item guid="e647c5f7-dc45-4d43-bcb5-c8f6857ad53d" index="8" />
+      <bitmap_item guid="2cd3ecdd-63a7-47c8-9d9a-4a5291ecad47" index="9" />
+      <bitmap_item guid="e85648c5-f735-4cdb-a73d-b8120746f13c" index="10" />
+      <bitmap_item guid="03a136c7-2aed-4be5-a56c-3c7d657db47e" index="11" />
+      <bitmap_item guid="563577fe-99fe-403b-aec4-d53a094ed6f7" index="12" />
+      <bitmap_item guid="1ef408f9-9c96-4031-b124-8aa70ba67080" index="13" />
+      <bitmap_item guid="cf61caa8-578a-4264-94e5-3ca4168719e3" index="14" />
+      <bitmap_item guid="36ea2030-cbd0-4483-8053-3f14ba361ae9" index="15" />
+      <bitmap_item guid="b6a1955f-209b-4646-937c-7c9555c15e9a" index="16" />
+      <bitmap_item guid="184fe935-d18b-43c1-b764-d94753822c6a" index="17" />
+      <bitmap_item guid="254cfa47-2683-4730-80e1-2875717be9a0" index="18" />
+      <bitmap_item guid="64ebc29b-969d-44bf-9724-3bafff22c327" index="19" />
+      <bitmap_item guid="af581952-4e7d-4303-b792-f72b2a2deb88" index="20" />
+      <bitmap_item guid="2032db6e-c475-49ad-90f8-a4c0d8a5e18a" index="21" />
+      <bitmap_item guid="2c4ecec7-0468-4cae-8c3c-7862a3a85161" index="22" />
+      <bitmap_item guid="337d635b-ec36-4918-af4d-d1c1748edb34" index="23" />
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAAJACAYAAACXNaZLAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABNSURBVHhe7cExAQAAAMKg9U9tDQ8gAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAKzXaQAABPOzo
+2wAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </normal_bitmap>
     <large_bitmap item_width="32" item_height="32">
@@ -578,10 +650,28 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="b70c11b4-c602-445d-9e48-4ce8b66740cf" index="3" />
       <bitmap_item guid="da4b4ca7-6654-47c6-9b8d-92a21d55efa8" index="4" />
       <bitmap_item guid="b0d90019-6990-43a3-8f5b-3f2a6e6f6763" index="5" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAADACAYAAABlPmF2AAAABGdBTUEAALGPC/xhBQAAAAlwSFlz
-AAAOvgAADr4B6kKxwAAAAC5JREFUeF7twQEBAAAAgiD/r25IQAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAwLkaYMAAAeEoYg8AAAAASUVORK5CYIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap_item guid="1457909c-dcd1-4175-ab28-9c68649989d0" index="6" />
+      <bitmap_item guid="e0a17150-b494-41fa-9f4f-58ef906e7595" index="7" />
+      <bitmap_item guid="e647c5f7-dc45-4d43-bcb5-c8f6857ad53d" index="8" />
+      <bitmap_item guid="2cd3ecdd-63a7-47c8-9d9a-4a5291ecad47" index="9" />
+      <bitmap_item guid="e85648c5-f735-4cdb-a73d-b8120746f13c" index="10" />
+      <bitmap_item guid="03a136c7-2aed-4be5-a56c-3c7d657db47e" index="11" />
+      <bitmap_item guid="563577fe-99fe-403b-aec4-d53a094ed6f7" index="12" />
+      <bitmap_item guid="1ef408f9-9c96-4031-b124-8aa70ba67080" index="13" />
+      <bitmap_item guid="cf61caa8-578a-4264-94e5-3ca4168719e3" index="14" />
+      <bitmap_item guid="36ea2030-cbd0-4483-8053-3f14ba361ae9" index="15" />
+      <bitmap_item guid="b6a1955f-209b-4646-937c-7c9555c15e9a" index="16" />
+      <bitmap_item guid="184fe935-d18b-43c1-b764-d94753822c6a" index="17" />
+      <bitmap_item guid="254cfa47-2683-4730-80e1-2875717be9a0" index="18" />
+      <bitmap_item guid="64ebc29b-969d-44bf-9724-3bafff22c327" index="19" />
+      <bitmap_item guid="af581952-4e7d-4303-b792-f72b2a2deb88" index="20" />
+      <bitmap_item guid="2032db6e-c475-49ad-90f8-a4c0d8a5e18a" index="21" />
+      <bitmap_item guid="2c4ecec7-0468-4cae-8c3c-7862a3a85161" index="22" />
+      <bitmap_item guid="337d635b-ec36-4918-af4d-d1c1748edb34" index="23" />
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAAMACAYAAABFPmVfAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAB2SURBVHhe7cEBAQAAAIIg/69uSEAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMC5GoMPAAE2LsT8AAAAAElFTkSuQmCCAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </large_bitmap>
   </bitmaps>

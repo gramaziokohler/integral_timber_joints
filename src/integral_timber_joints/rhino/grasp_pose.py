@@ -8,6 +8,7 @@ from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
+from integral_timber_joints.assembly import BeamAssemblyMethod
 
 
 def show_sequence_color(process):
@@ -116,36 +117,35 @@ def compute_collision_show_color(process):
     for gripper_mesh in gripper_meshes:
         for other_beam in other_beams_meshes:
             lines = Rhino.Geometry.Intersect.Intersection.MeshMeshFast(rs.coercemesh(gripper_mesh), rs.coercemesh(other_beam))
-            if len(lines) > 0 :
+            if len(lines) > 0:
                 collisions.append((gripper_mesh, other_beam))
 
     # Check Collisions between gripper vs clamps
     for gripper_mesh in gripper_meshes:
         for clamp_mesh in clamp_meshes:
             lines = Rhino.Geometry.Intersect.Intersection.MeshMeshFast(rs.coercemesh(gripper_mesh), rs.coercemesh(clamp_mesh))
-            if len(lines) > 0 :
+            if len(lines) > 0:
                 collisions.append((gripper_mesh, clamp_mesh))
 
     # Check Collisions between gripper, clamp vs environment
     for tool_mesh in gripper_meshes + clamp_meshes:
         for env_mesh in env_meshes:
             lines = Rhino.Geometry.Intersect.Intersection.MeshMeshFast(rs.coercemesh(tool_mesh), rs.coercemesh(env_mesh))
-            if len(lines) > 0 :
+            if len(lines) > 0:
                 collisions.append((tool_mesh, env_mesh))
 
     # Colour collision objects in collisions
     for rhino_object in set().union(*collisions):
-        rs.ObjectColor(rhino_object, artist.color_meaning.get('warning', (200,100,0)))
+        rs.ObjectColor(rhino_object, artist.color_meaning.get('warning', (200, 100, 0)))
         rs.ShowObject(rhino_object)
 
-    print ("collisions count :%s" % len(collisions))
+    print("collisions count :%s" % len(collisions))
 
     # - between clams and other not clamping beams
 
     # Colour grpper and clamps if there are collisions
 
     rs.EnableRedraw(True)
-
 
 
 def show_normal_color_and_unhide(process):
@@ -242,40 +242,66 @@ def show_menu(process):
     ###################################
 
     def gripper_changetype():
-        """ Function invoked by user to change gripper type
+        """ Function invoked by user to change gripper type.
+
+        beam_attribute 'gripper_type' and 'gripper_id' will be changed.
         """
         if len(process.grippers) == 0:
             print("No gripper exist for you to choose. Very bad. Add some grippers first.")
             return
 
-        # List out current gripper for users to choose
+        # Switching to a sub function depending on SCREWED_WITHOUT_GRIPPER
         beam_id = artist.selected_beam_id
-        current_gripper_type = process.assembly.get_beam_attribute(beam_id, 'gripper_type')
-        # print("Current Gripper for Beam(%s) is: %s" % (beam_id, current_gripper_type))
+        if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            _screwdriver_as_gripper_changetype(beam_id)
+        else:
+            _gripper_as_gripper_changetype(beam_id)
 
-        print("Available Grippers:")
-        type_names = []
-        for gripper in process.grippers:
-            print("- %s : %s" % (gripper.name, gripper.type_name))
-            if gripper.type_name not in type_names:
-                type_names.append(gripper.type_name)
-
-        # Ask user which gripper to delete
-        selected_type_name = rs.GetString("Which gripper to use for Beam(%s)? Current gripper type is: %s" % (beam_id, current_gripper_type), current_gripper_type, type_names)
-        # Dont change anything if the selection is the same
-        if selected_type_name == current_gripper_type:
-            return
-        if selected_type_name in type_names:
-            print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
-            process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
-
-        process.dependency.invalidate(beam_id, process.assign_gripper_to_beam, downstream_only=True)
-        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
+        # Invalidate downstream of assign_gripper_to_beam. Recompute all.
+        process.dependency.invalidate(beam_id, process.assign_gripper_to_beam, downstream_only=False)
+        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True, verbose=True)
 
         # Redraw Visualization
         artist.draw_beam_all_positions(beam_id, delete_old=True)
         artist.draw_gripper_all_positions(beam_id, delete_old=True)
         show_sequence_color(process)
+
+    def _gripper_as_gripper_changetype(beam_id):
+        """ Function invoked by user to change gripper type.
+        Sub function that handles using regular gripper as gripper.
+
+        beam_attribute 'gripper_type' and 'gripper_id' will be changed.
+        """
+        # List out current gripper for users to choose
+        print("Available Grippers:")
+        current_gripper_type = process.assembly.get_beam_attribute(beam_id, 'gripper_type')
+        type_names = []
+        gripper_ids = []
+        for gripper in process.grippers:
+            print("- %s : %s" % (gripper.name, gripper.type_name))
+            if gripper.type_name not in type_names:
+                type_names.append(gripper.type_name)
+                gripper_ids.append(gripper.name)
+
+        # Ask user which gripper to delete
+        selected_type_name = rs.GetString("Which gripper to use for Beam(%s)? Current gripper type is: %s" % (beam_id, current_gripper_type), current_gripper_type, type_names)
+        # Dont change anything if the selection is the same
+        if selected_type_name == current_gripper_type:
+            print("Gripper type unchanged")
+            return
+        if selected_type_name in type_names:
+            print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
+            process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
+            process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
+
+    def _screwdriver_as_gripper_changetype(beam_id):
+        """ Function invoked by user to change gripper type.
+        Sub function that handles using screwdriver as gripper.
+
+        beam_attribute 'gripper_type' and 'gripper_id' will be changed.
+        """
+
+        return
 
     def gripper_move_pos():
         """ Function invoked by user to move grasp pose.
@@ -473,7 +499,6 @@ def show_menu(process):
             artist.selected_beam_id = beam_id
             show_sequence_color(process)
 
-
         print("Showing Beam(%s) (%i of %i) at Position(%s) (%i of %i)" % (
             artist.selected_beam_id,
             assembly.get_beam_sequence(artist.selected_beam_id) + 1,
@@ -492,6 +517,7 @@ def show_menu(process):
 ######################
 # Test
 ######################
+
 
 def compute_positions(process, verbose=True):
     # type: (RobotClampAssemblyProcess, bool) -> None

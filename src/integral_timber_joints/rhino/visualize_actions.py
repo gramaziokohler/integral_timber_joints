@@ -307,6 +307,8 @@ def show_menu(process):
             if result.isnumeric():
                 ui_goto_state_by_state_index(process, int(result))
                 continue
+            elif result.startswith("Cancel"):
+                return on_exit_ui()
             else:
                 continue # CAtch other unknown input that are not numbers.
 

@@ -13,6 +13,7 @@ from compas_rhino.utilities.objects import get_object_name, get_object_names
 from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint_halflap import Joint_halflap_from_beam_beam_intersection
+from integral_timber_joints.geometry.joint_non_planar_lap import non_planar_lap_joint_from_beam_beam_intersection, JointNonPlanarLap
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
@@ -25,13 +26,19 @@ except:
 
 def _add_beams_to_assembly(process, beams):
     # type: (RobotClampAssemblyProcess, list[Beam]) -> None
-    """Shared function to add newly created Beams to Assembly, create Joints and redraw changes in Rhino
+    """Shared function to add newly created Beams to Assembly
+
+    - Auto assign Assembly Method
+    - Compute Joint Screw
+    - create Joints and redraw changes in Rhino
+
     This function can probably be refactered into Assembly class.
     """
     assembly = process.assembly
     new_beam_ids = []
     affected_neighbours = []
 
+    # * Check for new Joints
     for beam in beams:
         beam_id = assembly.get_new_beam_id()
         beam.name = beam_id
@@ -41,23 +48,42 @@ def _add_beams_to_assembly(process, beams):
         # Add to assembly
         assembly.add_beam(beam)
 
-        # Check for new Joints
-        for exist_beam in assembly.beams():
-            if beam == exist_beam:
+        new_joints = []
+        for existing_beam in assembly.beams():
+            if beam == existing_beam:
                 continue
-            print('Checking for Joint : %s-%s' % (beam_id, exist_beam.name))
-            j1, j2 = Joint_halflap_from_beam_beam_intersection(beam, exist_beam)
-            # faces = beam.get_beam_beam_coplanar_face_ids(exist_beam)
-            if j1 is not None and j2 is not None:
-                print('New Joint : %s-%s' % (beam_id, exist_beam.name))
-                assembly.add_joint_pair(j1, j2, beam_id, exist_beam.name)
-                affected_neighbours.append(exist_beam.name)
-                print('New Joint added')
+            # print('Checking for Planar Joint : %s-%s' % (beam_id, existing_beam.name))
+            j1, j2 = Joint_halflap_from_beam_beam_intersection(beam, existing_beam)
+            if j1 is None or j2 is None:
+                # print('Checking for Non-Planar Joint : %s-%s' % (beam_id, existing_beam.name))
+                j1, j2 = non_planar_lap_joint_from_beam_beam_intersection(beam, existing_beam)
 
+            if j1 is not None and j2 is not None:
+                print('- New Joint (%s) : %s-%s added to assembly' % (j1.__class__.__name__, beam_id, existing_beam.name))
+                assembly.add_joint_pair(j1, j2, beam_id, existing_beam.name)
+                new_joints.append(j1)
+                affected_neighbours.append(existing_beam.name)
+
+        # * Automatically assign Assembly Method
+        if len(new_joints) == 0:
+            assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.GROUND_CONTACT)
+            print("- Automatically assigned Assembly method: GROUND_CONTACT")
+        elif any([isinstance(joint,JointNonPlanarLap) for joint in new_joints]):
+            assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.SCREWED_WITH_GRIPPER)
+            print("- Automatically assigned Assembly method: SCREWED_WITH_GRIPPER")
+        else:
+            assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.CLAMPED)
+            print("- Automatically assigned Assembly method: CLAMPED")
+
+    # * Compute joint screw hole depth
+    for beam_id in new_beam_ids:
+        assembly.compute_joint_screw_hole(beam_id)
+
+    # *Recompute dependent solutions for new beams and affected neighbours
     for beam_id in set(affected_neighbours + new_beam_ids):
         recompute_dependent_solutions(process, beam_id)
 
-    # Draw newly added beams and neighbours affected by new joint
+    # * Draw newly added beams and neighbours affected by new joint
     artist = get_process_artist()
     for beam_id in set(affected_neighbours + new_beam_ids):
         artist.redraw_interactive_beam(beam_id, force_update=True)
@@ -258,6 +284,8 @@ def ui_flip_beams(process):
     '''Ask User to select a beam for flipping the joints' direction
     Only joints to earlier beams are flipped.
 
+    Beams with non planar joints cannot be flipped.
+
     THis functions repeats until users press Enter without selecting beam.
     '''
     assembly = process.assembly  # type: Assembly
@@ -271,16 +299,22 @@ def ui_flip_beams(process):
             return
         beam_id = get_object_name(guids)
 
-        # Loop though alread_built_neighbors and swap joint
+        # * Check if any of its joints to previous beams are non planar.
+        for joint_id in process.assembly.get_joints_of_beam_connected_to_already_built(beam_id):
+            if isinstance(process.assembly.joint(joint_id), JointNonPlanarLap):
+                print("Sorry. Cannot flip beams with non planar joints. Offending joint: %s-%s" % joint_id)
+                continue
+
+        # * Loop though alread_built_neighbors and swap joint
         earlier_neighbors = assembly.get_already_built_neighbors(beam_id)
         for neighbour_id in earlier_neighbors:
             assembly.flip_lap_joint((beam_id, neighbour_id))
 
-        # Update drownstream computation
+        # * Update drownstream computation
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_final', None)
         recompute_dependent_solutions(process, beam_id)
 
-        # Update visualization of flipped beam and neighbors
+        # * Update visualization of flipped beam and neighbors
         for beam_id in earlier_neighbors + [beam_id]:
             artist.redraw_interactive_beam(beam_id, force_update=True)
         show_assembly_color(process, earlier_neighbors + [beam_id], redraw=True)

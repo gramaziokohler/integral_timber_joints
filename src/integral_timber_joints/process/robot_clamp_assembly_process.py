@@ -1134,12 +1134,20 @@ class RobotClampAssemblyProcess(Data):
 
     def get_action_of_movement(self, movement):
         # type: (Movement) -> Action
-        """Returns the Action object in which the movement belongs to"""
+        """Returns the Action object in which the movement belongs to.
+
+        The Movement object should be the original instance retrived from the process.
+        a.k.a not deep copied.
+
+        returns None if the Movement cannot be found (likely you have made a deep copy somewhere.)
+        """
         for action in self.actions:
             for _movement in action.movements:
-                # ? Does this really work? what if I change some attributes in the movement?
+                # @YJ: Does this really work? what if I change some attributes in the movement?
+                # @VL: Thiw works because you should not be making deep copies of the movements.
                 if movement is _movement:
                     return action
+        return None
 
     def get_beam_id_of_movement(self, movement):
         # (Movement) -> str

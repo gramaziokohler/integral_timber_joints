@@ -17,6 +17,12 @@ class ComputationalResult(object):
     ValidCannotContinue = 2
     ValidNoChange = 3
     ValidResults = [1, 2, 3]
+    STRING_REPR = {
+        0:"Invalid",
+        1:"ValidCanContinue",
+        2:"ValidCannotContinue",
+        3:"ValidNoChange",
+    }
 
 
 class ComputationalDependency(Graph):
@@ -204,7 +210,7 @@ class ComputationalDependency(Graph):
             validity = fx(beam_id)
             # Invalidate downsteram results.
             if verbose:
-                print("Beam(%s) Dependency compute(%s) Validity = %s" % (beam_id, fx_name, validity))
+                print("Beam(%s) Dependency compute(%s) Validity = %s" % (beam_id, fx_name, ComputationalResult.STRING_REPR[validity]))
             self.set_solution_validity(beam_id, fx, validity, invalidate_downstream=True)
         return validity in ComputationalResult.ValidResults
 

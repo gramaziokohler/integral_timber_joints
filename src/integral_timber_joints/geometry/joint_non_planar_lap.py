@@ -6,8 +6,8 @@ from copy import deepcopy
 
 import compas
 from compas.datastructures import Mesh
-from compas.geometry import intersection_line_line, intersection_line_plane, intersection_segment_segment, subtract_vectors, norm_vector
-from compas.geometry import is_point_infront_plane, distance_point_point, dot_vectors
+from compas.geometry import intersection_line_line, intersection_line_plane, intersection_segment_segment, subtract_vectors, norm_vector, project_point_plane
+from compas.geometry import is_point_infront_plane, distance_point_point, dot_vectors, distance_point_plane
 from compas.geometry import Frame, Line, Plane, Point, Vector
 from compas.geometry import Box, Polyhedron
 from compas.geometry import Projection, Translation
@@ -89,6 +89,31 @@ class JointNonPlanarLap(Joint):
         }
         return data
 
+    @property
+    def face_id(self):
+        if self.is_joint_on_beam_move:
+            return self.beam_move_face_id
+        else:
+            return self.beam_stay_face_id
+
+    @property
+    def height(self):
+        # First compute which edge is the longest (0-4 or 1-5 or 2-6 or 3-7)
+        longest_edge = 0
+        longest_length = 0
+        for i in range(4):
+            j = i + 4
+            length = distance_point_point(self.pt_jc[i], self.pt_jc[j])
+            if length > longest_length:
+                longest_length = length
+                longest_edge = i
+
+        # Return the projection distance of longest edge
+        if self.is_joint_on_beam_move:
+            return distance_point_plane(self.pt_jc[longest_edge+4], Plane.from_frame(self.center_frame))
+        else:
+            return distance_point_plane(self.pt_jc[longest_edge], Plane.from_frame(self.center_frame))
+
     @classmethod
     def from_data(cls, data):
         """Construct a Joint object from structured data.
@@ -122,7 +147,7 @@ class JointNonPlanarLap(Joint):
 
 
         """
-        OVERSIZE = 10.0
+        OVERSIZE = max(50.0, self.thickness)
 
         # Project Point [4 to 7] on cheek plane (pt_p)
         center_plane = Plane.from_frame(self.center_frame)
@@ -139,7 +164,12 @@ class JointNonPlanarLap(Joint):
         # Create the screw hole
         screw_features = []
         if self.has_screw:
-            screw_features = Screw_SL(self.center_frame, self.thickness, 150, self.is_joint_on_beam_move).get_feature_shapes(BeamRef)
+            screw_features = Screw_SL(
+                center_frame=self.center_frame,
+                joint_move_thickness=self.thickness,
+                joint_stay_thickness=150,
+                is_screw_on_beam_move=self.is_joint_on_beam_move
+            ).get_feature_shapes(BeamRef)
 
         # Create solid negative geometry
         if self.is_joint_on_beam_move:
@@ -209,7 +239,23 @@ class JointNonPlanarLap(Joint):
                 vertices.append(pt_c[1])
                 vertices.append(pt_c[2])
                 vertices.append(pt_x[2])
-            # Add offset
+
+            # Patching a problem where in a degenerate case on stationary beam
+            # when center plane is above reference edge. The corner points pt_c[0-3]
+            # can be above the intersected point pt_x[0-3]
+
+            def patch_corner_points_beyond_center_frame(i, j, offset=1):
+                """ Vertice[i] is the point to be moved back to behind center frame"""
+                if Vector.from_start_end(vertices[i], vertices[j]).dot(self.center_frame.normal) < 0:
+                    vertices[i] = [a+b for a, b in zip(vertices[j], self.center_frame.normal.scaled(- offset))]
+
+            patch_corner_points_beyond_center_frame(2, 0)
+            patch_corner_points_beyond_center_frame(3, 4)
+
+            patch_corner_points_beyond_center_frame(7, 5)
+            patch_corner_points_beyond_center_frame(8, 9)
+
+            # Add OVERSIZE offset
             move_vertex_from_neighbor(vertices, [1, 6], [0, 5], OVERSIZE)
             move_vertex_from_neighbor(vertices, [2, 7], [3, 8], OVERSIZE)
             move_vertex_from_neighbor(vertices, [2, 7, 3, 8], [1, 6, 4, 9], OVERSIZE)
@@ -239,13 +285,10 @@ class JointNonPlanarLap(Joint):
         # The clamp frame locate at the opposite
 
         reference_side_wcf = beam.reference_side_wcf((self.face_id - 1 + 2) % 4 + 1)
-        origin = reference_side_wcf.to_world_coordinates(Point(
-            self.distance + self.angled_lead / 2 + self.angled_length / 2,
-            beam.get_face_height(self.face_id) / 2,
-            0))
+        origin = project_point_plane(self.center_frame.point, Plane.from_frame(reference_side_wcf))
 
         forward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis.scaled(-1))
-        backward_clamp = Frame(origin, reference_side_wcf.xaxis.scaled(-1), reference_side_wcf.yaxis)
+        backward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis.scaled(1))
         return [forward_clamp, backward_clamp]
 
     # This method is not generalizable and should be removed in future
@@ -256,17 +299,6 @@ class JointNonPlanarLap(Joint):
         # print "Dist%s" % self.distance
         face_frame = beam.get_face_plane(self.face_id)
         return face_frame.normal.scaled(-1 * beam.get_face_height(self.face_id))
-
-    def swap_faceid_to_opposite_face(self):
-        # Face id flip
-        old_face_id = self.face_id
-        new_id = (old_face_id + 1) % 4 + 1
-        self.face_id = new_id
-
-        # Distance point change by angled_lead distance
-        self.distance = self.distance + self.angled_lead
-        # Angle flip
-        self.angle = 180 - self.angle
 
     @property
     def clamp_types(self):
@@ -294,6 +326,10 @@ def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, thick
     ctl_m = beam_move.get_center_line()
     ctl_s = beam_stay.get_center_line()
     cp_m, cp_s = intersection_line_line(ctl_m, ctl_s)
+
+    # If center lines are parallel, intersection result will be None:
+    if cp_m is None or cp_s is None:
+        return [None, None]
 
     # Find which beam face to be facing each other
     # We use the intersection points of the two lines as a guide and compare with
@@ -384,6 +420,18 @@ def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, thick
                                 is_joint_on_beam_move=True, name='%s-%s' % (beam_move.name, beam_stay.name))
     joint_s = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
                                 is_joint_on_beam_move=False, name='%s-%s' % (beam_move.name, beam_stay.name))
+
+    # joint_m = JointNonPlanarLap(
+    #     center_frame=joint_center_frame,  # type: Frame
+    #     thickness=thickness,  # type: float
+    #     beam_move_face_id=joint_face_id_m,  # type: int
+    #     beam_stay_face_id=joint_face_id_s,  # type: int
+    #     axial_dot_product=axial_dot_product,  # type: float
+    #     pt_jc=[],  # type: list[Point]
+    #     is_joint_on_beam_move=False,  # type: bool
+    #     has_screw=False,  # type: bool
+    #     name=None
+    # )
 
     return (joint_m, joint_s)
 

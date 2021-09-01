@@ -52,6 +52,8 @@ def move_vertex_from_neighbor(vertices, vertices_ids, nbr_vertices_id, distance)
     for id, nbr_id in zip(vertices_ids, nbr_vertices_id):
         vertex_coordinates = vertices[id]
         v = Vector.from_start_end(vertices[nbr_id], vertex_coordinates)
+        if v.length < 1e-6:
+            continue
         v.unitize()
         v.scale(distance)
         new_values = [a+b for a, b in zip(vertex_coordinates, v)]
