@@ -96,7 +96,8 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
         # In cases no suitable gripper is available
         if chosen_gripper_type is None:
             if verbose:
-                print("No suitable gripper assigned to %s" % (beam_id))
+                print("No suitable gripper can be assigned to %s" % (beam_id))
+            print("WARNING: No suitable gripper can be assigned to %s" % (beam_id))
             return ComputationalResult.ValidCannotContinue
         gripper_id = process.get_one_tool_by_type(chosen_gripper_type).name
 
