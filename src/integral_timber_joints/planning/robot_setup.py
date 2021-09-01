@@ -33,12 +33,20 @@ R22_IDLE_CONF_VALS = convert_rfl_robot_conf_unit([-12237, -4915,
 # 2 for prismatic, 0 for revoluted
 RFL_SINGLE_ARM_JOINT_TYPES = [2, 2, 0, 0, 0, 0, 0, 0,]
 
+import ikfast_abb_irb4600_40_255
+TRAC_IK_TIMEOUT = 1.0 # 0.1
+TRAC_IK_TOL = 1e-6
+USE_TRACK_IK = True
 try:
-    import ikfast_abb_irb4600_40_255
-    IK_MODULE = ikfast_abb_irb4600_40_255
-except ImportError as e:
-    IK_MODULE = None
-    cprint('{}, Using pybullet ik fn instead'.format(e), 'red')
+    import trac_ik_python
+except ImportError:
+    USE_TRACK_IK = False
+    try:
+        import ikfast_abb_irb4600_40_255
+    except ImportError as e:
+        # TODO: script to compile automatically
+        raise ImportError('Please install TRAC-IK or compile IKFast.')
+cprint('Use Track IK: {}'.format(USE_TRACK_IK), 'yellow')
 
 # https://github.com/yijiangh/coop_assembly/blob/dev/src/coop_assembly/planning/robot_setup.py#L147
 R11_JOINT_WEIGHTS = np.reciprocal([0.1, 0.1, 0.1,

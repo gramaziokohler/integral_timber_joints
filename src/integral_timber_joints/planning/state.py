@@ -51,7 +51,7 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
     while True:
         x, y, _ = next(base_gen_fn)
         # x joint: lower="0.0" upper="37.206"
-        # y joint: lower="-9.65" upper="0.0"
+        # the y joint goes -9.65 to 0.0 so we need to negate it
         y *= -1
         z, = gantry_z_sample_fn()
 

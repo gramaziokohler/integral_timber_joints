@@ -13,10 +13,6 @@ from compas_fab.robots import Configuration, Robot
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement
 from integral_timber_joints.process.state import get_object_from_flange
 
-import ikfast_abb_irb4600_40_255
-TRAC_IK_TIMEOUT = 1.0 # 0.1
-TRAC_IK_TOL = 1e-6
-
 import pybullet_planning as pp
 from pybullet_planning import GREY
 from pybullet_planning import link_from_name, get_link_pose, draw_pose, multiply, \
@@ -30,7 +26,10 @@ from compas_fab_pychoreo_examples.ik_solver import InverseKinematicsSolver, get_
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.utils import compare_configurations
 
-from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_GROUP
+import ikfast_abb_irb4600_40_255
+
+from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_GROUP, \
+    USE_TRACK_IK
 from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
 from integral_timber_joints.planning.utils import reverse_trajectory, merge_trajectories, FRAME_TOL
 from integral_timber_joints.planning.state import set_state, gantry_base_generator
@@ -263,16 +262,19 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     # solver_type: Speed, Distance, Manipulation1, Manipulation2
 
     # TODO try except loading trac_ik
-    from trac_ik_python.trac_ik_wrap import TRAC_IK
-    from trac_ik_python.trac_ik import IK
-    trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=tool_link_name,
-                        timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
-                        urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))
-    options['customized_ikinfo'] = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
-    # TODO switch to client IK
-    # ikfast_fn = get_ik_fn_from_ikfast(ikfast_abb_irb4600_40_255.get_ik)
-    # ik_solver = InverseKinematicsSolver(robot, move_group, ikfast_fn, base_frame, robotA_tool.frame)
-    # client.planner.inverse_kinematics = ik_solver.inverse_kinematics_function()
+    if USE_TRACK_IK:
+        from trac_ik_python.trac_ik_wrap import TRAC_IK
+        from trac_ik_python.trac_ik import IK
+        trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=tool_link_name,
+                            timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
+                            urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))
+        options['customized_ikinfo'] = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
+    else:
+        # TODO switch to client IK
+        # ikfast_fn = get_ik_fn_from_ikfast(ikfast_abb_irb4600_40_255.get_ik)
+        # ik_solver = InverseKinematicsSolver(robot, move_group, ikfast_fn, base_frame, robotA_tool.frame)
+        # client.planner.inverse_kinematics = ik_solver.inverse_kinematics_function()
+        pass
 
     # * get target T0CF pose
     start_scene = process.get_movement_start_scene(movement)
@@ -316,14 +318,8 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             # in meter
             if not start_t0cf_frame_temp.__eq__(start_t0cf_frame, tol=frame_jump_tolerance):
                 if verbose:
-                    cprint('start conf FK inconsistent ({:.5f} m) with given current frame in start state.'.format(
+                    cprint('FreeMotion : start conf FK inconsistent ({:.5f} m) with given current frame in start state.'.format(
                         distance_point_point(start_t0cf_frame_temp.point, start_t0cf_frame.point)), 'yellow')
-                # TODO this might impact feasibility, investigate further
-                # cprint('Overwriting with the FK-one.', 'yellow')
-                # start_t0cf_frame = start_t0cf_frame_temp
-                # overwrite_start_frame = copy(start_t0cf_frame_temp)
-                # overwrite_start_frame.point *= 1e3
-                # start_state['robot'].current_frame = overwrite_start_frame
         if end_conf is not None:
             if not end_conf.joint_names:
                 end_conf.joint_names = gantry_arm_joint_names
@@ -336,14 +332,8 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 draw_pose(pose_from_frame(end_t0cf_frame))
                 wait_for_user('Pose from encoded frame')
                 if verbose:
-                    cprint('end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
+                    cprint('FreeMotion : end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
                         distance_point_point(end_t0cf_frame_temp.point, end_t0cf_frame.point)), 'yellow')
-                # TODO this might impact feasibility, investigate further
-                # cprint('Overwriting with the FK-one.', 'yellow')
-                # end_t0cf_frame = end_t0cf_frame_temp
-                # overwrite_end_frame = copy(end_t0cf_frame_temp)
-                # overwrite_end_frame.point *= 1e3
-                # start_state['robot'].current_frame = overwrite_end_frame
 
     interp_frames = [start_t0cf_frame, end_t0cf_frame]
     solution_found = False
@@ -571,7 +561,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
             # notify('Warning! Go back to the command line now!')
             # wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
-        end_t0cf_frame = copy(end_state['robot'].current_frame)
+        end_t0cf_frame = copy(end_state[('robot', 'f')])
         end_t0cf_frame.point *= 1e-3
         sample_found = False
         if end_t0cf_frame is not None:
@@ -622,18 +612,20 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     client.set_robot_configuration(robot, end_conf)
     end_pose = get_link_pose(robot_uid, tool_link)
 
-    # sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
-    # gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
-    # ik_joint_names = robot.get_configurable_joint_names(group=BARE_ARM_GROUP)
-    # ik_info = IKInfo(sample_ik_fn, tool_link_name, ik_joint_names, gantry_joint_names) # 'base_link_name',
-    # options['customized_ikinfo'] = ik_info
-
     # * use previous movement's FK frame vector as a guide vector
-    ik_base_link_name = robot.get_base_link_name(group=GANTRY_ARM_GROUP)
-    trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=tool_link_name,
-                        timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
-                        urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))
-    options['customized_ikinfo'] = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
+    if USE_TRACK_IK:
+        ik_base_link_name = robot.get_base_link_name(group=GANTRY_ARM_GROUP)
+        trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=tool_link_name,
+                            timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
+                            urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))
+        options['customized_ikinfo'] = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
+    else:
+        pass
+        # sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
+        # gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
+        # ik_joint_names = robot.get_configurable_joint_names(group=BARE_ARM_GROUP)
+        # ik_info = IKInfo(sample_ik_fn, tool_link_name, ik_joint_names, gantry_joint_names) # 'base_link_name',
+        # options['customized_ikinfo'] = ik_info
 
     current_mid = process.movements.index(movement)
     if current_mid-1 < 0 or not any([isinstance(process.movements[current_mid-1], m_type) \
@@ -646,7 +638,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         prev_end_state = process.get_movement_end_scene(prev_movement)
         # convert to meter
         # ? attach -> retreat, vector = retreat(end) - attach(start)
-        start_retraction_vector = get_unit_vector(list(prev_end_state['robot'].current_frame.point - prev_start_state['robot'].current_frame.point))
+        start_retraction_vector = get_unit_vector(list(prev_end_state[('robot', 'f')].point - prev_start_state[('robot', 'f')].point))
 
     if current_mid+1 > len(process.movements) or not any([isinstance(process.movements[current_mid+1], m_type) \
             for m_type in [RoboticLinearMovement, RoboticClampSyncLinearMovement]]):
@@ -658,7 +650,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         next_end_state = process.get_movement_end_scene(next_movement)
         # convert to meter
         # ? retreat -> attach, vector = retreat(start) - attach(end)
-        end_retraction_vector = get_unit_vector(list(next_start_state['robot'].current_frame.point - next_end_state['robot'].current_frame.point))
+        end_retraction_vector = get_unit_vector(list(next_start_state[('robot', 'f')].point - next_end_state[('robot', 'f')].point))
 
     retraction_candidates = options.get('max_free_retraction_distance', np.linspace(0, 0.1, 5))
     traj = None
@@ -673,8 +665,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                 retract_start_pose = multiply(pp.Pose(retraction_dist*pp.Point(*start_retraction_vector)), start_pose)
                 if debug:
                     with WorldSaver():
-                        draw_point(prev_start_state['robot'].current_frame.point*1e-3)
-                        draw_point(prev_end_state['robot'].current_frame.point*1e-3)
+                        draw_point(prev_start_state[('robot', 'f')].point*1e-3)
+                        draw_point(prev_end_state[('robot', 'f')].point*1e-3)
                         draw_pose(start_pose, length=0.1)
                         draw_pose(retract_start_pose, length=0.05)
                         client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
@@ -691,8 +683,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                 retract_end_pose = multiply(pp.Pose(retraction_dist*pp.Point(*end_retraction_vector)), end_pose)
                 if debug:
                     with WorldSaver():
-                        draw_point(next_start_state['robot'].current_frame.point*1e-3)
-                        draw_point(next_end_state['robot'].current_frame.point*1e-3)
+                        draw_point(next_start_state[('robot', 'f')].point*1e-3)
+                        draw_point(next_end_state[('robot', 'f')].point*1e-3)
                         draw_pose(end_pose, length=0.1)
                         draw_pose(retract_end_pose, length=0.05)
                         client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
