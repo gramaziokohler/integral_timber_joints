@@ -103,7 +103,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 else:
                     altered_movements.extend(altered_ms)
                     if args.save_now:
-                        save_process_and_movements(args.problem, process, altered_ms, overwrite=False,
+                        save_process_and_movements(args.design_dir, args.problem, process, altered_ms, overwrite=False,
                             include_traj_in_process=False, save_temp=args.save_temp)
 
                 # TODO if fails remove the related movement's trajectory and try again
@@ -142,7 +142,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
                 # * export computed movements if not save_now
                 if not args.save_now and args.write:
-                    save_process_and_movements(args.problem, process, altered_movements, overwrite=False,
+                    save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
                         include_traj_in_process=False, save_temp=args.save_temp)
 
             elif args.solve_mode == 'linear':
@@ -214,7 +214,7 @@ def main():
                         help='problem json\'s containing folder\'s name.')
     parser.add_argument('--problem', default='pavilion_process.json', # twelve_pieces_process.json
                         help='The name of the problem to solve')
-    parser.add_argument('--problem_subdir', default='.', # pavilion.json
+    parser.add_argument('--problem_subdir', default='.',
                         help='subdir of the process file, default to `.`. Popular use: `results`')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     #
@@ -270,12 +270,6 @@ def main():
         ext_movement_path = os.path.dirname(result_path)
         cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
         process.load_external_movements(ext_movement_path)
-
-    # ! Refactor how the process file is saved to the result folder
-    if args.recompute_action_states:
-        assert False
-        save_process(process, result_path)
-        cprint('Recomputed process saved to %s' % result_path, 'green')
 
     #########
 

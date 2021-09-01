@@ -33,12 +33,20 @@ R22_IDLE_CONF_VALS = convert_rfl_robot_conf_unit([-12237, -4915,
 # 2 for prismatic, 0 for revoluted
 RFL_SINGLE_ARM_JOINT_TYPES = [2, 2, 0, 0, 0, 0, 0, 0,]
 
+import ikfast_abb_irb4600_40_255
+TRAC_IK_TIMEOUT = 1.0 # 0.1
+TRAC_IK_TOL = 1e-6
+USE_TRACK_IK = True
 try:
-    import ikfast_abb_irb4600_40_255
-    IK_MODULE = ikfast_abb_irb4600_40_255
-except ImportError as e:
-    IK_MODULE = None
-    cprint('{}, Using pybullet ik fn instead'.format(e), 'red')
+    import trac_ik_python
+except ImportError:
+    USE_TRACK_IK = False
+    try:
+        import ikfast_abb_irb4600_40_255
+    except ImportError as e:
+        # TODO: script to compile automatically
+        raise ImportError('Please install TRAC-IK or compile IKFast.')
+cprint('Use Track IK: {}'.format(USE_TRACK_IK), 'yellow')
 
 # https://github.com/yijiangh/coop_assembly/blob/dev/src/coop_assembly/planning/robot_setup.py#L147
 R11_JOINT_WEIGHTS = np.reciprocal([0.1, 0.1, 0.1,
@@ -80,9 +88,9 @@ def get_gantry_control_joint_names(robot_id='robot11'):
     return rfl_robot_joint_names(robot_id, True)[:3]
 
 # meter
-GANTRY_X_LIMIT = (14.5, 28) # (0, 37)
-GANTRY_Y_LIMIT = (-9.5, 0) # (-9, 0)
-GANTRY_Z_LIMIT = (-5, -1.7) # (-5, -1)
+GANTRY_X_LIMIT = (10, 28) # (0, 37)
+GANTRY_Y_LIMIT = (-9.5, 0) # (-9.65, 0)
+GANTRY_Z_LIMIT = (-5, -1.7) # (-4.915, -1)
 
 # rm_limits = [(-175, 175), (-85, 145), (-175, 70), (-181, 181), (-120, 120), (-181, 181)]
 def get_gantry_robot_custom_limits(robot_id='robot11'):
