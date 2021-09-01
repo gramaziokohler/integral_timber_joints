@@ -15,7 +15,8 @@ from integral_timber_joints.process import RobotClampAssemblyProcess, Movement
 from integral_timber_joints.planning.stream import compute_free_movement, compute_linear_movement
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.utils import notify, print_title
-from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP, R11_JOINT_RESOLUTIONS, R11_JOINT_WEIGHTS
+from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP, R11_JOINT_RESOLUTIONS, R11_JOINT_WEIGHTS, \
+    MAIN_ROBOT_ID, get_gantry_robot_custom_limits
 from integral_timber_joints.planning.parsing import save_process_and_movements
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
@@ -105,6 +106,10 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     # set_random_seed(seed)
     # set_numpy_seed(seed)
 
+    # * custom limits
+    custom_limits = get_gantry_robot_custom_limits(MAIN_ROBOT_ID)
+    options['custom_limits'] = custom_limits
+
     traj = None
     if isinstance(movement, RoboticLinearMovement):
         lm_options = options.copy()
@@ -146,7 +151,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         fm_options = options.copy()
         fm_options.update({
             'rrt_restarts' : 2, #20,
-            'rrt_iterations' : 200, # ! value < 100 might not find solutions even if there is one
+            'rrt_iterations' : 400, # ! value < 100 might not find solutions even if there is one
             'smooth_iterations': None, #100, # 1000, TODO smoothing in postprocessing
             'joint_resolutions' : R11_JOINT_RESOLUTIONS*resolution_ratio,
             'joint_weights' : R11_JOINT_WEIGHTS,

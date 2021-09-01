@@ -28,9 +28,8 @@ from compas_fab_pychoreo.utils import compare_configurations
 
 import ikfast_abb_irb4600_40_255
 
-from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_GROUP, \
+from integral_timber_joints.planning.robot_setup import BARE_ARM_GROUP, GANTRY_ARM_GROUP, GANTRY_GROUP, \
     USE_TRACK_IK
-from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names, get_gantry_robot_custom_limits
 from integral_timber_joints.planning.utils import reverse_trajectory, merge_trajectories, FRAME_TOL
 from integral_timber_joints.planning.state import set_state, gantry_base_generator
 from integral_timber_joints.planning.utils import notify
@@ -327,10 +326,10 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             end_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             end_t0cf_frame_temp = frame_from_pose(end_tool_pose, scale=1)
             if not end_t0cf_frame_temp.__eq__(end_t0cf_frame, tol=frame_jump_tolerance):
-                draw_pose(pose_from_frame(end_t0cf_frame_temp))
-                wait_for_user('Pose from conf')
-                draw_pose(pose_from_frame(end_t0cf_frame))
-                wait_for_user('Pose from encoded frame')
+                # draw_pose(pose_from_frame(end_t0cf_frame_temp))
+                # wait_for_user('Pose from conf')
+                # draw_pose(pose_from_frame(end_t0cf_frame))
+                # wait_for_user('Pose from encoded frame')
                 if verbose:
                     cprint('FreeMotion : end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
                         distance_point_point(end_t0cf_frame_temp.point, end_t0cf_frame.point)), 'yellow')
@@ -597,11 +596,6 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     start_conf = orig_start_conf
     end_conf = orig_end_conf
 
-    # * custom limits
-    # custom_limits = get_gantry_robot_custom_limits(MAIN_ROBOT_ID)
-    # if 'custom_limits' not in options:
-    #     options.update({'custom_limits': custom_limits})
-
     # https://github.com/yijiangh/compas_fab_pychoreo/blob/7afe6bc74f2c14caf79f573bc6a6fd95442b779a/examples/itj/stream.py#L459
     # TODO insert cartesian segment before and after the free motion
     robot_uid = client.get_robot_pybullet_uid(robot)
@@ -700,12 +694,23 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         # # ! skip no -buffe attempt
         #     continue
 
-        with LockRenderer():
+        with LockRenderer(not diagnosis):
             new_start_conf = start_conf if start_cart_traj is None else start_cart_traj.points[-1]
             new_end_conf = end_conf if end_cart_traj is None else end_cart_traj.points[0]
             goal_constraints = robot.constraints_from_configuration(new_end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
+            d_options = options.copy()
+            if diagnosis:
+                client.set_robot_configuration(robot, new_start_conf)
+                print('start conf: ', new_start_conf)
+                wait_if_gui()
+
+                client.set_robot_configuration(robot, new_end_conf)
+                print('end conf: ', new_end_conf)
+                wait_if_gui()
+
+                d_options['diagnosis'] = True
             free_traj = client.plan_motion(robot, goal_constraints, start_configuration=new_start_conf, group=GANTRY_ARM_GROUP,
-                                      options=options)
+                                      options=d_options)
         if free_traj is not None:
             full_trajs = []
             if start_cart_traj:

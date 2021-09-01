@@ -34,6 +34,7 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
     set_state(client, robot, process, scene_state, options=options)
     if debug:
         client._print_object_summary()
+    wait_if_gui()
 
     # * check collisions among the list of attached objects and obstacles in the scene.
     # This includes collisions between:
@@ -187,6 +188,7 @@ def main():
 
         all_movements = process.get_movements_by_beam_id(beam_id)
         for i, m in enumerate(all_movements):
+            print(m.movement_id)
             if args.id_only and m.movement_id != args.id_only:
                 continue
             start_state = process.get_movement_start_scene(m)
