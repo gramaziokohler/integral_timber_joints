@@ -210,7 +210,7 @@ class ComputationalDependency(Graph):
             validity = fx(beam_id)
             # Invalidate downsteram results.
             if verbose:
-                print("Beam(%s) Dependency compute(%s) Validity = %s" % (beam_id, fx_name, ComputationalResult.STRING_REPR[validity]))
+                print("Beam(%s) Dependency compute(%s) Validity \t= %s" % (beam_id, fx_name, ComputationalResult.STRING_REPR[validity]))
             self.set_solution_validity(beam_id, fx, validity, invalidate_downstream=True)
         return validity in ComputationalResult.ValidResults
 

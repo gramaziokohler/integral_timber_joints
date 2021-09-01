@@ -38,6 +38,7 @@ class RobotClampAssemblyProcess(Data):
     # Importing functions from neighbouring files to reduce this file size.
     from .compute_process_action_movement import (
         recompute_initial_state,
+        assign_tool_type_to_joints,
         assign_tool_id_to_beam_joints,
         assign_unique_action_numbers,
         create_actions_from_sequence,
@@ -756,53 +757,6 @@ class RobotClampAssemblyProcess(Data):
     # Clamps Algorithms
     # -----------------
 
-    def assign_tool_type_to_joints(self, beam_id, verbose=False):
-        """Assign tool_types to joints based on the joint's preference and tool availability.
-
-        If the attribute `tool_type` is already assigned and is still valid, this function will not change it.
-
-        State Change
-        ------------
-        This functions sets the joint attribute `tool_type`
-
-        Return
-        ------
-        `ComputationalResult.ValidCannotContinue` if no suitable clamp is found not satisfied
-        `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
-        """
-        # Loop through all the beams and look at their previous_built neighbour.
-        something_failed = False
-        something_changed = False
-        for joint_id in self.assembly.get_joint_ids_with_tools_for_beam(beam_id):
-            # Do not change anything if tool_type is already set and is valid
-            if self.assembly.get_joint_attribute(joint_id, 'tool_type') in self.assembly.joint(joint_id).clamp_types:
-                if verbose:
-                    print("Joint (%s) tool_type (%s) has already been set. No change made by assign_tool_type_to_joints()." %
-                          (joint_id, self.assembly.get_joint_attribute(joint_id, 'tool_type')))
-                continue
-
-            # Loop through the list of clamp types requested by the joint.
-            for tool_type in self.assembly.joint(joint_id).clamp_types:
-                # Check if the preferred clamp exist.
-                if tool_type in self.available_assembly_tool_types:
-                    self.assembly.set_joint_attribute(joint_id, 'tool_type', tool_type)
-                    something_changed = True
-
-            if self.get_tool_type_of_joint(joint_id) is None:
-                print("WARNING: Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, self.assembly.joint(joint_id).clamp_types))
-                something_failed = True
-            else:
-                if verbose:
-                    print("Joint (%s) assigned tool_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, 'tool_type')))
-
-        # Return results
-        if something_failed:
-            return ComputationalResult.ValidCannotContinue
-        else:
-            if something_changed:
-                return ComputationalResult.ValidCanContinue
-            else:
-                return ComputationalResult.ValidNoChange
 
     def get_clamp_orientation_options(self, beam_id):
         """Each beam assembly may have multiple clamps involved

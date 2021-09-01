@@ -127,6 +127,7 @@ class Assembly(Network):
             'beam_cuts': None,                         # Beamcut objects at the start or end or anywhere on the beam. Can be empty
             'assembly_method': BeamAssemblyMethod.UNDEFINED,  # AssemblyMethod determine how individual beam is assembled.
             'actions': [],                         # List of high-level Assembly Actions
+            'tool_as_gripper_joint_id': None,
         })
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
@@ -753,6 +754,26 @@ class Assembly(Network):
                 # print("Notscrewing Joint %s, %s" % (joint_id, self.joint(joint_id)))
                 self.joint(joint_id).has_screw = False
                 self.joint(inverse_joint_id).has_screw = False
+
+    def get_joint_id_where_screwdriver_is_gripper(self, beam_id):
+        # type: (str) -> Optional[Tuple[str, str]]
+        """Returns the joint id where a screwdriver is used as gripper.
+
+        Returns None if beam is not SCREWED_WITHOUT_GRIPPER type
+        or if it has no joints that require tool.
+        """
+        if self.get_assembly_method(beam_id) != BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            return None
+
+        value_from_attributes = self.get_beam_attribute(beam_id, 'tool_as_gripper_joint_id')
+        if value_from_attributes is not None:
+            return value_from_attributes
+        else:
+            joint_ids = self.get_joint_ids_with_tools_for_beam(beam_id)
+            if len(joint_ids)> 0 :
+                return joint_ids[0]
+            else:
+                return None
 
     # -------------------------------------
     # Computing joints and joint directions

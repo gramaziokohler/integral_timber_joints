@@ -262,8 +262,11 @@ def show_menu(process):
         process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True, verbose=True)
 
         # Redraw Visualization
-        artist.draw_beam_all_positions(beam_id, delete_old=True)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True)
+        artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+        if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            artist.draw_asstool_all_positions(beam_id, delete_old=True, redraw=False)
+        rs.EnableRedraw(True)
         show_sequence_color(process)
 
     def _gripper_as_gripper_changetype(beam_id):
@@ -284,7 +287,8 @@ def show_menu(process):
                 gripper_ids.append(gripper.name)
 
         # Ask user which gripper to delete
-        selected_type_name = rs.GetString("Which gripper to use for Beam(%s)? Current gripper type is: %s" % (beam_id, current_gripper_type), current_gripper_type, type_names)
+        prompt = "Which gripper to use for Beam(%s)? Current gripper type is: %s" % (beam_id, current_gripper_type)
+        selected_type_name = rs.GetString(prompt, current_gripper_type, type_names)
         # Dont change anything if the selection is the same
         if selected_type_name == current_gripper_type:
             print("Gripper type unchanged")
@@ -294,6 +298,7 @@ def show_menu(process):
             process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
             process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
 
+
     def _screwdriver_as_gripper_changetype(beam_id):
         """ Function invoked by user to change gripper type.
         Sub function that handles using screwdriver as gripper.
@@ -301,7 +306,31 @@ def show_menu(process):
         beam_attribute 'gripper_type' and 'gripper_id' will be changed.
         """
 
-        return
+        # List out current gripper for users to choose
+        print("Available Screwdrivers:")
+        type_names = []
+        gripper_ids = []
+        for screwdriver in process.screwdrivers:
+            print("- %s : %s" % (screwdriver.name, screwdriver.type_name))
+            if screwdriver.type_name not in type_names:
+                type_names.append(screwdriver.type_name)
+                gripper_ids.append(screwdriver.name)
+
+        # Ask user which gripper to delete
+        current_gripper_id = process.assembly.get_beam_attribute(beam_id, 'gripper_id')
+        current_gripper_type = process.assembly.get_beam_attribute(beam_id, 'gripper_type')
+        prompt = "Which screwdriver to use for Beam(%s) as Gripper? Current gripper is: %s : %s" % (beam_id, current_gripper_type, current_gripper_id)
+        selected_type_name = rs.GetString(prompt, current_gripper_type, type_names)
+        # Dont change anything if the selection is the same
+        if selected_type_name == current_gripper_type:
+            print("Gripper type unchanged")
+            return
+        if selected_type_name in type_names:
+            print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
+            process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
+            process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
+
+        process.dependency.invalidate(beam_id, process.assign_tool_id_to_beam_joints)
 
     def gripper_move_pos():
         """ Function invoked by user to move grasp pose.
