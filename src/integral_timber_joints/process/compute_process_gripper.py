@@ -29,6 +29,9 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
 
     If the attribute `gripper_type` is already assigned, this function will not chage it.
 
+    This function will not operate on beam that is SCREWED_WITHOUT_GRIPPER. It will return
+    ComputationalResult.ValidCanContinue.
+
     State Change
     ------------
     This functions sets the following beam_attribute
@@ -43,6 +46,9 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
     beam_length = process.assembly.beam(beam_id).length
     chosen_gripper_type = None
     chosen_gripper_ideal = None
+
+    if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+        return ComputationalResult.ValidCanContinue
 
     # Do not change anything if gripper_type is already set
     already_set = False

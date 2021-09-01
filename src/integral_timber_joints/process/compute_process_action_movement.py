@@ -24,7 +24,8 @@ from integral_timber_joints.tools import Clamp, Gripper, Tool
 ###############################################
 
 
-def assign_tool_type_to_joints(self, beam_id, verbose=False):
+def assign_tool_type_to_joints(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> ComputationalResult
     """Assign tool_types to joints based on the joint's preference and tool availability.
 
     If the attribute `tool_type` is already assigned and is still valid, this function will not change it.
@@ -39,32 +40,55 @@ def assign_tool_type_to_joints(self, beam_id, verbose=False):
     `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
     """
     # Loop through all the beams and look at their previous_built neighbour.
+    assembly = process.assembly
     something_failed = False
     something_changed = False
-    for joint_id in self.assembly.get_joint_ids_with_tools_for_beam(beam_id):
-        existing_tool_type = self.assembly.get_joint_attribute(joint_id, 'tool_type')
-        clamp_types_requested_by_joint = self.assembly.joint(joint_id).clamp_types
+
+    joint_ids = assembly.get_joint_ids_with_tools_for_beam(beam_id)
+
+    # For beams that are using one tool as gripper.
+    if assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+        gripping_joint_id = assembly.get_joint_id_where_screwdriver_is_gripper(beam_id)
+        joint_ids.remove(gripping_joint_id)
+
+        # We copy the gripper_type as the joint tool_type
+        previous_tool_type = assembly.get_joint_attribute(gripping_joint_id, 'tool_type')
+        gripper_type = assembly.get_beam_attribute(beam_id, 'gripper_type')
+        # If the gripper type is not valid, we fix that
+        if gripper_type not in [s.type_name for s in process.screwdrivers]:
+            gripper_type = process.screwdrivers[0].type_name
+            assembly.set_beam_attribute(beam_id, 'gripper_type', gripper_type)
+
+        assembly.set_joint_attribute(gripping_joint_id, 'tool_type', gripper_type)
+
+        if previous_tool_type != gripper_type:
+            something_changed = True
+
+    # For other joints that are not acting as gripper.
+    for joint_id in process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
+        existing_tool_type = process.assembly.get_joint_attribute(joint_id, 'tool_type')
+        clamp_types_requested_by_joint = process.assembly.joint(joint_id).clamp_types
 
         # Do not change anything if tool_type is already set and is valid
         if any([existing_tool_type.startswith(requested_type) for requested_type in clamp_types_requested_by_joint]):
             if verbose:
                 print("Joint (%s) tool_type (%s) has already been set. No change made by assign_tool_type_to_joints()." %
-                      (joint_id, self.assembly.get_joint_attribute(joint_id, 'tool_type')))
+                      (joint_id, process.assembly.get_joint_attribute(joint_id, 'tool_type')))
             continue
 
         # Loop through the list of clamp types requested by the joint.
         for requested_type in clamp_types_requested_by_joint:
             # Check if the preferred clamp exist.
-            if any([assembly_tool_types.startswith(requested_type) for assembly_tool_types in self.available_assembly_tool_types]):
-                self.assembly.set_joint_attribute(joint_id, 'tool_type', requested_type)
+            if any([assembly_tool_types.startswith(requested_type) for assembly_tool_types in process.available_assembly_tool_types]):
+                process.assembly.set_joint_attribute(joint_id, 'tool_type', requested_type)
                 something_changed = True
 
-        if self.get_tool_type_of_joint(joint_id) is None:
+        if process.get_tool_type_of_joint(joint_id) is None:
             print("WARNING: Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, clamp_types_requested_by_joint))
             something_failed = True
         else:
             if verbose:
-                print("Joint (%s) assigned tool_type: %s" % (joint_id, self.assembly.get_joint_attribute(joint_id, 'tool_type')))
+                print("Joint (%s) assigned tool_type: %s" % (joint_id, process.assembly.get_joint_attribute(joint_id, 'tool_type')))
 
     # Return results
     if something_failed:
@@ -81,8 +105,11 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
     """Assign available tool_ids to joints that require assembly tool.
     `tool_id` is assigned and set based on the joint attribute `tool_type`.
 
-    For beams that are using one tool as gripper.
-    The `tool_id` and `tool_type` for that joint is copied form beam_attribute `gripper_id` and `gripper_type`.
+    For beams that are using screwdriver as gripper (SCREWED_WITHOUT_GRIPPER)
+    The `tool_id` is assigned according to tool_type.
+    if beam_attribute `gripper_id` is valid according to `gripper_type`, that
+    value will be used for joint attribute `tool_id`. Otherwise a tool that fits
+    `gripper_type` will be assigned.
 
 
     """
@@ -111,19 +138,29 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
 
     # For beams that are using one tool as gripper.
     if assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
-        gripper_id = assembly.get_beam_attribute(beam_id, 'gripper_id')
+        # Gripper type should be correctly assigned by `assign_tool_type_to_joints`
         gripper_type = assembly.get_beam_attribute(beam_id, 'gripper_type')
-        gripping_joint_id = assembly.get_joint_id_where_screwdriver_is_gripper(beam_id)
-
-        joint_ids.remove(gripping_joint_id)
-        previous_tool_id = assembly.get_joint_attribute(gripping_joint_id, 'tool_id')
-        previous_tool_type = assembly.get_joint_attribute(gripping_joint_id, 'tool_type')
-        assembly.set_joint_attribute(gripping_joint_id, 'tool_id', gripper_id)
-        assembly.set_joint_attribute(gripping_joint_id, 'tool_type', gripper_type)
-        pop_tool_by_name(gripper_id)
-
-        if previous_tool_id != gripper_id or previous_tool_type != gripper_type:
+        # Gripper id however, may or maynot be correct.
+        gripper_id = assembly.get_beam_attribute(beam_id, 'gripper_id')
+        # Fix gripper_id if not valid
+        if process.tool(gripper_id).type_name != gripper_type:
+            tool = pop_tool_by_type(gripper_type)
+            gripper_id = tool.name
+            assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_id)
             something_changed = True
+        else:
+            tool = pop_tool_by_name(gripper_id)
+
+        # Assign the screwdriver id to joint attribute tool_id
+        gripping_joint_id = assembly.get_joint_id_where_screwdriver_is_gripper(beam_id)
+        previous_tool_id = assembly.get_joint_attribute(gripping_joint_id, 'tool_id')
+        if previous_tool_id != gripper_id:
+            assembly.set_joint_attribute(gripping_joint_id, 'tool_id', gripper_id)
+            something_changed = True
+
+        # Removing this particular joint_id from the later assignment loop
+        joint_ids.remove(gripping_joint_id)
+
 
     # Assign the remaining tools
     for joint_id in joint_ids:
