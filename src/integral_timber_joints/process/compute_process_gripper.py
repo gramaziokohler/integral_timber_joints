@@ -46,10 +46,13 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
 
     # Do not change anything if gripper_type is already set
     already_set = False
-    if process.assembly.get_beam_attribute(beam_id, "gripper_type") is not None:
+    gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
+    if gripper_type is not None:
         if verbose:
             print("assign_gripper_to_beam: gripper_type set")
-        if process.assembly.get_beam_attribute(beam_id, "gripper_id") is not None:
+
+        gripper_id = process.assembly.get_beam_attribute(beam_id, "gripper_id")
+        if gripper_id is not None:
             if verbose:
                 print("assign_gripper_to_beam: gripper_id set")
 
@@ -58,19 +61,20 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
                 if verbose:
                     print("assign_gripper_to_beam: assembly method = %s " % process.assembly.get_assembly_method(beam_id))
 
-                if process.assembly.get_beam_attribute(beam_id, "gripper_id") in [tool.name for tool in process.screwdrivers]:
+                if gripper_id in [tool.name for tool in process.screwdrivers]:
                     if verbose:
                         print("assign_gripper_to_beam: gripper_id %s is valid and will not be changed." % process.assembly.get_beam_attribute(beam_id, "gripper_id"))
                     already_set = True
             else:
-                if process.assembly.get_beam_attribute(beam_id, "gripper_id") in [tool.name for tool in process.grippers]:
-                    if verbose:
-                        print("assign_gripper_to_beam: gripper_id %s is valid and will not be changed." % process.assembly.get_beam_attribute(beam_id, "gripper_id"))
-                    already_set = True
+                if gripper_id in [tool.name for tool in process.grippers]:
+                    if process.tool(gripper_id).type_name == gripper_type:
+                        if verbose:
+                            print("assign_gripper_to_beam: gripper_id %s is valid and will not be changed." % process.assembly.get_beam_attribute(beam_id, "gripper_id"))
+                        already_set = True
     if already_set:
         if verbose:
             print("Beam (%s) gripper_type (%s) has already been set. No change made by assign_gripper_to_beam()." %
-                (beam_id, process.assembly.get_beam_attribute(beam_id, "gripper_type")))
+                (beam_id, gripper_type))
         return ComputationalResult.ValidNoChange
 
     if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
