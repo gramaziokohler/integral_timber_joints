@@ -6,7 +6,7 @@ from copy import deepcopy
 
 import compas
 from compas.datastructures import Mesh
-from compas.geometry import intersection_line_line, intersection_line_plane, intersection_segment_segment, subtract_vectors, norm_vector
+from compas.geometry import intersection_line_line, intersection_line_plane, intersection_segment_segment, subtract_vectors, norm_vector, project_point_plane
 from compas.geometry import is_point_infront_plane, distance_point_point, dot_vectors, distance_point_plane
 from compas.geometry import Frame, Line, Plane, Point, Vector
 from compas.geometry import Box, Polyhedron
@@ -285,13 +285,10 @@ class JointNonPlanarLap(Joint):
         # The clamp frame locate at the opposite
 
         reference_side_wcf = beam.reference_side_wcf((self.face_id - 1 + 2) % 4 + 1)
-        origin = reference_side_wcf.to_world_coordinates(Point(
-            self.distance + self.angled_lead / 2 + self.angled_length / 2,
-            beam.get_face_height(self.face_id) / 2,
-            0))
+        origin = project_point_plane(self.center_frame.point, Plane.from_frame(reference_side_wcf))
 
         forward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis.scaled(-1))
-        backward_clamp = Frame(origin, reference_side_wcf.xaxis.scaled(-1), reference_side_wcf.yaxis)
+        backward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis.scaled(1))
         return [forward_clamp, backward_clamp]
 
     # This method is not generalizable and should be removed in future

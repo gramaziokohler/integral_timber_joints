@@ -1071,14 +1071,13 @@ class ProcessArtist(object):
     def delete_robot(self, guid_key=None, redraw=False):
         # type: (str, bool) -> None
         if guid_key is None:
-            guid_keys = ['collision' ,'visual']
+            guid_keys = ['collision', 'visual']
         else:
             guid_keys = [guid_key]
 
         for guid_key in guid_keys:
             purge_objects(self._robot_guids[guid_key], redraw=False)
             self._robot_guids[guid_key] = []
-
 
     def show_robot_collision(self, redraw=False):
         # type: (bool) -> None
@@ -1147,8 +1146,10 @@ class ProcessArtist(object):
         """
         if scene is None:
             # Limit range
-            if self.selected_state_id < 0 : self.selected_state_id = 0
-            if self.selected_state_id > len(self.process.movements): self.selected_state_id = len(self.process.movements)
+            if self.selected_state_id < 0:
+                self.selected_state_id = 0
+            if self.selected_state_id > len(self.process.movements):
+                self.selected_state_id = len(self.process.movements)
 
             if self.selected_state_id == 0:
                 scene = self.process.initial_state
