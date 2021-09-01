@@ -34,7 +34,7 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
     set_state(client, robot, process, scene_state, options=options)
     if debug:
         client._print_object_summary()
-    wait_if_gui()
+        wait_if_gui('Set state.')
 
     # * check collisions among the list of attached objects and obstacles in the scene.
     # This includes collisions between:
@@ -45,7 +45,7 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
         pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
         in_collision |= pychore_collision_fn.check_collisions(robot, scene_state[process.robot_config_key], options=options)
     if debug:
-        wait_for_user()
+        wait_for_user('Collision checked: {}'.format(in_collision))
     return in_collision
 
 def check_FK_consistency(client, robot, process, scene_state, options=None):
@@ -69,7 +69,7 @@ def check_FK_consistency(client, robot, process, scene_state, options=None):
                     msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format()
                     # cprint('!!! Overwriting the current_frame {} by the given robot conf\'s FK {} | robot conf {}. Please confirm this.'.format(given_robot_frame.point, FK_tool_frame.point, robot_config.joint_values))
                     if debug:
-                        wait_for_user()
+                        wait_for_user('FK consistency checked: {}'.format(msg))
                 return (False, msg)
         return (True, 'Given robot\'s FK agrees with the given robot_frame.')
     else:
@@ -163,6 +163,7 @@ def main():
         'frame_jump_tolerance' : 0.0012,
         'diagnosis' : True,
         'debug' : args.debug,
+        'verbose' : args.debug,
     }
 
     full_seq_len = len(process.assembly.sequence)
@@ -188,7 +189,6 @@ def main():
 
         all_movements = process.get_movements_by_beam_id(beam_id)
         for i, m in enumerate(all_movements):
-            print(m.movement_id)
             if args.id_only and m.movement_id != args.id_only:
                 continue
             start_state = process.get_movement_start_scene(m)
@@ -281,8 +281,8 @@ def main():
             checks = [in_collision, joint_flip, no_traj, fk_disagree]
             if any(checks):
                 movements_need_fix.append(m)
-                failure_reasons.append('in_collision: {} | joint_flip: {} | no_traj: {} | fk_disagree: {}'.format(
-                    [colored(not c) for c in checks]))
+                report_msg = 'in_collision: {} | joint_flip: {} | no_traj: {} | fk_disagree: {}'.format(*[colored(c, color=color_from_success(not c)) for c in checks])
+                failure_reasons.append(report_msg)
 
     print('='*20)
     if len(movements_need_fix) == 0:
