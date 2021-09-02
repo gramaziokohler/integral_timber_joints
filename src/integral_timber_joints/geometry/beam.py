@@ -143,28 +143,6 @@ class Beam(Network):
         # type: (Mesh) -> None
         self.attributes['cached_mesh'] = value
 
-    @property
-    def mesh(self):
-        # type() -> Mesh
-        """Beam mesh in the ObjectCoordinateFrame (OCF).
-        This mesh can be transformed to self.frame to be shown at final location.
-        This can also be transformed to other frames for key position visualization.
-        """
-        assert self.cached_mesh is not None
-        T = Transformation.from_frame_to_frame(self.frame, Frame.worldXY())
-        return self.cached_mesh.transformed(T)
-
-    @property
-    def mesh_at_current_frame(self):
-        # type() -> Mesh
-        """Beam mesh in current_frame
-        This mesh can be transformed to self.frame to be shown at final location.
-        This can also be transformed to other frames for key position visualization.
-        """
-        assert self.cached_mesh is not None
-        T = Transformation.from_frame_to_frame(self.frame, self.current_frame)
-        return self.cached_mesh.transformed(T)
-
     # -----------------------
     # Constructors
     # -----------------------
@@ -555,84 +533,9 @@ class Beam(Network):
         # mesh_quads_to_triangles(box_mesh)
         return box_mesh
 
-    def update_cached_mesh(self, beam_features=[]):
-        """Computes the beam geometry with boolean difference of all joints and features.
-        This is manually triggered.
-        Parameters
-        ----------
-        beam_features: list(BeamFeature)
-            Objects that implements the BeamFeature ABC
-
-        Returns
-        -------
-        compas.datastructures.Mesh
-            The beam mesh with joint geoemtry removed
-
-        Note
-        ----------
-        self.cached_mesh is updated.
-        features object need to implement the get_feature_meshes(beam)-> list[Mesh] function.
-        """
-
-        negative_meshes = []
-        # First mesh in the list is the uncut beam mesh
-        self.cached_mesh = self.draw_uncut_mesh()
-
-        ####################################
-        # compas_trimesh implementation
-        ####################################
-
-        if len(beam_features) > 0:
-            self.cached_mesh.quads_to_triangles()
-            negative_meshes.append(self.cached_mesh)
-            # Compute the negative meshes from the features
-            for feature in beam_features:
-                for negative_mesh in feature.get_feature_meshes(self):
-                    negative_mesh.quads_to_triangles()
-                    # from compas.datastructures import Mesh, mesh_offset
-                    negative_meshes.append(negative_mesh)
-
-            # Calls trimesh to perform boolean
-            from compas.rpc import Proxy
-            trimesh_proxy = Proxy(package='compas_trimesh')
-            result = trimesh_proxy.trimesh_subtract_multiple(negative_meshes)
-            self.cached_mesh = result
-
-        ####################################
-        # compas_cgal implementation
-        ####################################
-
-        # if len(beam_features) > 0:
-
-        #     # Calls trimesh to perform boolean
-        #     from compas.rpc import Proxy
-        #     proxy = Proxy()
-        #     proxy.package = 'compas_cgal.booleans'
-
-        #     # Convert uncut beam to triangle
-        #     self.cached_mesh.quads_to_triangles()
-
-        #     # compas_cgal uses tuple(vertices and faces) as mesh representation
-        #     result_v_f = self.cached_mesh.to_vertices_and_faces()
-
-        #     # Compute the negative meshes from the features
-        #     for feature in beam_features:
-        #         for bool_negative in feature.get_feature_meshes(self):
-        #             bool_negative.quads_to_triangles()
-        #             bool_negative_v_f = bool_negative.to_vertices_and_faces()
-        #             result_v_f = proxy.boolean_difference(result_v_f, bool_negative_v_f)
-
-        #     # Reassemble vertices and faces back to Mesh
-        #     result = Mesh.from_vertices_and_faces(* result_v_f)
-        #     self.cached_mesh = result
-
-        ####################################
-        # End of implementation
-        ####################################
-
-        self.cached_mesh.name = self.name + "_mesh"
-
-        return self.cached_mesh
+    def remove_cached_mesh(self):
+        # type: () -> None
+        self.cached_mesh = None
 
     def set_state(self, state):
         # type: (ObjectState) -> None

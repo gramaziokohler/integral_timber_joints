@@ -79,14 +79,17 @@ def show_sequence_color(process):
 
 def compute_collision_show_color(process):
     # type: (RobotClampAssemblyProcess) -> None
+
     artist = get_process_artist()
     selected_beam_id = artist.selected_beam_id
     assembly = process.assembly
     rs.EnableRedraw(False)
 
+
+
     # Get Mesh - Current Beam
     current_beam_meshes = []
-    current_beam_meshes.extend(artist.interactive_beam_guid(selected_beam_id))
+    current_beam_meshes.extend(artist.beam_guids_at_position(selected_beam_id, 'assembly_wcf_final'))
 
     # Get Meshes - Gripper
     gripper_meshes = artist.gripper_guids_at_position(selected_beam_id, artist.selected_key_position.current_gripper_pos)
@@ -99,12 +102,12 @@ def compute_collision_show_color(process):
     # Get Meshes - Already Assembled Beams
     other_beams_meshes = []
     for neighbour_id in assembly.get_already_built_beams(selected_beam_id):
-        other_beams_meshes.extend(artist.interactive_beam_guid(neighbour_id))
+        other_beams_meshes.extend(artist.beam_guids_at_position(neighbour_id, 'assembly_wcf_final'))
 
     # Get Meshes - Already Assembled Beams but not neighbour
     other_non_neighbour_beams_meshes = []
     for neighbour_id in set(assembly.get_already_built_beams(selected_beam_id)) - set(assembly.get_already_built_neighbors(selected_beam_id)):
-        other_non_neighbour_beams_meshes.extend(artist.interactive_beam_guid(neighbour_id))
+        other_non_neighbour_beams_meshes.extend(artist.beam_guids_at_position(neighbour_id, 'assembly_wcf_final'))
 
     # Get Meshes - EnvModel
     env_meshes = []
