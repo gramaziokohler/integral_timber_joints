@@ -1,16 +1,17 @@
 from __future__ import absolute_import, division, print_function
 
 try:
-    from typing import Dict, Iterator, List, Optional, Tuple, Generator
+    from typing import Dict, Iterator, List, Optional, Tuple, Generator, Any
 except:
     pass
 
-from compas.datastructures import Network
+from compas.datastructures import Network, Mesh
 from compas.geometry import Point, Transformation, Translation, Vector
 from compas.geometry.primitives.plane import Plane
 from compas.geometry.primitives.frame import Frame
 from compas.geometry.transformations.transformation import Transformation
 from compas.geometry.transformations.rotation import Rotation
+from compas import is_rhino
 
 from compas.rpc import Proxy
 
@@ -25,22 +26,22 @@ class BeamAssemblyMethod(object):
     """
     UNDEFINED = -1      # UNDEFINED : Default starting value when the method is not computed
     GROUND_CONTACT = 0  # GROUND_CONTACT : no assembly tools.
-                        # final assembly vector will be hardcoded to be downwards.
+    # final assembly vector will be hardcoded to be downwards.
     CLAMPED = 1         # CLAMPED : All joints (with earlier neighbours) need a clamp.
-                        # Clamp information will be stored in joint_attributes.
-                        # Gripper information is stored in beam_attributes.
+    # Clamp information will be stored in joint_attributes.
+    # Gripper information is stored in beam_attributes.
     SCREWED_WITH_GRIPPER = 2    # Each joint need a screwdriver.
-                                # Screwdriver information is stored in joint_attributes.
-                                # Gripper information is stored in beam_attributes.
-    SCREWED_WITHOUT_GRIPPER = 3 # Same as SCREWED_WITH_GRIPPER but one of the screwdriver is used as gripper.
-                                # Gripper information is stored in beam_attributes but
-                                # `gripper_type` and `gripper_id` will equal to `tool_type` and `tool_id`
+    # Screwdriver information is stored in joint_attributes.
+    # Gripper information is stored in beam_attributes.
+    SCREWED_WITHOUT_GRIPPER = 3  # Same as SCREWED_WITH_GRIPPER but one of the screwdriver is used as gripper.
+    # Gripper information is stored in beam_attributes but
+    # `gripper_type` and `gripper_id` will equal to `tool_type` and `tool_id`
     screw_methods = [SCREWED_WITH_GRIPPER, SCREWED_WITHOUT_GRIPPER]
     readable_names_dict = {
-        "GroundContact" : GROUND_CONTACT,
-        "Clamped" : CLAMPED,
-        "ScrewedWithGripper" : SCREWED_WITH_GRIPPER,
-        "ScrewedWithoutGripper" : SCREWED_WITHOUT_GRIPPER,
+        "GroundContact": GROUND_CONTACT,
+        "Clamped": CLAMPED,
+        "ScrewedWithGripper": SCREWED_WITH_GRIPPER,
+        "ScrewedWithoutGripper": SCREWED_WITHOUT_GRIPPER,
     }
 
 
@@ -224,8 +225,8 @@ class Assembly(Network):
         """
         self.add_one_joint(joint1, beam1_id, beam2_id)
         self.add_one_joint(joint2, beam2_id, beam1_id)
-        self.beam(beam1_id).cached_mesh = None
-        self.beam(beam2_id).cached_mesh = None
+        self.beam(beam1_id).remove_cached_mesh()
+        self.beam(beam2_id).remove_cached_mesh()
 
     def remove_beam(self, beam_id):
         assert self.has_node(beam_id)
@@ -406,7 +407,6 @@ class Assembly(Network):
 
     def shift_beam_sequence(self, beam_id, shift_amount, update_assembly_direction=True, allow_change_joint_direction=True):
         # type: (str, int, bool, bool) -> List[str]
-
         """Move the sequence of a beam earlier or later by the shift_amount.
         Negative shift_amount means moving earlier.
 
@@ -492,7 +492,7 @@ class Assembly(Network):
         ocf_plane = wcf_plane.transformed(beam_from_world)
         beam_cut = Beamcut_plane(ocf_plane)
         self.beam_cuts(beam_id).append(beam_cut)
-        self.beam(beam_id).cached_mesh = None
+        self.beam(beam_id).remove_cached_mesh()
 
     def remove_all_beam_cuts(self, beam_id):
         # type: (str, Beamcut) -> None
@@ -627,11 +627,12 @@ class Assembly(Network):
 
         # Test to see if there are new joints
 
-    # --------------------------------------------
-    # Beam Joints Geometrical Functions
-    # --------------------------------------------
+    # --------------------------------
+    # Beam and Joints Features Boolean
+    # --------------------------------
 
-    def update_beam_mesh_with_joints(self, beam_id, skip_if_cached=False):
+    def get_beam_mesh(self, beam_id, use_cache_if_available=True):
+        # type: (str, bool) -> Mesh
         """Update the cached_mesh of a beam, taking into account all the joints attached.
 
         Parameters
@@ -641,8 +642,11 @@ class Assembly(Network):
         skip_if_cached : bool, optional
             Skip recomputeing cache mesh if it already exist, by default False.
         """
-        if skip_if_cached and (self.beam(beam_id).cached_mesh is not None):
-            return
+        # Return cached mesh if available
+        beam = self.beam(beam_id)
+        cached_mesh = beam.cached_mesh
+        if use_cache_if_available and (cached_mesh is not None):
+            return cached_mesh
 
         # Collect all the features
         joints = self.get_joints_of_beam(beam_id)
@@ -651,8 +655,98 @@ class Assembly(Network):
         features = joints
         features += beam_cuts
 
-        # print(features)
-        self.beam(beam_id).update_cached_mesh(features)
+        self._boolean_beam_mesh(beam, features)
+
+        return beam.cached_mesh
+
+    def _boolean_beam_mesh(self, beam, beam_features=[]):
+        # type:(Beam, list[Any]) -> Mesh
+        """Computes the beam geometry with boolean difference of all joints and features.
+        This is manually triggered.
+        Parameters
+        ----------
+        beam_features: list(BeamFeature)
+            Objects that implements the BeamFeature ABC
+
+        Returns
+        -------
+        compas.datastructures.Mesh
+            The beam mesh with joint geoemtry removed
+
+        Note
+        ----------
+        self.cached_mesh is updated.
+        features object need to implement the get_feature_meshes(beam)-> list[Mesh] function.
+        """
+
+        negative_meshes = []
+        # First mesh in the list is the uncut beam mesh
+        beam.cached_mesh = beam.draw_uncut_mesh()
+
+        ####################################
+        # compas_trimesh implementation
+        ####################################
+
+        if len(beam_features) > 0:
+            beam.cached_mesh.quads_to_triangles()
+            negative_meshes.append(beam.cached_mesh)
+            # Compute the negative meshes from the features
+            for feature in beam_features:
+                for negative_mesh in feature.get_feature_meshes(beam):
+                    negative_mesh.quads_to_triangles()
+                    # from compas.datastructures import Mesh, mesh_offset
+                    negative_meshes.append(negative_mesh)
+
+            # Calls trimesh to perform boolean
+            if is_rhino():
+                from compas.rpc import Proxy
+                trimesh_proxy = Proxy(package='compas_trimesh')
+                result = trimesh_proxy.trimesh_subtract_multiple(negative_meshes)
+                beam.cached_mesh = result
+            else:
+                from compas_trimesh import trimesh_subtract_multiple
+                result = trimesh_subtract_multiple(negative_meshes)
+                beam.cached_mesh = result
+
+        ####################################
+        # compas_cgal implementation
+        ####################################
+
+        # if len(beam_features) > 0:
+
+        #     # Calls trimesh to perform boolean
+        #     from compas.rpc import Proxy
+        #     proxy = Proxy()
+        #     proxy.package = 'compas_cgal.booleans'
+
+        #     # Convert uncut beam to triangle
+        #     self.cached_mesh.quads_to_triangles()
+
+        #     # compas_cgal uses tuple(vertices and faces) as mesh representation
+        #     result_v_f = self.cached_mesh.to_vertices_and_faces()
+
+        #     # Compute the negative meshes from the features
+        #     for feature in beam_features:
+        #         for bool_negative in feature.get_feature_meshes(self):
+        #             bool_negative.quads_to_triangles()
+        #             bool_negative_v_f = bool_negative.to_vertices_and_faces()
+        #             result_v_f = proxy.boolean_difference(result_v_f, bool_negative_v_f)
+
+        #     # Reassemble vertices and faces back to Mesh
+        #     result = Mesh.from_vertices_and_faces(* result_v_f)
+        #     self.cached_mesh = result
+
+        ####################################
+        # End of implementation
+        ####################################
+
+        beam.cached_mesh.name = beam.name + "_mesh"
+
+        return beam.cached_mesh
+
+    # -------------------------------
+    # Beam and Gripper Transforamtion
+    # -------------------------------
 
     def get_t_gripper_tcf_from_beam(self, beam_id):
         # type: (str) -> Transformation
@@ -770,7 +864,7 @@ class Assembly(Network):
             return value_from_attributes
         else:
             joint_ids = self.get_joint_ids_with_tools_for_beam(beam_id)
-            if len(joint_ids)> 0 :
+            if len(joint_ids) > 0:
                 return joint_ids[0]
             else:
                 return None
@@ -818,8 +912,8 @@ class Assembly(Network):
                     self.add_joint_pair(option1[0], option1[1], beam_id, bid_neighbor)
                 else:
                     self.add_joint_pair(option2[0], option2[1], beam_id, bid_neighbor)
-                beam1.cached_mesh = None
-                beam2.cached_mesh = None
+                beam1.remove_cached_mesh()
+                beam2.remove_cached_mesh()
             else:
                 if verbose:
                     print("Face Pair Intersection Not Found")
@@ -837,8 +931,8 @@ class Assembly(Network):
         self.joint((beam_id, neighbour_id)).swap_faceid_to_opposite_face()
         self.joint((neighbour_id, beam_id)).swap_faceid_to_opposite_face()
         self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
-        self.beam(beam_id).cached_mesh = None
-        self.beam(neighbour_id).cached_mesh = None
+        self.beam(beam_id).remove_cached_mesh()
+        self.beam(neighbour_id).remove_cached_mesh()
 
     # -----------------------
     # Assembly Directions

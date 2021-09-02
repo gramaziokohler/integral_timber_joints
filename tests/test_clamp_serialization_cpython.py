@@ -27,8 +27,7 @@ assembly = Assembly()
 assembly.add_beam(beam1)
 assembly.add_beam(beam2)
 assembly.add_joint_pair(joint1, joint2, 'b1', 'b2')
-# assembly.update_beam_mesh_with_joints('b1')
-# assembly.update_beam_mesh_with_joints('b2')
+
 p = RobotClampAssemblyProcess(assembly)
 
 # Load Tools

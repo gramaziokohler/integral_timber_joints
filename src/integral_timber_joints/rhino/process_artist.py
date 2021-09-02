@@ -492,8 +492,7 @@ class ProcessArtist(object):
         assembly = self.process.assembly
         if beam_id not in assembly.beam_ids():
             raise KeyError("Beam %i not in Assembly" % beam_id)
-        assembly.update_beam_mesh_with_joints(beam_id, not update_cache)
-        beam_mesh = assembly.beam(beam_id).cached_mesh  # type: Mesh
+        beam_mesh = assembly.get_beam_mesh(beam_id, not update_cache)
 
         # Layer
         layer = 'itj::interactive::beams_mesh'
@@ -507,23 +506,22 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
-    def draw_beam_brep(self, beam_id, clear_mesh_cache=False, redraw=True):
-        # type:(str, bool, bool) -> None
+    def draw_beam_brep(self, beam_id, delete_old_brep=True, update_mesh_cache=False, redraw=True):
+        # type:(str, bool, bool, bool) -> None
         assembly = self.process.assembly
         if beam_id not in assembly.beam_ids():
             raise KeyError("Beam %i not in Assembly" % beam_id)
 
-        if clear_mesh_cache:
-            assembly.beam(beam_id).cached_mesh = None
-            # assembly.update_beam_mesh_with_joints(beam_id, not clear_mesh_cache)
-            # beam_mesh = assembly.beam(beam_id).cached_mesh  # type: Mesh
+        assembly.beam(beam_id).remove_cached_mesh()
+        if update_mesh_cache:
+            assembly.get_beam_mesh(beam_id, False)
 
         # Layer
         layer = 'itj::interactive::beams_brep'
         rs.CurrentLayer(layer)
 
         # Draw Mesh
-        guids = self.assembly_artist.draw_beam(beam_id=beam_id, delete_old=True, redraw=False)
+        guids = self.assembly_artist.draw_beam(beam_id=beam_id, delete_old=delete_old_brep, redraw=False)
         self.interactive_guids_at_layer(beam_id, layer).extend(guids)
 
         # Redraw
@@ -538,7 +536,7 @@ class ProcessArtist(object):
         self.delete_interactive_beam_visualization(beam_id, redraw=False)
         if draw_mesh:
             # self.draw_beam_mesh(beam_id, force_update, redraw=False)
-            self.draw_beam_brep(beam_id, clear_mesh_cache=force_update, redraw=False)
+            self.draw_beam_brep(beam_id, delete_old_brep=force_update, update_mesh_cache=False, redraw=False)
         if draw_tag:
             self.draw_beam_seqtag(beam_id, redraw=False)
         if redraw:
@@ -628,7 +626,8 @@ class ProcessArtist(object):
 
             # Transform the beam_mesh to location and
             T = self.process.assembly.get_beam_transformaion_to(beam_id, beam_position)
-            beam_mesh = self.process.assembly.beam(beam_id).cached_mesh.transformed(T)  # type: Mesh
+
+            beam_mesh = self.process.assembly.get_beam_mesh(beam_id).transformed(T)  # type: Mesh
             guids = self.draw_meshes_get_guids([beam_mesh], beam_id, redraw=False)
             self.beam_guids_at_position(beam_id, beam_position).extend(guids)
 
