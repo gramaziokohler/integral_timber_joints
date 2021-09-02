@@ -18,6 +18,7 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.process.state import ObjectState, SceneState
 from integral_timber_joints.rhino.tool_artist import ToolArtist
 from integral_timber_joints.rhino.utility import purge_objects
+from integral_timber_joints.rhino.assembly_artist import AssemblyNurbsArtist
 from integral_timber_joints.tools import Clamp, Gripper, Tool
 
 try:
@@ -275,6 +276,7 @@ class ProcessArtist(object):
     # Rhino layers used to hold temporary visualization objects
     interactive_layers = [
         'itj::interactive::beams_mesh',
+        'itj::interactive::beams_brep',
         'itj::interactive::beams_seqtag',
         'itj::interactive::clamps_at_final',
     ]
@@ -309,7 +311,8 @@ class ProcessArtist(object):
 
     def __init__(self, process):
         # type: (RobotClampAssemblyProcess) -> None
-        self.process = process  # type: RobotClampAssemblyProcess
+        self.process = process
+        self.assembly_artist = AssemblyNurbsArtist(process.assembly, 'itj::interactive::beams_brep')
 
         # # Create guid in dictionary to store geometries added to Rhino document
         self._beam_guids = {}  # type: dict[str, dict[str, list[str]]]
@@ -504,6 +507,29 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
+    def draw_beam_brep(self, beam_id, clear_mesh_cache=False, redraw=True):
+        # type:(str, bool, bool) -> None
+        assembly = self.process.assembly
+        if beam_id not in assembly.beam_ids():
+            raise KeyError("Beam %i not in Assembly" % beam_id)
+
+        if clear_mesh_cache:
+            assembly.beam(beam_id).cached_mesh = None
+            # assembly.update_beam_mesh_with_joints(beam_id, not clear_mesh_cache)
+            # beam_mesh = assembly.beam(beam_id).cached_mesh  # type: Mesh
+
+        # Layer
+        layer = 'itj::interactive::beams_brep'
+        rs.CurrentLayer(layer)
+
+        # Draw Mesh
+        guids = self.assembly_artist.draw_beam(beam_id=beam_id, delete_old=True, redraw=False)
+        self.interactive_guids_at_layer(beam_id, layer).extend(guids)
+
+        # Redraw
+        if redraw:
+            rs.EnableRedraw(True)
+
     def redraw_interactive_beam(self, beam_id, force_update=True, draw_mesh=True, draw_tag=True, redraw=True):
         ''' Redraw beam visualizations.
         Redraws interactive beam mesh and sequence tag
@@ -511,13 +537,14 @@ class ProcessArtist(object):
         rs.EnableRedraw(False)
         self.delete_interactive_beam_visualization(beam_id, redraw=False)
         if draw_mesh:
-            self.draw_beam_mesh(beam_id, force_update, redraw=False)
+            # self.draw_beam_mesh(beam_id, force_update, redraw=False)
+            self.draw_beam_brep(beam_id, clear_mesh_cache=force_update, redraw=False)
         if draw_tag:
             self.draw_beam_seqtag(beam_id, redraw=False)
         if redraw:
             rs.EnableRedraw(True)
 
-    def interactive_beam_guid(self, beam_id, layer='itj::interactive::beams_mesh'):
+    def interactive_beam_guid(self, beam_id, layer='itj::interactive::beams_brep'):
         # type:(str, str) -> list[guid]
         ''' Returns the interactive beam's guid(s)
         Typically this is a list of one mesh that represent the beam.
@@ -560,7 +587,7 @@ class ProcessArtist(object):
             if _beam_id == beam_id:
                 show = False
 
-    def change_interactive_beam_colour(self, beam_id, meaning, layer='itj::interactive::beams_mesh'):
+    def change_interactive_beam_colour(self, beam_id, meaning, layer='itj::interactive::beams_brep'):
         # type(str, str) -> None
         """ Chagne the beam brep and mesh color to a given colour string
         Colour string refer to color_meaning dict
@@ -650,9 +677,6 @@ class ProcessArtist(object):
         # """
 
         self.show_beam_at_one_position(beam_id, '')
-
-    def draw_beam_brep(self, process):
-        raise NotImplementedError
 
     def delete_interactive_beam_visualization(self, beam_id, redraw=True):
         # type:(str, bool) -> None
@@ -1239,7 +1263,6 @@ if __name__ == "__main__":
     # artist.empty_layers()
     process = get_process()
     # for beam_id in process.assembly.beam_ids():
-    #     artist.draw_beam_mesh(beam_id)
     #     artist.draw_beam_seqtag(beam_id)
     """Draw the clamp as a block. Block name is the clamp_type"""
     for tool_type in process.available_assembly_tool_types:

@@ -13,10 +13,12 @@ from integral_timber_joints.rhino.artist import mesh_to_brep, vertices_and_faces
 from integral_timber_joints.rhino.utility import purge_objects
 
 add_brep = sc.doc.Objects.AddBrep
+find_object = sc.doc.Objects.Find
 
 TOL = sc.doc.ModelAbsoluteTolerance
 
 guid = uuid.UUID
+
 
 class AssemblyNurbsArtist(object):
     """ Artist to draw Beams of an Assembly in Rhino with Nurbs geometry
@@ -30,8 +32,8 @@ class AssemblyNurbsArtist(object):
 
     """
 
-    def __init__(self, assembly):
-        # type: (Assembly) -> None
+    def __init__(self, assembly, beam_layer_name='itj::beams_brep::final'):
+        # type: (Assembly, str) -> None
         """Create new AssemblyNurbsArtist for an Assembly in Rhino Context"""
 
         self.assembly = assembly  # type: Assembly
@@ -39,7 +41,7 @@ class AssemblyNurbsArtist(object):
         # # Create guid in dictionary to store geometries added to Rhino document
         self._beam_guids = {}  # type: dict[str, list[str]]
 
-        self.beam_layer_name = 'itj::beams_brep::final'
+        self.beam_layer_name = beam_layer_name
 
         # Empty existing layers and create them if not existing.
         # This also creates the guid dictionary
@@ -119,48 +121,62 @@ class AssemblyNurbsArtist(object):
             features = joints
             features += beam_cuts
 
+            guids = []  # Hold the guids of the final boolean result
             if len(features) > 0:
-                guids = []  # Hold the guids of the final boolean result
                 negative_brep_guids = []
                 # Get the negative meshes from the features and convert them to nurbs
                 for feature in features:
                     for negative_shape in feature.get_feature_shapes(self.assembly.beam(beam_id)):
-                        print(negative_shape.__class__)
+                        if verbose:
+                            print(negative_shape.__class__)
                         if isinstance(negative_shape, Polyhedron):
                             vertices_and_faces = negative_shape.to_vertices_and_faces()
                             struct = vertices_and_faces_to_brep_struct(vertices_and_faces)
-                            print("Polyhedron :", struct)
-                            guids = draw_breps(struct, join=True, redraw=False)
-                            negative_brep_guids.extend(guids)
+                            if verbose:
+                                print("Polyhedron :", struct)
+                            negative_guids = draw_breps(struct, join=True, redraw=False)
+                            negative_brep_guids.extend(negative_guids)
                         elif isinstance(negative_shape, Cylinder):
                             cylinder = negative_shape
                             start = cylinder.center + cylinder.normal.scaled(cylinder.height / 2)
                             end = cylinder.center - cylinder.normal.scaled(cylinder.height / 2)
                             struct = {'start': list(start), 'end': list(end), 'radius': cylinder.circle.radius}
-                            print("Cylinder : ", struct)
-                            guids = draw_cylinders([struct], cap=True, redraw=False)
-                            negative_brep_guids.extend(guids)
+                            if verbose:
+                                print("Cylinder : ", struct)
+                            negative_guids = draw_cylinders([struct], cap=True, redraw=False)
+                            negative_brep_guids.extend(negative_guids)
 
                 # Perform Boolean Difference
                 positive_breps = [rs.coercebrep(guid) for guid in positive_brep_guids]
                 negative_breps = [rs.coercebrep(guid) for guid in negative_brep_guids]
-                print(positive_breps, negative_breps)
+                if verbose:
+                    print(positive_breps, negative_breps)
                 boolean_result = rg.Brep.CreateBooleanDifference(positive_breps, negative_breps, TOL)
                 if boolean_result is None:
-                    print("Artist draw_beam(%s) Boolean Failure"% beam_id)
+                    print("ERROR: AssemblyNurbArtist draw_beam(%s) Boolean Failure" % beam_id)
                 else:
                     for brep in boolean_result:
+                        # New guids from boolean results
                         guid = add_brep(brep)
                         if guid:
                             guids.append(guid)
 
-                    # Save resulting guid(s) into dictionary
-                    self.beam_guids(beam_id).extend(guids)
-
                     # Delete the original boolean set geometries
                     delete_objects(positive_brep_guids + negative_brep_guids, purge=True, redraw=False)
             else:
-                self.beam_guids(beam_id).extend(positive_brep_guids)
+                guids = positive_brep_guids
 
+        # Rename newly created object with beam_id
+        for guid in guids:
+            obj = find_object(guid)
+            attr = obj.Attributes
+            attr.Name = beam_id
+            obj.CommitChanges()
+
+        # Enable redraw
         if redraw:
             rs.EnableRedraw(True)
+
+        # Save resulting guid(s) into guid dictionary and also return them
+        self.beam_guids(beam_id).extend(guids)
+        return guids
