@@ -19,7 +19,7 @@
         </text>
         <tool_bar_id>31c43b10-774f-4f68-b2f1-8f742d6de8c3</tool_bar_id>
       </tool_bar_group_item>
-      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59476" mru_width="868" point_pos="0,60" float_point="10,86" rect_mru_dock_pos="0,60,1920,98" dock_location_u="59419" dock_location="top" float_size="768,62" />
+      <dock_bar_info dpi_scale="100" dock_bar="False" docking="True" horz="False" visible="True" floating="False" mru_float_style="8192" bar_id="59477" mru_width="868" point_pos="0,60" float_point="10,86" rect_mru_dock_pos="0,60,1920,98" dock_location_u="59419" dock_location="top" float_size="768,62" />
     </tool_bar_group>
   </tool_bar_groups>
   <tool_bars>
@@ -60,6 +60,12 @@
           <locale_1033>Toolbar item 02</locale_1033>
         </text>
         <left_macro_id>f73bbccd-8abb-414f-9a85-b9e1e333a701</left_macro_id>
+      </tool_bar_item>
+      <tool_bar_item guid="818f6474-0a0f-4745-aaf8-581d5104b5aa" button_display_mode="text_only" display_style_from_parent="False">
+        <text>
+          <locale_1033>Toolbar item 02</locale_1033>
+        </text>
+        <left_macro_id>3eba3a62-016e-4af3-947e-7ab93f27718d</left_macro_id>
       </tool_bar_item>
       <tool_bar_item guid="29945c28-a89c-479f-89e1-3b1aa93c6f49" button_display_mode="text_only" display_style_from_parent="False">
         <text>
@@ -459,9 +465,6 @@ _-RunPythonScript "integral_timber_joints.rhino.trim.py"</script>
       <text>
         <locale_1033>Macro 06 - Copy</locale_1033>
       </text>
-      <tooltip>
-        <locale_1033 />
-      </tooltip>
       <help_text>
         <locale_1033>Macro 06</locale_1033>
       </help_text>
@@ -495,9 +498,6 @@ _-RunPythonScript "integral_timber_joints.rhino.reports.py"</script>
       <text>
         <locale_1033>Macro 05 - Copy - Copy</locale_1033>
       </text>
-      <tooltip>
-        <locale_1033 />
-      </tooltip>
       <help_text>
         <locale_1033>Macro 05</locale_1033>
       </help_text>
@@ -579,6 +579,25 @@ _-RunPythonScript R "integral_timber_joints.rhino.load.py"
 _-RunPythonScript R "integral_timber_joints.rhino.load.py"
 _-RunPythonScript "integral_timber_joints.rhino.tools_environment.py"</script>
     </macro_item>
+    <macro_item guid="3eba3a62-016e-4af3-947e-7ab93f27718d" bitmap_id="3f1d8b82-730f-4f78-a3da-2cf2329f27d3">
+      <text>
+        <locale_1033>Macro 20</locale_1033>
+      </text>
+      <tooltip>
+        <locale_1033>Joints</locale_1033>
+      </tooltip>
+      <help_text>
+        <locale_1033>Macro 03</locale_1033>
+      </help_text>
+      <button_text>
+        <locale_1033>Joints</locale_1033>
+      </button_text>
+      <menu_text>
+        <locale_1033>Macro 03</locale_1033>
+      </menu_text>
+      <script>!Cancel
+_-RunPythonScript "integral_timber_joints.rhino.joints.py"</script>
+    </macro_item>
   </macros>
   <bitmaps>
     <small_bitmap item_width="16" item_height="16">
@@ -606,9 +625,10 @@ _-RunPythonScript "integral_timber_joints.rhino.tools_environment.py"</script>
       <bitmap_item guid="2032db6e-c475-49ad-90f8-a4c0d8a5e18a" index="21" />
       <bitmap_item guid="2c4ecec7-0468-4cae-8c3c-7862a3a85161" index="22" />
       <bitmap_item guid="337d635b-ec36-4918-af4d-d1c1748edb34" index="23" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAAGACAYAAACk4uKWAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAvSURBVHhe7cEBDQAAAMKg909tDjcgAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAACAazVhgAABTbkX7gAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap_item guid="3f1d8b82-730f-4f78-a3da-2cf2329f27d3" index="24" />
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABAAAAGQCAYAAACnNOANAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAwSURBVHhe7cEBDQAAAMKg909tDwcEAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAcKEGZZAAAaLCt3cAAAAASUVORK5CYIIAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </small_bitmap>
@@ -637,10 +657,11 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="2032db6e-c475-49ad-90f8-a4c0d8a5e18a" index="21" />
       <bitmap_item guid="2c4ecec7-0468-4cae-8c3c-7862a3a85161" index="22" />
       <bitmap_item guid="337d635b-ec36-4918-af4d-d1c1748edb34" index="23" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAAJACAYAAACXNaZLAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABNSURBVHhe7cExAQAAAMKg9U9tDQ8gAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAKzXaQAABPOzo
-2wAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      <bitmap_item guid="3f1d8b82-730f-4f78-a3da-2cf2329f27d3" index="24" />
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAABgAAAJYCAYAAAB4sCa9AAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABQSURBVHhe7cExAQAAAMKg9U9tDQ8gAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO1QDjWAAB
+EfP6pQAAAABJRU5ErkJgggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </normal_bitmap>
     <large_bitmap item_width="32" item_height="32">
@@ -668,11 +689,12 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
       <bitmap_item guid="2032db6e-c475-49ad-90f8-a4c0d8a5e18a" index="21" />
       <bitmap_item guid="2c4ecec7-0468-4cae-8c3c-7862a3a85161" index="22" />
       <bitmap_item guid="337d635b-ec36-4918-af4d-d1c1748edb34" index="23" />
-      <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAAMACAYAAABFPmVfAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
-jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAB2SURBVHhe7cEBAQAAAIIg/69uSEAAAAAAAAAA
+      <bitmap_item guid="3f1d8b82-730f-4f78-a3da-2cf2329f27d3" index="24" />
+      <bitmap>iVBORw0KGgoAAAANSUhEUgAAACAAAAMgCAYAAABCkmBpAAAAAXNSR0IArs4c6QAAAARnQU1BAACx
+jwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAB6SURBVHhe7cEBAQAAAIIg/69uSEAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMC5GoMPAAE2LsT8AAAAAElFTkSuQmCCAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAuRqTLwABc7xmMgAAAABJRU5ErkJg
+ggAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==</bitmap>
     </large_bitmap>
   </bitmaps>
   <scripts />
