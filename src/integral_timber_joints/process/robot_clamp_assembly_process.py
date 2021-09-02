@@ -1211,8 +1211,8 @@ class RobotClampAssemblyProcess(Data):
 
     # TODO load specific movement_id and neighbors
 
-    def load_external_movements(self, process_folder_path, movement_id=None):
-        # type: (str, str) -> list[Movement]
+    def load_external_movements(self, process_folder_path, movement_id=None, verbose=False):
+        # type: (str, str, bool) -> list[Movement]
         """Load External Movements from nearby folder if they exist, replace the movements
         with new movements, returns the list of movements modified.
         If movement_id is None, all movements will be parsed. Otherwise only the given movement
@@ -1237,7 +1237,8 @@ class RobotClampAssemblyProcess(Data):
         for movement in target_movements:
             movement_path = os.path.join(process_folder_path, movement.filepath)
             if os.path.exists(movement_path):
-                # print("Loading External Movement File: movement_path%s" % movement_path)
+                if verbose:
+                    print("Loading External Movement File: movement_path%s" % movement_path)
                 with open(movement_path, 'r') as f:
                     movement.data = json.load(f, cls=DataDecoder).data
                 movements_modified.append(movement)

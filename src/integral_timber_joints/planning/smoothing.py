@@ -11,19 +11,28 @@ from pybullet_planning import wait_if_gui, wait_for_user
 from pybullet_planning import  link_from_name
 
 from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
+from compas_fab_pychoreo.backend_features.pychoreo_trajectory_smoother import PyChoreoTrajectorySmoother
+
 from compas_fab_pychoreo.utils import compare_configurations
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 
-from integral_timber_joints.planning.parsing import parse_process, get_process_path
+from integral_timber_joints.planning.parsing import parse_process, get_process_path, save_process_and_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.utils import print_title, FRAME_TOL, color_from_success
+from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
-from integral_timber_joints.process import RoboticMovement, RobotClampAssemblyProcess
+from integral_timber_joints.process import RoboticMovement, RoboticFreeMovement
 
 #################################
-def smooth_movement_trajectory(client, robot, movement, options=None):
-    return (True, '')
+
+def smooth_movement_trajectory(client, process, robot, movement, options=None):
+    # * update state
+    start_state = process.get_movement_start_scene(movement)
+    set_state(client, robot, process, start_state, options=options)
+
+    traj_smoother = PyChoreoTrajectorySmoother(client)
+    return traj_smoother.smooth_trajectory(robot, movement.trajectory, options=options)
 
 #################################
 
@@ -45,9 +54,11 @@ def main():
     parser.add_argument('--write', action='store_true', help='Write output json.')
     #
     parser.add_argument('--debug', action='store_true', help='Debug mode')
-    parser.add_argument('--step_sim', action='store_true', help='Pause after each conf viz.')
     parser.add_argument('--verbose', action='store_false', help='Print out verbose. Defaults to True.')
     parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode')
+    #
+    parser.add_argument('--watch', action='store_true', help='Pause after each conf viz.')
+    parser.add_argument('--step_sim', action='store_true', help='Pause after each conf viz.')
 
     args = parser.parse_args()
     print('Arguments:', args)
@@ -81,6 +92,8 @@ def main():
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
         'verbose' : args.verbose,
+        'smooth_iterations' : 800,
+        'max_smooth_time' : 120,
     }
 
     full_seq_len = len(process.assembly.sequence)
@@ -95,6 +108,7 @@ def main():
         # only one beam
         beam_ids = [process.assembly.sequence[args.seq_i]]
 
+    altered_movements = []
     for beam_id in beam_ids:
         seq_i = process.assembly.sequence.index(beam_id)
         if not args.id_only:
@@ -107,10 +121,33 @@ def main():
         for i, m in enumerate(all_movements):
             if args.id_only and m.movement_id != args.id_only:
                 continue
+            if not isinstance(m, RoboticFreeMovement):
+                continue
             m_index = process.movements.index(m)
             print('-'*10)
             print_title('(MovementIndex={}) (Seq#{}-#{}) {}'.format(m_index, seq_i, i, m.short_summary))
-            smooth_movement_trajectory(client, robot, m, options=options)
+            with pp.LockRenderer(): # not args.debug):
+                success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, m, options=options)
+            cprint('Smooth success: {} | msg: {}'.format(success, msg), color_from_success(success))
+
+            if success:
+                if args.watch and args.debug:
+                    print('='*20)
+                    wait_if_gui('Trajectory before smoothing. Press enter to start.')
+                    visualize_movement_trajectory(client, robot, process, m, step_sim=args.step_sim)
+                m.trajectory = smoothed_traj
+                altered_movements.append(m)
+                if args.watch:
+                    print('>'*20)
+                    wait_if_gui('Trajectory AFTER smoothing. Press enter to start.')
+                    visualize_movement_trajectory(client, robot, process, m, step_sim=args.step_sim)
+                    wait_if_gui('simulation ends.')
+            else:
+                wait_for_user()
+
+    if args.write:
+        save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
+            include_traj_in_process=False, save_temp=False)
 
     client.disconnect()
 
