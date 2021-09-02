@@ -291,8 +291,6 @@ def main():
         'jump_threshold' : joint_jump_threshold,
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
-        # until Trajectory json is fixed...
-        'joint_names' : robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP),
     }
 
     set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=args.reinit_tool)

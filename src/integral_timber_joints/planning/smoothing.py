@@ -1,5 +1,29 @@
+import os, time
 import argparse
+from termcolor import cprint, colored
+from itertools import product, combinations
+import numpy as np
 
+from compas.robots import Joint
+
+import pybullet_planning as pp
+from pybullet_planning import wait_if_gui, wait_for_user
+from pybullet_planning import  link_from_name
+
+from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
+from compas_fab_pychoreo.utils import compare_configurations
+from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
+
+from integral_timber_joints.planning.parsing import parse_process, get_process_path
+from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
+from integral_timber_joints.planning.state import set_state
+from integral_timber_joints.planning.utils import print_title, FRAME_TOL, color_from_success
+
+from integral_timber_joints.process import RoboticMovement, RobotClampAssemblyProcess
+
+#################################
+def smooth_movement_trajectory(client, robot, movement, options=None):
+    return (True, '')
 
 #################################
 
@@ -7,10 +31,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--design_dir', default='210605_ScrewdriverTestProcess',
                         help='problem json\'s containing folder\'s name.')
-    parser.add_argument('--problem', default='pavilion_process.json', # twelve_pieces_process.json
+    parser.add_argument('--problem', default='nine_pieces_process.json', # twelve_pieces_process.json
                         help='The name of the problem to solve')
-    parser.add_argument('--problem_subdir', default='.',
-                        help='subdir of the process file, default to `.`. Popular use: `results`')
+    parser.add_argument('--problem_subdir', default='results',
+                        help='subdir of the process file. Popular use: `.` or `results`')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     #
     parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan.')
@@ -19,7 +43,6 @@ def main():
     parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
-    parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
     #
     parser.add_argument('--debug', action='store_true', help='Debug mode')
     parser.add_argument('--step_sim', action='store_true', help='Pause after each conf viz.')
@@ -29,74 +52,65 @@ def main():
     args = parser.parse_args()
     print('Arguments:', args)
     print('='*10)
-    if args.id_only is not None:
-        args.solve_mode = 'id_only'
-
-    # * Connect to path planning backend and initialize robot parameters
-    client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
 
     #########
     # * Load process and recompute actions and states
-    process = parse_process(args.problem, subdir=args.problem_subdir)
+    process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
     result_path = get_process_path(args.design_dir, args.problem, subdir='results')
 
-    # Double check entire solution is valid
+    # * Double check entire solution is valid
     for beam_id in process.assembly.sequence:
         if not process.dependency.beam_all_valid(beam_id):
             process.dependency.compute_all(beam_id)
             assert process.dependency.beam_all_valid(beam_id)
 
-    # force load external if only planning for the free motions
-    args.load_external_movements = args.load_external_movements or args.solve_mode == 'free_motion_only' or args.solve_mode == 'id_only'
-    if args.load_external_movements:
-        ext_movement_path = os.path.dirname(result_path)
-        cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
-        process.load_external_movements(ext_movement_path)
+    # * force load external movements
+    ext_movement_path = os.path.dirname(result_path)
+    cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
+    movements_modified = process.load_external_movements(ext_movement_path)
+    assert len(movements_modified) > 0, 'At least one external movements should be loaded for smoothing.'
 
     #########
+    # * Connect to path planning backend and initialize robot parameters
+    client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
+    process.set_initial_state_robot_config(process.robot_initial_config)
+    set_state(client, robot, process, process.initial_state, initialize=True,
+        options={'debug' : False, 'reinit_tool' : False})
 
-    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
-    joint_types = robot.get_joint_types_by_names(joint_names)
-    # 0.1 rad = 5.7 deg
-    joint_jump_threshold = {jt_name : np.pi/6 \
-            if jt_type in [Joint.REVOLUTE, Joint.CONTINUOUS] else 0.1 \
-            for jt_name, jt_type in zip(joint_names, joint_types)}
     options = {
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
-        'low_res' : args.low_res,
-        'distance_threshold' : 0.0012, # in meter
-        'frame_jump_tolerance' : 0.0012, # in meter
         'verbose' : args.verbose,
-        'problem_name' : args.problem,
-        'use_stored_seed' : args.use_stored_seed,
-        'jump_threshold' : joint_jump_threshold,
-        'max_distance' : args.max_distance,
-        'propagate_only' : args.solve_mode == 'propagate_only',
-        # until Trajectory json is fixed...
-        'joint_names' : robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP),
     }
-
-    set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=args.reinit_tool)
 
     full_seq_len = len(process.assembly.sequence)
     assert args.seq_i < full_seq_len and args.seq_i >= 0
     if args.batch_run:
+        # all beams
         beam_ids = [process.assembly.sequence[si] for si in range(args.seq_i, full_seq_len)]
-    elif args.solve_mode == 'id_only':
+    elif args.id_only:
+        # only one movement
         beam_ids = [process.get_beam_id_from_movement_id(args.id_only)]
     else:
-        # only one
+        # only one beam
         beam_ids = [process.assembly.sequence[args.seq_i]]
 
     for beam_id in beam_ids:
-        print('-'*20)
-        s_i = process.assembly.sequence.index(beam_id)
-        print('({}) Beam#{}'.format(s_i, beam_id))
+        seq_i = process.assembly.sequence.index(beam_id)
+        if not args.id_only:
+            print('='*20)
+            cprint('(Seq#{}) Beam {}'.format(seq_i, beam_id), 'yellow')
+        # if args.debug:
+        #     process.get_movement_summary_by_beam_id(beam_id)
 
-        # if compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options):
-        #     cprint('Beam #{} plan found after {} iters!'.format(beam_id, i+1), 'cyan')
-        #     break
+        all_movements = process.get_movements_by_beam_id(beam_id)
+        for i, m in enumerate(all_movements):
+            if args.id_only and m.movement_id != args.id_only:
+                continue
+            m_index = process.movements.index(m)
+            print('-'*10)
+            print_title('(MovementIndex={}) (Seq#{}-#{}) {}'.format(m_index, seq_i, i, m.short_summary))
+            smooth_movement_trajectory(client, robot, m, options=options)
 
     client.disconnect()
 

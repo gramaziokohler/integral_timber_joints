@@ -175,8 +175,6 @@ def main():
     else:
         beam_ids = [process.assembly.sequence[args.seq_i]]
 
-    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
-
     movements_need_fix = []
     failure_reasons = []
     for beam_id in beam_ids:
@@ -231,8 +229,6 @@ def main():
                         # print(client._print_object_summary())
                         prev_conf = start_conf
                         for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
-                            if not jpt.joint_names:
-                                jpt.joint_names = joint_names
                             if args.traj_collision:
                                 # with WorldSaver():
                                 in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
