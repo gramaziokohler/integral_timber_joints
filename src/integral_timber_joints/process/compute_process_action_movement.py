@@ -70,11 +70,12 @@ def assign_tool_type_to_joints(process, beam_id, verbose=False):
         clamp_types_requested_by_joint = process.assembly.joint(joint_id).clamp_types
 
         # Do not change anything if tool_type is already set and is valid
-        if any([existing_tool_type.startswith(requested_type) for requested_type in clamp_types_requested_by_joint]):
-            if verbose:
-                print("Joint (%s) tool_type (%s) has already been set. No change made by assign_tool_type_to_joints()." %
-                      (joint_id, process.assembly.get_joint_attribute(joint_id, 'tool_type')))
-            continue
+        if existing_tool_type is not None:
+            if any([existing_tool_type.startswith(requested_type) for requested_type in clamp_types_requested_by_joint]):
+                if verbose:
+                    print("Joint (%s) tool_type (%s) has already been set. No change made by assign_tool_type_to_joints()." %
+                        (joint_id, process.assembly.get_joint_attribute(joint_id, 'tool_type')))
+                continue
 
         # Loop through the list of clamp types requested by the joint.
         for requested_type in clamp_types_requested_by_joint:
