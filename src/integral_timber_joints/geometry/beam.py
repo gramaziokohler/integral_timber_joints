@@ -143,28 +143,6 @@ class Beam(Network):
         # type: (Mesh) -> None
         self.attributes['cached_mesh'] = value
 
-    @property
-    def mesh(self):
-        # type() -> Mesh
-        """Beam mesh in the ObjectCoordinateFrame (OCF).
-        This mesh can be transformed to self.frame to be shown at final location.
-        This can also be transformed to other frames for key position visualization.
-        """
-        assert self.cached_mesh is not None
-        T = Transformation.from_frame_to_frame(self.frame, Frame.worldXY())
-        return self.cached_mesh.transformed(T)
-
-    @property
-    def mesh_at_current_frame(self):
-        # type() -> Mesh
-        """Beam mesh in current_frame
-        This mesh can be transformed to self.frame to be shown at final location.
-        This can also be transformed to other frames for key position visualization.
-        """
-        assert self.cached_mesh is not None
-        T = Transformation.from_frame_to_frame(self.frame, self.current_frame)
-        return self.cached_mesh.transformed(T)
-
     # -----------------------
     # Constructors
     # -----------------------

@@ -14,6 +14,6 @@ beam2 = Beam(name = '2')
 a.add_beam(beam1)
 a.add_beam(beam2)
 a.add_one_joint(joint,'1', '2')
-mesh = a.get_beam_mesh('1')
+mesh = a.get_beam_mesh_wcf('1')
 
 print(mesh)

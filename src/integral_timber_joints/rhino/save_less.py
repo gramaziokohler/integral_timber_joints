@@ -78,7 +78,7 @@ def delete_beams_until(process, beams_to_keep):
 
     # Redraw neighbour beams since joints maybe gone.
     for beam_id in neighbors:
-        assembly.get_beam_mesh(beam_id, use_cache_if_available=False)
+        assembly.get_beam_mesh_wcf(beam_id, use_cache_if_available=False)
 
     assert len(list(assembly.beams())) == beams_to_keep
     assert len(assembly.sequence) == beams_to_keep

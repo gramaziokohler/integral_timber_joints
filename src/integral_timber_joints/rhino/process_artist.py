@@ -492,7 +492,7 @@ class ProcessArtist(object):
         assembly = self.process.assembly
         if beam_id not in assembly.beam_ids():
             raise KeyError("Beam %i not in Assembly" % beam_id)
-        beam_mesh = assembly.get_beam_mesh(beam_id, not update_cache)
+        beam_mesh = assembly.get_beam_mesh_wcf(beam_id, not update_cache)
 
         # Layer
         layer = 'itj::interactive::beams_mesh'
@@ -514,7 +514,7 @@ class ProcessArtist(object):
 
         assembly.beam(beam_id).remove_cached_mesh()
         if update_mesh_cache:
-            assembly.get_beam_mesh(beam_id, False)
+            assembly.get_beam_mesh_wcf(beam_id, False)
 
         # Layer
         layer = 'itj::interactive::beams_brep'
@@ -627,7 +627,7 @@ class ProcessArtist(object):
             # Transform the beam_mesh to location and
             T = self.process.assembly.get_beam_transformaion_to(beam_id, beam_position)
 
-            beam_mesh = self.process.assembly.get_beam_mesh(beam_id).transformed(T)  # type: Mesh
+            beam_mesh = self.process.assembly.get_beam_mesh_wcf(beam_id).transformed(T)  # type: Mesh
             guids = self.draw_meshes_get_guids([beam_mesh], beam_id, redraw=False)
             self.beam_guids_at_position(beam_id, beam_position).extend(guids)
 
