@@ -89,6 +89,23 @@ class JointNonPlanarLap(Joint):
         }
         return data
 
+    @classmethod
+    def from_data(cls, data):
+        """Construct a Joint object from structured data.
+        This class method must be overridden by an inherited class.
+        """
+        joint = cls()
+        joint.center_frame = data.get('center_frame', None)
+        joint.thickness = data.get('thickness', 70)
+        joint.beam_move_face_id = data.get('beam_move_face_id', 1)
+        joint.beam_stay_face_id = data.get('beam_stay_face_id', 1)
+        joint.axial_dot_product = data.get('axial_dot_product', 0.0)
+        joint.pt_jc = data.get('pt_jc', [])
+        joint.is_joint_on_beam_move = data.get('is_joint_on_beam_move', True)
+        joint.has_screw = data.get('has_screw', False)
+        joint.name = data.get('name', "")
+        return joint
+
     @property
     def face_id(self):
         if self.is_joint_on_beam_move:
@@ -114,22 +131,7 @@ class JointNonPlanarLap(Joint):
         else:
             return distance_point_plane(self.pt_jc[longest_edge], Plane.from_frame(self.center_frame))
 
-    @classmethod
-    def from_data(cls, data):
-        """Construct a Joint object from structured data.
-        This class method must be overridden by an inherited class.
-        """
-        joint = cls()
-        joint.center_frame = data.get('center_frame', None)
-        joint.thickness = data.get('center_frame', 70)
-        joint.beam_move_face_id = data.get('beam_move_face_id', 1)
-        joint.beam_stay_face_id = data.get('beam_stay_face_id', 1)
-        joint.axial_dot_product = data.get('axial_dot_product', 0.0)
-        joint.pt_jc = data.get('pt_jc', [])
-        joint.is_joint_on_beam_move = data.get('is_joint_on_beam_move', True)
-        joint.has_screw = data.get('has_screw', False)
-        joint.name = data.get('name', "")
-        return joint
+
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
