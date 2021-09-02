@@ -125,7 +125,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             if initialize:
                 color = GREY
                 # ! notice that the notch geometry will be convexified in pybullet
-                mesh = process.assembly.beam(beam_id).mesh.copy()
+                mesh = process.assembly.get_beam_mesh_ocf(beam_id).copy()
                 mesh_quads_to_triangles(mesh)
                 cm = CollisionMesh(mesh, beam_id)
                 cm.scale(scale)
