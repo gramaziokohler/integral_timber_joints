@@ -26,7 +26,7 @@ def test_beam_joint_boolean():
     assert mesh.number_of_faces() == 12
 
     # Update beam mesh (requires boolean)
-    mesh = a.get_beam_mesh_wcf('b1')
+    mesh = a.get_beam_mesh_in_wcf('b1')
     assert mesh is not None
     assert beam1.cached_mesh is mesh
     assert mesh.number_of_vertices() == 16

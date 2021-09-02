@@ -631,7 +631,7 @@ class Assembly(Network):
     # Beam and Joints Features Boolean
     # --------------------------------
 
-    def get_beam_mesh_wcf(self, beam_id, use_cache_if_available=True):
+    def get_beam_mesh_in_wcf(self, beam_id, use_cache_if_available=True):
         # type: (str, bool) -> Mesh
         """Get the mesh of a beam at its designed location in wcf.
         Update the cached_mesh of a beam if necessary, taking into account all the joints and features attached.
@@ -660,14 +660,14 @@ class Assembly(Network):
 
         return beam.cached_mesh
 
-    def get_beam_mesh_ocf(self, beam_id, use_cache_if_available=True):
+    def get_beam_mesh_in_ocf(self, beam_id, use_cache_if_available=True):
         # type: (str, bool) -> Mesh
         """Beam mesh in the ObjectCoordinateFrame (OCF).
         This mesh can be transformed to self.frame to be shown at final location.
         This can also be transformed to other frames for key position visualization.
         """
         beam = self.beam(beam_id)
-        mesh = self.get_beam_mesh_wcf(beam_id, use_cache_if_available)
+        mesh = self.get_beam_mesh_in_wcf(beam_id, use_cache_if_available)
         T = Transformation.from_frame_to_frame(beam.frame, Frame.worldXY())
         return mesh.transformed(T)
 
