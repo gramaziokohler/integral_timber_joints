@@ -474,10 +474,12 @@ def ui_ask_user_for_tool_id(process, message="Which Tool ID", print_existing_too
         return None
 
     # Ask user to pick from a list
-    tool_id = rs.GetString(message, "Cancel", ["Cancel"] + sorted(ids))
+    tool_id = rs.GetString(message, "Finish", ["Finish"] + sorted(ids))
     # Ask user for 3 point input
     if tool_id in ids:
         return tool_id
+    elif tool_id == "Finish":
+        return None
     else:
         print("%s is not a valid input." % tool_id)
         return None
@@ -487,11 +489,14 @@ def set_tool_storage_frame(process, set_from_robot_flange=False):
     # type: (RobotClampAssemblyProcess, bool) -> None
     """Function invoked by user to set the storage position."""
 
-    # Ask user which tool to set
-    tool_id = ui_ask_user_for_tool_id(process, "Change storage position for which tool?")
+    while True:
+        # Ask user which tool to set
+        tool_id = ui_ask_user_for_tool_id(process, "Change storage position for which tool?")
 
-    # Ask user for 3 point input
-    if tool_id is not None:
+        # Ask user for 3 point input
+        if tool_id is None:
+            return
+
         # Ask for origin
         if set_from_robot_flange:
             origin = rs.GetPoint("Pick point as robot flange origin for %s in storage." % tool_id)
@@ -535,12 +540,13 @@ def set_tool_storage_frame_from_robot_flange(process):
 def set_tool_storage_configuration(process):
     # type: (RobotClampAssemblyProcess) -> None
     """Function invoked by user to set the storage configuration."""
+    while True:
+        # Ask user which tool to set
+        tool_id = ui_ask_user_for_tool_id(process, "Set storage configuration for which tool?")
+        if tool_id is None:
+            return
 
-    # Ask user which tool to set
-    tool_id = ui_ask_user_for_tool_id(process, "Set storage configuration for which tool?")
-
-    # Ask user for 3 point input
-    if tool_id is not None:
+        # Ask user for 3 point input
         path = rs.OpenFileName("Open a Configuration json, for Tool %s storage configuration." % tool_id, "Configuration File (*.json)|*.json|All Files (*.*)|*.*||")
         if path:
             with open(path, 'r') as f:
@@ -556,9 +562,12 @@ def remove_tool_storage_configuration(process):
     # type: (RobotClampAssemblyProcess) -> None
     """Function invoked by user to remove the storage configuration."""
 
-    # Ask user which tool to set
-    tool_id = ui_ask_user_for_tool_id(process, "Remove storage configuration for which tool?")
-    if tool_id is not None:
+    while True:
+        # Ask user which tool to set
+        tool_id = ui_ask_user_for_tool_id(process, "Remove storage configuration for which tool?")
+        if tool_id is None:
+            return
+
         process.tool(tool_id).tool_storage_configuration = None
         print("Tool %s Storage Configuration is successfully removed." % tool_id)
 
