@@ -671,6 +671,15 @@ class Assembly(Network):
         T = Transformation.from_frame_to_frame(beam.frame, Frame.worldXY())
         return mesh.transformed(T)
 
+    def get_beam_mesh_at(self, beam_id, position_name, use_cache_if_available=True):
+        # type: (str, str, bool) -> Mesh
+        """Beam mesh in the ObjectCoordinateFrame (OCF).
+        This mesh can be transformed to self.frame to be shown at final location.
+        This can also be transformed to other frames for key position visualization.
+        """
+        mesh = self.get_beam_mesh_in_wcf(beam_id, use_cache_if_available)
+        T = self.get_beam_transformaion_to(beam_id, position_name)
+        return mesh.transformed(T)
 
     def _boolean_beam_mesh(self, beam, beam_features=[]):
         # type:(Beam, list[Any]) -> Mesh

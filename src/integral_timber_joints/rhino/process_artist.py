@@ -4,7 +4,7 @@ import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
 from compas.datastructures import Mesh
-from compas.geometry import Frame
+from compas.geometry import Frame, Transformation
 from compas.robots import Configuration
 from compas_rhino.artists import MeshArtist, RobotModelArtist
 from compas_rhino.geometry import RhinoPlane
@@ -1190,8 +1190,9 @@ class ProcessArtist(object):
         # * Beams
         for beam_id in self.process.assembly.sequence:
             beam = self.process.assembly.beam(beam_id)
-            object_state = ObjectState(scene[(beam_id, 'f')], scene[(beam_id, 'a')], None)
-            meshes[beam_id] = beam.draw_state(object_state)
+            beam_mesh = self.process.assembly.get_beam_mesh_in_wcf(beam_id)
+            T = Transformation.from_frame_to_frame(beam.frame, scene[(beam_id, 'f')])
+            meshes[beam_id] = [beam_mesh.transformed(T)]
 
         # * Tools
         for tool_id in self.process.tool_ids:
