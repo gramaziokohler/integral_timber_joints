@@ -25,7 +25,9 @@ class Gripper (Tool):
                  target_beam_length=1000,
                  beam_length_limit_min=500,
                  beam_length_limit_max=5000,
-                 approach_vector=None):
+                 approach_vector=None,
+                 storage_approach_vector=None
+                 ):
 
         # Call Tool init
         if tool_coordinate_frame is None:
@@ -42,6 +44,7 @@ class Gripper (Tool):
         # --------------------------------------------------------
 
         self.approach_vector = approach_vector
+        self.storage_approach_vector = storage_approach_vector
         self.tool_pick_up_frame = tool_pick_up_frame
         self.tool_storage_frame = tool_storage_frame
         self.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max)  # type: tuple[float, float]
@@ -96,6 +99,17 @@ class Gripper (Tool):
     @approach_vector.setter
     def approach_vector(self, v):
         self.attributes['approach_vector'] = v
+
+    @property
+    def storage_approach_vector(self):
+        # type: () -> Vector
+        """Vector for gripper to approach storage
+        """
+        return self.attributes.get('storage_approach_vector', self.approach_vector)
+
+    @storage_approach_vector.setter
+    def storage_approach_vector(self, v):
+        self.attributes['storage_approach_vector'] = v
 
     @property
     def tool_pick_up_frame(self):
@@ -233,7 +247,8 @@ def MultiFingerParallelGripperFactory(
     target_beam_length,
     beam_length_limit_min,
     beam_length_limit_max,
-    approach_vector
+    approach_vector,
+    storageapproach_vector,
 ):
     """ A Parallel gripper will have a base and two gripper jaw.
     Modelling guide
@@ -253,7 +268,8 @@ def MultiFingerParallelGripperFactory(
                           target_beam_length=target_beam_length,
                           beam_length_limit_min=beam_length_limit_min,
                           beam_length_limit_max=beam_length_limit_max,
-                          approach_vector=approach_vector
+                          approach_vector=approach_vector,
+                          storage_approach_vector=storageapproach_vector,
                           )
     # Gripper Base and Jaw Links
     #world_link = robot_model.add_link('world')

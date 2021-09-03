@@ -24,6 +24,8 @@ class Screwdriver (Gripper):
                  gripper_jaw_position_min=0,
                  gripper_jaw_position_max=47,
                  approach_vector=None,
+                 storageapproach1_vector=None,
+                 storageapproach2_vector=None,
                  detachretract_vector=None):
 
         # Call Tool init
@@ -46,7 +48,8 @@ class Screwdriver (Gripper):
             tool_storage_frame,
             gripper_jaw_position_min=gripper_jaw_position_min,
             gripper_jaw_position_max=gripper_jaw_position_max,
-            approach_vector=approach_vector
+            approach_vector=approach_vector,
+            storage_approach_vector=None,
         )
 
         # --------------------------------------------------------
@@ -62,6 +65,10 @@ class Screwdriver (Gripper):
         self.detachretract_vector = detachretract_vector
         self.screw_pitch_mm = 5
         self.screw_length_mm = 5
+        if storageapproach1_vector is not None:
+            self.storageapproach1_vector = storageapproach1_vector
+        if storageapproach2_vector is not None:
+            self.storageapproach2_vector = storageapproach2_vector
         # self.clamp_jaw_limits = (clamp_jaw_position_min, clamp_jaw_position_max)  # type: tuple[float, float]
 
     # --------------------------------------------------------------
@@ -235,7 +242,9 @@ def SL1ScrewdriverFactory(
                               gripper_jaw_position_min=gripper_jaw_position_min,
                               gripper_jaw_position_max=gripper_jaw_position_max,
                               approach_vector=approach_vector,
-                              detachretract_vector=detachretract_vector
+                              detachretract_vector=detachretract_vector,
+                              storageapproach1_vector=storageapproach1_vector,
+                              storageapproach2_vector=storageapproach2_vector,
                               )
     robot_model.gripper_jaw_limits = (gripper_jaw_position_min, gripper_jaw_position_max)
 
