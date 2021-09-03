@@ -1,5 +1,11 @@
 from compas_fab.robots import Configuration
 
+try:
+    from typing import Dict, List, Optional, Tuple, cast
+
+    from integral_timber_joints.process import RobotClampAssemblyProcess
+except:
+    pass
 class PickupStation (object):
 
     def __init__(self, alignment_frame=None, pickup_retract_vector=None):
@@ -91,7 +97,7 @@ class GripperAlignedPickupStation(PickupStation):
 
 
     def compute_pickup_frame(self, process, beam_id):
-        # type: (integral_timber_joints.process.RobotClampAssemblyProcess, str) -> None
+        # type: (RobotClampAssemblyProcess, str) -> None
         """ Compute 'assembly_wcf_pickup' alignment frame
         by aligning the grasp frame to the given pickup_station_frame.
         The effect is that the gripper stays at the same place.

@@ -1,6 +1,6 @@
 from itertools import chain
 
-from compas.geometry import Transformation, Translation
+from compas.geometry import Transformation, Translation, add_vectors
 
 from integral_timber_joints.process.movement import *
 from integral_timber_joints.tools import Clamp, Gripper, Screwdriver
@@ -627,28 +627,42 @@ class PlaceScrewdriverToStorageAction(PlaceToolToStorageAction):
         t_world_from_toolbase = Transformation.from_frame(tool_storage_frame_wcf)
 
         # * Free Move to reach Storage Approach Frame
-        t_gripperbase_from_approachgripperbase = Translation.from_vector(tool.approach_vector.scaled(-1))
+        t_gripperbase_from_approachgripperbase = Translation.from_vector(add_vectors(tool.storageapproach1_vector.scaled(-1),tool.storageapproach2_vector.scaled(-1)))
         t_world_approachgripperbase = t_world_from_toolbase * t_gripperbase_from_approachgripperbase
-        tool_storage_approach_t0cf = Frame.from_transformation(t_world_approachgripperbase * toolchanger.t_tcf_from_t0cf)
+        tool_storage_approach1_t0cf = Frame.from_transformation(t_world_approachgripperbase * toolchanger.t_tcf_from_t0cf)
 
         self.movements.append(RoboticFreeMovement(
-            target_frame=tool_storage_approach_t0cf,
+            target_frame=tool_storage_approach1_t0cf,
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.transit.rapid',
             tag="Free Move to reach Storage Approach Frame of %s, to place tool in storage." % self._tool_string
         ))
 
+        # * Tool Storage Pre Final
+        t_gripperbase_from_approachgripperbase = Translation.from_vector(tool.storageapproach2_vector.scaled(-1))
+        t_world_approachgripperbase = t_world_from_toolbase * t_gripperbase_from_approachgripperbase
+        tool_storage_approach2_t0cf = Frame.from_transformation(t_world_approachgripperbase * toolchanger.t_tcf_from_t0cf)
+
+        tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
+        self.movements.append(RoboticLinearMovement(
+            target_frame=tool_storage_approach2_t0cf,
+            attached_objects=[self.tool_id],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
+            speed_type='speed.toolchange.approach.withtool',
+            tag="Linear Advance 1 to approach Storage Frame of %s, to place tool in storage." % self._tool_string,
+            allowed_collision_matrix=tool_env_acm,
+        ))
+
         # * Tool Storage Final
         tool_storage_frame_t0cf = Frame.from_transformation(t_world_from_toolbase * toolchanger.t_tcf_from_t0cf)
-        tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_storage_frame_t0cf.copy(),
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.approach.withtool',
             target_configuration=tool.tool_storage_configuration,
-            tag="Linear Advance to Storage Frame of %s, to place tool in storage." % self._tool_string,
+            tag="Linear Advance 2 to Storage Frame of %s, to place tool in storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
