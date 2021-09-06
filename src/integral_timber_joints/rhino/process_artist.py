@@ -89,47 +89,86 @@ class ProcessKeyPosition(object):
     ]
 
     pos_names_for_beam_without_clamps = [
-        ('beam_pickup_approach',    'assembly_wcf_pickup',          'assembly_wcf_pickupapproach.open_gripper',    None),
-        ('beam_pickup_pick',        'assembly_wcf_pickup',          'assembly_wcf_pickup.close_gripper',           None),
-        ('beam_pickup_retract',     'assembly_wcf_pickupretract',   'assembly_wcf_pickupretract.close_gripper',    None),
-        ('beam_inclamp',            'assembly_wcf_inclamp',         'assembly_wcf_inclamp.close_gripper',          None),
-        ('beam_final',              'assembly_wcf_final',           'assembly_wcf_final.close_gripper',            None),
-        ('beam_finalretract',       'assembly_wcf_final',           'assembly_wcf_finalretract.open_gripper',      None),
+        ('beam_pickup_approach',
+         'assembly_wcf_pickup',  # Beam Position
+         'assembly_wcf_pickupapproach.open_gripper',  # Gripper Position
+         None),
+
+        ('beam_pickup_pick',
+         'assembly_wcf_pickup',  # Beam Position
+         'assembly_wcf_pickup.close_gripper',  # Gripper Position
+         None),
+
+        ('beam_pickup_retract',
+         'assembly_wcf_pickupretract',  # Beam Position
+         'assembly_wcf_pickupretract.close_gripper',  # Gripper Position
+         None),
+
+        ('beam_inclamp',
+         'assembly_wcf_inclamp',  # Beam Position
+         'assembly_wcf_inclamp.close_gripper',  # Gripper Position
+         None),
+
+        ('beam_final',
+         'assembly_wcf_final',  # Beam Position
+         'assembly_wcf_final.close_gripper',  # Gripper Position
+         None),
+
+        ('beam_finalretract',
+         'assembly_wcf_final',  # Beam Position
+         'assembly_wcf_finalretract.open_gripper',  # Gripper Position
+         None),
     ]
 
     # pos_name, beam_pos, gripper_pos, screwdriver_pos
     pos_names_for_beam_with_screwdriver_with_gripper = [
+        ('beam_pickup',
+         'assembly_wcf_pickup',  # Beam Position
+         'assembly_wcf_pickup.close_gripper',  # Gripper Position
+         'screwdriver_pickup_attached.close_gripper'),  # Screwdriver Position
+
         ('screwdriver_assembleapproach',
-         'assembly_wcf_assembleapproach',
-         'assembly_wcf_assembleapproach.close_gripper',
-         'screwdriver_assembleapproach_attached.close_gripper'),
+         'assembly_wcf_assembleapproach',  # Beam Position
+         'assembly_wcf_assembleapproach.close_gripper',  # Gripper Position
+         'screwdriver_assembleapproach_attached.close_gripper'),  # Screwdriver Position
 
         ('screwdriver_assembled',
-         'assembly_wcf_final',
-         'assembly_wcf_final.close_gripper',
-         'screwdriver_assembled_attached.close_gripper'),
+         'assembly_wcf_final',  # Beam Position
+         'assembly_wcf_final.close_gripper',  # Gripper Position
+         'screwdriver_assembled_attached.close_gripper'),  # Screwdriver Position
 
         ('screwdriver_assembled',
-         'assembly_wcf_final',
-         'assembly_wcf_finalretract.open_gripper',
-         'screwdriver_assembled_attached.close_gripper'),
+         'assembly_wcf_final',  # Beam Position
+         'assembly_wcf_finalretract.open_gripper',  # Gripper Position
+         'screwdriver_assembled_attached.close_gripper'),  # Screwdriver Position
 
         ('screwdriver_retracted',
-         'assembly_wcf_final',
-         None,
-         'screwdriver_assembled_retractedfurther.open_gripper'),
+         'assembly_wcf_final',  # Beam Position
+         None,  # Gripper Position
+         'screwdriver_assembled_retractedfurther.open_gripper'),  # Screwdriver Position
     ]
 
     # pos_name, beam_pos, gripper_pos, screwdriver_pos
     pos_names_for_beam_with_screwdriver_without_gripper = [
-        ('screwdriver_assembleapproach',            'assembly_wcf_assembleapproach',
-         None,                                      'screwdriver_assembleapproach_attached.close_gripper'),
+        ('beam_pickup',
+         'assembly_wcf_pickup',  # Beam Position
+         None,
+         'screwdriver_pickup_attached.close_gripper'),  # Screwdriver Position
 
-        ('screwdriver_assembled',                   'assembly_wcf_final',
-         None,                                      'screwdriver_assembled_attached.close_gripper'),
+        ('screwdriver_assembleapproach',
+         'assembly_wcf_assembleapproach',  # Beam Position
+         None,
+         'screwdriver_assembleapproach_attached.close_gripper'),  # Screwdriver Position
 
-        ('screwdriver_retracted',                   'assembly_wcf_final',
-         None,                                      'screwdriver_assembled_retracted.open_gripper'),
+        ('screwdriver_assembled',
+         'assembly_wcf_final',  # Beam Position
+         None,
+         'screwdriver_assembled_attached.close_gripper'),  # Screwdriver Position
+
+        ('screwdriver_retracted',
+         'assembly_wcf_final',  # Beam Position
+         None,
+         'screwdriver_assembled_retracted.open_gripper'),  # Screwdriver Position
     ]
 
     @property
