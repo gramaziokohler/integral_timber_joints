@@ -551,8 +551,8 @@ class ProcessArtist(object):
         if beam_id not in assembly.beam_ids():
             raise KeyError("Beam %i not in Assembly" % beam_id)
 
-        assembly.beam(beam_id).remove_cached_mesh()
         if update_mesh_cache:
+            assembly.beam(beam_id).remove_cached_mesh()
             assembly.get_beam_mesh_in_wcf(beam_id, False)
 
         # Layer
@@ -567,14 +567,15 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
-    def redraw_interactive_beam(self, beam_id, force_update=True, draw_mesh=True, draw_tag=True, redraw=True):
+    def redraw_interactive_beam(self, beam_id, force_update=True, draw_mesh=False, draw_nurbs=True, draw_tag=True, redraw=True):
         ''' Redraw beam visualizations.
         Redraws interactive beam mesh and sequence tag
         '''
         rs.EnableRedraw(False)
         self.delete_interactive_beam_visualization(beam_id, redraw=False)
         if draw_mesh:
-            # self.draw_beam_mesh(beam_id, force_update, redraw=False)
+            self.draw_beam_mesh(beam_id, update_cache=force_update, redraw=False)
+        if draw_nurbs:
             self.draw_beam_brep(beam_id, delete_old_brep=force_update, update_mesh_cache=False, redraw=False)
         if draw_tag:
             self.draw_beam_seqtag(beam_id, redraw=False)
