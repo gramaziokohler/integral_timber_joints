@@ -147,6 +147,7 @@ class Assembly(Network):
             'screwdriver_assembled_retracted': None,   # Screwdriver position when beam = assembled, tool = retracted from beam.
             'screwdriver_assembled_retractedfurther': None,   # Screwdriver position when beam = assembled, tool = retractedfurther from beam.
 
+            'tool_orientation_frame_index' : 0,
             'tool_type': None,
             'tool_id': None,
         })
