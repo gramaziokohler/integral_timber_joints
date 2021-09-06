@@ -46,7 +46,8 @@ def compute_screwdriver_positions(process, beam_id):
         neighbout_joint_id = (joint_id[1], joint_id[0])
         joint = assembly.joint(neighbout_joint_id)
         clamp_attachment_frames = joint.get_clamp_frames(assembly.beam(beam_id))
-        selected_frame = clamp_attachment_frames[0]  # ! Just picking the first frame
+        tool_orientation_frame_index = process.assembly.get_joint_attribute(joint_id, 'tool_orientation_frame_index')
+        selected_frame = clamp_attachment_frames[tool_orientation_frame_index]
 
         # Set clamp tcp to selected_frame and compute tool vectors in wcf
         tool.set_current_frame_from_tcp(selected_frame)

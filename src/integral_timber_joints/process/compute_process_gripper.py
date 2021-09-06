@@ -1,11 +1,11 @@
-from compas.geometry import Translation, Vector, Transformation
+from compas.geometry import Translation, Vector, Transformation, Frame
 from integral_timber_joints.assembly import BeamAssemblyMethod
 from integral_timber_joints.process.dependency import ComputationalResult
 
 try:
     from typing import Dict, List, Optional, Tuple
     from integral_timber_joints.process import RobotClampAssemblyProcess
-    from integral_timber_joints.tools import Gripper, Tool
+    from integral_timber_joints.tools import Gripper, Tool, Screwdriver
 except:
     pass
 
@@ -29,7 +29,7 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
 
     If the attribute `gripper_type` is already assigned, this function will not chage it.
 
-    This function will not operate on beam that is SCREWED_WITHOUT_GRIPPER. It will return
+    This function will NOT operate on beam that is SCREWED_WITHOUT_GRIPPER. It will return
     ComputationalResult.ValidCanContinue.
 
     State Change
@@ -123,10 +123,22 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
 def compute_gripper_grasp_pose(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """ Compute grasp pose for the beam and gripper.
+    Gripper should be assigned before.
+
+    For Beams with Gripper Gripper
+    ------------------------------
     Default values will be applied if 'gripper_grasp_dist_from_start' and 'gripper_grasp_face'
     are not set. Otherwise previous values will be preserved to calculate 'gripper_tcp_in_ocf'.
 
-    Gripper should be assigned before.
+    For Beams with Screwdriver as gripper
+    -------------------------------------
+    - `tool_id`s and `gripper_id` should be assigned before.
+    - `tool_as_gripper_joint_id` should be assigned before.
+    - `gripper_tcp_in_ocf` will be based on the
+        - beam attribute `tool_as_gripper_joint_id` (Set Manually)
+        - joint_attribute `tool_orientation_frame_index` (Set Manually)
+
+
 
     State Change
     ------------
@@ -147,31 +159,46 @@ def compute_gripper_grasp_pose(process, beam_id, verbose=False):
 
     beam = process.assembly.beam(beam_id)
 
-    # * Computing `gripper_grasp_face` if it is None
-    def grasp_face(beam_id):
-        return process.assembly.get_beam_attribute(beam_id, "gripper_grasp_face")
+    if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+        # Retrive which joint is the gripper screwdriver and the tool_orientation_frame index
+        joint_id = process.assembly.get_joint_id_where_screwdriver_is_gripper(beam_id) # tool_as_gripper_joint_id
+        tool_orientation_frame_index = process.assembly.get_joint_attribute(joint_id, 'tool_orientation_frame_index')
 
-    # Apply default values if None
-    if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Default method
-        gripper_grasp_face = process.set_grasp_face_following_assembly_direction(beam_id)
+        # Transform the tool orientation frame to beam ocf
+        joint = process.assembly.joint((joint_id[1], joint_id[0]))
+        screwdriver_tcp_frame_in_wcf = joint.get_clamp_frames(beam)[tool_orientation_frame_index]
+        t_world_from_screwdriver_tcp= Transformation.from_frame(screwdriver_tcp_frame_in_wcf)
+        t_world_from_beam = Transformation.from_frame(beam.frame)
+        t_beam_from_screwdriver_tcp = t_world_from_beam.inverse() * t_world_from_screwdriver_tcp
+        process.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", Frame.from_transformation(t_beam_from_screwdriver_tcp))
+        return ComputationalResult.ValidCanContinue
+    else:
+        # * Computing `gripper_grasp_face` if it is None
+        def grasp_face(beam_id):
+            return process.assembly.get_beam_attribute(beam_id, "gripper_grasp_face")
 
-    if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Backup plan
-        gripper_grasp_face = process.set_grasp_face_following_guide_vector(beam_id)
+        # Apply default values if None
+        if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Default method
+            gripper_grasp_face = process.set_grasp_face_following_assembly_direction(beam_id)
 
-    if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Picking face 1 and deal with it
-        process.assembly.set_beam_attribute(beam_id, "gripper_grasp_face", 1)
-        print("Someting wrong, gripper_grasp_face is not in [1,2,3,4] after search. Grasp face defaulted to ", 1)
+        if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Backup plan
+            gripper_grasp_face = process.set_grasp_face_following_guide_vector(beam_id)
 
-    # * Computing `gripper_grasp_dist_from_start` if it is None
-    gripper_grasp_dist_from_start = process.assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
-    if gripper_grasp_dist_from_start is None:
-        gripper_grasp_dist_from_start = beam.length / 2.0
-        process.assembly.set_beam_attribute(beam_id, "gripper_grasp_dist_from_start", gripper_grasp_dist_from_start)
+        if grasp_face(beam_id) not in [1, 2, 3, 4]:  # Picking face 1 and deal with it
+            process.assembly.set_beam_attribute(beam_id, "gripper_grasp_face", 1)
+            print("Someting wrong, gripper_grasp_face is not in [1,2,3,4] after search. Grasp face defaulted to ", 1)
 
-    # * Compute Gripper Grasp Pose, aka. gripper_tcp_in_ocf
-    gripper_tcp_in_ocf = beam.grasp_frame_ocf(grasp_face(beam_id), gripper_grasp_dist_from_start)
-    process.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
-    return ComputationalResult.ValidCanContinue
+        # * Computing `gripper_grasp_dist_from_start` if it is None
+        gripper_grasp_dist_from_start = process.assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
+        if gripper_grasp_dist_from_start is None:
+            gripper_grasp_dist_from_start = beam.length / 2.0
+            process.assembly.set_beam_attribute(beam_id, "gripper_grasp_dist_from_start", gripper_grasp_dist_from_start)
+
+        # * Compute Gripper Grasp Pose, aka. gripper_tcp_in_ocf
+        gripper_tcp_in_ocf = beam.grasp_frame_ocf(grasp_face(beam_id), gripper_grasp_dist_from_start)
+        process.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", gripper_tcp_in_ocf)
+        return ComputationalResult.ValidCanContinue
+
 
 
 def set_grasp_face_following_assembly_direction(process, beam_id):
