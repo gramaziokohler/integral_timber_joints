@@ -68,7 +68,7 @@ def save_and_load_process(process):
 
 
 if __name__ == "__main__":
-    process = load_process(r"C:\Users\leungp\Documents\GitHub\integral_timber_joints\external\itj_design_study\210605_ScrewdriverTestProcess\nine_pieces_process.json")
+    process = load_process(r"C:\Users\leungp\Documents\GitHub\integral_timber_joints\external\itj_design_study\210419_AnticlasticShelter\shelter_process.json")
     test_compute_states(process)
 
     # movement = process.get_movements_by_beam_id('b1')[0]
