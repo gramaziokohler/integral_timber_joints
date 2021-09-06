@@ -6,6 +6,7 @@ from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
+from integral_timber_joints.geometry import JointNonPlanarLap
 
 
 def show_sequence_color(process, beam_id):
@@ -136,6 +137,39 @@ def show_menu(process):
         rs.EnableRedraw(True)
         go.SetDefaultString("Enter again = ChangeAssemblyMethod")
 
+    def ui_flip_beams():
+        # type: () -> None
+        '''Ask User to select a beam for flipping the joints' direction
+        Only joints to earlier beams are flipped.
+
+        Beams with non planar joints cannot be flipped.
+
+        THis functions repeats until users press Enter without selecting beam.
+        '''
+        beam_id = artist.selected_beam_id
+
+        # * Check if any of its joints to previous beams are non planar.
+        for joint_id in process.assembly.get_joints_of_beam_connected_to_already_built(beam_id):
+            if isinstance(process.assembly.joint(joint_id), JointNonPlanarLap):
+                print("Sorry. Cannot flip beams with non planar joints. Offending joint: %s-%s" % joint_id)
+                continue
+
+        # * Loop though alread_built_neighbors and swap joint
+        earlier_neighbors = assembly.get_already_built_neighbors(beam_id)
+        for neighbour_id in earlier_neighbors:
+            assembly.flip_lap_joint((beam_id, neighbour_id))
+
+        # * Update drownstream computation
+        assembly.set_beam_attribute(beam_id, 'assembly_wcf_final', None)
+        recompute_dependent_solutions(process, beam_id)
+
+        # * Update visualization of flipped beam and neighbors
+        for _beam_id in earlier_neighbors + [beam_id]:
+            artist.redraw_interactive_beam(_beam_id, force_update=True, redraw=False)
+        show_sequence_color(process, beam_id)
+        rs.EnableRedraw(True)
+        print('Beam flipped: %s (Neighbours: %s)' % (beam_id, earlier_neighbors))
+        go.SetDefaultString("Enter again = Flip Again")
 
     def display_show_unbuilt():
         """ Function invoked by user to set displaysettings
@@ -172,6 +206,9 @@ def show_menu(process):
 
             if go.Option().EnglishName == "MoveLater":
                 run_cmd = move_later
+
+            if go.Option().EnglishName == "FlipAssemblyDirection":
+                run_cmd = ui_flip_beams
 
             if go.Option().EnglishName == "PickElementToGoAfterThis":
                 run_cmd = change_next_element
@@ -212,6 +249,7 @@ def show_menu(process):
                 go.AddOption("Previous")
                 go.AddOption("MoveEarlier")
                 go.AddOption("MoveLater")
+                go.AddOption("FlipAssemblyDirection")
                 go.AddOption("PickElementToGoAfterThis")
                 go.AddOption("ChangeAssemblyMethod")
                 go.AddOption("DisplayShowUnbuilt")
