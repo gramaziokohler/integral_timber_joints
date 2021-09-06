@@ -285,7 +285,9 @@ class OperatorLoadBeamMovement(Movement):
 
 class OperatorAttachToolMovement(Movement):
     """ Manual movement to attach a tool to a beam
-    This does not include movement of the gripper
+    The gripper will wait for operator to lock gripper.
+    Configuration of the tool will be changed by calling close_gripper().
+
     Default: operator_stop_after = True
     """
 
@@ -332,6 +334,9 @@ class OperatorAttachToolMovement(Movement):
         if clear:
             self.state_diff = {}
         self.state_diff[(self.tool_id, 'f')] = self.target_frame
+        tool = process.tool(self.tool_id)
+        tool.close_gripper()
+        self.state_diff[(self.tool_id, 'c')] = tool._get_kinematic_state()
 
 
 class RoboticFreeMovement(RoboticMovement):
