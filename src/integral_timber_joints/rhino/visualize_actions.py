@@ -13,7 +13,7 @@ from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry.env_model import EnvironmentModel
 from integral_timber_joints.process import Movement, RobotClampAssemblyProcess, RoboticMovement
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
-from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
+from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
 
 try:
@@ -173,6 +173,8 @@ def ui_get_ik(process):
 
     if success:
         print("IK Success: {} | {}".format(msg, configuration))
+        # Delete rob_wrist visualization if present
+        purge_objects(artist.state_visualization_guids('rob_wrist'), redraw=False)
         # Draw Robot with IK results
         artist.draw_robot(configuration, True, True, True)
         process.temp_ik[movement_id] = configuration

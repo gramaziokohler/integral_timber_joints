@@ -1244,6 +1244,19 @@ class ProcessArtist(object):
         object_state = ObjectState(scene[tool_changer_key], True, None)
         meshes['tool_changer'] = self.process.robot_toolchanger.draw_state(object_state)
 
+
+        # * Draw Robot if state has robot config otherwise draw robot wrist
+        # Drawing Robot Geometry in Rhino and GUIDs is not managed by the draw method above.
+        # It is directly managed by the draw_robot() function
+        if ('robot', 'c') in scene and scene[('robot', 'c')] is not None:
+            configuration = scene[('robot', 'c')]
+            self.draw_robot(configuration)
+        else:
+            # Draw rob_wrist at tool_changer.current_frame
+            robot_wrist = self.process.robot_wrist
+            robot_wrist.current_frame = scene[('robot', 'f')]
+            meshes['rob_wrist'] = robot_wrist.draw_visual()
+
         # * Draw meshes to Rhinoand add guids to tracking dict
         for object_id in meshes:
             if meshes[object_id] is not None:
@@ -1253,16 +1266,8 @@ class ProcessArtist(object):
                 attachment_key = (object_id, 'a')
                 if attachment_key in scene and scene[attachment_key]:
                     meshes_apply_color(guids, (0.7, 1, 1, 1))
-
-        # * Draw Robot if state has robot config
-        # Drawing Robot Geometry in Rhino and GUIDs is not managed by the draw method above.
-        # It is directly managed by the draw_robot() function
-        if ('robot', 'c') in scene and scene[('robot', 'c')] is not None:
-            configuration = scene[('robot', 'c')]
-            self.draw_robot(configuration)
-        else:
-            self.delete_robot()
-
+                if object_id == 'rob_wrist':
+                    meshes_apply_color(guids, (0.6, 1, 1, 1))
         # Enable Redraw
         if redraw:
             rs.EnableRedraw(True)
@@ -1274,7 +1279,8 @@ class ProcessArtist(object):
         for object_id, guids in self._state_visualization_guids.items():
             purge_objects(guids, redraw=False)
         self._state_visualization_guids = {}
-
+        # Delete old robot visualization
+        self.delete_robot()
         # Enable Redraw
         if redraw:
             rs.EnableRedraw(True)
