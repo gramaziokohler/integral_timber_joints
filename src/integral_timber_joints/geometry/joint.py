@@ -74,11 +74,6 @@ class Joint(object):
         This function needs to be implemented by inhereted class
         """
         shapes = self.get_feature_shapes(BeamRef)
-        # for shape in shapes:
-        #     if isinstance (shape, Cylinder):
-        #         Mesh.from_vertices_and_faces(* shape.to_vertices_and_faces(u=16))
-        #     if isinstance (shape, Polyhedron)
-
         return [Mesh.from_vertices_and_faces(* shape.to_vertices_and_faces()) for shape in shapes]
 
     def get_clamp_frames(self, beam):
