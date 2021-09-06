@@ -56,7 +56,7 @@ def assign_tool_type_to_joints(process, beam_id, verbose=False):
         gripper_type = assembly.get_beam_attribute(beam_id, 'gripper_type')
         # If the gripper type is not valid, we fix that
         if gripper_type not in [s.type_name for s in process.screwdrivers]:
-            gripper_type = process.screwdrivers[0].type_name
+            gripper_type = list(process.screwdrivers)[0].type_name
             assembly.set_beam_attribute(beam_id, 'gripper_type', gripper_type)
 
         assembly.set_joint_attribute(gripping_joint_id, 'tool_type', gripper_type)
@@ -144,7 +144,7 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
         # Gripper id however, may or maynot be correct.
         gripper_id = assembly.get_beam_attribute(beam_id, 'gripper_id')
         # Fix gripper_id if not valid
-        if process.tool(gripper_id).type_name != gripper_type:
+        if gripper_id is None or process.tool(gripper_id).type_name != gripper_type:
             tool = pop_tool_by_type(gripper_type)
             gripper_id = tool.name
             assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_id)
