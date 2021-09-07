@@ -92,7 +92,7 @@ def main():
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
         'verbose' : args.verbose,
-        'smooth_iterations' : 800,
+        'smooth_iterations' : 300,
         'max_smooth_time' : 120,
     }
 
@@ -134,14 +134,17 @@ def main():
                 if args.watch and args.debug:
                     print('='*20)
                     wait_if_gui('Trajectory before smoothing. Press enter to start.')
-                    visualize_movement_trajectory(client, robot, process, m, step_sim=args.step_sim)
+                    visualize_movement_trajectory(client, robot, process, m, step_sim=args.step_sim,
+                        draw_polylines=True, line_color=pp.RED)
                 m.trajectory = smoothed_traj
                 altered_movements.append(m)
                 if args.watch:
                     print('>'*20)
                     wait_if_gui('Trajectory AFTER smoothing. Press enter to start.')
-                    visualize_movement_trajectory(client, robot, process, m, step_sim=args.step_sim)
+                    visualize_movement_trajectory(client, robot, process, m, step_sim=args.step_sim,
+                        draw_polylines=True, line_color=pp.GREEN)
                     wait_if_gui('simulation ends.')
+                pp.remove_all_debug()
             else:
                 wait_for_user()
 
