@@ -559,8 +559,17 @@ class ProcessArtist(object):
         layer = 'itj::interactive::beams_brep'
         rs.CurrentLayer(layer)
 
-        # Draw Mesh
-        guids = self.assembly_artist.draw_beam(beam_id=beam_id, delete_old=delete_old_brep, redraw=False)
+        # Draw Nurbs using Nurbs Assembly Artist
+        other_feature_shapes = []
+        # for joint_id in self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
+        #     try:
+        #         tool = self.process.get_tool_of_joint(joint_id)
+        #         tool.set_state
+        #         other_feature_shapes.
+        #     except:
+        #         print ("Warninig: cannot get tool of joint %s for Boolean" % joint_id)
+
+        guids = self.assembly_artist.draw_beam(beam_id=beam_id, delete_old=delete_old_brep, redraw=False, other_feature_shapes=other_feature_shapes)
         self.interactive_guids_at_layer(beam_id, layer).extend(guids)
 
         # Redraw

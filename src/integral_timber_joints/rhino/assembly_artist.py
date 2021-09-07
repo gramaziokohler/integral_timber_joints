@@ -94,8 +94,8 @@ class AssemblyNurbsArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
-    def draw_beam(self, beam_id, delete_old=False, redraw=True, verbose=False):
-        # type: (str, bool, bool, bool) -> None
+    def draw_beam(self, beam_id, delete_old=False, redraw=True, other_feature_shapes=[], verbose=False):
+        # type: (str, bool, bool, list[Shapes], bool) -> None
         """Function to draw specified beam with nurbs.
 
         By default `delete_old` is False.
@@ -120,6 +120,7 @@ class AssemblyNurbsArtist(object):
             beam_cuts = self.assembly.beam_cuts(beam_id)
             features = joints
             features += beam_cuts
+            features += other_feature_shapes
 
             guids = []  # Hold the guids of the final boolean result
             if len(features) > 0:
