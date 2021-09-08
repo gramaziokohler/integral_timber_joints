@@ -152,7 +152,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         fm_options.update({
             'rrt_restarts' : 2, #20,
             'rrt_iterations' : 400, # ! value < 100 might not find solutions even if there is one
-            'smooth_iterations': None, #100, # 1000, TODO smoothing in postprocessing
+            'smooth_iterations': None, # ! Done: smoothing in postprocessing
             'joint_resolutions' : R11_JOINT_RESOLUTIONS*resolution_ratio,
             'joint_weights' : R11_JOINT_WEIGHTS,
             # -------------------
@@ -185,8 +185,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         return False
 
 def compute_selected_movements(client, robot, process, beam_id, priority, movement_types=None, movement_statuses=None, options=None,
-        viz_upon_found=False, diagnosis=False, write_now=False, plan_impacted=False, check_type_only=False):
-    # type: (PyBulletClient, Robot, RobotClampAssemblyProcess, int, int, List[Type], List[MovementStatus], Dict, bool, bool, bool, bool, bool) -> Tuple[bool, List]
+        viz_upon_found=False, diagnosis=False, check_type_only=False):
+    # type: (PyBulletClient, Robot, RobotClampAssemblyProcess, int, int, List[Type], List[MovementStatus], Dict, bool, bool, bool) -> Tuple[bool, List]
 
     """Compute trajectories for movements specified by a certain criteria.
 
@@ -212,7 +212,6 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         step conf-by-conf if viz_upon_found == True, by default False
     """
     verbose = options.get('verbose', False)
-    problem_name = options.get('problem_name', '')
     propagate_only = options.get('propagate_only', False)
     m_attempts = options.get('movement_planning_reattempts', 1)
     movement_id_filter = options.get('movement_id_filter', [])
@@ -283,45 +282,9 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
             continue
 
         # * propagate to -1 movements
-        altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options,
-            plan_impacted=plan_impacted)
+        altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options)
         altered_movements.extend(altered_new_movements)
-        if plan_impacted:
-            altered_movements.extend(impact_movements)
-
-        # * plan impacted movements now
-        if plan_impacted and len(impact_movements) > 0:
-            print('+'*10)
-            cprint('Plan impacted movements:', 'yellow')
-            impact_updated_movements = []
-            for impact_m in impact_movements:
-                imp_m_id = all_movements.index(impact_m)
-                if verbose:
-                    print('-'*10)
-                    print('({})'.format(imp_m_id))
-                if isinstance(impact_m, RoboticLinearMovement) and \
-                    not get_movement_status(process, impact_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]:
-                    cprint('{}: cannot be planned. Needs to call planner separately.'.format(impact_m.short_summary), 'red')
-                    continue
-                if compute_movement(client, robot, process, impact_m, options, diagnosis):
-                    impact_updated_movements.append(impact_m)
-                    if viz_upon_found:
-                        with WorldSaver():
-                            visualize_movement_trajectory(client, robot, process, impact_m, step_sim=True)
-                else:
-                    # break
-                    return False, []
-            impact_altered_movements, _ = propagate_states(process, impact_updated_movements, all_movements, options=options,
-                plan_impacted=plan_impacted)
-            altered_movements.extend(impact_updated_movements)
-            altered_movements.extend(impact_altered_movements)
-
         total_altered_movements.extend(altered_movements)
-        # * export computed movements
-        if write_now and altered_movements:
-            save_process_and_movements(problem_name, process, altered_movements, overwrite=False,
-                include_traj_in_process=False)
-
     # if verbose:
     #     print('\n\n')
     #     process.get_movement_summary_by_beam_id(beam_id)
@@ -329,8 +292,8 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
 
 ###########################################
 
-def propagate_states(process, selected_movements, all_movements, options=None, plan_impacted=False):
-        # type: (RobotClampAssemblyProcess, List[Movement], List[Movement], Dict, bool) -> Tuple[List[Movement], List[Movement]]
+def propagate_states(process, selected_movements, all_movements, options=None):
+    # type: (RobotClampAssemblyProcess, List[Movement], List[Movement], Dict) -> Tuple[List[Movement], List[Movement]]
     options = options or {}
     verbose = options.get('verbose', False)
     jump_threshold = options.get('jump_threshold', {})
@@ -344,11 +307,6 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
         m_id = all_movements.index(target_m)
         target_start_conf = process.get_movement_start_robot_config(target_m)
         target_end_conf = process.get_movement_end_robot_config(target_m)
-        # ! TODO The following hot fix should be removed.
-        if not target_start_conf.joint_names:
-            target_start_conf.joint_names = joint_names
-        if not target_end_conf.joint_names:
-            target_end_conf.joint_names = joint_names
         if verbose:
             print('~'*5)
             print('\tPropagate states for ({}) : {}'.format(colored(m_id, 'cyan'), target_m.short_summary))
@@ -381,10 +339,6 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
             elif back_m.trajectory is None or back_end_conf is None or \
                 compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
                 process.set_movement_end_robot_config(back_m, target_start_conf)
-                if plan_impacted:
-                    back_m.trajectory = None
-                    # turn it one-sided
-                    process.set_movement_start_robot_config(back_m, None)
                 impact_movements.append(back_m)
                 if verbose:
                     print('\t$ Impacted (backward): ({}) {}'.format(colored(back_id, 'yellow'), back_m.short_summary))
@@ -415,10 +369,6 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
             #     compare_configurations(forward_start_conf, target_end_conf, jump_threshold, fallback_tol=1e-3, verbose=False):
             elif forward_m.trajectory is None or forward_start_conf is None or \
                 compare_configurations(forward_start_conf, target_end_conf, jump_threshold, verbose=False):
-                if plan_impacted:
-                    forward_m.trajectory = None
-                    # turn it one-sided
-                    process.set_movement_end_robot_config(forward_m, None)
                 impact_movements.append(forward_m)
                 if verbose:
                     print('\t$ Impacted (forward): ({}) {}'.format(colored(forward_id, 'yellow'), forward_m.short_summary))
