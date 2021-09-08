@@ -115,14 +115,14 @@ def main():
             b_movements = process.get_movements_by_beam_id(beam_id)
             all_found = True
             for movement in b_movements:
-                movement_path = os.path.join(ext_movement_path, movement.filepath)
+                movement_path = os.path.join(ext_movement_path, movement.get_filepath())
                 if not os.path.exists(movement_path):
                     cprint('{} not found | {}'.format(movement.movement_id, movement.short_summary), 'red')
                     all_found = False
             if all_found:
                 if len(b_movements) > 0:
                     cprint('({}) Beam #{} all found!'.format(i, beam_id), 'green')
-                    movement_path = os.path.join(ext_movement_path, b_movements[-1].filepath)
+                    movement_path = os.path.join(ext_movement_path, b_movements[-1].get_filepath())
                     print("   created: %s" % time.ctime(os.path.getctime(movement_path)))
                     print("   last modified: %s" % time.ctime(os.path.getmtime(movement_path)))
                 else:
@@ -174,8 +174,6 @@ def main():
         beam_ids = [process.get_beam_id_from_movement_id(args.id_only)]
     else:
         beam_ids = [process.assembly.sequence[args.seq_i]]
-
-    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
 
     movements_need_fix = []
     failure_reasons = []
@@ -231,8 +229,6 @@ def main():
                         # print(client._print_object_summary())
                         prev_conf = start_conf
                         for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
-                            if not jpt.joint_names:
-                                jpt.joint_names = joint_names
                             if args.traj_collision:
                                 # with WorldSaver():
                                 in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
