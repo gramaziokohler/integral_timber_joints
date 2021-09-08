@@ -1235,7 +1235,7 @@ class RobotClampAssemblyProcess(Data):
 
         movements_modified = []
         for movement in target_movements:
-            movement_path = os.path.join(process_folder_path, movement.filepath)
+            movement_path = os.path.join(process_folder_path, movement.get_filepath())
             if os.path.exists(movement_path):
                 if verbose:
                     print("Loading External Movement File: movement_path%s" % movement_path)

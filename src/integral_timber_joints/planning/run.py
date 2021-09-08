@@ -12,7 +12,7 @@ from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSav
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
 from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
-from integral_timber_joints.planning.utils import notify, print_title
+from integral_timber_joints.planning.utils import notify, print_title, beam_ids_from_argparse_seq_n
 from integral_timber_joints.planning.state import set_state, set_initial_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 from integral_timber_joints.planning.solve import get_movement_status, MovementStatus, compute_selected_movements
@@ -23,7 +23,7 @@ from integral_timber_joints.process.movement import RoboticMovement
 SOLVE_MODE = [
     'nonlinear',
     'linear',
-    'id_only', # 'Compute only for movement with a specific tag, e.g. `A54_M0`.'
+    'movement_id', # 'Compute only for movement with a specific tag, e.g. `A54_M0`.'
     'free_motion_only', # 'Only compute free motions.'
     'propagate_only', # 'Only do state propagation and impacted movement planning.'
 ]
@@ -44,7 +44,6 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     return_upon_success = options.get('return_upon_success', True)
     runtime_data = {}
 
-    unsolved_process = deepcopy(process)
     start_time = time.time()
     trial_i = 0
     while elapsed_time(start_time) < solve_timeout and trial_i < solve_iters:
@@ -60,7 +59,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
             break
         trial_i += 1
         copy_st_time = time.time()
-        process = deepcopy(unsolved_process)
+        process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
         if options['ignore_taught_confs']:
             # ! remove all taught confs
             for m in process.movements:
@@ -96,20 +95,17 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             if args.solve_mode == 'nonlinear':
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
                     [MovementStatus.neither_done, MovementStatus.one_sided],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis)
+                    options=options, diagnosis=args.diagnosis)
                 if not success:
                     print('No success for nonlinear planning.')
                     return False
                 else:
                     altered_movements.extend(altered_ms)
-                    if args.save_now:
-                        save_process_and_movements(args.design_dir, args.problem, process, altered_ms, overwrite=False,
-                            include_traj_in_process=False, save_temp=args.save_temp)
 
                 # TODO if fails remove the related movement's trajectory and try again
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
                     [MovementStatus.one_sided],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
+                    options=options, diagnosis=args.diagnosis)
                 if not success:
                     print('No success for nonlinear planning.')
                     return False
@@ -122,7 +118,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 # The movement statuses get changed on the fly.
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
                     [MovementStatus.neither_done, MovementStatus.one_sided],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.save_now)
+                    options=options, diagnosis=args.diagnosis)
                 if not success:
                     print('No success for nonlinear planning.')
                     return False
@@ -133,25 +129,25 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
                     [MovementStatus.both_done, MovementStatus.one_sided],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.write)
+                    options=options, diagnosis=args.diagnosis)
                 if not success:
                     print('No success for nonlinear planning.')
                     return False
                 else:
                     altered_movements.extend(altered_ms)
 
-                # * export computed movements if not save_now
-                if not args.save_now and args.write:
+                # * export computed movements
+                if args.write:
                     save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
-                        include_traj_in_process=False, save_temp=args.save_temp)
+                        include_traj_in_process=False)
 
             elif args.solve_mode == 'linear':
                 movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
                 options['movement_id_filter'] = [all_movements[m_i].movement_id for m_i in movement_id_range]
                 # options['enforce_continuous'] = False
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
-                    [MovementStatus.correct_type], options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
-                    write_now=args.write, plan_impacted=args.plan_impacted, check_type_only=True)
+                    [MovementStatus.correct_type], options=options, diagnosis=args.diagnosis, \
+                    plan_impacted=args.plan_impacted, check_type_only=True)
                 if not success:
                     print('No success for linear (chained) planning.')
                     return False
@@ -159,16 +155,16 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             elif args.solve_mode == 'free_motion_only':
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],
                     [MovementStatus.both_done, MovementStatus.one_sided],
-                    options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, write_now=args.write)
+                    options=options, diagnosis=args.diagnosis)
                 if not success:
                     print('No success for free motions')
                     return False
 
-            elif args.solve_mode == 'id_only':
-                # * compute for id_only movement
-                cprint('Computing only for {}'.format(args.id_only), 'yellow')
-                options['movement_id_filter'] = [args.id_only]
-                chosen_m = process.get_movement_by_movement_id(args.id_only)
+            elif args.solve_mode == 'movement_id':
+                # * compute for movement_id movement
+                cprint('Computing only for {}'.format(args.movement_id), 'yellow')
+                options['movement_id_filter'] = [args.movement_id]
+                chosen_m = process.get_movement_by_movement_id(args.movement_id)
                 # * if linear movement and has both end specified, ask user keep start or end
                 if get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.has_traj, MovementStatus.both_done]:
                     chosen_m.trajectory = None
@@ -186,8 +182,8 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
 
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
-                    None, options=options, viz_upon_found=args.viz_upon_found, diagnosis=args.diagnosis, \
-                    write_now=args.write, plan_impacted=args.plan_impacted)
+                    None, options=options, diagnosis=args.diagnosis, \
+                    plan_impacted=args.plan_impacted)
                 if not success:
                     return False
             else:
@@ -212,67 +208,58 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--design_dir', default='210605_ScrewdriverTestProcess',
                         help='problem json\'s containing folder\'s name.')
-    parser.add_argument('--problem', default='pavilion_process.json', # twelve_pieces_process.json
-                        help='The name of the problem to solve')
+    parser.add_argument('--problem', default='nine_pieces_process.json', # twelve_pieces_process.json
+                        help='The name of the problem to solve (json file\'s name, e.g. "nine_pieces_process.json")')
     parser.add_argument('--problem_subdir', default='.',
                         help='subdir of the process file, default to `.`. Popular use: `results`')
-    parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     #
-    parser.add_argument('--seq_i', default=0, type=int, help='individual step to plan.')
-    parser.add_argument('--batch_run', action='store_true', help='Batch run. Will turn `--seq_i` as run from.')
+    parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided, ')
+    parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
-    parser.add_argument('--id_only', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
+    # TODO should be removed
     parser.add_argument('--plan_impacted', action='store_true', help='impacted movement planning.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
-    parser.add_argument('--save_now', action='store_true', help='Save immediately upon found.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
     #
+    parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
-    parser.add_argument('--debug', action='store_true', help='Debug mode')
     parser.add_argument('--step_sim', action='store_true', help='Pause after each conf viz.')
-    parser.add_argument('--verbose', action='store_false', help='Print out verbose. Defaults to True.')
-    parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode')
     #
-    parser.add_argument('--disable_env', action='store_true', help='Disable environment collision geometry.')
+    parser.add_argument('--debug', action='store_true', help='Debug mode.')
+    parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode, show collisions whenever encountered')
+    parser.add_argument('--verbose', action='store_false', help='Print out verbose. Defaults to True.')
+    #
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
-    parser.add_argument('--save_temp', action='store_true', help='Save a temporary process file. Defaults to False.')
-    parser.add_argument('--viz_upon_found', action='store_true', help='Viz found traj immediately after found. Defaults to False.')
-    parser.add_argument('--use_stored_seed', action='store_true', help='Use stored seed. Defaults to False.')
     #
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
     parser.add_argument('--max_distance', default=0.0, type=float, help='Buffering distance for collision checking, larger means safer. Defaults to 0.')
     args = parser.parse_args()
     print('Arguments:', args)
     print('='*10)
-    if args.id_only is not None:
-        args.solve_mode = 'id_only'
+    if args.movement_id is not None:
+        args.solve_mode = 'movement_id'
 
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
 
     #########
     # * Load process and recompute actions and states
-    process = parse_process(args.problem, subdir=args.problem_subdir)
-    result_path = get_process_path(args.design_dir, args.problem, subdir='results')
+    process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
-    # Double check entire solution is valid
-    for beam_id in process.assembly.sequence:
-        if not process.dependency.beam_all_valid(beam_id):
-            process.dependency.compute_all(beam_id)
-            assert process.dependency.beam_all_valid(beam_id)
-
-    # force load external if only planning for the free motions
-    args.load_external_movements = args.load_external_movements or args.solve_mode == 'free_motion_only' or args.solve_mode == 'id_only'
+    # * force load external if only planning for the free motions
+    args.load_external_movements = args.load_external_movements or args.solve_mode == 'free_motion_only' or args.solve_mode == 'movement_id'
     if args.load_external_movements:
+        result_path = get_process_path(args.design_dir, args.problem, subdir='results')
         ext_movement_path = os.path.dirname(result_path)
         cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
         process.load_external_movements(ext_movement_path)
 
     #########
 
+    # * threshold to check joint flipping
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     joint_types = robot.get_joint_types_by_names(joint_names)
     # 0.1 rad = 5.7 deg
@@ -286,46 +273,26 @@ def main():
         'distance_threshold' : 0.0012, # in meter
         'frame_jump_tolerance' : 0.0012, # in meter
         'verbose' : args.verbose,
-        'problem_name' : args.problem,
-        'use_stored_seed' : args.use_stored_seed,
         'jump_threshold' : joint_jump_threshold,
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
     }
 
-    set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=args.reinit_tool)
+    set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)
 
-    full_seq_len = len(process.assembly.sequence)
-    assert args.seq_i < full_seq_len and args.seq_i >= 0
-    if args.batch_run:
-        beam_ids = [process.assembly.sequence[si] for si in range(args.seq_i, full_seq_len)]
-    elif args.solve_mode == 'id_only':
-        beam_ids = [process.get_beam_id_from_movement_id(args.id_only)]
-    else:
-        # only one
-        beam_ids = [process.assembly.sequence[args.seq_i]]
-
-    beam_attempts = 10 if args.batch_run else 100
+    # restart attempts for each beam
+    num_trails = 1
+    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
     for beam_id in beam_ids:
         print('-'*20)
         s_i = process.assembly.sequence.index(beam_id)
         print('({}) Beam#{}'.format(s_i, beam_id))
-        for i in range(beam_attempts):
-            print('\n\n\n')
-            print('#'*20)
-            print('-- iter #{}'.format(i))
-            if compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options):
-                cprint('Beam #{} plan found after {} iters!'.format(beam_id, i+1), 'cyan')
-                break
-            client.disconnect()
+        for attempt_i in range(num_trails):
+            print('Beam {} | Outer Trail {} #{}'.format(beam_id, args.solve_mode, attempt_i))
+            process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
+            success, trial_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
 
-            print('\n\n\n')
-            client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
-            process = parse_process(args.problem, subdir='results')
-            set_initial_state(client, robot, process, disable_env=args.disable_env, reinit_tool=False)
-        else:
-            cprint('Beam #{} plan not found after {} attempts.'.format(beam_id, beam_attempts), 'red')
-
+    cprint('Done', 'green')
     client.disconnect()
 
 if __name__ == '__main__':

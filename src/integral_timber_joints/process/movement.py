@@ -104,14 +104,13 @@ class Movement(object):
         self.tag = data.get('tag', "")
         self.path_from_link = data.get('path_from_link', None)
 
-    @property
-    def filepath(self):
-        # type: () -> str
+    def get_filepath(self, subdir='movements'):
+        # type: (str) -> str
         """ Returns the location of the json file when saved externally.
         This is useful to save a movement containing computed trajectory and has a large file size
         e.g.: 'movements\A2_M2.json'
         """
-        return os.path.join("movements", "%s.json" % self.movement_id)
+        return os.path.join(subdir, "%s.json" % self.movement_id)
 
     @property
     def short_summary(self):

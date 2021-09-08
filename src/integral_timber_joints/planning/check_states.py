@@ -115,14 +115,14 @@ def main():
             b_movements = process.get_movements_by_beam_id(beam_id)
             all_found = True
             for movement in b_movements:
-                movement_path = os.path.join(ext_movement_path, movement.filepath)
+                movement_path = os.path.join(ext_movement_path, movement.get_filepath())
                 if not os.path.exists(movement_path):
                     cprint('{} not found | {}'.format(movement.movement_id, movement.short_summary), 'red')
                     all_found = False
             if all_found:
                 if len(b_movements) > 0:
                     cprint('({}) Beam #{} all found!'.format(i, beam_id), 'green')
-                    movement_path = os.path.join(ext_movement_path, b_movements[-1].filepath)
+                    movement_path = os.path.join(ext_movement_path, b_movements[-1].get_filepath())
                     print("   created: %s" % time.ctime(os.path.getctime(movement_path)))
                     print("   last modified: %s" % time.ctime(os.path.getmtime(movement_path)))
                 else:

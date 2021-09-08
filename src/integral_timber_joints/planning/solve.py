@@ -152,7 +152,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         fm_options.update({
             'rrt_restarts' : 2, #20,
             'rrt_iterations' : 400, # ! value < 100 might not find solutions even if there is one
-            'smooth_iterations': None, #100, # 1000, TODO smoothing in postprocessing
+            'smooth_iterations': None, # ! Done: smoothing in postprocessing
             'joint_resolutions' : R11_JOINT_RESOLUTIONS*resolution_ratio,
             'joint_weights' : R11_JOINT_WEIGHTS,
             # -------------------
@@ -212,7 +212,6 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         step conf-by-conf if viz_upon_found == True, by default False
     """
     verbose = options.get('verbose', False)
-    problem_name = options.get('problem_name', '')
     propagate_only = options.get('propagate_only', False)
     m_attempts = options.get('movement_planning_reattempts', 1)
     movement_id_filter = options.get('movement_id_filter', [])
@@ -317,11 +316,6 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
             altered_movements.extend(impact_altered_movements)
 
         total_altered_movements.extend(altered_movements)
-        # * export computed movements
-        if write_now and altered_movements:
-            save_process_and_movements(problem_name, process, altered_movements, overwrite=False,
-                include_traj_in_process=False)
-
     # if verbose:
     #     print('\n\n')
     #     process.get_movement_summary_by_beam_id(beam_id)
@@ -344,11 +338,6 @@ def propagate_states(process, selected_movements, all_movements, options=None, p
         m_id = all_movements.index(target_m)
         target_start_conf = process.get_movement_start_robot_config(target_m)
         target_end_conf = process.get_movement_end_robot_config(target_m)
-        # ! TODO The following hot fix should be removed.
-        if not target_start_conf.joint_names:
-            target_start_conf.joint_names = joint_names
-        if not target_end_conf.joint_names:
-            target_end_conf.joint_names = joint_names
         if verbose:
             print('~'*5)
             print('\tPropagate states for ({}) : {}'.format(colored(m_id, 'cyan'), target_m.short_summary))

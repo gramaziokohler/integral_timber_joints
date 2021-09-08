@@ -86,3 +86,26 @@ def print_title(x):
 
 def color_from_success(success : bool):
     return 'green' if success else 'red'
+
+##########################################
+
+def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
+    full_seq_len = len(process.assembly.sequence)
+    if movement_id is not None:
+        beam_ids = [process.get_beam_id_from_movement_id(movement_id)]
+        cprint('Solving for movement {}'.format(movement_id), 'cyan')
+    else:
+        for seq_i in seq_n:
+            assert seq_i < full_seq_len and seq_i >= 0, 'Invalid seq_n input {}'.format(seq_i)
+        if len(seq_n) == 0:
+            # defaults to solve all beams
+            beam_ids = [process.assembly.sequence[si] for si in range(seq_n, full_seq_len)]
+        elif len(seq_n) == 1:
+            beam_ids = [process.assembly.sequence[seq_n[0]]]
+        elif len(seq_n) == 2:
+            beam_ids = [process.assembly.sequence[seq_i] for seq_i in range(seq_n[0], seq_n[1])]
+        else:
+            beam_ids = [process.assembly.sequence[seq_i] for seq_i in seq_n]
+        cprint('Solving for beam {}'.format(beam_ids), 'cyan')
+    return beam_ids
+

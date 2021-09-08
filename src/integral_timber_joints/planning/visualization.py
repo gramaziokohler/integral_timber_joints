@@ -24,6 +24,14 @@ def color_from_object_id(object_id):
     else:
         return None
 
+def sample_colors(num, lower=0.0, upper=1.0):
+    # sample a color map based on a given integer number
+    from matplotlib import cm
+    # lower=0.0, upper=0.75
+    # return [colorsys.hsv_to_rgb(h, s=1, v=1) for h in reversed(np.linspace(lower, upper, num, endpoint=True))]
+    viridis = cm.get_cmap('viridis', 12)
+    return viridis(np.linspace(lower, upper, num, endpoint=True))
+
 ################################################
 
 def rfl_camera(scale=1e-3):
