@@ -147,7 +147,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 # options['enforce_continuous'] = False
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
                     [MovementStatus.correct_type], options=options, diagnosis=args.diagnosis, \
-                    plan_impacted=args.plan_impacted, check_type_only=True)
+                    check_type_only=True)
                 if not success:
                     print('No success for linear (chained) planning.')
                     return False
@@ -182,8 +182,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
 
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
-                    None, options=options, diagnosis=args.diagnosis, \
-                    plan_impacted=args.plan_impacted)
+                    None, options=options, diagnosis=args.diagnosis)
                 if not success:
                     return False
             else:
@@ -217,9 +216,6 @@ def main():
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
-    #
-    # TODO should be removed
-    parser.add_argument('--plan_impacted', action='store_true', help='impacted movement planning.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
