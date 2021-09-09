@@ -300,9 +300,13 @@ class JointNonPlanarLap(Joint):
         return clamps
 
     @classmethod
-    def from_beam_beam_intersection(cls, beam_move, beam_stay, thickness=None):
+    def from_beam_beam_intersection(cls, beam_stay, beam_move, thickness=None):
         # type: (Beam, Beam, float) -> tuple[JointNonPlanarLap, JointNonPlanarLap]
         ''' Compute the intersection between two beams.
+
+        `beam_stay` must be the earlier beam in assembly sequence
+        `beam_move` must be the later beam in assembly sequence
+
         Returns a tuple of [JointNonPlanarLap, JointNonPlanarLap] when a valid joint pair can be found.
 
         Note. At the moment the center lines of two beams must not directly intersect.
@@ -313,7 +317,7 @@ class JointNonPlanarLap(Joint):
         If no intersection can be found or the two beam are not coplanar,
         Returns a tuple of (None, None, None)
         '''
-
+        # * Compute intersections and check for no-joint scenarios.
         # Find center line intersection and distances
         ctl_m = beam_move.get_center_line()
         ctl_s = beam_stay.get_center_line()
@@ -387,11 +391,11 @@ class JointNonPlanarLap(Joint):
         if all_points_outside_start or all_points_outside_end:
             return (None, None, None)
 
-        # Joint Thickness hard coded default:
+        # * Joint Thickness hard coded default:
         if thickness is None:
             thickness = 70
 
-        # Compute joint center (center on lap cheek plane, on centerline intersection)
+        # * Compute joint center (center on lap cheek plane, on centerline intersection)
         # Screw hole axis passes through this hole.
         # Projection of centerline and find intersection
         ref_side_m_projection_plane = Plane.from_frame(ref_side_m)
@@ -412,8 +416,19 @@ class JointNonPlanarLap(Joint):
                                     is_joint_on_beam_move=True, name='%s-%s' % (beam_move.name, beam_stay.name))
         joint_s = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
                                     is_joint_on_beam_move=False, name='%s-%s' % (beam_move.name, beam_stay.name))
-        screw_line = None
-        return (joint_m, joint_s, screw_line)
+
+        # * Compute Screw line
+        center_line = Line(joint_center_frame.point, joint_center_frame.point + joint_center_frame.zaxis)
+
+        far_ref_side_m = beam_move.reference_side_wcf((joint_face_id_m + 1 )% 4 + 1)
+        far_ref_side_s = beam_stay.reference_side_wcf((joint_face_id_s + 1 )% 4 + 1)
+
+        screw_line_start = intersection_line_plane(center_line, Plane.from_frame(far_ref_side_m))
+        screw_line_end = intersection_line_plane(center_line, Plane.from_frame(far_ref_side_s))
+
+
+        screw_line = Line(screw_line_start, screw_line_end)
+        return (joint_s, joint_m, screw_line)
 
 
 if __name__ == "__main__":

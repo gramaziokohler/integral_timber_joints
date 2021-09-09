@@ -51,20 +51,28 @@ def _add_beams_to_assembly(process, beams):
         # * Check for joints (Joint_Halflap and JointNonPlanarLap)
         new_joints = []
         for existing_beam in assembly.beams():
+            beam_stay = existing_beam
+            beam_move = beam
             if beam == existing_beam:
                 continue
             # * Check for intersections. JointHalfLap first and JointNonPlanarLap next
             # print('Checking for Planar Joint : %s-%s' % (beam_id, existing_beam.name))
-            j1, j2, screw_line = JointHalfLap.from_beam_beam_intersection(beam, existing_beam)
-            if j1 is None or j2 is None:
+            j_s, j_m, screw_line = JointHalfLap.from_beam_beam_intersection(beam_stay, beam_move)
+            if j_m is None or j_s is None:
                 # print('Checking for Non-Planar Joint : %s-%s' % (beam_id, existing_beam.name))
-                j1, j2, screw_line = JointNonPlanarLap.from_beam_beam_intersection(beam, existing_beam)
+                j_s, j_m, screw_line = JointNonPlanarLap.from_beam_beam_intersection(beam_stay, beam_move)
 
-            if j1 is not None and j2 is not None:
-                print('- New Joint (%s) : %s-%s added to assembly' % (j1.__class__.__name__, beam_id, existing_beam.name))
-                assembly.add_joint_pair(j1, j2, beam_id, existing_beam.name)
-                new_joints.append(j1)
-                affected_neighbours.append(existing_beam.name)
+            if j_m is not None and j_s is not None:
+                print('- New Joint (%s) : %s-%s added to assembly' % (j_m.__class__.__name__, beam_id, existing_beam.name))
+                assembly.add_joint_pair(j_s, j_m, beam_stay.name, beam_move.name)
+                new_joints.append(j_m)
+                affected_neighbours.append(beam_stay.name)
+
+                # * Add Screw to joint
+                head_side_thickness = j_m.thickness
+                screw = Screw_SL.AutoLength_Factory(center_line=screw_line, head_side_thickness=head_side_thickness)
+                assembly.set_screw_of_joint((beam_id, existing_beam.name), screw)
+
 
         # * Automatically assign Assembly Method
         if len(new_joints) == 0:
@@ -79,7 +87,7 @@ def _add_beams_to_assembly(process, beams):
 
     # * Compute joint screw hole depth
     for beam_id in new_beam_ids:
-        assembly.compute_joint_screw_hole(beam_id)
+        assembly.align_screw_direction_by_assembly_sequence(beam_id)
 
     # *Recompute dependent solutions for new beams and affected neighbours
     for beam_id in set(affected_neighbours + new_beam_ids):
@@ -386,7 +394,7 @@ def ui_change_assembly_method(process, preselection=[]):
 
                         # Change of Screw Hole situation will require a recomputation and mesh update
                         if (new_assembly_method in BeamAssemblyMethod.screw_methods) != (old_assembly_method in BeamAssemblyMethod.screw_methods):
-                            process.assembly.compute_joint_screw_hole(beam_id)
+                            process.assembly.align_screw_direction_by_assembly_sequence(beam_id)
                             artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
                             # Neighbour joints are also affected
                             for neighbour_beam_id in process.assembly.get_already_built_neighbors(beam_id):

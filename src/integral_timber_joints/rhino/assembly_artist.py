@@ -115,36 +115,32 @@ class AssemblyNurbsArtist(object):
             mesh_box = self.assembly.beam(beam_id).draw_uncut_mesh()
             positive_brep_guids = draw_breps(mesh_to_brep(mesh_box), join=True, redraw=False)
 
-            # Collect all the negative features
-            joints = self.assembly.get_joints_of_beam(beam_id)
-            beam_cuts = self.assembly.beam_cuts(beam_id)
-            features = joints
-            features += beam_cuts
+            # Retrieve all the negative features
+            negative_shapes = self.assembly.get_beam_negative_shapes(beam_id)
 
             guids = []  # Hold the guids of the final boolean result
-            if len(features) > 0:
+            if len(negative_shapes) > 0:
                 negative_brep_guids = []
                 # Get the negative meshes from the features and convert them to nurbs
-                for feature in features:
-                    for negative_shape in feature.get_feature_shapes(self.assembly.beam(beam_id)):
+                for negative_shape in negative_shapes:
+                    if verbose:
+                        print(negative_shape.__class__)
+                    if isinstance(negative_shape, Polyhedron):
+                        vertices_and_faces = negative_shape.to_vertices_and_faces()
+                        struct = vertices_and_faces_to_brep_struct(vertices_and_faces)
                         if verbose:
-                            print(negative_shape.__class__)
-                        if isinstance(negative_shape, Polyhedron):
-                            vertices_and_faces = negative_shape.to_vertices_and_faces()
-                            struct = vertices_and_faces_to_brep_struct(vertices_and_faces)
-                            if verbose:
-                                print("Polyhedron :", struct)
-                            negative_guids = draw_breps(struct, join=True, redraw=False)
-                            negative_brep_guids.extend(negative_guids)
-                        elif isinstance(negative_shape, Cylinder):
-                            cylinder = negative_shape
-                            start = cylinder.center + cylinder.normal.scaled(cylinder.height / 2)
-                            end = cylinder.center - cylinder.normal.scaled(cylinder.height / 2)
-                            struct = {'start': list(start), 'end': list(end), 'radius': cylinder.circle.radius}
-                            if verbose:
-                                print("Cylinder : ", struct)
-                            negative_guids = draw_cylinders([struct], cap=True, redraw=False)
-                            negative_brep_guids.extend(negative_guids)
+                            print("Polyhedron :", struct)
+                        negative_guids = draw_breps(struct, join=True, redraw=False)
+                        negative_brep_guids.extend(negative_guids)
+                    elif isinstance(negative_shape, Cylinder):
+                        cylinder = negative_shape
+                        start = cylinder.center + cylinder.normal.scaled(cylinder.height / 2)
+                        end = cylinder.center - cylinder.normal.scaled(cylinder.height / 2)
+                        struct = {'start': list(start), 'end': list(end), 'radius': cylinder.circle.radius}
+                        if verbose:
+                            print("Cylinder : ", struct)
+                        negative_guids = draw_cylinders([struct], cap=True, redraw=False)
+                        negative_brep_guids.extend(negative_guids)
 
                 # Perform Boolean Difference
                 positive_breps = [rs.coercebrep(guid) for guid in positive_brep_guids]

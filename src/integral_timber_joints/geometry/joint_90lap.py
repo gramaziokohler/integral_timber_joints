@@ -156,27 +156,27 @@ class Joint_90lap(Joint):
         self.face_id = new_id
 
     @classmethod
-    def from_beam_beam_intersection(cls, beam1, beam2, face_choice=0):
+    def from_beam_beam_intersection(cls, beam_stay, beam_move, face_choice=0):
         # type: (Beam, Beam, int) -> tuple[Joint_90lap, Joint_90lap]
 
         # Find coplanar faces
-        face_pairs = beam1.get_beam_beam_coplanar_face_ids(beam2)
+        face_pairs = beam_stay.get_beam_beam_coplanar_face_ids(beam_move)
         if len(face_pairs) == 0:
             return (None, None)
 
         # Compute Centerline Intersection Distances
         f1, f2 = face_pairs[face_choice]
         f2 = (f2 + 2 - 1) % 4 + 1
-        c1 = beam1.get_face_center_line(f1)
-        c2 = beam2.get_face_center_line(f2)
+        c1 = beam_stay.get_face_center_line(f1)
+        c2 = beam_move.get_face_center_line(f2)
         intersection_line = intersection_line_line(c1, c2)
         dist1 = distance_point_point(intersection_line[0], c1[0])
         dist2 = distance_point_point(intersection_line[1], c2[0])
 
         # Construct Joint object
         #print ("Creating 2 Joints: Beam=%s,Face=%s,Distance=%s, Beam=%s,Face=%s,Distance=%s" % (bid_1, f1, dist1, bid_2, f2, dist2))
-        joint1 = Joint_90lap(dist1, f1, beam1.get_face_width(f1), beam2.get_face_width(f2), beam1.get_face_height(f1)/2, name='%s-%s' % (beam1.name, beam2.name))
-        joint2 = Joint_90lap(dist2, f2, beam2.get_face_width(f2), beam1.get_face_width(f1), beam2.get_face_height(f2)/2, name='%s-%s' % (beam2.name, beam1.name))
+        joint1 = Joint_90lap(dist1, f1, beam_stay.get_face_width(f1), beam_move.get_face_width(f2), beam_stay.get_face_height(f1)/2, name='%s-%s' % (beam_stay.name, beam_move.name))
+        joint2 = Joint_90lap(dist2, f2, beam_move.get_face_width(f2), beam_stay.get_face_width(f1), beam_move.get_face_height(f2)/2, name='%s-%s' % (beam_move.name, beam_stay.name))
 
         return (joint1, joint2)
 

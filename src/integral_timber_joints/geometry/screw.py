@@ -190,6 +190,21 @@ class Screw_SL(Data):
         shapes = self.get_thread_side_feature_shapes()
         return [Mesh.from_vertices_and_faces(* shape.to_vertices_and_faces(u=16)) for shape in shapes]
 
+    def flip(self):
+        #type: () -> None
+        """Flips the screw center line.
+        The head_side_thickness is changed to original_total_length - original_head_side_thickness
+
+        This flip is only meaningful to planar joints.
+        Flipping Non planar joints require a totally different screw line vector.
+        Consider recreating a new Screw entirely.
+        """
+        new_thickness = self.total_length - self.head_side_thickness
+        self.head_side_thickness = new_thickness
+
+        new_line = Line(self.center_line.end, self.center_line.start)
+        self.center_line = new_line
+
     @classmethod
     def AutoLength_Factory(cls, center_line=None, head_side_thickness=50.0):
         # type: (Line, float) -> Screw_SL
