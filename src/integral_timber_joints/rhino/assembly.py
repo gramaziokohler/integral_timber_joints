@@ -308,10 +308,13 @@ def ui_flip_beams(process):
         beam_id = get_object_name(guids)
 
         # * Check if any of its joints to previous beams are non planar.
+        non_planar_exist = False
         for joint_id in process.assembly.get_joints_of_beam_connected_to_already_built(beam_id):
             if isinstance(process.assembly.joint(joint_id), JointNonPlanarLap):
                 print("Sorry. Cannot flip beams with non planar joints. Offending joint: %s-%s" % joint_id)
-                continue
+                non_planar_exist = True
+        if non_planar_exist:
+            continue
 
         # * Loop though alread_built_neighbors and swap joint
         earlier_neighbors = assembly.get_already_built_neighbors(beam_id)
