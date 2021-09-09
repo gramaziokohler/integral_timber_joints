@@ -15,6 +15,7 @@ from integral_timber_joints.geometry.utils import *
 try:
     from typing import Dict, List, Optional, Tuple, cast
 
+    from integral_timber_joints.assembly import BeamAssemblyMethod
     from integral_timber_joints.process import RobotClampAssemblyProcess
 except:
     pass
@@ -188,8 +189,8 @@ class JointHalfLap(Joint):
         # The value is equal to self.length when angle = 90 degrees.
         return self.length / math.cos(math.radians(self.angle - 90))
 
-    @property
-    def clamp_types(self):
+    def assembly_tool_types(self, beam_assembly_method):
+        # type: (BeamAssemblyMethod) -> list[str]
         # Returns a list of clamps types that can assemble this joint
         clamps = []
         if self.has_screw:

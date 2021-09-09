@@ -18,6 +18,7 @@ from compas.geometry import Cylinder, Polyhedron, Shape
 
 try:
     from integral_timber_joints.geometry.beam import Beam
+    from integral_timber_joints.assembly import BeamAssemblyMethod
 except:
     pass
 
@@ -79,6 +80,12 @@ class Joint(object):
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]
         raise NotImplementedError
+
+    def assembly_tool_types(self, beam_assembly_method):
+        # type: (BeamAssemblyMethod) -> list[str]
+        # Returns a list of clamps types that can assemble this joint
+        raise NotImplementedError
+
 
 if __name__ == "__main__":
     # Test to create a inherited joint object, serialize and deserialize it.

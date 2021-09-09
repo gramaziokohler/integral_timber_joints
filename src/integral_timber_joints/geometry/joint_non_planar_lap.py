@@ -16,6 +16,10 @@ from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import *
 
+try:
+    from integral_timber_joints.assembly import BeamAssemblyMethod
+except:
+    pass
 
 class JointNonPlanarLap(Joint):
     """
@@ -287,9 +291,10 @@ class JointNonPlanarLap(Joint):
         face_frame = beam.get_face_plane(self.face_id)
         return face_frame.normal.scaled(-1 * beam.get_face_height(self.face_id))
 
-    @property
-    def clamp_types(self):
-        # Returns a list of clamps types that can assemble this joint
+    def assembly_tool_types(self, beam_assembly_method):
+        # type: (BeamAssemblyMethod) -> list[str]
+        """Returns a list of clamps types that can assemble this joint
+        """
         clamps = []
         clamps.append('SL1')
         return clamps

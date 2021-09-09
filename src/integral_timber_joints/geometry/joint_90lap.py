@@ -14,6 +14,10 @@ from compas.geometry import Box, Frame, distance_point_point, intersection_line_
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import polyhedron_box_from_vertices
+try:
+    from integral_timber_joints.assembly import BeamAssemblyMethod
+except:
+    pass
 
 
 class Joint_90lap(Joint):
@@ -34,12 +38,22 @@ class Joint_90lap(Joint):
         self.height = height
         self.mesh = None
 
-        # Constants
-        self.clamp_types = ['90lap']
 
         # #Perform initial calculation of the mesh (except when this is an empty object)
         # if frame is not None:
         #     self.update_joint_mesh()
+
+    def assembly_tool_types(self, beam_assembly_method):
+        # type: (BeamAssemblyMethod) -> list[str]
+        # Returns a list of clamps types that can assemble this joint
+        clamps = []
+        if self.has_screw:
+            clamps.append('SL1')
+        else:
+            clamps.append('CL3')
+            clamps.append('CL3M')
+            clamps.append('90lap')
+        return clamps
 
     def get_feature_meshes(self, BeamRef):
         # type: (Beam) -> list[Mesh]

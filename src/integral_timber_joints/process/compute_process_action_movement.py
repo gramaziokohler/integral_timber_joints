@@ -44,10 +44,11 @@ def assign_tool_type_to_joints(process, beam_id, verbose=False):
     something_failed = False
     something_changed = False
 
+    assembly_method = assembly.get_assembly_method(beam_id)
     joint_ids = assembly.get_joint_ids_with_tools_for_beam(beam_id)
 
     # For beams that are using one tool as gripper.
-    if assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         gripping_joint_id = assembly.get_joint_id_where_screwdriver_is_gripper(beam_id)
         joint_ids.remove(gripping_joint_id)
 
@@ -67,25 +68,27 @@ def assign_tool_type_to_joints(process, beam_id, verbose=False):
     # For other joints that are not acting as gripper.
     for joint_id in process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
         existing_tool_type = process.assembly.get_joint_attribute(joint_id, 'tool_type')
-        clamp_types_requested_by_joint = process.assembly.joint(joint_id).clamp_types
+        assembly_tools_requested_by_joint = process.assembly.joint(joint_id).assembly_tool_types(assembly_method)
 
         # Do not change anything if tool_type is already set and is valid
         if existing_tool_type is not None:
-            if any([existing_tool_type.startswith(requested_type) for requested_type in clamp_types_requested_by_joint]):
+            if any([existing_tool_type.startswith(requested_type) for requested_type in assembly_tools_requested_by_joint]):
                 if verbose:
                     print("Joint (%s) tool_type (%s) has already been set. No change made by assign_tool_type_to_joints()." %
                         (joint_id, process.assembly.get_joint_attribute(joint_id, 'tool_type')))
                 continue
 
         # Loop through the list of clamp types requested by the joint.
-        for requested_type in clamp_types_requested_by_joint:
+        for requested_type in assembly_tools_requested_by_joint:
             # Check if the preferred clamp exist.
-            if any([assembly_tool_types.startswith(requested_type) for assembly_tool_types in process.available_assembly_tool_types]):
-                process.assembly.set_joint_attribute(joint_id, 'tool_type', requested_type)
-                something_changed = True
+            for available_tool_type in process.available_assembly_tool_types:
+                if available_tool_type.startswith(requested_type):
+                    process.assembly.set_joint_attribute(joint_id, 'tool_type', available_tool_type)
+                    something_changed = True
+                break
 
         if process.get_tool_type_of_joint(joint_id) is None:
-            print("WARNING: Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, clamp_types_requested_by_joint))
+            print("WARNING: Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, assembly_tools_requested_by_joint))
             something_failed = True
         else:
             if verbose:
