@@ -3,7 +3,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext
 import re
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
-from integral_timber_joints.geometry import Joint_halflap
+from integral_timber_joints.geometry import JointHalfLap
 from integral_timber_joints.rhino.assembly_artist import AssemblyNurbsArtist
 
 from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
 
     for joint in process.assembly.get_joints_of_beam(beam_id):
-        if isinstance(joint, Joint_halflap):
+        if isinstance(joint, JointHalfLap):
             print (joint.data)
             pass
         else:

@@ -13,7 +13,6 @@ from compas.geometry import Box, Polyhedron
 from compas.geometry import Projection, Translation
 
 from integral_timber_joints.geometry.beam import Beam
-from integral_timber_joints.geometry.screw import Screw_SL
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import *
 
@@ -26,7 +25,7 @@ class JointNonPlanarLap(Joint):
     to recreate all the joint feature geometries. This joint is not WCF independent and must
     be updated when the hosting beam(s) are transformed.
 
-    The accompany function non_planar_lap_joint_from_beam_beam_intersection()
+    The accompany function JointNonPlanarLap.from_beam_beam_intersection()
     precomputes 8 joint-corners points (pt_jc[]) and determine which beam face are intersected.
     Refer to notes for the order of the points.
     During feature generation, pt_jc[4 to 7] are projected to the center_frame XY plane
@@ -55,7 +54,6 @@ class JointNonPlanarLap(Joint):
                  axial_dot_product=0.0,  # type: float
                  pt_jc=[],  # type: list[Point]
                  is_joint_on_beam_move=False,  # type: bool
-                 has_screw=False,  # type: bool
                  name=None):
         """
         Parameters
@@ -71,7 +69,6 @@ class JointNonPlanarLap(Joint):
         self.axial_dot_product = axial_dot_product
         self.pt_jc = deepcopy(pt_jc)
         self.is_joint_on_beam_move = is_joint_on_beam_move
-        self.has_screw = has_screw
         self.name = name
 
     @property
@@ -84,7 +81,6 @@ class JointNonPlanarLap(Joint):
             'axial_dot_product': self.axial_dot_product,
             'pt_jc': self.pt_jc,
             'is_joint_on_beam_move': self.is_joint_on_beam_move,
-            'has_screw': self.has_screw,
             'name': self.name,
         }
         return data
@@ -102,7 +98,6 @@ class JointNonPlanarLap(Joint):
         joint.axial_dot_product = data.get('axial_dot_product', 0.0)
         joint.pt_jc = data.get('pt_jc', [])
         joint.is_joint_on_beam_move = data.get('is_joint_on_beam_move', True)
-        joint.has_screw = data.get('has_screw', False)
         joint.name = data.get('name', "")
         return joint
 
@@ -163,16 +158,6 @@ class JointNonPlanarLap(Joint):
         # Joint corners alias
         pt_c = self.pt_jc
 
-        # Create the screw hole
-        screw_features = []
-        if self.has_screw:
-            screw_features = Screw_SL(
-                center_frame=self.center_frame,
-                joint_move_thickness=self.thickness,
-                joint_stay_thickness=150,
-                is_screw_on_beam_move=self.is_joint_on_beam_move
-            ).get_feature_shapes(BeamRef)
-
         # Create solid negative geometry
         if self.is_joint_on_beam_move:
             # Only one feature mesh
@@ -193,7 +178,7 @@ class JointNonPlanarLap(Joint):
             move_vertex_from_neighbor(vertices, [1, 2, 6, 5], [0, 3, 7, 4], OVERSIZE)
             move_vertex_from_neighbor(vertices, [4, 5, 6, 7], [0, 1, 2, 3], OVERSIZE)
             shape = polyhedron_box_from_vertices(vertices)
-            return [shape] + screw_features
+            return [shape]
 
         else:
             vertices = []
@@ -213,7 +198,7 @@ class JointNonPlanarLap(Joint):
                 move_vertex_from_neighbor(vertices, [0, 1, 4, 5], [3, 2, 7, 6], OVERSIZE)
                 move_vertex_from_neighbor(vertices, [3, 2, 7, 6], [0, 1, 4, 5], OVERSIZE)
                 shape = polyhedron_box_from_vertices(vertices)
-                return [shape] + screw_features
+                return [shape]
 
             # In most case a 5 point polygon for a single boolean.
             # In the past this was done as two simplier geometry
@@ -263,7 +248,7 @@ class JointNonPlanarLap(Joint):
             move_vertex_from_neighbor(vertices, [2, 7, 3, 8], [1, 6, 4, 9], OVERSIZE)
             move_vertex_from_neighbor(vertices, [3, 8, 4, 9], [2, 7, 0, 5], OVERSIZE)
             shape = polyhedron_box_from_vertices(vertices)
-            return [shape] + screw_features
+            return [shape]
 
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]
@@ -309,133 +294,121 @@ class JointNonPlanarLap(Joint):
         clamps.append('SL1')
         return clamps
 
+    @classmethod
+    def from_beam_beam_intersection(cls, beam_move, beam_stay, thickness=None):
+        # type: (Beam, Beam, float) -> tuple[JointNonPlanarLap, JointNonPlanarLap]
+        ''' Compute the intersection between two beams.
+        Returns a tuple of [JointNonPlanarLap, JointNonPlanarLap] when a valid joint pair can be found.
 
-def non_planar_lap_joint_from_beam_beam_intersection(beam_move, beam_stay, thickness=None):
-    # type: (Beam, Beam, float) -> tuple[JointNonPlanarLap, JointNonPlanarLap]
-    ''' Compute the intersection between two beams.
-    Returns a tuple of [JointNonPlanarLap, JointNonPlanarLap] when a valid joint pair can be found.
+        Note. At the moment the center lines of two beams must not directly intersect.
+        There need to be some offset
 
-    Note. At the moment the center lines of two beams must not directly intersect.
-    There need to be some offset
+        `thickness` is the thickness of the lap joint on the moving_beam.
 
-    `thickness` is the thickness of the lap joint on the moving_beam.
+        If no intersection can be found or the two beam are not coplanar,
+        Returns a tuple of (None, None, None)
+        '''
 
-    If no intersection can be found or the two beam are not coplanar,
-    Returns a tuple of [None, None]
-    '''
+        # Find center line intersection and distances
+        ctl_m = beam_move.get_center_line()
+        ctl_s = beam_stay.get_center_line()
+        cp_m, cp_s = intersection_line_line(ctl_m, ctl_s)
 
-    # Find center line intersection and distances
-    ctl_m = beam_move.get_center_line()
-    ctl_s = beam_stay.get_center_line()
-    cp_m, cp_s = intersection_line_line(ctl_m, ctl_s)
+        # If center lines are parallel, intersection result will be None:
+        if cp_m is None or cp_s is None:
+            return (None, None, None)
 
-    # If center lines are parallel, intersection result will be None:
-    if cp_m is None or cp_s is None:
-        return [None, None]
+        # Find which beam face to be facing each other
+        # We use the intersection points of the two lines as a guide and compare with
+        v_ms = subtract_vectors(cp_s, cp_m)
+        v_sm = subtract_vectors(cp_m, cp_s)
+        if norm_vector(v_ms) < 1e-5:
+            # If the intersection is too close, we do not process it. TODO: Make it auto select faces.
+            return (None, None, None)
 
-    # Find which beam face to be facing each other
-    # We use the intersection points of the two lines as a guide and compare with
-    v_ms = subtract_vectors(cp_s, cp_m)
-    v_sm = subtract_vectors(cp_m, cp_s)
-    if norm_vector(v_ms) < 1e-5:
-        # If the intersection is too close, we do not process it. TODO: Make it auto select faces.
-        return [None, None]
+        normal_dot_product_m = [dot_vectors(beam_move.reference_side_wcf(i + 1).zaxis, v_ms) for i in range(4)]
+        normal_dot_product_s = [dot_vectors(beam_stay.reference_side_wcf(i + 1).zaxis, v_sm) for i in range(4)]
+        joint_face_id_m = normal_dot_product_m.index(max(normal_dot_product_m)) + 1
+        joint_face_id_s = normal_dot_product_s.index(max(normal_dot_product_s)) + 1
 
-    normal_dot_product_m = [dot_vectors(beam_move.reference_side_wcf(i + 1).zaxis, v_ms) for i in range(4)]
-    normal_dot_product_s = [dot_vectors(beam_stay.reference_side_wcf(i + 1).zaxis, v_sm) for i in range(4)]
-    joint_face_id_m = normal_dot_product_m.index(max(normal_dot_product_m)) + 1
-    joint_face_id_s = normal_dot_product_s.index(max(normal_dot_product_s)) + 1
+        # Find the reference side frame and reference edges
+        ref_side_m = beam_move.reference_side_wcf(joint_face_id_m)
+        ref_side_s = beam_stay.reference_side_wcf(joint_face_id_s)
+        ref_edge_m0 = beam_move.reference_edge_wcf(joint_face_id_m)
+        ref_edge_m1 = beam_move.reference_edge_wcf(joint_face_id_m-1)
+        # s0 and s1 are defined as which ever is more negative to ref_side_m.xaxis
+        ref_edge_s0 = beam_stay.reference_edge_wcf(joint_face_id_s)
+        ref_edge_s1 = beam_stay.reference_edge_wcf(joint_face_id_s-1)
+        if dot_vectors(ref_side_s.yaxis, ref_side_m.xaxis) < 0.0:
+            ref_edge_s0, ref_edge_s1 = ref_edge_s1, ref_edge_s0
 
-    # Find the reference side frame and reference edges
-    ref_side_m = beam_move.reference_side_wcf(joint_face_id_m)
-    ref_side_s = beam_stay.reference_side_wcf(joint_face_id_s)
-    ref_edge_m0 = beam_move.reference_edge_wcf(joint_face_id_m)
-    ref_edge_m1 = beam_move.reference_edge_wcf(joint_face_id_m-1)
-    # s0 and s1 are defined as which ever is more negative to ref_side_m.xaxis
-    ref_edge_s0 = beam_stay.reference_edge_wcf(joint_face_id_s)
-    ref_edge_s1 = beam_stay.reference_edge_wcf(joint_face_id_s-1)
-    if dot_vectors(ref_side_s.yaxis, ref_side_m.xaxis) < 0.0:
-        ref_edge_s0, ref_edge_s1 = ref_edge_s1, ref_edge_s0
+        # Compute 8 intersection points
+        ref_plane_m0 = Plane(ref_edge_m0.start, ref_side_m.yaxis)
+        ref_plane_m1 = Plane(ref_edge_m1.start, ref_side_m.yaxis)
+        ref_plane_s0 = Plane(ref_edge_s0.start, ref_side_s.yaxis)
+        ref_plane_s1 = Plane(ref_edge_s1.start, ref_side_s.yaxis)
 
-    # Compute 8 intersection points
-    ref_plane_m0 = Plane(ref_edge_m0.start, ref_side_m.yaxis)
-    ref_plane_m1 = Plane(ref_edge_m1.start, ref_side_m.yaxis)
-    ref_plane_s0 = Plane(ref_edge_s0.start, ref_side_s.yaxis)
-    ref_plane_s1 = Plane(ref_edge_s1.start, ref_side_s.yaxis)
+        lpx_pts = []
+        lpx_pts.append(intersection_line_plane(ref_edge_s0, ref_plane_m0))
+        lpx_pts.append(intersection_line_plane(ref_edge_s0, ref_plane_m1))
+        lpx_pts.append(intersection_line_plane(ref_edge_s1, ref_plane_m1))
+        lpx_pts.append(intersection_line_plane(ref_edge_s1, ref_plane_m0))
+        lpx_pts.append(intersection_line_plane(ref_edge_m0, ref_plane_s0))
+        lpx_pts.append(intersection_line_plane(ref_edge_m1, ref_plane_s0))
+        lpx_pts.append(intersection_line_plane(ref_edge_m1, ref_plane_s1))
+        lpx_pts.append(intersection_line_plane(ref_edge_m0, ref_plane_s1))
 
-    lpx_pts = []
-    lpx_pts.append(intersection_line_plane(ref_edge_s0, ref_plane_m0))
-    lpx_pts.append(intersection_line_plane(ref_edge_s0, ref_plane_m1))
-    lpx_pts.append(intersection_line_plane(ref_edge_s1, ref_plane_m1))
-    lpx_pts.append(intersection_line_plane(ref_edge_s1, ref_plane_m0))
-    lpx_pts.append(intersection_line_plane(ref_edge_m0, ref_plane_s0))
-    lpx_pts.append(intersection_line_plane(ref_edge_m1, ref_plane_s0))
-    lpx_pts.append(intersection_line_plane(ref_edge_m1, ref_plane_s1))
-    lpx_pts.append(intersection_line_plane(ref_edge_m0, ref_plane_s1))
+        # Check if any of the first 8 points lie on the move_beam body. If not, there is no true intersection.
+        ref_plane_m_top = Plane(ref_edge_m0.start, ref_side_m.zaxis.inverted())
+        some_point_has_contact = any([is_point_infront_plane(point, ref_plane_m_top) for point in lpx_pts])
+        if not some_point_has_contact:
+            return (None, None, None)
 
-    # Check if any of the first 8 points lie on the move_beam body. If not, there is no true intersection.
-    ref_plane_m_top = Plane(ref_edge_m0.start, ref_side_m.zaxis.inverted())
-    some_point_has_contact = any([is_point_infront_plane(point, ref_plane_m_top) for point in lpx_pts])
-    if not some_point_has_contact:
-        return [None, None]
+        # Check if all of the first 8 points lie outside the stay_beam start or end.
+        # If all of them are outside, there is no true intersection.
+        ref_plane_s_start = Plane.from_frame(beam_stay.reference_side_wcf(5))
+        all_points_outside_start = all([is_point_infront_plane(point, ref_plane_s_start) for point in lpx_pts])
+        ref_plane_s_end = Plane.from_frame(beam_stay.reference_side_wcf(6))
+        all_points_outside_end = all([is_point_infront_plane(point, ref_plane_s_end) for point in lpx_pts])
+        if all_points_outside_start or all_points_outside_end:
+            return (None, None, None)
 
-    # Check if all of the first 8 points lie outside the stay_beam start or end.
-    # If all of them are outside, there is no true intersection.
-    ref_plane_s_start = Plane.from_frame(beam_stay.reference_side_wcf(5))
-    all_points_outside_start = all([is_point_infront_plane(point, ref_plane_s_start) for point in lpx_pts])
-    ref_plane_s_end = Plane.from_frame(beam_stay.reference_side_wcf(6))
-    all_points_outside_end = all([is_point_infront_plane(point, ref_plane_s_end) for point in lpx_pts])
-    if all_points_outside_start or all_points_outside_end:
-        return [None, None]
+        # Check if all of the first 8 points lie outside the move_beam start or end.
+        # If all of them are outside, there is no true intersection.
+        ref_plane_s_start = Plane.from_frame(beam_move.reference_side_wcf(5))
+        all_points_outside_start = all([is_point_infront_plane(point, ref_plane_s_start) for point in lpx_pts])
+        ref_plane_s_end = Plane.from_frame(beam_move.reference_side_wcf(6))
+        all_points_outside_end = all([is_point_infront_plane(point, ref_plane_s_end) for point in lpx_pts])
+        if all_points_outside_start or all_points_outside_end:
+            return (None, None, None)
 
-    # Check if all of the first 8 points lie outside the move_beam start or end.
-    # If all of them are outside, there is no true intersection.
-    ref_plane_s_start = Plane.from_frame(beam_move.reference_side_wcf(5))
-    all_points_outside_start = all([is_point_infront_plane(point, ref_plane_s_start) for point in lpx_pts])
-    ref_plane_s_end = Plane.from_frame(beam_move.reference_side_wcf(6))
-    all_points_outside_end = all([is_point_infront_plane(point, ref_plane_s_end) for point in lpx_pts])
-    if all_points_outside_start or all_points_outside_end:
-        return [None, None]
+        # Joint Thickness hard coded default:
+        if thickness is None:
+            thickness = 70
 
-    # Joint Thickness hard coded default:
-    if thickness is None:
-        thickness = 70
+        # Compute joint center (center on lap cheek plane, on centerline intersection)
+        # Screw hole axis passes through this hole.
+        # Projection of centerline and find intersection
+        ref_side_m_projection_plane = Plane.from_frame(ref_side_m)
+        P = Projection.from_plane(ref_side_m_projection_plane)
+        ctl_m_projected = ctl_m.transformed(P)
+        ctl_s_projected = ctl_s.transformed(P)
+        cp_m_projected, cp_s_projected = intersection_line_line(ctl_m_projected, ctl_s_projected)
+        # Translating the frame to the cheek plane
+        offset_amount = thickness - beam_move.get_face_height(joint_face_id_m)
+        T = Translation.from_vector(ref_side_m.zaxis.unitized().scaled(offset_amount))
+        joint_center_frame = Frame(Point(* cp_m_projected).transformed(T), ref_side_m.xaxis, ref_side_m.yaxis)
 
-    # Compute joint center (center on lap cheek plane, on centerline intersection)
-    # Screw hole axis passes through this hole.
-    # Projection of centerline and find intersection
-    ref_side_m_projection_plane = Plane.from_frame(ref_side_m)
-    P = Projection.from_plane(ref_side_m_projection_plane)
-    ctl_m_projected = ctl_m.transformed(P)
-    ctl_s_projected = ctl_s.transformed(P)
-    cp_m_projected, cp_s_projected = intersection_line_line(ctl_m_projected, ctl_s_projected)
-    # Translating the frame to the cheek plane
-    offset_amount = thickness - beam_move.get_face_height(joint_face_id_m)
-    T = Translation.from_vector(ref_side_m.zaxis.unitized().scaled(offset_amount))
-    joint_center_frame = Frame(Point(* cp_m_projected).transformed(T), ref_side_m.xaxis, ref_side_m.yaxis)
+        # Precompute this dot product for deciding the hook triangle direction
+        axial_dot_product = dot_vectors(ref_side_s.zaxis, ref_side_m.xaxis)
 
-    # Precompute this dot product for deciding the hook triangle direction
-    axial_dot_product = dot_vectors(ref_side_s.zaxis, ref_side_m.xaxis)
-
-    # Construct joint objects
-    joint_m = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
-                                is_joint_on_beam_move=True, name='%s-%s' % (beam_move.name, beam_stay.name))
-    joint_s = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
-                                is_joint_on_beam_move=False, name='%s-%s' % (beam_move.name, beam_stay.name))
-
-    # joint_m = JointNonPlanarLap(
-    #     center_frame=joint_center_frame,  # type: Frame
-    #     thickness=thickness,  # type: float
-    #     beam_move_face_id=joint_face_id_m,  # type: int
-    #     beam_stay_face_id=joint_face_id_s,  # type: int
-    #     axial_dot_product=axial_dot_product,  # type: float
-    #     pt_jc=[],  # type: list[Point]
-    #     is_joint_on_beam_move=False,  # type: bool
-    #     has_screw=False,  # type: bool
-    #     name=None
-    # )
-
-    return (joint_m, joint_s)
+        # Construct joint objects
+        joint_m = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
+                                    is_joint_on_beam_move=True, name='%s-%s' % (beam_move.name, beam_stay.name))
+        joint_s = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
+                                    is_joint_on_beam_move=False, name='%s-%s' % (beam_move.name, beam_stay.name))
+        screw_line = None
+        return (joint_m, joint_s, screw_line)
 
 
 if __name__ == "__main__":

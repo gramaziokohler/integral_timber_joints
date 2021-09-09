@@ -12,9 +12,9 @@ from compas_rhino.utilities.objects import get_object_name, get_object_names
 
 from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry.beam import Beam
-from integral_timber_joints.geometry.joint_halflap import Joint_halflap_from_beam_beam_intersection
-from integral_timber_joints.geometry.joint_non_planar_lap import non_planar_lap_joint_from_beam_beam_intersection, JointNonPlanarLap
+from integral_timber_joints.geometry import JointHalfLap, JointNonPlanarLap
 from integral_timber_joints.process import RobotClampAssemblyProcess
+from integral_timber_joints.geometry import Screw_SL
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
 
@@ -48,15 +48,17 @@ def _add_beams_to_assembly(process, beams):
         # Add to assembly
         assembly.add_beam(beam)
 
+        # * Check for joints (Joint_Halflap and JointNonPlanarLap)
         new_joints = []
         for existing_beam in assembly.beams():
             if beam == existing_beam:
                 continue
+            # * Check for intersections. JointHalfLap first and JointNonPlanarLap next
             # print('Checking for Planar Joint : %s-%s' % (beam_id, existing_beam.name))
-            j1, j2 = Joint_halflap_from_beam_beam_intersection(beam, existing_beam)
+            j1, j2, screw_line = JointHalfLap.from_beam_beam_intersection(beam, existing_beam)
             if j1 is None or j2 is None:
                 # print('Checking for Non-Planar Joint : %s-%s' % (beam_id, existing_beam.name))
-                j1, j2 = non_planar_lap_joint_from_beam_beam_intersection(beam, existing_beam)
+                j1, j2, screw_line = JointNonPlanarLap.from_beam_beam_intersection(beam, existing_beam)
 
             if j1 is not None and j2 is not None:
                 print('- New Joint (%s) : %s-%s added to assembly' % (j1.__class__.__name__, beam_id, existing_beam.name))

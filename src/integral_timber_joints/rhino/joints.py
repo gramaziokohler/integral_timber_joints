@@ -14,7 +14,7 @@ from compas_rhino.utilities import clear_layer, delete_objects, draw_breps, draw
 from compas_rhino.utilities.objects import get_object_name, get_object_names
 
 from integral_timber_joints.assembly import Assembly
-from integral_timber_joints.geometry import EnvironmentModel, Joint_halflap, JointNonPlanarLap
+from integral_timber_joints.geometry import EnvironmentModel, JointHalfLap, JointNonPlanarLap
 from integral_timber_joints.process import Movement, RobotClampAssemblyProcess, RoboticMovement
 from integral_timber_joints.rhino.artist import mesh_to_brep, vertices_and_faces_to_brep_struct
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
@@ -179,7 +179,7 @@ def change_lap_joint_parameters(process):
     artist = get_process_artist()
 
     # Ask user to pick two joints
-    joint_ids = users_select_feature(process, joint_types=[Joint_halflap])
+    joint_ids = users_select_feature(process, joint_types=[JointHalfLap])
     joint_ids = cull_double_selected_joint_ids(process, joint_ids)
     if len(joint_ids) == 0:
         return

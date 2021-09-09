@@ -15,7 +15,7 @@ from compas import is_rhino
 
 from compas.rpc import Proxy
 
-from integral_timber_joints.geometry import Beamcut, Joint, JointNonPlanarLap, non_planar_lap_joint_from_beam_beam_intersection
+from integral_timber_joints.geometry import Beamcut, Joint, JointNonPlanarLap
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
 
@@ -941,7 +941,7 @@ class Assembly(Network):
         -----------
         beam.cached_mesh set to None for both beams.
         '''
-        from integral_timber_joints.geometry import Joint_halflap_from_beam_beam_intersection
+        from integral_timber_joints.geometry import JointHalfLap
 
         for bid_neighbor in self.get_already_built_beams(beam_id):
             beam1 = self.beam(beam_id)
@@ -949,8 +949,8 @@ class Assembly(Network):
             if verbose:
                 print("Checking Between %s - %s" % (beam1.name, beam2.name))
 
-            option1 = Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0)  # joint1, joint2
-            option2 = Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=1)
+            option1 = JointHalfLap.from_beam_beam_intersection(beam1, beam2, face_choice=0)  # joint1, joint2
+            option2 = JointHalfLap.from_beam_beam_intersection(beam1, beam2, face_choice=1)
 
             if option1[0] is not None and option1[1] is not None:
                 if verbose:
