@@ -927,7 +927,7 @@ class Assembly(Network):
             # Earlier Beam = Staying Side = Thread Side
             st = self.joint((later_beam_id, earlier_beam_id)).get_joint_center_at_solid_side(later_beam)
             en = self.joint((earlier_beam_id, later_beam_id)).get_joint_center_at_solid_side(earlier_beam)
-            head_side_thickness = self.joint((later_beam_id, earlier_beam_id)).thickeness
+            head_side_thickness = self.joint((later_beam_id, earlier_beam_id)).thickness
             return Screw_SL.AutoLength_Factory(center_line=Line(st,en), head_side_thickness=head_side_thickness)
         else:
             return None

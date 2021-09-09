@@ -17,29 +17,21 @@ if __name__ == '__main__':
     # artist = AssemblyNurbsArtist(process.assembly)
     beam_id = 'b3'
     beam = process.assembly.beam(beam_id)
-    # Good one
-    # # print (process.assembly.joint(('b8', 'b11')).data)
-    # print (process.assembly.joint(('b11', 'b8')).data)
 
-    # # print (process.assembly.joint(('b10', 'b11')).data)
-    # print (process.assembly.joint(('b11', 'b10')).data)
+    joint_id = ('b7','b5')
+    print (assembly.joint(joint_id).data)
+
 
     # artist.draw_beam(beam_id, delete_old=True, verbose=True)
 
 
-    from integral_timber_joints.process.compute_process_action_movement import assign_tool_type_to_joints
-    assign_tool_type_to_joints(process, beam_id, verbose=True)
-    assembly_method = assembly.get_assembly_method(beam_id)
-    for joint_id in assembly.get_joint_ids_of_beam(beam_id):
-        print (joint_id)
-        print (process.assembly.get_joint_attribute(joint_id, 'tool_type'))
-        print (process.assembly.joint(joint_id).assembly_tool_types(assembly_method))
-        # from integral_timber_joints.process.compute_process_action_movement import assign_tool_type_to_joints
-        # assign_tool_type_to_joints(process, beam_id, verbose=True)
+    # from integral_timber_joints.process.compute_process_action_movement import assign_tool_type_to_joints
+    # assign_tool_type_to_joints(process, beam_id, verbose=True)
+    # assembly_method = assembly.get_assembly_method(beam_id)
+    # for joint_id in assembly.get_joint_ids_of_beam(beam_id):
+    #     print (joint_id)
+    #     print (process.assembly.get_joint_attribute(joint_id, 'tool_type'))
+    #     print (process.assembly.joint(joint_id).assembly_tool_types(assembly_method))
 
-        # joint = assembly.joint(joint_id)
-        # print (joint.thickness)
 
-        # print ('-----------')
-
-    print(process.available_assembly_tool_types)
+    # print(process.available_assembly_tool_types)

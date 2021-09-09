@@ -72,7 +72,7 @@ class JointHalfLap(Joint):
         joint.length = data['length']
         joint.width = data['width']
         joint.height = data['height']
-        joint._thickness = data.get('thickness', 50)
+        joint.thickness = data.get('thickness', 50)
         joint.thru_x_neg = data['thru_x_neg']
         joint.thru_x_pos = data['thru_x_pos']
         joint.name = data['name']
@@ -83,7 +83,7 @@ class JointHalfLap(Joint):
         return self._thickness
 
     @thickness.setter
-    def thickeness(self, value):
+    def thickness(self, value):
         self._thickness = value
 
     @property
@@ -103,6 +103,14 @@ class JointHalfLap(Joint):
     @property
     def distance_at_center(self):
         return self.distance + self.angled_lead / 2 + self.angled_length / 2
+
+    def modify_parameter(self, key, value, relative = True):
+        if key == "thickness":
+            if not relative:
+                value = value - self.thickness
+            self.thickness += value
+            self.height -= value
+
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]

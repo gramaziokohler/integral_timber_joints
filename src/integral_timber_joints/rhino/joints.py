@@ -184,17 +184,20 @@ def change_lap_joint_parameters(process):
     if len(joint_ids) == 0:
         return
 
+    # Flip selected joint_ids because it is more intuitive to select the positive
+    joint_ids = [(i, j) for (j, i) in joint_ids]
+
     # Print out current joint parameters
-    existing_heights = set()
+    existing_thickness = set()
     for joint_id in joint_ids:
         joint = process.assembly.joint(joint_id)
-        current_height = joint.height
-        existing_heights.add(current_height)
-        print("Joint (%s-%s) height = %s" % (joint_id[0], joint_id[1], current_height))
+        current_thickness = joint.thickness
+        existing_thickness.add(current_thickness)
+        print("Joint (%s-%s) thickness = %s" % (joint_id[0], joint_id[1], current_thickness))
 
     # Ask user for new paramter value
-    new_height = rs.GetReal("New thickness of the lap joint: (Existing Heights are: %s" % existing_heights)
-    if new_height is None:
+    new_thickness = rs.GetReal("New thickness of the lap joint: (Existing Thickness are: %s" % existing_thickness)
+    if new_thickness is None:
         return
 
     # Make changes to all the selected joints
@@ -202,15 +205,15 @@ def change_lap_joint_parameters(process):
     for joint_id in joint_ids:
         beam_id1, beam_id2 = joint_id
         joint = process.assembly.joint(joint_id)
-        current_height = joint.height
-        if new_height == current_height:
+        current_thickness = joint.thickness
+        if new_thickness == current_thickness:
             continue
-        difference = new_height - current_height
-        process.assembly.joint((beam_id1, beam_id2)).height += difference
-        process.assembly.joint((beam_id2, beam_id1)).height -= difference
-        print("Height of joint pair changed to %s and %s." % (
-            process.assembly.joint((beam_id1, beam_id2)).height,
-            process.assembly.joint((beam_id2, beam_id1)).height
+        difference = new_thickness - current_thickness
+        process.assembly.joint((beam_id1, beam_id2)).modify_parameter('thickness', difference)
+        process.assembly.joint((beam_id2, beam_id1)).modify_parameter('thickness', -difference)
+        print("Thickness of joint pair changed to %s and %s." % (
+            process.assembly.joint((beam_id1, beam_id2)).thickness,
+            process.assembly.joint((beam_id2, beam_id1)).thickness
         ))
         affected_beams.add(beam_id1)
         affected_beams.add(beam_id2)

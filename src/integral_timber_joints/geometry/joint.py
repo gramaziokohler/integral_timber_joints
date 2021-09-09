@@ -19,6 +19,8 @@ from compas.geometry import Cylinder, Polyhedron, Shape
 try:
     from integral_timber_joints.geometry.beam import Beam
     from integral_timber_joints.assembly import BeamAssemblyMethod
+    from typing import Dict, List, Optional, Tuple, Any
+
 except:
     pass
 
@@ -34,7 +36,8 @@ class Joint(object):
         raise NotImplementedError
 
     @thickness.setter
-    def thickeness(self, value):
+    def thickness(self, value):
+        print("called thickness.setter")
         raise NotImplementedError
 
     def get_joint_center_at_solid_side(self, Beam):
@@ -54,6 +57,10 @@ class Joint(object):
         """
         assert hasattr(self, 'data'), "Inherited class %s do not have data attribute" % self.__class__.__name__
         return self.data
+
+    def modify_parameter(self, key, value, relative = True):
+        #type: (str, Any, bool) -> None
+        raise NotImplementedError
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Shape]

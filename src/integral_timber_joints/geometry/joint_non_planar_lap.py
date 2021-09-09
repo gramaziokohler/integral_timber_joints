@@ -100,7 +100,7 @@ class JointNonPlanarLap(Joint):
         """
         joint = cls()
         joint.center_frame = data.get('center_frame', None)
-        joint._thickness = data.get('thickness', 70)
+        joint.thickness = data.get('thickness', 70)
         joint.beam_move_face_id = data.get('beam_move_face_id', 1)
         joint.beam_stay_face_id = data.get('beam_stay_face_id', 1)
         joint.axial_dot_product = data.get('axial_dot_product', 0.0)
@@ -139,8 +139,15 @@ class JointNonPlanarLap(Joint):
         return self._thickness
 
     @thickness.setter
-    def thickeness(self, value):
+    def thickness(self, value):
         self._thickness = value
+
+    def modify_parameter(self, key, value, relative = True):
+        if key == "thickness":
+            if not relative:
+                value = value - self.thickness
+            self.thickness += value
+
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
