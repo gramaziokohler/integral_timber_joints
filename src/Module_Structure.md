@@ -38,7 +38,7 @@ Note: This is the base folder path that is added to Python Path (for Rhino too)
 
 This folder contains geometrical classes. An un-cut beam can be modelled by a `Beam` object. A beam with joints or other machined features are modeled at the `Assembly` level, which maintains the relationship of each `Beam` object with its list of features acting as subtractive geometry. The following feature objects exist:
 
-- Joint (`Joint_90lap`, `Joint_halflap`, `Joint_non_planar_lap`)
+- Joint (`Joint_90lap`, `JointHalfLap`, `Joint_non_planar_lap`)
 - Screw Hole (Stored as a property of `Joint`)
 - `Beamcut` (Planar cut at start or end of beam)
 
@@ -48,7 +48,7 @@ Each feature object belongs to only one beam, if two beams intersect to create a
 
 Both the (1) geometry of the beam and (2) the location of the beam within an assembly are stored within the Beam Class. This is largely inherited from BTL data format.
 
-The geometry and location of a feature (such as `Joint_halflap`) in WCF can be dependent on the `Beam` or it can be independent (for example a beam cut defined from a plane in WCF, note that this is not implemented). This can be implemented in whichever way necessary.
+The geometry and location of a feature (such as `JointHalfLap`) in WCF can be dependent on the `Beam` or it can be independent (for example a beam cut defined from a plane in WCF, note that this is not implemented). This can be implemented in whichever way necessary.
 
 All features object implements `get_feature_meshes(BeamRef)` which returns the negative solid model representing the subtractive machining. The `BeamRef` is referring to the `Beam` of which the feature belongs to. This allows the feature to get properties from the parent Beam to construct geometry.
 
@@ -58,7 +58,7 @@ Joints that can be clamped or screwed will return a list of `Tools` that can be 
 
 ### Flip-able Joints
 
-Some joints (e.g. `Joint_halflap`) which implemented `swap_faceid_to_opposite_face()`can be flipped to the other side with its neighbor, `Assembly.flip_lap_joint` performs a coordinated flip for both beams at the same time.
+Some joints (e.g. `JointHalfLap`) which implemented `swap_faceid_to_opposite_face()`can be flipped to the other side with its neighbor, `Assembly.flip_lap_joint` performs a coordinated flip for both beams at the same time.
 
 
 
