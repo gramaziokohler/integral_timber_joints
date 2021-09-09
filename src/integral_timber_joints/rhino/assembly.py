@@ -14,6 +14,7 @@ from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry import JointHalfLap, JointNonPlanarLap
 from integral_timber_joints.process import RobotClampAssemblyProcess
+from integral_timber_joints.process.compute_process_action_movement import recompute_initial_state
 from integral_timber_joints.geometry import Screw_SL
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
@@ -91,6 +92,10 @@ def _add_beams_to_assembly(process, beams):
     # # * Compute joint screw hole depth
     # for beam_id in new_beam_ids:
     #     assembly.align_screw_direction_by_assembly_sequence(beam_id)
+
+    # * Initial state changed since
+    process.dependency.add_beam(beam_id)
+    recompute_initial_state(process)
 
     # *Recompute dependent solutions for new beams and affected neighbours
     for beam_id in set(affected_neighbours + new_beam_ids):
@@ -280,11 +285,14 @@ def ui_delete_beams(process):
     print('Neighbour Beam Affected: %s' % neighbors)
 
     rs.EnableRedraw(False)
+
     # Delete Beams and their joints
     for beam_id in beam_ids:
         artist.delete_interactive_beam_visualization(beam_id)
         # Maybe need to delete grippers and other things
         assembly.remove_beam(beam_id)
+        # Delete from Process Dependency
+        process.dependency.delete_beam(beam_id)
         print('Beam Removed: %s' % beam_id)
 
     # Redraw neighbour beams since joints maybe gone.

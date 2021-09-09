@@ -134,6 +134,14 @@ class ComputationalDependency(Graph):
             for beam_id in self.process.assembly.beam_ids():
                 self.update_default_node_attributes({beam_id: ComputationalResult.Invalid})
 
+    def add_beam(self, beam_id):
+        self.update_default_node_attributes({beam_id: ComputationalResult.Invalid})
+
+    def delete_beam(self, beam_id):
+        for node in self.nodes():
+            self.unset_node_attribute(node, beam_id)
+        del self.default_node_attributes[beam_id]
+
     def set_solution_validity(self, beam_id, fx, state, invalidate_downstream=True):
         # type: (str, function, int, bool) -> None
         """ Sets the solution's validity to a given value.

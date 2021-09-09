@@ -598,6 +598,7 @@ def recompute_initial_state(process, verbose=False):
 
     # Beams are all in their storage position
     for beam_id in assembly.sequence:
+        process.dependency.compute(beam_id, process.compute_storeage_frame)
         process.initial_state[(beam_id, 'f')] = assembly.get_beam_attribute(beam_id, 'assembly_wcf_storage')
         process.initial_state[(beam_id, 'a')] = False
 
