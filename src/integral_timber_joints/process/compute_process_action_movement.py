@@ -69,7 +69,10 @@ def assign_tool_type_to_joints(process, beam_id, verbose=False):
     for joint_id in process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
         existing_tool_type = process.assembly.get_joint_attribute(joint_id, 'tool_type')
         assembly_tools_requested_by_joint = process.assembly.joint(joint_id).assembly_tool_types(assembly_method)
-
+        if verbose:
+            print('joint_id', joint_id)
+            print('existing_tool_type', existing_tool_type)
+            print('assembly_tools_requested_by_joint', assembly_tools_requested_by_joint)
         # Do not change anything if tool_type is already set and is valid
         if existing_tool_type is not None:
             if any([existing_tool_type.startswith(requested_type) for requested_type in assembly_tools_requested_by_joint]):
@@ -82,10 +85,12 @@ def assign_tool_type_to_joints(process, beam_id, verbose=False):
         for requested_type in assembly_tools_requested_by_joint:
             # Check if the preferred clamp exist.
             for available_tool_type in process.available_assembly_tool_types:
+                if verbose:
+                    print ('Comparing: available_tool_type', available_tool_type, 'requested_type', requested_type)
                 if available_tool_type.startswith(requested_type):
                     process.assembly.set_joint_attribute(joint_id, 'tool_type', available_tool_type)
                     something_changed = True
-                break
+                    break
 
         if process.get_tool_type_of_joint(joint_id) is None:
             print("WARNING: Cannot assign clamp types. Joint (%s) demand clamp Type: %s" % (joint_id, assembly_tools_requested_by_joint))
