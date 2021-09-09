@@ -69,15 +69,6 @@ def _add_beams_to_assembly(process, beams):
                 new_joints.append(j_m)
                 affected_neighbours.append(beam_stay.name)
 
-                # * Add Screw to joint
-                head_side_thickness = j_m.thickness
-                screw = Screw_SL.AutoLength_Factory(center_line=screw_line, head_side_thickness=head_side_thickness)
-                print (screw_line)
-                print (head_side_thickness)
-                print (screw)
-                assembly.set_screw_of_joint((beam_id, existing_beam.name), screw)
-
-
         # * Automatically assign Assembly Method
         if len(new_joints) == 0:
             assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.GROUND_CONTACT)
@@ -88,10 +79,6 @@ def _add_beams_to_assembly(process, beams):
         else:
             assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.CLAMPED)
             print("- Automatically assigned Assembly method: CLAMPED")
-
-    # # * Compute joint screw hole depth
-    # for beam_id in new_beam_ids:
-    #     assembly.align_screw_direction_by_assembly_sequence(beam_id)
 
     # * Initial state changed since
     process.dependency.add_beam(beam_id)
@@ -331,7 +318,6 @@ def ui_flip_beams(process):
         for neighbour_id in earlier_neighbors:
             joint_id = (beam_id, neighbour_id)
             assembly.flip_lap_joint(joint_id)
-            assembly.flip_screw(joint_id)
 
         # * Update drownstream computation
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_final', None)
@@ -410,9 +396,6 @@ def ui_change_assembly_method(process, preselection=[]):
                         # Change of Screw Hole situation will require a recomputation and mesh update
                         if (new_assembly_method in BeamAssemblyMethod.screw_methods) != (old_assembly_method in BeamAssemblyMethod.screw_methods):
                             for neighbour_beam_id in process.assembly.get_already_built_neighbors(beam_id):
-                                # Change has_screw status
-                                joint_id = (beam_id, neighbour_beam_id)
-                                process.assembly.set_joint_shared_attribute(joint_id, 'has_screw', new_assembly_method in BeamAssemblyMethod.screw_methods)
                                 # Redraw Neighbour Beams because joint screw changed
                                 beams_to_redraw.append(neighbour_beam_id)
 

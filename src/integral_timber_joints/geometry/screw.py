@@ -60,6 +60,7 @@ class Screw_SL(Data):
         head_side_thickness=50,  # type: float
         screw_lengths=(8, 40, 80, 120),  # type: tuple[float, float, float, float]
         screw_diameters=(32, 19, 16, 10),  # type: tuple[float, float, float, float]
+        valid = True,
     ):
         """
         The extrinsic parameter of the screw are dependent on both beams across the joint.
@@ -86,6 +87,7 @@ class Screw_SL(Data):
 
         self.screw_lengths = screw_lengths
         self.screw_diameters = screw_diameters
+        self.valid = valid
 
     @property
     def data(self):
@@ -95,6 +97,7 @@ class Screw_SL(Data):
             'head_side_thickness': self.head_side_thickness,
             'screw_lengths': self.screw_lengths,
             'screw_diameters': self.screw_diameters,
+            'valid': self.valid,
         }
         return data
 
@@ -105,6 +108,7 @@ class Screw_SL(Data):
         self.head_side_thickness = data.get('head_side_thickness', 50)
         self.screw_lengths = data.get('screw_lengths', (8, 40, 80, 120))
         self.screw_diameters = data.get('screw_diameters', (32, 19, 16, 10))
+        self.valid = data.get('valid', False)
 
     @property
     def total_length(self):
@@ -223,12 +227,33 @@ class Screw_SL(Data):
                 screw_diameters=(32, 19, 16, 10),  # type: tuple[float, float, float, float]
             )
         # SL60_50
-        if head_side_thickness >= 30.0 and head_side_thickness <= 90.0 and center_line.length >= 130.0:
+        elif head_side_thickness >= 30.0 and head_side_thickness <= 90.0 and center_line.length >= 130.0:
             return Screw_SL(
                 name="SL60_50",
                 center_line=center_line,  # type: Line
                 head_side_thickness=head_side_thickness,  # type: float
                 screw_lengths=(8, 60, 110, 150),  # type: tuple[float, float, float, float]
                 screw_diameters=(32, 19, 16, 10),  # type: tuple[float, float, float, float]
+            )
+        # * Invalid placeholder is created such there is a geometry for creating boolean and for UI selection
+        # Create in invalid paramter place holder
+        elif head_side_thickness <= 60.0:
+            return Screw_SL(
+                name="SL40_40_Invalid",
+                center_line=center_line,  # type: Line
+                head_side_thickness=head_side_thickness,  # type: float
+                screw_lengths=(8, 40, 80, 120),  # type: tuple[float, float, float, float]
+                screw_diameters=(32, 19, 16, 10),  # type: tuple[float, float, float, float]
+                valid = False,
+            )
+        # Create in invalid paramter place holder
+        else:
+            return Screw_SL(
+                name="SL60_50_Invalid",
+                center_line=center_line,  # type: Line
+                head_side_thickness=head_side_thickness,  # type: float
+                screw_lengths=(8, 60, 110, 150),  # type: tuple[float, float, float, float]
+                screw_diameters=(32, 19, 16, 10),  # type: tuple[float, float, float, float]
+                valid = False,
             )
         return None

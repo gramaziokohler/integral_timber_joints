@@ -29,6 +29,17 @@ class Joint(object):
         """
         pass
 
+    @property
+    def thickness(self):
+        raise NotImplementedError
+
+    @thickness.setter
+    def thickeness(self, value):
+        raise NotImplementedError
+
+    def get_joint_center_at_solid_side(self, Beam):
+        raise NotImplementedError
+
     def to_data(self):
         """Returns a dictionary of structured data representing the data structure.
         Actual implementation is in @property def data(self) of the inherited class

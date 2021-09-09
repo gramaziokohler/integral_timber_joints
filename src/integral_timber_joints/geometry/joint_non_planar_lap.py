@@ -71,7 +71,7 @@ class JointNonPlanarLap(Joint):
         :param face_id:   int
         """
         self.center_frame = deepcopy(center_frame)
-        self.thickness = thickness
+        self._thickness = thickness
         self.beam_move_face_id = beam_move_face_id
         self.beam_stay_face_id = beam_stay_face_id
         self.axial_dot_product = axial_dot_product
@@ -100,7 +100,7 @@ class JointNonPlanarLap(Joint):
         """
         joint = cls()
         joint.center_frame = data.get('center_frame', None)
-        joint.thickness = data.get('thickness', 70)
+        joint._thickness = data.get('thickness', 70)
         joint.beam_move_face_id = data.get('beam_move_face_id', 1)
         joint.beam_stay_face_id = data.get('beam_stay_face_id', 1)
         joint.axial_dot_product = data.get('axial_dot_product', 0.0)
@@ -133,6 +133,14 @@ class JointNonPlanarLap(Joint):
             return distance_point_plane(self.pt_jc[longest_edge+4], Plane.from_frame(self.center_frame))
         else:
             return distance_point_plane(self.pt_jc[longest_edge], Plane.from_frame(self.center_frame))
+
+    @property
+    def thickness(self):
+        return self._thickness
+
+    @thickness.setter
+    def thickeness(self, value):
+        self._thickness = value
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
@@ -284,7 +292,6 @@ class JointNonPlanarLap(Joint):
         backward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis.scaled(1))
         return [forward_clamp, backward_clamp]
 
-    # This method is not generalizable and should be removed in future
     def get_assembly_direction(self, beam):
         '''
         Returns the only possible assembly direction.
@@ -300,6 +307,23 @@ class JointNonPlanarLap(Joint):
         clamps = []
         clamps.append('SL1')
         return clamps
+
+    def get_joint_center_at_solid_side(self, beam):
+        # type: (Beam) -> Point
+
+        # Center line for intersection
+        center_line = Line(self.center_frame.point, self.center_frame.point + self.center_frame.zaxis)
+
+        if self.is_joint_on_beam_move:
+            beam_move = beam
+            far_ref_side_m = beam_move.reference_side_wcf((self.beam_move_face_id + 1) % 4 + 1)
+            screw_line_start = intersection_line_plane(center_line, Plane.from_frame(far_ref_side_m))
+            return screw_line_start
+        else:
+            beam_stay = beam
+            far_ref_side_s = beam_stay.reference_side_wcf((self.beam_stay_face_id + 1) % 4 + 1)
+            screw_line_end = intersection_line_plane(center_line, Plane.from_frame(far_ref_side_s))
+            return screw_line_end
 
     @classmethod
     def from_beam_beam_intersection(cls, beam_stay, beam_move, thickness=None):

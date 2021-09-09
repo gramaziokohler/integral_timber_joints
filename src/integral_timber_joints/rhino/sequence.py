@@ -159,7 +159,6 @@ def show_menu(process):
         for neighbour_id in earlier_neighbors:
             joint_id = (beam_id, neighbour_id)
             assembly.flip_lap_joint(joint_id)
-            assembly.flip_screw(joint_id)
 
         # * Update drownstream computation
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_final', None)

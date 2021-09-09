@@ -17,7 +17,6 @@ from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMet
 try:
     from typing import Dict, List, Optional, Tuple, cast
 
-
     from integral_timber_joints.process import RobotClampAssemblyProcess
 except:
     pass
@@ -39,7 +38,7 @@ class JointHalfLap(Joint):
         self.length = length
         self.width = width
         self.height = height
-        self.thickness = thickness  # Thickness of the solid part of the beam after boolean.
+        self._thickness = thickness  # Thickness of the solid part of the beam after boolean.
         self.thru_x_neg = True
         self.thru_x_pos = True
         self.name = name
@@ -73,11 +72,37 @@ class JointHalfLap(Joint):
         joint.length = data['length']
         joint.width = data['width']
         joint.height = data['height']
-        joint.thickness = data.get('thickness', 50)
+        joint._thickness = data.get('thickness', 50)
         joint.thru_x_neg = data['thru_x_neg']
         joint.thru_x_pos = data['thru_x_pos']
         joint.name = data['name']
         return joint
+
+    @property
+    def thickness(self):
+        return self._thickness
+
+    @thickness.setter
+    def thickeness(self, value):
+        self._thickness = value
+
+    @property
+    def angled_lead(self):
+        # Calculate the lap joint lead distance (relative to width) caused by angled joint
+        # Distance on X axis (length) between point 0 and 1.
+        # Positive lead if angle > 90, Negative lead if angle < 90
+        return math.tan(math.radians(self.angle - 90)) * self.width
+
+    @property
+    def angled_length(self):
+        # Calculates the length of the lap opening.
+        # Distance on X axis (length) between point 1 and 2. or point 0 and 3.
+        # The value is equal to self.length when angle = 90 degrees.
+        return self.length / math.cos(math.radians(self.angle - 90))
+
+    @property
+    def distance_at_center(self):
+        return self.distance + self.angled_lead / 2 + self.angled_length / 2
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
@@ -160,7 +185,7 @@ class JointHalfLap(Joint):
 
         return face_frame.to_world_coordinates(center_point_in_ocf)
 
-    def get_joint_center_at_closed_side(self, beam):
+    def get_joint_center_at_solid_side(self, beam):
         # type: (Beam) -> Point
         center_point_in_ocf = Point(self.distance_at_center, self.width / 2, 0)
 
@@ -169,7 +194,6 @@ class JointHalfLap(Joint):
 
         return face_frame.to_world_coordinates(center_point_in_ocf)
 
-    # This method is not generalizable and should be removed in future
     def get_assembly_direction(self, beam):
         '''
         Returns the only possible assembly direction.
@@ -188,24 +212,6 @@ class JointHalfLap(Joint):
         self.distance = self.distance + self.angled_lead
         # Angle flip
         self.angle = 180 - self.angle
-
-    @property
-    def angled_lead(self):
-        # Calculate the lap joint lead distance (relative to width) caused by angled joint
-        # Distance on X axis (length) between point 0 and 1.
-        # Positive lead if angle > 90, Negative lead if angle < 90
-        return math.tan(math.radians(self.angle - 90)) * self.width
-
-    @property
-    def angled_length(self):
-        # Calculates the length of the lap opening.
-        # Distance on X axis (length) between point 1 and 2. or point 0 and 3.
-        # The value is equal to self.length when angle = 90 degrees.
-        return self.length / math.cos(math.radians(self.angle - 90))
-
-    @property
-    def distance_at_center(self):
-        return self.distance + self.angled_lead / 2 + self.angled_length / 2
 
     def assembly_tool_types(self, beam_assembly_method):
         # type: (BeamAssemblyMethod) -> list[str]
@@ -305,8 +311,8 @@ class JointHalfLap(Joint):
 
         # conpute screw center line
 
-        beam_move_center = joint_m.get_joint_center_at_closed_side(beam_move)
-        beam_stay_center = joint_s.get_joint_center_at_closed_side(beam_stay)
+        beam_move_center = joint_m.get_joint_center_at_solid_side(beam_move)
+        beam_stay_center = joint_s.get_joint_center_at_solid_side(beam_stay)
         screw_line = Line(beam_move_center, beam_stay_center)
         return (joint_s, joint_m, screw_line)
 

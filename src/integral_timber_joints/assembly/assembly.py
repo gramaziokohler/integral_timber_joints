@@ -6,7 +6,7 @@ except:
     pass
 
 from compas.datastructures import Network, Mesh
-from compas.geometry import Point, Transformation, Translation, Vector, Shape
+from compas.geometry import Point, Transformation, Translation, Vector, Shape, Line
 from compas.geometry.primitives.plane import Plane
 from compas.geometry.primitives.frame import Frame
 from compas.geometry.transformations.transformation import Transformation
@@ -131,9 +131,6 @@ class Assembly(Network):
             'tool_orientation_frame_index' : 0,
             'tool_type': None,
             'tool_id': None,
-
-            'has_screw':False,
-            'screw':None,
         })
 
     # ----------------------------
@@ -411,13 +408,9 @@ class Assembly(Network):
         # Swap item with previous / next item
         if shift_earlier and i > 0:
             sequence[i-1], sequence[i] = sequence[i], sequence[i-1]
-            self.align_screw_direction_by_assembly_sequence(beam_id)
-            self.align_screw_direction_by_assembly_sequence(sequence[i-1])
             return [sequence[i], sequence[i-1]]
         if not shift_earlier and i < len(sequence) - 1:
             sequence[i+1], sequence[i] = sequence[i], sequence[i+1]
-            self.align_screw_direction_by_assembly_sequence(beam_id)
-            self.align_screw_direction_by_assembly_sequence(sequence[i+1])
             return [sequence[i], sequence[i+1]]
 
     def shift_beam_sequence(self, beam_id, shift_amount, update_assembly_direction=True, allow_change_joint_direction=True):
@@ -462,13 +455,10 @@ class Assembly(Network):
                     else:
                         j2, j1, screw_line = JointNonPlanarLap.from_beam_beam_intersection(self.beam(nbr_beam_id), self.beam(beam_id), thickness=original_thickness)
                         joint_thickness = j1.thickness
-                    screw = Screw_SL.AutoLength_Factory(center_line=screw_line, head_side_thickness=joint_thickness)
                     self.add_joint_pair(j1, j2, beam_id, nbr_beam_id)
-                    self.set_screw_of_joint(joint_id, screw)
                 else:
                     self.flip_lap_joint(joint_id)
-                    screw = self.get_screw_of_joint(joint_id)
-                    screw.flip()
+
 
             # Recompute all affected beams screw hole, assembly directions and realign joints if needed.
             for _beam_id in list(neighbour_with_joint_to_flip) + [beam_id]:
@@ -479,8 +469,7 @@ class Assembly(Network):
                         print('Search for another joint config for Beam %s' % _beam_id)
                         self.search_for_halflap_joints_with_previous_beams(_beam_id, self.get_beam_attribute(beam_id, 'assembly_vector_final'))
                         self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
-                #
-                self.align_screw_direction_by_assembly_sequence(beam_id)
+
 
             # The affected beams include all_affected_earlier_neighbours
             affected_ids = affected_ids.union(all_affected_earlier_neighbours)
@@ -879,42 +868,71 @@ class Assembly(Network):
 
         return [(neighbour_id, beam_id) for neighbour_id in self.get_already_built_neighbors(beam_id)]
 
+    def get_screw_line_of_joint(self, joint_id):
+        #type: (Tuple[str,str]) -> Line
+        i, j = joint_id
+        # Note on the head side:
+        # Head Side = Moving Beam Side = Later Beam + Joint_id (later_beam_id, earlier_beam_id)
+        # Thread Side = Staying Beam Side = Earlier Beam + Joint_id (earlier_beam_id, later_beam_id)
+        if self.sequence.index(i) >  self.sequence.index(j):
+            i , j  = j , i
+        beam_stay_id, beam_move_id = i, j
+        st_point = self.joint((beam_move_id, beam_stay_id)).get_joint_center_at_solid_side(self.beam(beam_move_id))
+        en_point = self.joint((beam_stay_id, beam_move_id)).get_joint_center_at_solid_side(self.beam(beam_stay_id))
+        return Line(st_point, st_point)
+
+    def get_head_side_thickness_of_joint(self, joint_id):
+        #type: (Tuple[str,str]) -> float
+        i, j = joint_id
+        # Note on the head side:
+        # Head Side = Moving Beam Side = Later Beam + Joint_id (later_beam_id, earlier_beam_id)
+        # Thread Side = Staying Beam Side = Earlier Beam + Joint_id (earlier_beam_id, later_beam_id)
+        if self.sequence.index(i) >  self.sequence.index(j):
+            joint_head_side = self.joint((i,j))
+        else:
+            joint_head_side = self.joint((j, i))
+        return joint_head_side.thickness
+
+    def get_has_screw_of_joint(self, joint_id):
+        #type: (Tuple[str,str]) -> bool
+        """Compute if the joint has screw.
+        If the assemblt method of the "later beam" is a screw method, then it will need screw.
+
+        `joint_id` input is reversible.
+        """
+        i, j = joint_id
+        if self.sequence.index(i) >  self.sequence.index(j):
+            earlier_beam_id , later_beam_id = j, i
+        else:
+            earlier_beam_id, later_beam_id = i, j
+
+        if self.get_assembly_method(later_beam_id) in BeamAssemblyMethod.screw_methods:
+            return True
+
+
     def get_screw_of_joint(self, joint_id):
         #type: (Tuple[str,str]) -> Screw_SL
-        if self.get_joint_shared_attribute(joint_id, 'has_screw'):
-            return self.get_joint_shared_attribute(joint_id, 'screw')
+
+        if self.get_has_screw_of_joint(joint_id):
+            i, j = joint_id
+            if self.sequence.index(i) >  self.sequence.index(j):
+                earlier_beam_id , later_beam_id = j, i
+            else:
+                earlier_beam_id, later_beam_id = i, j
+            later_beam = self.beam(later_beam_id)
+            earlier_beam = self.beam(earlier_beam_id)
+
+            # Note
+            # Later Beam = Moving Side = Head Side
+            # Earlier Beam = Staying Side = Thread Side
+            st = self.joint((later_beam_id, earlier_beam_id)).get_joint_center_at_solid_side(later_beam)
+            en = self.joint((earlier_beam_id, later_beam_id)).get_joint_center_at_solid_side(earlier_beam)
+            head_side_thickness = self.joint((later_beam_id, earlier_beam_id)).thickeness
+            return Screw_SL.AutoLength_Factory(center_line=Line(st,en), head_side_thickness=head_side_thickness)
         else:
             return None
 
-    def set_screw_of_joint(self, joint_id, screw):
-        #type: (Tuple[str,str], Screw_SL) -> None
-        return self.set_joint_shared_attribute(joint_id, 'screw', screw)
 
-
-    def align_screw_direction_by_assembly_sequence(self, beam_id):
-        # type: (Assembly, str) -> None
-        """Flip the joint screws for beams that are screwed.
-        If the beam's ssembly method require screws, joint.has_screw=True
-
-        Only the joints with previously built beams will be modifued.
-        If the joint is with an earlier beam, the joint will have a screw head.
-
-        """
-        for joint_id in self.get_joints_of_beam_connected_to_already_built(beam_id):
-            inverse_joint_id = (joint_id[1], joint_id[0])
-            # print(self.get_assembly_method(beam_id))
-            # print(BeamAssemblyMethod.screw_methods)
-            if self.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
-                # print("Screwing Joint %s, %s" % (joint_id, self.joint(joint_id)))
-                self.joint(joint_id).has_screw = True
-                self.joint(joint_id).screw_head_side = True
-                self.joint(inverse_joint_id).has_screw = True
-                self.joint(inverse_joint_id).screw_head_side = False
-
-            else:
-                # print("Notscrewing Joint %s, %s" % (joint_id, self.joint(joint_id)))
-                self.joint(joint_id).has_screw = False
-                self.joint(inverse_joint_id).has_screw = False
 
     def get_joint_id_where_screwdriver_is_gripper(self, beam_id):
         # type: (str) -> Optional[Tuple[str, str]]
@@ -982,8 +1000,6 @@ class Assembly(Network):
                     joint_s, joint_m, screw_line = option2
 
                 self.add_joint_pair(joint_m, joint_s, beam_id, bid_neighbor)
-                screw = Screw_SL.AutoLength_Factory(center_line=screw_line, head_side_thickness=joint_m.thickness)
-                self.set_screw_of_joint((beam_id, bid_neighbor), screw)
                 beam_m.remove_cached_mesh()
                 beam_s.remove_cached_mesh()
             else:
@@ -1006,10 +1022,7 @@ class Assembly(Network):
         self.beam(beam_id).remove_cached_mesh()
         self.beam(neighbour_id).remove_cached_mesh()
 
-    def flip_screw(self, joint_id):
-        screw = self.get_joint_shared_attribute(joint_id, 'screw') #type: Screw_SL
-        if screw is not None:
-            screw.flip()
+
     # -----------------------
     # Assembly Directions
     # -----------------------

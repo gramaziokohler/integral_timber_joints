@@ -37,13 +37,9 @@ if __name__ == '__main__':
         # from integral_timber_joints.process.compute_process_action_movement import assign_tool_type_to_joints
         # assign_tool_type_to_joints(process, beam_id, verbose=True)
 
-        # assembly.set_joint_shared_attribute(joint_id, 'has_screw', True)
-        # print (process.assembly.get_joint_shared_attribute(joint_id, 'has_screw'))
-        # print (process.assembly.get_joint_shared_attribute(joint_id, 'screw'))
         # joint = assembly.joint(joint_id)
         # print (joint.thickness)
 
-        # print (process.assembly.get_screw_of_joint(joint_id))
         # print ('-----------')
 
     print(process.available_assembly_tool_types)
