@@ -214,7 +214,7 @@ class Screw_SL(Data):
         If neither screws are possible due to over dimension.
         """
         # SL40_40
-        if head_side_thickness >= 30.0 and head_side_thickness <= 60.0 and center_line.length >= 100.0:
+        if head_side_thickness >= 30.0 and head_side_thickness <= 60.0 and center_line.length >= 99.0:
             return Screw_SL(
                 name="SL40_40",
                 center_line=center_line,  # type: Line

@@ -11,11 +11,13 @@ from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.screw import Screw_SL
 from integral_timber_joints.geometry.utils import *
+from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
+
 
 try:
     from typing import Dict, List, Optional, Tuple, cast
 
-    from integral_timber_joints.assembly import BeamAssemblyMethod
+
     from integral_timber_joints.process import RobotClampAssemblyProcess
 except:
     pass
@@ -26,7 +28,7 @@ class JointHalfLap(Joint):
     joint class containing varied joints
     """
 
-    def __init__(self, face_id=1, distance=100, angle=90, length=100, width=100, height=100, name=None):
+    def __init__(self, face_id=1, distance=100, angle=90, length=100, width=100, height=50, thickness=50, name=None):
         """
         :param distance:  double
         :param face_id:   int
@@ -37,6 +39,7 @@ class JointHalfLap(Joint):
         self.length = length
         self.width = width
         self.height = height
+        self.thickness = thickness  # Thickness of the solid part of the beam after boolean.
         self.thru_x_neg = True
         self.thru_x_pos = True
         self.name = name
@@ -51,6 +54,7 @@ class JointHalfLap(Joint):
             'length': self.length,
             'width': self.width,
             'height': self.height,
+            'thickness': self.thickness,
             'thru_x_neg': self.thru_x_neg,
             'thru_x_pos': self.thru_x_pos,
             'name': self.name,
@@ -69,6 +73,7 @@ class JointHalfLap(Joint):
         joint.length = data['length']
         joint.width = data['width']
         joint.height = data['height']
+        joint.thickness = data.get('thickness', 50)
         joint.thru_x_neg = data['thru_x_neg']
         joint.thru_x_pos = data['thru_x_pos']
         joint.name = data['name']
@@ -160,7 +165,7 @@ class JointHalfLap(Joint):
         center_point_in_ocf = Point(self.distance_at_center, self.width / 2, 0)
 
         # Get face_frame from Beam (the parent Beam)
-        face_frame = beam.reference_side_wcf((self.face_id + 1) % 4 + 1 )
+        face_frame = beam.reference_side_wcf((self.face_id + 1) % 4 + 1)
 
         return face_frame.to_world_coordinates(center_point_in_ocf)
 
@@ -206,7 +211,7 @@ class JointHalfLap(Joint):
         # type: (BeamAssemblyMethod) -> list[str]
         # Returns a list of clamps types that can assemble this joint
         clamps = []
-        if self.has_screw:
+        if beam_assembly_method in BeamAssemblyMethod.screw_methods:
             clamps.append('SL1')
         else:
             if self.angle > 24.9 and self.angle < 90.1:
@@ -217,7 +222,7 @@ class JointHalfLap(Joint):
 
     @classmethod
     def from_beam_beam_intersection(cls, beam_stay, beam_move, face_choice=0, dist_tol=1e-5, coplanar_tol=5e-3):
-        # type: (Beam, Beam, int, float, float) -> Tuple[JointHalfLap, JointHalfLap, Screw_SL]
+        # type: (Beam, Beam, int, float, float) -> Tuple[JointHalfLap, JointHalfLap, Line]
         ''' Compute the intersection between two beams.
 
         `beam_stay` must be the earlier beam in assembly sequence
@@ -234,7 +239,7 @@ class JointHalfLap(Joint):
         # Find coplanar faces
         face_pairs = beam_move.get_beam_beam_coplanar_face_ids(beam_stay, coplanar_tol)
         if len(face_pairs) == 0:
-            return (None, None)
+            return (None, None, None)
         beam_m_face_id, beam_s_face_id = face_pairs[face_choice]
 
         # Find front and back edges
@@ -261,7 +266,7 @@ class JointHalfLap(Joint):
         d2f1b = llx_distance(beam2_frnt_edge, beam1_back_edge)
         # Handles the case where the intersecion fails.
         if any(v is None for v in [d1f2f, d1f2b, d2f1f, d2f1b]):
-            return (None, None)
+            return (None, None, None)
 
         beam_m_distance = min(d1f2f, d1f2b)
         beam_s_distance = min(d2f1f, d2f1b)
@@ -278,10 +283,24 @@ class JointHalfLap(Joint):
         beam_s_angle = math.degrees(llx_llx_angle(beam2_frnt_edge, beam2_back_edge, beam1_frnt_edge))
 
         # Construct Joint object and flip one of them
-        joint_m = JointHalfLap(beam_m_face_id, beam_m_distance, beam_m_angle, beam_stay.get_face_width(beam_s_face_id), beam_move.get_face_width(
-            beam_m_face_id), beam_move.get_face_height(beam_m_face_id)/2, name='%s-%s' % (beam_move.name, beam_stay.name))
-        joint_s = JointHalfLap(beam_s_face_id, beam_s_distance, beam_s_angle, beam_move.get_face_width(beam_m_face_id), beam_stay.get_face_width(
-            beam_s_face_id), beam_stay.get_face_height(beam_s_face_id)/2, name='%s-%s' % (beam_stay.name, beam_move.name))
+        joint_m = JointHalfLap(
+            face_id=beam_m_face_id,
+            distance=beam_m_distance,
+            angle=beam_m_angle,
+            length=beam_stay.get_face_width(beam_s_face_id),
+            width=beam_move.get_face_width(beam_m_face_id),
+            height=beam_move.get_face_height(beam_m_face_id)/2,
+            thickness=beam_stay.get_face_height(beam_s_face_id)/2,
+            name='%s-%s' % (beam_move.name, beam_stay.name))
+        joint_s = JointHalfLap(
+            face_id=beam_s_face_id,
+            distance=beam_s_distance,
+            angle=beam_s_angle,
+            length=beam_move.get_face_width(beam_m_face_id),
+            width=beam_stay.get_face_width(beam_s_face_id),
+            height=beam_stay.get_face_height(beam_s_face_id)/2,
+            thickness=beam_move.get_face_height(beam_m_face_id)/2,
+            name='%s-%s' % (beam_stay.name, beam_move.name))
         joint_s.swap_faceid_to_opposite_face()
 
         # conpute screw center line

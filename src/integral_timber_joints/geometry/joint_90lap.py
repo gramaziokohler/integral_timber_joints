@@ -47,7 +47,7 @@ class Joint_90lap(Joint):
         # type: (BeamAssemblyMethod) -> list[str]
         # Returns a list of clamps types that can assemble this joint
         clamps = []
-        if self.has_screw:
+        if beam_assembly_method in BeamAssemblyMethod.screw_methods:
             clamps.append('SL1')
         else:
             clamps.append('CL3')

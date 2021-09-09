@@ -15,11 +15,15 @@ from compas.geometry import Projection, Translation
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import *
+from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
+
 
 try:
-    from integral_timber_joints.assembly import BeamAssemblyMethod
+    from typing import Dict, List, Optional, Tuple, cast
+
 except:
     pass
+
 
 class JointNonPlanarLap(Joint):
     """
@@ -129,8 +133,6 @@ class JointNonPlanarLap(Joint):
             return distance_point_plane(self.pt_jc[longest_edge+4], Plane.from_frame(self.center_frame))
         else:
             return distance_point_plane(self.pt_jc[longest_edge], Plane.from_frame(self.center_frame))
-
-
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
@@ -301,7 +303,7 @@ class JointNonPlanarLap(Joint):
 
     @classmethod
     def from_beam_beam_intersection(cls, beam_stay, beam_move, thickness=None):
-        # type: (Beam, Beam, float) -> tuple[JointNonPlanarLap, JointNonPlanarLap]
+        # type: (Beam, Beam, float) -> tuple[JointNonPlanarLap, Line]
         ''' Compute the intersection between two beams.
 
         `beam_stay` must be the earlier beam in assembly sequence
@@ -420,12 +422,11 @@ class JointNonPlanarLap(Joint):
         # * Compute Screw line
         center_line = Line(joint_center_frame.point, joint_center_frame.point + joint_center_frame.zaxis)
 
-        far_ref_side_m = beam_move.reference_side_wcf((joint_face_id_m + 1 )% 4 + 1)
-        far_ref_side_s = beam_stay.reference_side_wcf((joint_face_id_s + 1 )% 4 + 1)
+        far_ref_side_m = beam_move.reference_side_wcf((joint_face_id_m + 1) % 4 + 1)
+        far_ref_side_s = beam_stay.reference_side_wcf((joint_face_id_s + 1) % 4 + 1)
 
         screw_line_start = intersection_line_plane(center_line, Plane.from_frame(far_ref_side_m))
         screw_line_end = intersection_line_plane(center_line, Plane.from_frame(far_ref_side_s))
-
 
         screw_line = Line(screw_line_start, screw_line_end)
         return (joint_s, joint_m, screw_line)

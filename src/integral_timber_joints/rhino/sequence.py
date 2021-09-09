@@ -157,7 +157,9 @@ def show_menu(process):
         # * Loop though alread_built_neighbors and swap joint
         earlier_neighbors = assembly.get_already_built_neighbors(beam_id)
         for neighbour_id in earlier_neighbors:
-            assembly.flip_lap_joint((beam_id, neighbour_id))
+            joint_id = (beam_id, neighbour_id)
+            assembly.flip_lap_joint(joint_id)
+            assembly.flip_screw(joint_id)
 
         # * Update drownstream computation
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_final', None)

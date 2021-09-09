@@ -15,6 +15,7 @@ from compas import is_rhino
 
 from compas.rpc import Proxy
 
+from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
 from integral_timber_joints.geometry import Beamcut, Joint, JointNonPlanarLap
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
@@ -23,30 +24,6 @@ try:
     from integral_timber_joints.geometry.screw import Screw_SL
 except:
     pass
-
-class BeamAssemblyMethod(object):
-    """
-    Values > GROUND_CONTACT imply assembly tools are used.
-    """
-    UNDEFINED = -1      # UNDEFINED : Default starting value when the method is not computed
-    GROUND_CONTACT = 0  # GROUND_CONTACT : no assembly tools.
-    # final assembly vector will be hardcoded to be downwards.
-    CLAMPED = 1         # CLAMPED : All joints (with earlier neighbours) need a clamp.
-    # Clamp information will be stored in joint_attributes.
-    # Gripper information is stored in beam_attributes.
-    SCREWED_WITH_GRIPPER = 2    # Each joint need a screwdriver.
-    # Screwdriver information is stored in joint_attributes.
-    # Gripper information is stored in beam_attributes.
-    SCREWED_WITHOUT_GRIPPER = 3  # Same as SCREWED_WITH_GRIPPER but one of the screwdriver is used as gripper.
-    # Gripper information is stored in beam_attributes but
-    # `gripper_type` and `gripper_id` will equal to `tool_type` and `tool_id`
-    screw_methods = [SCREWED_WITH_GRIPPER, SCREWED_WITHOUT_GRIPPER]
-    readable_names_dict = {
-        "GroundContact": GROUND_CONTACT,
-        "Clamped": CLAMPED,
-        "ScrewedWithGripper": SCREWED_WITH_GRIPPER,
-        "ScrewedWithoutGripper": SCREWED_WITHOUT_GRIPPER,
-    }
 
 
 class Assembly(Network):
@@ -495,7 +472,6 @@ class Assembly(Network):
 
             # Recompute all affected beams screw hole, assembly directions and realign joints if needed.
             for _beam_id in list(neighbour_with_joint_to_flip) + [beam_id]:
-                self.align_screw_direction_by_assembly_sequence(beam_id)
                 self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
                 # If assembly direction is not valid, we try aligning its joints again to see.
                 if self.beam_problems(_beam_id):
@@ -503,6 +479,8 @@ class Assembly(Network):
                         print('Search for another joint config for Beam %s' % _beam_id)
                         self.search_for_halflap_joints_with_previous_beams(_beam_id, self.get_beam_attribute(beam_id, 'assembly_vector_final'))
                         self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
+                #
+                self.align_screw_direction_by_assembly_sequence(beam_id)
 
             # The affected beams include all_affected_earlier_neighbours
             affected_ids = affected_ids.union(all_affected_earlier_neighbours)
@@ -1028,6 +1006,10 @@ class Assembly(Network):
         self.beam(beam_id).remove_cached_mesh()
         self.beam(neighbour_id).remove_cached_mesh()
 
+    def flip_screw(self, joint_id):
+        screw = self.get_joint_shared_attribute(joint_id, 'screw') #type: Screw_SL
+        if screw is not None:
+            screw.flip()
     # -----------------------
     # Assembly Directions
     # -----------------------

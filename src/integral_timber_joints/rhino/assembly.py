@@ -71,6 +71,9 @@ def _add_beams_to_assembly(process, beams):
                 # * Add Screw to joint
                 head_side_thickness = j_m.thickness
                 screw = Screw_SL.AutoLength_Factory(center_line=screw_line, head_side_thickness=head_side_thickness)
+                print (screw_line)
+                print (head_side_thickness)
+                print (screw)
                 assembly.set_screw_of_joint((beam_id, existing_beam.name), screw)
 
 
@@ -85,9 +88,9 @@ def _add_beams_to_assembly(process, beams):
             assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.CLAMPED)
             print("- Automatically assigned Assembly method: CLAMPED")
 
-    # * Compute joint screw hole depth
-    for beam_id in new_beam_ids:
-        assembly.align_screw_direction_by_assembly_sequence(beam_id)
+    # # * Compute joint screw hole depth
+    # for beam_id in new_beam_ids:
+    #     assembly.align_screw_direction_by_assembly_sequence(beam_id)
 
     # *Recompute dependent solutions for new beams and affected neighbours
     for beam_id in set(affected_neighbours + new_beam_ids):
@@ -318,7 +321,9 @@ def ui_flip_beams(process):
         # * Loop though alread_built_neighbors and swap joint
         earlier_neighbors = assembly.get_already_built_neighbors(beam_id)
         for neighbour_id in earlier_neighbors:
-            assembly.flip_lap_joint((beam_id, neighbour_id))
+            joint_id = (beam_id, neighbour_id)
+            assembly.flip_lap_joint(joint_id)
+            assembly.flip_screw(joint_id)
 
         # * Update drownstream computation
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_final', None)
@@ -384,25 +389,30 @@ def ui_change_assembly_method(process, preselection=[]):
                     beam_ids = get_object_names(guids)
 
             # Make change to all selected beams
+            beams_to_redraw = []
             if len(beam_ids) > 0:
                 for beam_id in beam_ids:
                     old_assembly_method = assembly.get_assembly_method(beam_id)
                     if new_assembly_method != old_assembly_method:
                         # Changing assembly method
                         process.assembly.set_beam_attribute(beam_id, 'assembly_method', new_assembly_method)
+                        beams_to_redraw.append(beam_id)
                         # print ('Beam(%s) change from %s to %s' % (beam_id, old_assembly_method, new_assembly_method))
 
                         # Change of Screw Hole situation will require a recomputation and mesh update
                         if (new_assembly_method in BeamAssemblyMethod.screw_methods) != (old_assembly_method in BeamAssemblyMethod.screw_methods):
-                            process.assembly.align_screw_direction_by_assembly_sequence(beam_id)
-                            artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
-                            # Neighbour joints are also affected
                             for neighbour_beam_id in process.assembly.get_already_built_neighbors(beam_id):
-                                artist.redraw_interactive_beam(neighbour_beam_id, force_update=True, redraw=False)
+                                # Change has_screw status
+                                joint_id = (beam_id, neighbour_beam_id)
+                                process.assembly.set_joint_shared_attribute(joint_id, 'has_screw', new_assembly_method in BeamAssemblyMethod.screw_methods)
+                                # Redraw Neighbour Beams because joint screw changed
+                                beams_to_redraw.append(neighbour_beam_id)
 
                         process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
                         process.dependency.invalidate(beam_id, process.assign_gripper_to_beam)
-                show_assembly_method_color(process)
+
+            [artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False) for beam_id in beams_to_redraw]
+            show_assembly_method_color(process)
 
             # Exit function if there are preselection
             if len(preselection) > 0:
