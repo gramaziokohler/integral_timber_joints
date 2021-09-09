@@ -331,6 +331,36 @@ class Assembly(Network):
         """
         return self.edge_attribute(joint_id, attribute_key)
 
+    def set_joint_shared_attribute(self, joint_id, attribute_key, value):
+        """ Setting a shared attribute acrosss a pair of joint.
+        Accessing an attribute via joint_id ('b1','b2') will be the same as joint_id ('b2','b1')
+
+        Note
+        ----
+        The implementation stores as with typical `set_joint_attribute()`, however,
+        the joint_id used is based on string lexicographical ordering, NOT sequence.
+        We will always store and retrive values from joint(lesser_string, greater_string)
+
+        """
+        if (joint_id[0] > joint_id[1]):
+            joint_id = (joint_id[1], joint_id[0])
+        self.set_joint_attribute(joint_id=joint_id, attribute_key=attribute_key, value=value)
+
+    def get_joint_shared_attribute(self, joint_id, attribute_key):
+        """ Setting a shared attribute acrosss a pair of joint.
+        Accessing an attribute via joint_id ('b1','b2') will be the same as joint_id ('b2','b1')
+
+        Note
+        ----
+        The implementation stores as with typical `set_joint_attribute()`, however,
+        the joint_id used is based on string lexicographical ordering, NOT sequence.
+        We will always store and retrive values from joint(lesser_string, greater_string)
+
+        """
+        if (joint_id[0] > joint_id[1]):
+            joint_id = (joint_id[1], joint_id[0])
+        return self.edge_attribute(joint_id, attribute_key)
+
     def beam(self, key):
         # type: (str) -> Beam
         """Get a beam by its key."""
