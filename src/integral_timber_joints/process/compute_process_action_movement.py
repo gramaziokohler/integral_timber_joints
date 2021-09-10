@@ -78,7 +78,7 @@ def assign_tool_type_to_joints(process, beam_id, verbose=False):
             if any([existing_tool_type.startswith(requested_type) for requested_type in assembly_tools_requested_by_joint]):
                 if verbose:
                     print("Joint (%s) tool_type (%s) has already been set. No change made by assign_tool_type_to_joints()." %
-                        (joint_id, process.assembly.get_joint_attribute(joint_id, 'tool_type')))
+                          (joint_id, process.assembly.get_joint_attribute(joint_id, 'tool_type')))
                 continue
 
         # Loop through the list of clamp types requested by the joint.
@@ -86,7 +86,7 @@ def assign_tool_type_to_joints(process, beam_id, verbose=False):
             # Check if the preferred clamp exist.
             for available_tool_type in process.available_assembly_tool_types:
                 if verbose:
-                    print ('Comparing: available_tool_type', available_tool_type, 'requested_type', requested_type)
+                    print('Comparing: available_tool_type', available_tool_type, 'requested_type', requested_type)
                 if available_tool_type.startswith(requested_type):
                     process.assembly.set_joint_attribute(joint_id, 'tool_type', available_tool_type)
                     something_changed = True
@@ -169,7 +169,6 @@ def assign_tool_id_to_beam_joints(process, beam_id, verbose=False):
 
         # Removing this particular joint_id from the later assignment loop
         joint_ids.remove(gripping_joint_id)
-
 
     # Assign the remaining tools
     for joint_id in joint_ids:
@@ -349,30 +348,52 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
     assembly_method = process.assembly.get_assembly_method(beam_id)
     seq_n = assembly.sequence.index(beam_id)
 
-    # * Operator Load Beam
-    act = LoadBeamAction(seq_n, 0, beam_id)
-    actions.append(act)
-
-    # * Actions to Attach Screwdriver
-    joint_ids = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
-    tool_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
-
-    for joint_id, tool_id in zip(joint_ids, tool_ids):
-        tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
-        actions.append(OperatorAttachScrewdriverAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id, 'assembly_wcf_pickup'))
-
-    # * Actions to Assemble
+    # * Pick Gripper or Screwdriver
     gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
     gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
-
     if assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
         # * Action to Pick Gripper From Storage
         act = PickGripperFromStorageAction(tool_type=gripper_type, tool_id=gripper_id)
         actions.append(act)
-
-        # * Action to pick beam with Gripper including retract
-        act = PickBeamWithGripperAction(beam_id=beam_id, gripper_id=gripper_id, additional_attached_objects=tool_ids)
+    else:
+        # * Action to Pick Screwdriver From Storage
+        act = PickScrewdriverFromStorageAction(tool_type=gripper_type, tool_id=gripper_id)  # TODO
         actions.append(act)
+
+    # * Gripper Approach Beam Storage
+    act = GripperApproachBeamStorageAction(beam_id=beam_id, gripper_id=gripper_id)  # TODO
+    actions.append(act)
+
+    # * Operator Load Beam
+    act = LoadBeamAction(seq_n, 0, beam_id)
+    actions.append(act)
+
+    # * Lift Beam and Rotate , Operator Attach Screwdriver
+    joint_ids = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
+    tool_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
+
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
+        # * Action to Pick Gripper From Storage
+        act = LiftAndReorientBeamWithGripperAction(tool_type=gripper_type, tool_id=gripper_id, beam_id=beam_id)  # TODO
+        actions.append(act)
+
+        for joint_id, tool_id in zip(joint_ids, tool_ids):
+            tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
+            actions.append(OperatorAttachScrewdriverAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id, 'assembly_wcf_pickup'))
+
+    else:
+        # * Action to Pick Screwdriver From Storage
+        act = LiftAndReorientBeamWithScrewdriverAction(tool_type=gripper_type, tool_id=gripper_id, beam_id=beam_id)  # TODO
+        actions.append(act)
+
+        for joint_id, tool_id in zip(joint_ids, tool_ids):
+            if tool_id == gripper_id:
+                continue  # Skipping the screwdriver that is acting as gripper
+            tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
+            actions.append(OperatorAttachScrewdriverAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id, 'assembly_wcf_pickup'))
+
+    # * Actions to Assemble
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
 
         # * Action to Place Beam and Screw it with Screwdriver, not including retract
         act = AssembleBeamWithScrewdriversAction(beam_id=beam_id, joint_ids=joint_ids, gripper_id=gripper_id, screwdriver_ids=tool_ids)
@@ -388,25 +409,14 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
 
     else:  # SCREWED_WITHOUT_GRIPPER
         flying_tools_id = [t_id for t_id in tool_ids if t_id != gripper_id]
-        # Figure out the joint_id where the screwdriver-gripper is attached to
-        for _joint_id in joint_ids:
-            if process.assembly.get_joint_attribute(_joint_id, 'tool_id') == gripper_id:
-                joint_id = _joint_id
-
-        # * Action to Dock with Screwdriver at Storage
-        act = DockWithScrewdriverAction(joint_id=joint_id, tool_position='screwdriver_pickup_attached', tool_type=gripper_type, tool_id=gripper_id, additional_attached_objects=[beam_id] + flying_tools_id)
-        actions.append(act)
-
-        # * Action to pickup Beam from Pickup Station after Docking
-        act = PickBeamWithScrewdriverAction(beam_id=beam_id, gripper_id=gripper_id, additional_attached_objects=flying_tools_id)
-        actions.append(act)
 
         # * Action to Place Beam and Screw it with Screwdriver, not including retract
         act = AssembleBeamWithScrewdriversAction(beam_id=beam_id, joint_ids=joint_ids, gripper_id=gripper_id, screwdriver_ids=tool_ids)
         actions.append(act)
 
         # * Action to retract the Screwdriver that was acting as gripper and place it to storage
-        actions.append(RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=joint_id, tool_id=gripper_id, additional_attached_objects=flying_tools_id))
+        tool_as_gripper_joint_id = process.assembly.get_beam_attribute(beam_id, 'tool_as_gripper_joint_id')
+        actions.append(RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=tool_as_gripper_joint_id, tool_id=gripper_id, additional_attached_objects=flying_tools_id))
 
         actions.append(PlaceScrewdriverToStorageAction(tool_type=gripper_type, tool_id=gripper_id))
 
