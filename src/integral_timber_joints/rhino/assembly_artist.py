@@ -1,10 +1,12 @@
 import uuid
+
 import Rhino.Geometry as rg
 import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
 from compas.datastructures import Mesh
 from compas.geometry import Cylinder, Polyhedron
 from compas_rhino.utilities import clear_layer, delete_objects, draw_breps, draw_cylinders, draw_mesh
+from compas_rhino.geometry.transformations import xform_from_transformation
 from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
 from System.Drawing import Color  # type: ignore
 
@@ -176,3 +178,16 @@ class AssemblyNurbsArtist(object):
         # Save resulting guid(s) into guid dictionary and also return them
         self.beam_guids(beam_id).extend(guids)
         return guids
+
+    def draw_beam_at_position(self, beam_id, beam_position, delete_old=False, redraw=True, verbose=False):
+        # * Draws the beam at final position
+        guids = self.draw_beam(beam_id, delete_old=delete_old, redraw=False, verbose=verbose)
+
+        find_object = sc.doc.Objects.Find
+        for guid in guids:
+            obj = find_object(guid)
+
+            # Transform it to target location
+            t = self.assembly.get_beam_transformaion_to(beam_id, beam_position)
+            xform = xform_from_transformation(t)
+            sc.doc.Objects.Transform(obj, xform, True)
