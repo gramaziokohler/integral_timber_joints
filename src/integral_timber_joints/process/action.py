@@ -1255,10 +1255,16 @@ class GenericFreeMoveBeamWithGripperAction(RobotAction):
         t_tooltip_from_toolbase = gripper.t_tcf_from_t0cf
         t_beam_from_tooltip = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, 'gripper_tcp_in_ocf'))
         t_world_from_robot_at_pickup_approach = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_robot_flange
+        # Beam Grasp
+        # t_gripper_tcf_from_beam = process.assembly.get_t_gripper_tcf_from_beam(self.beam_id)
+        t_gripper_tcf_from_beam = t_beam_from_tooltip.inverse()
         self.movements.append(RoboticFreeMovement(
             target_frame=Frame.from_transformation(t_world_from_robot_at_pickup_approach),
-            attached_objects=[self.gripper_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
+            attached_objects=[self.gripper_id, self.beam_id],
+            t_flange_from_attached_objects=[
+                toolchanger.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+                ],
             speed_type='speed.transit.rapid',
             tag="Free Move to reorient Beam ('%s')" % (self.beam_id)
         ))  # Tool Approach Frame where tool is at structure
