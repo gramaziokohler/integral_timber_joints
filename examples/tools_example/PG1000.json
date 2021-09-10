@@ -36,6 +36,54 @@
                     ]
                 }
             }, 
+            "gripper_drill_diameter": 10.0, 
+            "gripper_drill_lines": [
+                {
+                    "dtype": "compas.geometry/Line", 
+                    "value": {
+                        "end": [
+                            -40.0, 
+                            -475.0, 
+                            241.60006713867188
+                        ], 
+                        "start": [
+                            -51.0, 
+                            -475.0, 
+                            241.60006713867188
+                        ]
+                    }
+                }, 
+                {
+                    "dtype": "compas.geometry/Line", 
+                    "value": {
+                        "end": [
+                            -40.0, 
+                            475.0, 
+                            241.60006713867188
+                        ], 
+                        "start": [
+                            -51.0, 
+                            475.0, 
+                            241.60006713867188
+                        ]
+                    }
+                }, 
+                {
+                    "dtype": "compas.geometry/Line", 
+                    "value": {
+                        "end": [
+                            40.0, 
+                            475.0, 
+                            241.60006713867188
+                        ], 
+                        "start": [
+                            51.0, 
+                            475.0, 
+                            241.60006713867188
+                        ]
+                    }
+                }
+            ], 
             "gripper_jaw_limits": [
                 0.80000000000000004, 
                 10.0
@@ -43,6 +91,7 @@
             "gripper_jaw_position": 0.80000000000000004, 
             "is_attached": false, 
             "is_visible": true, 
+            "storage_approach_vector": null, 
             "target_beam_length": 2000.0, 
             "tool_pick_up_frame": {
                 "dtype": "compas.geometry/Frame", 

@@ -44,6 +44,39 @@
                     -250.00001525878906
                 ]
             }, 
+            "gripper_drill_diameter": 10.0, 
+            "gripper_drill_lines": [
+                {
+                    "dtype": "compas.geometry/Line", 
+                    "value": {
+                        "end": [
+                            62.835084254319383, 
+                            22.870147980518418, 
+                            141.73226184075671
+                        ], 
+                        "start": [
+                            29.611940419283769, 
+                            10.777889559652351, 
+                            177.08760090007749
+                        ]
+                    }
+                }, 
+                {
+                    "dtype": "compas.geometry/Line", 
+                    "value": {
+                        "end": [
+                            -250.773608418859, 
+                            -91.274304505642334, 
+                            141.7322618407317
+                        ], 
+                        "start": [
+                            -217.55046458382867, 
+                            -79.182046084800689, 
+                            177.08760090006569
+                        ]
+                    }
+                }
+            ], 
             "gripper_jaw_limits": [
                 0.0, 
                 47.0
@@ -52,6 +85,7 @@
             "is_attached": false, 
             "is_visible": true, 
             "screw_position": 0, 
+            "storage_approach_vector": null, 
             "storageapproach1_vector": {
                 "dtype": "compas.geometry/Vector", 
                 "value": [
