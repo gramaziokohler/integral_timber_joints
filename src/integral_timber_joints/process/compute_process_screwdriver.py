@@ -71,6 +71,12 @@ def compute_screwdriver_positions(process, beam_id):
         f_assembleapproach = beam.frame.transformed(Translation.from_vector(v_assembleapproach.scaled(-1)))
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_assembleapproach', f_assembleapproach)
 
+        # * assembly_wcf_screwdriver_attachment_pose
+        # assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup', f_assembleapproach)
+        assembly_wcf_pickupretract = assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickupretract')
+        assembly.set_beam_attribute(beam_id, 'assembly_wcf_screwdriver_attachment_pose', assembly_wcf_pickupretract.copy())
+
+
         # Calculation of Tool Positions in assembled area
         # -------------------------------------------------------------
 
