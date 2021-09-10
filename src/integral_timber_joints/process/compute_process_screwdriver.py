@@ -1,4 +1,4 @@
-from compas.geometry import Translation
+from compas.geometry import Translation, Transformation
 from integral_timber_joints.assembly import BeamAssemblyMethod
 from integral_timber_joints.process.dependency import ComputationalResult
 
@@ -47,10 +47,16 @@ def compute_screwdriver_positions(process, beam_id):
         joint = assembly.joint(neighbout_joint_id)
         clamp_attachment_frames = joint.get_clamp_frames(assembly.beam(beam_id))
         tool_orientation_frame_index = process.assembly.get_joint_attribute(joint_id, 'tool_orientation_frame_index')
-        selected_frame = clamp_attachment_frames[tool_orientation_frame_index]
+        tool_tcp_frame_in_wcf = clamp_attachment_frames[tool_orientation_frame_index]
+
+        # * Compute Tool Grasp and set it back to Joint Attribute
+        t_world_from_tool_tcf = Transformation.from_frame(tool_tcp_frame_in_wcf)
+        t_beam_from_world = Transformation.from_frame(beam.frame).inverse()
+        t_beam_ocf_from_tool_tcp = t_beam_from_world * t_world_from_tool_tcf
+        process.assembly.set_joint_attribute(joint_id, 't_beam_ocf_from_tool_tcp', t_beam_ocf_from_tool_tcp)
 
         # Set clamp tcp to selected_frame and compute tool vectors in wcf
-        tool.set_current_frame_from_tcp(selected_frame)
+        tool.set_current_frame_from_tcp(tool_tcp_frame_in_wcf)
         approach_vector_wcf = tool.current_frame.to_world_coordinates(tool.approach_vector)
         detachretract_vector_wcf = tool.current_frame.to_world_coordinates(tool.detachretract_vector)
 

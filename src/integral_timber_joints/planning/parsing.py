@@ -83,6 +83,12 @@ def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyPro
         process = json.load(f, cls=DataDecoder)
         # type: RobotClampAssemblyProcess
     cprint('Process json parsed from {}'.format(file_path), 'blue')
+
+    # * Double check entire solution is valid
+    for beam_id in process.assembly.sequence:
+        if not process.dependency.beam_all_valid(beam_id):
+            process.dependency.compute_all(beam_id)
+            assert process.dependency.beam_all_valid(beam_id)
     return process
 
 def save_process(_process, save_path, include_traj_in_process=False, indent=None):
@@ -95,7 +101,7 @@ def save_process(_process, save_path, include_traj_in_process=False, indent=None
         json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
 
 def save_process_and_movements(design_dir, process_name, _process, _movements,
-    overwrite=False, include_traj_in_process=False, indent=None, save_temp=False, save_temp_process=False):
+    overwrite=False, include_traj_in_process=False, indent=None, movement_subdir='movements'):
     """[summary]
 
     Parameters
@@ -107,39 +113,38 @@ def save_process_and_movements(design_dir, process_name, _process, _movements,
     _movements : list(tj Movement)
         [description]
     overwrite : bool, optional
-        if set True, a new timestamped folder will be created and new process and movements will saved there, avoid overwriting
+        if set False, a folder called `results` will be created and new process and movements will saved there, avoid overwriting
         existing files, by default False
     include_traj_in_process : bool, optional
         include the `trajectory` attribute in the movement or not, by default False
     indent : int, optional
         json indentation, by default None
-    save_temp : bool, optional
-        save an extra copy of the process in the `TEMP_DESIGN_DIR` folder, by default True
+    movement_subdir : str
+        subdirectory name of the folder to save the movements, defaults to `movements`. Popular use: `smoothed_movements`
     """
     if not _movements:
         return
 
     process_file_path = get_process_path(design_dir, process_name, '.')
     process_fname = os.path.basename(process_file_path)
-    if not save_temp:
-        process_dir = os.path.join(DESIGN_STUDY_DIR, design_dir)
-        if not overwrite:
-            # time_stamp = get_date()
-            save_dir = 'results'
-            process_dir = os.path.join(process_dir, save_dir)
-            # * make paths
-            if not os.path.exists(process_dir):
-                os.makedirs(process_dir)
-    else:
-        process_dir = os.path.join(DESIGN_STUDY_DIR, design_dir, TEMP_SUBDIR)
+
+    process_dir = os.path.join(DESIGN_STUDY_DIR, design_dir)
+    if not overwrite:
+        # time_stamp = get_date()
+        save_dir = 'results'
+        process_dir = os.path.join(process_dir, save_dir)
+        # * make paths
+        if not os.path.exists(process_dir):
+            os.makedirs(process_dir)
+
     process_file_path = os.path.join(process_dir, process_fname)
 
-    movement_dir = os.path.join(process_dir, 'movements')
+    movement_dir = os.path.join(process_dir, movement_subdir)
     if not os.path.exists(movement_dir):
         os.makedirs(movement_dir)
 
     for m in _movements:
-        m_file_path = os.path.abspath(os.path.join(process_dir, m.filepath))
+        m_file_path = os.path.abspath(os.path.join(process_dir, m.get_filepath(movement_subdir)))
         with open(m_file_path, 'w') as f:
             json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)
     print('---')

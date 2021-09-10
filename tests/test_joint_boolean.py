@@ -1,9 +1,9 @@
-from integral_timber_joints.geometry import Joint_halflap, Beam
+from integral_timber_joints.geometry import JointHalfLap, Beam
 from integral_timber_joints.assembly import Assembly
 
 from compas.geometry import Frame
 
-joint = Joint_halflap(1, 100, 45, 50, 50, 50)
+joint = JointHalfLap(1, 100, 45, 50, 50, 50)
 print(joint.data)
 
 a = Assembly()

@@ -6,7 +6,7 @@ except:
     pass
 
 from compas.datastructures import Network, Mesh
-from compas.geometry import Point, Transformation, Translation, Vector
+from compas.geometry import Point, Transformation, Translation, Vector, Shape, Line
 from compas.geometry.primitives.plane import Plane
 from compas.geometry.primitives.frame import Frame
 from compas.geometry.transformations.transformation import Transformation
@@ -15,34 +15,15 @@ from compas import is_rhino
 
 from compas.rpc import Proxy
 
-from integral_timber_joints.geometry import Beamcut, Joint, JointNonPlanarLap, non_planar_lap_joint_from_beam_beam_intersection
+from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
+from integral_timber_joints.geometry import Beamcut, Joint, JointNonPlanarLap
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
 
-
-class BeamAssemblyMethod(object):
-    """
-    Values > GROUND_CONTACT imply assembly tools are used.
-    """
-    UNDEFINED = -1      # UNDEFINED : Default starting value when the method is not computed
-    GROUND_CONTACT = 0  # GROUND_CONTACT : no assembly tools.
-    # final assembly vector will be hardcoded to be downwards.
-    CLAMPED = 1         # CLAMPED : All joints (with earlier neighbours) need a clamp.
-    # Clamp information will be stored in joint_attributes.
-    # Gripper information is stored in beam_attributes.
-    SCREWED_WITH_GRIPPER = 2    # Each joint need a screwdriver.
-    # Screwdriver information is stored in joint_attributes.
-    # Gripper information is stored in beam_attributes.
-    SCREWED_WITHOUT_GRIPPER = 3  # Same as SCREWED_WITH_GRIPPER but one of the screwdriver is used as gripper.
-    # Gripper information is stored in beam_attributes but
-    # `gripper_type` and `gripper_id` will equal to `tool_type` and `tool_id`
-    screw_methods = [SCREWED_WITH_GRIPPER, SCREWED_WITHOUT_GRIPPER]
-    readable_names_dict = {
-        "GroundContact": GROUND_CONTACT,
-        "Clamped": CLAMPED,
-        "ScrewedWithGripper": SCREWED_WITH_GRIPPER,
-        "ScrewedWithoutGripper": SCREWED_WITHOUT_GRIPPER,
-    }
+try:
+    from integral_timber_joints.geometry.screw import Screw_SL
+except:
+    pass
 
 
 class Assembly(Network):
@@ -133,6 +114,8 @@ class Assembly(Network):
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
             'sequence_earlier': False,
+            't_beam_ocf_from_tool_tcp': None,       # Transformation from Beam Frame to TCP of Clamp or Screwdriver (effectively a grasp)
+
             'clamp_wcf_attachapproach1': None,      # Clamp position beforing approaching attachment point (1 happens before 2)
             'clamp_wcf_attachapproach2': None,      # Clamp position beforing approaching attachment point
             'clamp_wcf_final': None,                # Clamp position at attachment point "clamp_frame_wcf"
@@ -331,6 +314,36 @@ class Assembly(Network):
         """
         return self.edge_attribute(joint_id, attribute_key)
 
+    def set_joint_shared_attribute(self, joint_id, attribute_key, value):
+        """ Setting a shared attribute acrosss a pair of joint.
+        Accessing an attribute via joint_id ('b1','b2') will be the same as joint_id ('b2','b1')
+
+        Note
+        ----
+        The implementation stores as with typical `set_joint_attribute()`, however,
+        the joint_id used is based on string lexicographical ordering, NOT sequence.
+        We will always store and retrive values from joint(lesser_string, greater_string)
+
+        """
+        if (joint_id[0] > joint_id[1]):
+            joint_id = (joint_id[1], joint_id[0])
+        self.set_joint_attribute(joint_id=joint_id, attribute_key=attribute_key, value=value)
+
+    def get_joint_shared_attribute(self, joint_id, attribute_key):
+        """ Setting a shared attribute acrosss a pair of joint.
+        Accessing an attribute via joint_id ('b1','b2') will be the same as joint_id ('b2','b1')
+
+        Note
+        ----
+        The implementation stores as with typical `set_joint_attribute()`, however,
+        the joint_id used is based on string lexicographical ordering, NOT sequence.
+        We will always store and retrive values from joint(lesser_string, greater_string)
+
+        """
+        if (joint_id[0] > joint_id[1]):
+            joint_id = (joint_id[1], joint_id[0])
+        return self.edge_attribute(joint_id, attribute_key)
+
     def beam(self, key):
         # type: (str) -> Beam
         """Get a beam by its key."""
@@ -397,13 +410,9 @@ class Assembly(Network):
         # Swap item with previous / next item
         if shift_earlier and i > 0:
             sequence[i-1], sequence[i] = sequence[i], sequence[i-1]
-            self.compute_joint_screw_hole(beam_id)
-            self.compute_joint_screw_hole(sequence[i-1])
             return [sequence[i], sequence[i-1]]
         if not shift_earlier and i < len(sequence) - 1:
             sequence[i+1], sequence[i] = sequence[i], sequence[i+1]
-            self.compute_joint_screw_hole(beam_id)
-            self.compute_joint_screw_hole(sequence[i+1])
             return [sequence[i], sequence[i+1]]
 
     def shift_beam_sequence(self, beam_id, shift_amount, update_assembly_direction=True, allow_change_joint_direction=True):
@@ -438,20 +447,23 @@ class Assembly(Network):
             # Flip those joints if they are flippable
             for nbr_beam_id in neighbour_with_joint_to_flip:
                 # Non Planar joints are not flipped but are recreated.
-                if isinstance(self.joint((beam_id, nbr_beam_id)), JointNonPlanarLap):
-
+                joint_id = (beam_id, nbr_beam_id)
+                original_joint = self.joint(joint_id)
+                if isinstance(original_joint, JointNonPlanarLap):
+                    original_thickness = original_joint.thickness
                     if self.sequence.index(beam_id) < self.sequence.index(nbr_beam_id):
-                        j2, j1 = non_planar_lap_joint_from_beam_beam_intersection(self.beam(nbr_beam_id), self.beam(beam_id))
+                        j1, j2, screw_line = JointNonPlanarLap.from_beam_beam_intersection(self.beam(beam_id), self.beam(nbr_beam_id), thickness=original_thickness)
+                        joint_thickness = j2.thickness
                     else:
-                        j1, j2 = non_planar_lap_joint_from_beam_beam_intersection(self.beam(beam_id), self.beam(nbr_beam_id))
+                        j2, j1, screw_line = JointNonPlanarLap.from_beam_beam_intersection(self.beam(nbr_beam_id), self.beam(beam_id), thickness=original_thickness)
+                        joint_thickness = j1.thickness
                     self.add_joint_pair(j1, j2, beam_id, nbr_beam_id)
-
                 else:
-                    self.flip_lap_joint((beam_id, nbr_beam_id))
+                    self.flip_lap_joint(joint_id)
+
 
             # Recompute all affected beams screw hole, assembly directions and realign joints if needed.
             for _beam_id in list(neighbour_with_joint_to_flip) + [beam_id]:
-                self.compute_joint_screw_hole(beam_id)
                 self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
                 # If assembly direction is not valid, we try aligning its joints again to see.
                 if self.beam_problems(_beam_id):
@@ -459,6 +471,7 @@ class Assembly(Network):
                         print('Search for another joint config for Beam %s' % _beam_id)
                         self.search_for_halflap_joints_with_previous_beams(_beam_id, self.get_beam_attribute(beam_id, 'assembly_vector_final'))
                         self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
+
 
             # The affected beams include all_affected_earlier_neighbours
             affected_ids = affected_ids.union(all_affected_earlier_neighbours)
@@ -631,6 +644,23 @@ class Assembly(Network):
     # --------------------------------
     # Beam and Joints Features Boolean
     # --------------------------------
+    def get_beam_negative_shapes(self, beam_id):
+        beam = self.beam(beam_id)
+        # Collect all the features
+        negative_shapes = []
+        for joints in self.get_joints_of_beam(beam_id):
+            negative_shapes += joints.get_feature_shapes(beam)
+        for beam_cut in self.beam_cuts(beam_id):
+            negative_shapes += beam_cut.get_feature_shapes(beam)
+        for nbr_id in self.get_unbuilt_neighbors(beam_id):
+            screw = self.get_screw_of_joint((beam_id, nbr_id))
+            if screw is not None:
+                negative_shapes += screw.get_thread_side_feature_shapes()
+        for nbr_id in self.get_already_built_neighbors(beam_id):
+            screw = self.get_screw_of_joint((beam_id, nbr_id))
+            if screw is not None:
+                negative_shapes += screw.get_head_side_feature_shapes()
+        return negative_shapes
 
     def get_beam_mesh_in_wcf(self, beam_id, use_cache_if_available=True):
         # type: (str, bool) -> Mesh
@@ -650,14 +680,8 @@ class Assembly(Network):
         if use_cache_if_available and (cached_mesh is not None):
             return cached_mesh
 
-        # Collect all the features
-        joints = self.get_joints_of_beam(beam_id)
-        beam_cuts = self.beam_cuts(beam_id)
-
-        features = joints
-        features += beam_cuts
-
-        self._boolean_beam_mesh(beam, features)
+        negative_shapes = self.get_beam_negative_shapes(beam_id)
+        self._boolean_beam_mesh(beam, negative_shapes)
 
         return beam.cached_mesh
 
@@ -682,8 +706,8 @@ class Assembly(Network):
         T = self.get_beam_transformaion_to(beam_id, position_name)
         return mesh.transformed(T)
 
-    def _boolean_beam_mesh(self, beam, beam_features=[]):
-        # type:(Beam, list[Any]) -> Mesh
+    def _boolean_beam_mesh(self, beam, negative_shapes=[]):
+        # type:(Beam, list[Shape]) -> Mesh
         """Computes the beam geometry with boolean difference of all joints and features.
         This is manually triggered.
         Parameters
@@ -710,15 +734,14 @@ class Assembly(Network):
         # compas_trimesh implementation
         ####################################
 
-        if len(beam_features) > 0:
+        if len(negative_shapes) > 0:
             beam.cached_mesh.quads_to_triangles()
             negative_meshes.append(beam.cached_mesh)
-            # Compute the negative meshes from the features
-            for feature in beam_features:
-                for negative_mesh in feature.get_feature_meshes(beam):
-                    negative_mesh.quads_to_triangles()
-                    # from compas.datastructures import Mesh, mesh_offset
-                    negative_meshes.append(negative_mesh)
+            # Convert negative shapes to meshes
+            for shape in negative_shapes:
+                negative_mesh = Mesh.from_shape(shape)
+                negative_mesh.quads_to_triangles()
+                negative_meshes.append(negative_mesh)
 
             # Calls trimesh to perform boolean
             if is_rhino():
@@ -847,30 +870,71 @@ class Assembly(Network):
 
         return [(neighbour_id, beam_id) for neighbour_id in self.get_already_built_neighbors(beam_id)]
 
-    def compute_joint_screw_hole(self, beam_id):
-        # type: (Assembly, str) -> None
-        """Assign the direction of screw holes for beams that are screwed.
-        If the beam's ssembly method require screws, joint.has_screw=True
+    def get_screw_line_of_joint(self, joint_id):
+        #type: (Tuple[str,str]) -> Line
+        i, j = joint_id
+        # Note on the head side:
+        # Head Side = Moving Beam Side = Later Beam + Joint_id (later_beam_id, earlier_beam_id)
+        # Thread Side = Staying Beam Side = Earlier Beam + Joint_id (earlier_beam_id, later_beam_id)
+        if self.sequence.index(i) >  self.sequence.index(j):
+            i , j  = j , i
+        beam_stay_id, beam_move_id = i, j
+        st_point = self.joint((beam_move_id, beam_stay_id)).get_joint_center_at_solid_side(self.beam(beam_move_id))
+        en_point = self.joint((beam_stay_id, beam_move_id)).get_joint_center_at_solid_side(self.beam(beam_stay_id))
+        return Line(st_point, st_point)
 
-        Only the joints with previously built beams will be modifued.
-        If the joint is with an earlier beam, the joint will have a screw head.
+    def get_head_side_thickness_of_joint(self, joint_id):
+        #type: (Tuple[str,str]) -> float
+        i, j = joint_id
+        # Note on the head side:
+        # Head Side = Moving Beam Side = Later Beam + Joint_id (later_beam_id, earlier_beam_id)
+        # Thread Side = Staying Beam Side = Earlier Beam + Joint_id (earlier_beam_id, later_beam_id)
+        if self.sequence.index(i) >  self.sequence.index(j):
+            joint_head_side = self.joint((i,j))
+        else:
+            joint_head_side = self.joint((j, i))
+        return joint_head_side.thickness
 
+    def get_has_screw_of_joint(self, joint_id):
+        #type: (Tuple[str,str]) -> bool
+        """Compute if the joint has screw.
+        If the assemblt method of the "later beam" is a screw method, then it will need screw.
+
+        `joint_id` input is reversible.
         """
-        for joint_id in self.get_joints_of_beam_connected_to_already_built(beam_id):
-            inverse_joint_id = (joint_id[1], joint_id[0])
-            # print(self.get_assembly_method(beam_id))
-            # print(BeamAssemblyMethod.screw_methods)
-            if self.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
-                # print("Screwing Joint %s, %s" % (joint_id, self.joint(joint_id)))
-                self.joint(joint_id).has_screw = True
-                self.joint(joint_id).screw_head_side = True
-                self.joint(inverse_joint_id).has_screw = True
-                self.joint(inverse_joint_id).screw_head_side = False
+        i, j = joint_id
+        if self.sequence.index(i) >  self.sequence.index(j):
+            earlier_beam_id , later_beam_id = j, i
+        else:
+            earlier_beam_id, later_beam_id = i, j
 
+        if self.get_assembly_method(later_beam_id) in BeamAssemblyMethod.screw_methods:
+            return True
+
+
+    def get_screw_of_joint(self, joint_id):
+        #type: (Tuple[str,str]) -> Screw_SL
+
+        if self.get_has_screw_of_joint(joint_id):
+            i, j = joint_id
+            if self.sequence.index(i) >  self.sequence.index(j):
+                earlier_beam_id , later_beam_id = j, i
             else:
-                # print("Notscrewing Joint %s, %s" % (joint_id, self.joint(joint_id)))
-                self.joint(joint_id).has_screw = False
-                self.joint(inverse_joint_id).has_screw = False
+                earlier_beam_id, later_beam_id = i, j
+            later_beam = self.beam(later_beam_id)
+            earlier_beam = self.beam(earlier_beam_id)
+
+            # Note
+            # Later Beam = Moving Side = Head Side
+            # Earlier Beam = Staying Side = Thread Side
+            st = self.joint((later_beam_id, earlier_beam_id)).get_joint_center_at_solid_side(later_beam)
+            en = self.joint((earlier_beam_id, later_beam_id)).get_joint_center_at_solid_side(earlier_beam)
+            head_side_thickness = self.joint((later_beam_id, earlier_beam_id)).thickness
+            return Screw_SL.AutoLength_Factory(center_line=Line(st,en), head_side_thickness=head_side_thickness)
+        else:
+            return None
+
+
 
     def get_joint_id_where_screwdriver_is_gripper(self, beam_id):
         # type: (str) -> Optional[Tuple[str, str]]
@@ -911,32 +975,35 @@ class Assembly(Network):
         -----------
         beam.cached_mesh set to None for both beams.
         '''
-        from integral_timber_joints.geometry import Joint_halflap_from_beam_beam_intersection
+        from integral_timber_joints.geometry import JointHalfLap
 
         for bid_neighbor in self.get_already_built_beams(beam_id):
-            beam1 = self.beam(beam_id)
-            beam2 = self.beam(bid_neighbor)
+            beam_m = self.beam(beam_id)
+            beam_s = self.beam(bid_neighbor)
             if verbose:
-                print("Checking Between %s - %s" % (beam1.name, beam2.name))
+                print("Checking Between %s - %s" % (beam_m.name, beam_s.name))
 
-            option1 = Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=0)  # joint1, joint2
-            option2 = Joint_halflap_from_beam_beam_intersection(beam1, beam2, face_choice=1)
+            option1 = JointHalfLap.from_beam_beam_intersection(beam_s, beam_m,  face_choice=0)  # joint1, joint2
+            option2 = JointHalfLap.from_beam_beam_intersection(beam_s, beam_m,  face_choice=1)
 
             if option1[0] is not None and option1[1] is not None:
                 if verbose:
                     print("Face Pair Option 1: %s , %s" % (option1[0], option1[1]))
                 # Pick a guide vector (here just pick option 1 ffs)
                 if guide_assembly_vector is None:
-                    guide_assembly_vector = option1[0].get_assembly_direction(beam1)
+                    guide_assembly_vector = option1[0].get_assembly_direction(beam_m)
 
                 # Pick between option 1 or 2.
                 # Of course only if option 2 is possible
-                if guide_assembly_vector.angle(option1[0].get_assembly_direction(beam1)) < parallel_tolerance or option2[0] is None or option2[1] is None:
-                    self.add_joint_pair(option1[0], option1[1], beam_id, bid_neighbor)
+
+                if guide_assembly_vector.angle(option1[0].get_assembly_direction(beam_m)) < parallel_tolerance or option2[0] is None or option2[1] is None:
+                    joint_s, joint_m, screw_line = option1
                 else:
-                    self.add_joint_pair(option2[0], option2[1], beam_id, bid_neighbor)
-                beam1.remove_cached_mesh()
-                beam2.remove_cached_mesh()
+                    joint_s, joint_m, screw_line = option2
+
+                self.add_joint_pair(joint_m, joint_s, beam_id, bid_neighbor)
+                beam_m.remove_cached_mesh()
+                beam_s.remove_cached_mesh()
             else:
                 if verbose:
                     print("Face Pair Intersection Not Found")
@@ -956,6 +1023,7 @@ class Assembly(Network):
         self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
         self.beam(beam_id).remove_cached_mesh()
         self.beam(neighbour_id).remove_cached_mesh()
+
 
     # -----------------------
     # Assembly Directions

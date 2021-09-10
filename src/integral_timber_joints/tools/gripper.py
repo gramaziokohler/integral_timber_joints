@@ -1,7 +1,7 @@
 #from compas_fab.robots import Robot
 
 from compas.datastructures import Mesh
-from compas.geometry import Frame, Point, Transformation, Vector
+from compas.geometry import Frame, Point, Transformation, Vector, Translation
 from compas.robots import Axis, Joint, Link
 from compas_fab.robots import Configuration
 
@@ -171,6 +171,15 @@ class Gripper (Tool):
 
     def close_gripper(self):
         self.gripper_jaw_position = self.gripper_jaw_limits[0]
+
+
+    # --------------------------------------------------------
+    # Transformation
+    # --------------------------------------------------------
+
+    @property
+    def t_approach(self):
+        return Translation.from_vector(self.approach_vector)
 
 # --------------------------------------------------------
 # Factory to construct Gripper

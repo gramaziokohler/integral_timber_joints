@@ -305,25 +305,21 @@ class OperatorAttachScrewdriverAction(OperatorAction):
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         self.movements = []
-        beam_id = self.beam_id
-        joint_id = self.joint_id
         beam = process.assembly.beam(self.beam_id)
+        screwdriver = process.tool(self.tool_id)
 
-        # Obtaining the screwdriver set at assembled and attached state.
-
-        screwdriver = process.get_tool_of_joint(joint_id, 'screwdriver_pickup_attached')
-        screwdriver_frame_at_position = screwdriver.current_frame
-        # Moving it to whereever the beam location is (self.beam_position)
-        # t_BeamFinal_BeamAtPosition = process.assembly.get_beam_transformaion_to(beam_id, self.beam_position)
-        # assert t_BeamFinal_BeamAtPosition is not None
-        # screwdriver_frame_at_position = screwdriver.current_frame.transformed(t_BeamFinal_BeamAtPosition)
+        t_beam_from_tool_tcp = process.assembly.get_joint_attribute(self.joint_id, 't_beam_ocf_from_tool_tcp')
+        t_world_from_beam_final = Transformation.from_frame(beam.frame)
+        t_tool_tcp_from_tool_base = screwdriver.t_tcf_from_t0cf
+        t_world_from_beam_at_position = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, self.beam_position))
+        t_world_from_screwdriver_base_at_position = t_world_from_beam_at_position * t_beam_from_tool_tcp * t_tool_tcp_from_tool_base
 
         self.movements.append(OperatorAttachToolMovement(
             beam_id=self.beam_id,
             joint_id=self.joint_id,
             tool_type=self.tool_type,
             tool_id=self.tool_id,
-            target_frame=screwdriver_frame_at_position,
+            target_frame=Frame.from_transformation(t_world_from_screwdriver_base_at_position),
             tag="Opeartor Attach %s to %s." % (self._tool_string, self._joint_string),
         ))
         self.assign_movement_ids()
@@ -394,6 +390,82 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
             speed_type='speed.toolchange.retract.withtool',
             tag="Linear Retract after getting %s from storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm
+        ))
+
+        # Assign Unique Movement IDs to all movements
+        self.assign_movement_ids()
+
+
+class PickScrewdriverFromStorageAction(PickToolFromStorageAction):
+
+    def create_movements(self, process):
+        # type: (RobotClampAssemblyProcess) -> None
+        """ Movement for placing Clamp (and other tools) to Storage.
+        Modified from PickToolFromStorageAction.create_movements()
+        """
+        self.movements = []
+        tool = process.tool(self.tool_id)  # type: Screwdriver
+        toolchanger = process.robot_toolchanger
+        tool_storage_frame_wcf = tool.tool_storage_frame
+
+        # * Free Move for Toolchanger to reach Approach Frame of tool storage
+        t_world_from_toolbase = Transformation.from_frame(tool_storage_frame_wcf)
+        t_gripperbase_from_retractedgripperbase = Translation.from_vector(toolchanger.approach_vector.scaled(-1))
+        t_world_retractedgripperbase = t_world_from_toolbase * t_gripperbase_from_retractedgripperbase
+        tool_storage_retracted_t0cf = Frame.from_transformation(t_world_retractedgripperbase * toolchanger.t_tcf_from_t0cf)
+        self.movements.append(RoboticFreeMovement(
+            target_frame=tool_storage_retracted_t0cf,
+            speed_type='speed.transit.rapid',
+            tag="Free Move for Toolchanger to approach Storage Frame of %s, to pick tool from storage." % self._tool_string
+        ))
+
+        # * Linear move into Tool Storage
+        t_world_from_toolbase = Transformation.from_frame(tool_storage_frame_wcf)
+        tool_storage_frame_t0cf = Frame.from_transformation(t_world_from_toolbase * toolchanger.t_tcf_from_t0cf)
+        self.movements.append(RoboticLinearMovement(
+            target_frame=tool_storage_frame_t0cf,
+            speed_type='speed.toolchange.approach.notool',
+            target_configuration=tool.tool_storage_configuration,
+            tag="Toolchanger Advance to dock with %s." % self._tool_string,
+            allowed_collision_matrix=[('tool_changer', self.tool_id)],
+        ))
+
+        # * Lock Toolchanger
+        self.movements.append(RoboticDigitalOutput(
+            digital_output=DigitalOutput.LockTool,
+            tool_id=self.tool_id,
+            tag="Toolchanger Lock %s" % self._tool_string))
+
+        # * Linear Retract 1
+        t_world_from_toolbase = Transformation.from_frame(tool_storage_frame_wcf)
+        t_gripperbase_from_approachgripperbase = Translation.from_vector(tool.storageapproach2_vector.scaled(-1))
+        t_world_approachgripperbase = t_world_from_toolbase * t_gripperbase_from_approachgripperbase
+        tool_storage_approach2_t0cf = Frame.from_transformation(t_world_approachgripperbase * toolchanger.t_tcf_from_t0cf)
+
+        tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
+        self.movements.append(RoboticLinearMovement(
+            target_frame=tool_storage_approach2_t0cf,
+            attached_objects=[self.tool_id],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
+            speed_type='speed.toolchange.retract.withtool',
+            tag="Linear Retract 1 from Storage Frame of %s, after picking up tool." % self._tool_string,
+            allowed_collision_matrix=tool_env_acm,
+        ))
+
+        # * Linear Retract 2
+        t_world_from_toolbase = Transformation.from_frame(tool_storage_frame_wcf)
+        t_gripperbase_from_approachgripperbase = Translation.from_vector(add_vectors(tool.storageapproach1_vector.scaled(-1), tool.storageapproach2_vector.scaled(-1)))
+        t_world_approachgripperbase = t_world_from_toolbase * t_gripperbase_from_approachgripperbase
+        tool_storage_approach2_t0cf = Frame.from_transformation(t_world_approachgripperbase * toolchanger.t_tcf_from_t0cf)
+
+        tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
+        self.movements.append(RoboticLinearMovement(
+            target_frame=tool_storage_approach2_t0cf,
+            attached_objects=[self.tool_id],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
+            speed_type='speed.toolchange.retract.withtool',
+            tag="Linear Retract 1 from Storage Frame of %s, after picking up tool." % self._tool_string,
+            allowed_collision_matrix=tool_env_acm,
         ))
 
         # Assign Unique Movement IDs to all movements
@@ -627,7 +699,7 @@ class PlaceScrewdriverToStorageAction(PlaceToolToStorageAction):
         t_world_from_toolbase = Transformation.from_frame(tool_storage_frame_wcf)
 
         # * Free Move to reach Storage Approach Frame
-        t_gripperbase_from_approachgripperbase = Translation.from_vector(add_vectors(tool.storageapproach1_vector.scaled(-1),tool.storageapproach2_vector.scaled(-1)))
+        t_gripperbase_from_approachgripperbase = Translation.from_vector(add_vectors(tool.storageapproach1_vector.scaled(-1), tool.storageapproach2_vector.scaled(-1)))
         t_world_approachgripperbase = t_world_from_toolbase * t_gripperbase_from_approachgripperbase
         tool_storage_approach1_t0cf = Frame.from_transformation(t_world_approachgripperbase * toolchanger.t_tcf_from_t0cf)
 
@@ -888,7 +960,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
 
 
 ######################################
-# Actions for Picking and Placing Beam
+# Actions for PickingBeam
 ######################################
 
 class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
@@ -1057,6 +1129,285 @@ class PickBeamWithScrewdriverAction(PickBeamWithGripperAction):
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
 
+
+class GenericGripperApproachBeamPickupAction(RobotAction):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None):
+        # type: (int, int, str, Tuple[str, str],) -> None
+        """
+        This Action can be used for moving a Gripper/Screwdriver to beam pickup
+        """
+        RobotAction.__init__(self, seq_n=seq_n, act_n=act_n)
+        self.beam_id = beam_id
+        self.gripper_id = gripper_id
+
+    def __str__(self):
+        object_str = "Beam ('%s')" % (self.beam_id)
+        return "Gripper (%s) approaching pickup of %s" % (self.gripper_id, object_str)
+
+    @property
+    def data(self):
+        data = super(GenericGripperApproachBeamPickupAction, self).data
+        data['beam_id'] = self.beam_id
+        data['gripper_id'] = self.gripper_id
+        return data
+
+    @data.setter
+    def data(self, data):
+        super(GenericGripperApproachBeamPickupAction, type(self)).data.fset(self, data)
+        self.beam_id = data.get('beam_id', None)
+        self.gripper_id = data.get('gripper_id', None)
+
+    def create_movements(self, process):
+        # type: (RobotClampAssemblyProcess) -> None
+        """ Movement for picking Beam (with a tool) from Storage
+        """
+        self.movements = []
+        gripper = process.tool(self.gripper_id)  # type: Gripper
+        toolchanger = process.robot_toolchanger
+
+        # * Free Move for Gripper to reach Approach Frame of beam pickup
+        f_beam_pickup_in_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_pickup')
+        t_world_from_beam = Transformation.from_frame(f_beam_pickup_in_wcf)
+        t_toolbase_from_robot_flange = toolchanger.t_tcf_from_t0cf
+        t_toolbase_from_approaching_toolbase = gripper.t_approach.inverse()
+        t_tooltip_from_toolbase = gripper.t_tcf_from_t0cf
+        t_beam_from_tooltip = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, 'gripper_tcp_in_ocf'))
+        t_world_from_robot_at_pickup_approach = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_approaching_toolbase * t_toolbase_from_robot_flange
+        self.movements.append(RoboticFreeMovement(
+            target_frame=Frame.from_transformation(t_world_from_robot_at_pickup_approach),
+            attached_objects=[self.gripper_id],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
+            speed_type='speed.transit.rapid',
+            tag="Free Move to reach Pickup Approach Frame of Beam ('%s')" % (self.beam_id)
+        ))  # Tool Approach Frame where tool is at structure
+
+        self.movements.append(RoboticDigitalOutput(
+            digital_output=DigitalOutput.OpenGripper,
+            tool_id=self.gripper_id,
+            tag="Gripper ('%s') Open Gripper before gripping Beam ('%s')" % (self.gripper_id, self.beam_id)
+        ))
+
+        # * Linear Move for Gripper to reach Approach Frame of beam pickup
+        t_world_from_robot_at_pickup = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_robot_flange
+        tool_env_acm = [(self.gripper_id, env_id) for env_id in process.environment_models.keys()]
+        self.movements.append(RoboticLinearMovement(
+            target_frame=Frame.from_transformation(t_world_from_robot_at_pickup),
+            attached_objects=[self.gripper_id],
+            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
+            speed_type='speed.gripper.approach',
+            tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id),
+            target_configuration=process.pickup_station.beam_pickup_configuration,
+            allowed_collision_matrix=tool_env_acm,
+        ))  # Tool Final Frame at structure
+
+        # Assign Unique Movement IDs to all movements
+        self.assign_movement_ids()
+
+
+
+class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None):
+        # type: (int, int, str, Tuple[str, str], str) -> None
+        """
+        This Action can be used for picking up a beam from storage.
+        First goes to `assembly_wcf_pickupretract`
+        Second goes to `assembly_wcf_screwdriver_attachment_pose`
+        """
+        RobotAction.__init__(self, seq_n=seq_n, act_n=act_n)
+        self.beam_id = beam_id
+        self.gripper_id = gripper_id
+
+    def __str__(self):
+        object_str = "Beam ('%s')" % (self.beam_id)
+        return "Reorient %s using Gripper (%s)" % (object_str, self.gripper_id)
+
+    @property
+    def data(self):
+        data = super(PickAndRotateBeamForAttachingScrewdriverAction, self).data
+        data['beam_id'] = self.beam_id
+        data['gripper_id'] = self.gripper_id
+        return data
+
+    @data.setter
+    def data(self, data):
+        super(PickAndRotateBeamForAttachingScrewdriverAction, type(self)).data.fset(self, data)
+        self.beam_id = data.get('beam_id', None)
+        self.gripper_id = data.get('gripper_id', None)
+
+    def create_movements(self, process):
+        # type: (RobotClampAssemblyProcess) -> None
+        """ Movement for picking Beam (with a tool) from Storage
+        """
+        self.movements = []
+        gripper = process.tool(self.gripper_id)  # type: Gripper
+        toolchanger = process.robot_toolchanger
+
+        # * Linear Move to lift beam up
+        f_beam_at_position_in_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_pickupretract')
+        t_world_from_beam = Transformation.from_frame(f_beam_at_position_in_wcf)
+        t_toolbase_from_robot_flange = toolchanger.t_tcf_from_t0cf
+        t_tooltip_from_toolbase = gripper.t_tcf_from_t0cf
+        t_beam_from_tooltip = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, 'gripper_tcp_in_ocf'))
+        t_world_from_robot_at_pickup_approach = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_robot_flange
+        # Beam Grasp
+        t_gripper_tcf_from_beam = t_beam_from_tooltip.inverse()
+        # ACM for beam touching table
+        acm = [(self.beam_id, env_id) for env_id in process.environment_models.keys()]
+        self.movements.append(RoboticLinearMovement(
+            target_frame=Frame.from_transformation(t_world_from_robot_at_pickup_approach),
+            attached_objects=[self.gripper_id, self.beam_id],
+            t_flange_from_attached_objects=[
+                toolchanger.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+                ],
+            speed_type='speed.transfer.rapid',
+            tag="Linear Move to lift up Beam ('%s')" % (self.beam_id),
+            allowed_collision_matrix=acm,
+        ))
+
+
+        # * Free Move to go to screwdriver attachment pose
+        f_beam_at_position_in_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_screwdriver_attachment_pose')
+        t_world_from_beam = Transformation.from_frame(f_beam_at_position_in_wcf)
+        t_toolbase_from_robot_flange = toolchanger.t_tcf_from_t0cf
+        t_tooltip_from_toolbase = gripper.t_tcf_from_t0cf
+        t_beam_from_tooltip = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, 'gripper_tcp_in_ocf'))
+        t_world_from_robot_at_pickup_approach = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_robot_flange
+        # Beam Grasp
+        t_gripper_tcf_from_beam = t_beam_from_tooltip.inverse()
+        self.movements.append(RoboticFreeMovement(
+            target_frame=Frame.from_transformation(t_world_from_robot_at_pickup_approach),
+            attached_objects=[self.gripper_id, self.beam_id],
+            t_flange_from_attached_objects=[
+                toolchanger.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+                ],
+            speed_type='speed.transfer.rapid',
+            tag="Free Move to reorient Beam ('%s')" % (self.beam_id)
+        ))
+
+        # Assign Unique Movement IDs to all movements
+        self.assign_movement_ids()
+
+
+
+class GenericFreeMoveBeamWithGripperAction(RobotAction):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, beam_position=None):
+        # type: (int, int, str, Tuple[str, str], str) -> None
+        """
+        This Action can be used for moving a Gripper/Screwdriver to beam pickup
+        """
+        RobotAction.__init__(self, seq_n=seq_n, act_n=act_n)
+        self.beam_id = beam_id
+        self.gripper_id = gripper_id
+        self.beam_position = beam_position
+
+    def __str__(self):
+        object_str = "Beam ('%s')" % (self.beam_id)
+        return "Reorient %s using Gripper (%s)" % (object_str, self.gripper_id)
+
+    @property
+    def data(self):
+        data = super(GenericFreeMoveBeamWithGripperAction, self).data
+        data['beam_id'] = self.beam_id
+        data['gripper_id'] = self.gripper_id
+        data['beam_position'] = self.beam_position
+        return data
+
+    @data.setter
+    def data(self, data):
+        super(GenericFreeMoveBeamWithGripperAction, type(self)).data.fset(self, data)
+        self.beam_id = data.get('beam_id', None)
+        self.gripper_id = data.get('gripper_id', None)
+        self.beam_position = data.get('beam_position', None)
+
+    def create_movements(self, process):
+        # type: (RobotClampAssemblyProcess) -> None
+        """ Movement for picking Beam (with a tool) from Storage
+        """
+        self.movements = []
+        gripper = process.tool(self.gripper_id)  # type: Gripper
+        toolchanger = process.robot_toolchanger
+
+        # * Free Move for Gripper to reach Approach Frame of beam pickup
+        f_beam_pickup_in_wcf = process.assembly.get_beam_attribute(self.beam_id, self.beam_position)
+        if f_beam_pickup_in_wcf is None:
+            print("Beam Attribute %s not available for Beam (%s)" % (self.beam_position, self.beam_id))
+        t_world_from_beam = Transformation.from_frame(f_beam_pickup_in_wcf)
+        t_toolbase_from_robot_flange = toolchanger.t_tcf_from_t0cf
+        t_tooltip_from_toolbase = gripper.t_tcf_from_t0cf
+        t_beam_from_tooltip = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, 'gripper_tcp_in_ocf'))
+        t_world_from_robot_at_pickup_approach = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_robot_flange
+        # Beam Grasp
+        # t_gripper_tcf_from_beam = process.assembly.get_t_gripper_tcf_from_beam(self.beam_id)
+        t_gripper_tcf_from_beam = t_beam_from_tooltip.inverse()
+        self.movements.append(RoboticFreeMovement(
+            target_frame=Frame.from_transformation(t_world_from_robot_at_pickup_approach),
+            attached_objects=[self.gripper_id, self.beam_id],
+            t_flange_from_attached_objects=[
+                toolchanger.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+                ],
+            speed_type='speed.transit.rapid',
+            tag="Free Move to reorient Beam ('%s')" % (self.beam_id)
+        ))  # Tool Approach Frame where tool is at structure
+
+        # Assign Unique Movement IDs to all movements
+        self.assign_movement_ids()
+
+
+class CloseGripperOnBeamAction(AttachBeamAction):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
+        # type: (int, int, str, str, list[str]) -> None
+        """
+        This Action can be used for picking up beams with or without flying tools.
+        Only a single close Gripper Movement is created.
+        `additional_attached_objects` can only be screwdriver_id
+
+        Both `beam_id` and `additional_attached_objects` will be attached to the robot.
+        """
+        RobotIOAction.__init__(self)
+        AttachBeamAction.__init__(self, beam_id, gripper_id)
+        self.seq_n = seq_n
+        self.act_n = act_n
+        self.additional_attached_objects = additional_attached_objects
+
+    def __str__(self):
+        object_str = "Beam ('%s')" % (self.beam_id)
+        return "Gripper (%s) close gripper on %s" % (self.gripper_id, object_str)
+
+    @property
+    def data(self):
+        data = super(CloseGripperOnBeamAction, self).data
+        data['additional_attached_objects'] = self.additional_attached_objects
+        return data
+
+    @data.setter
+    def data(self, data):
+        super(CloseGripperOnBeamAction, type(self)).data.fset(self, data)
+        self.additional_attached_objects = data.get('additional_attached_objects', [])
+
+    def create_movements(self, process):
+        # type: (RobotClampAssemblyProcess) -> None
+        """ Movement for picking Beam (with a tool) from Storage
+        """
+        self.movements = []
+
+        self.movements.append(RoboticDigitalOutput(
+            digital_output=DigitalOutput.CloseGripper,
+            tool_id=self.gripper_id,
+            attached_objects=[self.beam_id] + self.additional_attached_objects,
+            operator_stop_before="Confirm Gripper Ready to close ",
+            operator_stop_after="Confirm Grip OK",
+            tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
+
+        # Assign Unique Movement IDs to all movements
+        self.assign_movement_ids()
+
+
+######################################
+# Actions for Placing Beam
+######################################
 
 class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None):

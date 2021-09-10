@@ -1,6 +1,7 @@
 import numpy as np
 from termcolor import cprint
 
+import pybullet_planning as pp
 from pybullet_planning import GREY, BLUE, YELLOW, GREEN, draw_pose, has_gui, wait_if_gui, wait_for_duration, LockRenderer
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement
 
@@ -23,6 +24,14 @@ def color_from_object_id(object_id):
     else:
         return None
 
+def sample_colors(num, lower=0.0, upper=1.0):
+    # sample a color map based on a given integer number
+    from matplotlib import cm
+    # lower=0.0, upper=0.75
+    # return [colorsys.hsv_to_rgb(h, s=1, v=1) for h in reversed(np.linspace(lower, upper, num, endpoint=True))]
+    viridis = cm.get_cmap('viridis', 12)
+    return viridis(np.linspace(lower, upper, num, endpoint=True))
+
 ################################################
 
 def rfl_camera(scale=1e-3):
@@ -38,7 +47,7 @@ def rfl_camera(scale=1e-3):
 
 ################################################
 
-def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step_duration=0.1):
+def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step_duration=0.1, draw_polylines=False, line_color=GREEN):
     """[summary]
 
     Parameters
@@ -59,15 +68,23 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step
     start_scene = process.get_movement_start_scene(m)
     with LockRenderer():
         set_state(client, robot, process, start_scene)
+    robot_uid = client.get_robot_pybullet_uid(robot)
+    flange_link_name = robot.get_end_effector_link_name(group=GANTRY_ARM_GROUP)
+    tool_link = pp.link_from_name(robot_uid, flange_link_name)
+    last_point = None
     if isinstance(m, RoboticMovement):
         print('===')
         cprint('Viz:')
         if m.trajectory is not None:
             cprint(m.short_summary, 'green')
             for jt_traj_pt in m.trajectory.points:
-                if not jt_traj_pt.joint_names:
-                    jt_traj_pt.joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
                 client.set_robot_configuration(robot, jt_traj_pt)
+                if draw_polylines:
+                    tool_pose = pp.get_link_pose(robot_uid, tool_link)
+                    # pp.draw_pose(tool_pose)
+                    if last_point:
+                        pp.add_line(last_point, tool_pose[0], color=line_color)
+                    last_point = tool_pose[0]
                 if step_sim:
                     wait_if_gui('Step conf.')
                 else:
