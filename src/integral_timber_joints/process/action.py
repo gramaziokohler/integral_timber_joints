@@ -1221,7 +1221,7 @@ class GenericFreeMoveBeamWithGripperAction(RobotAction):
 
     @property
     def data(self):
-        data = super(GenericGripperApproachBeamPickupAction, self).data
+        data = super(GenericFreeMoveBeamWithGripperAction, self).data
         data['beam_id'] = self.beam_id
         data['gripper_id'] = self.gripper_id
         data['beam_position'] = self.beam_position
@@ -1229,7 +1229,7 @@ class GenericFreeMoveBeamWithGripperAction(RobotAction):
 
     @data.setter
     def data(self, data):
-        super(GenericGripperApproachBeamPickupAction, type(self)).data.fset(self, data)
+        super(GenericFreeMoveBeamWithGripperAction, type(self)).data.fset(self, data)
         self.beam_id = data.get('beam_id', None)
         self.gripper_id = data.get('gripper_id', None)
         self.beam_position = data.get('beam_position', None)
@@ -1290,13 +1290,13 @@ class CloseGripperOnBeamAction(AttachBeamAction):
 
     @property
     def data(self):
-        data = super(PickBeamWithGripperAction, self).data
+        data = super(CloseGripperOnBeamAction, self).data
         data['additional_attached_objects'] = self.additional_attached_objects
         return data
 
     @data.setter
     def data(self, data):
-        super(PickBeamWithGripperAction, type(self)).data.fset(self, data)
+        super(CloseGripperOnBeamAction, type(self)).data.fset(self, data)
         self.additional_attached_objects = data.get('additional_attached_objects', [])
 
     def create_movements(self, process):
