@@ -290,14 +290,15 @@ class OperatorAttachToolMovement(Movement):
     Default: operator_stop_after = True
     """
 
-    def __init__(self, beam_id=None, joint_id=None, tool_type=None, tool_id=None, target_frame=None, tag=None):
-        # type: (str, tuple[str, str], str, str, Frame, str) -> OperatorAttachToolMovement
+    def __init__(self, beam_id=None, joint_id=None, tool_type=None, tool_id=None, target_frame=None, beam_already_attached_to_robot=True, tag=None):
+        # type: (str, tuple[str, str], str, str, Frame, bool, str) -> OperatorAttachToolMovement
         Movement.__init__(self, operator_stop_after="Confirm Tool placed.", planning_priority=-1, tag=tag)
         self.beam_id = beam_id
         self.joint_id = joint_id
         self.tool_type = tool_type
         self.tool_id = tool_id
         self.target_frame = target_frame
+        self.beam_already_attached_to_robot = beam_already_attached_to_robot
         self.tag = tag or "Opeartor Attach Tool to Beam"
 
     def __str__(self):
@@ -313,6 +314,7 @@ class OperatorAttachToolMovement(Movement):
         data['tool_type'] = self.tool_type
         data['tool_id'] = self.tool_id
         data['target_frame'] = self.target_frame
+        data['beam_already_attached_to_robot'] = self.beam_already_attached_to_robot
         data['tag'] = self.tag
         return data
 
@@ -326,6 +328,7 @@ class OperatorAttachToolMovement(Movement):
         self.tool_type = data.get('tool_type', None)
         self.tool_id = data.get('tool_id', None)
         self.target_frame = data.get('target_frame', None)
+        self.beam_already_attached_to_robot = data.get('beam_already_attached_to_robot', None)
         self.tag = data.get('tag', None)
 
     def create_state_diff(self, process, clear=True):
@@ -336,6 +339,9 @@ class OperatorAttachToolMovement(Movement):
         tool = process.tool(self.tool_id)
         tool.close_gripper()
         self.state_diff[(self.tool_id, 'c')] = tool._get_kinematic_state()
+        # Change attachment status of the tool only if the beam is already attached to robot
+        if self.beam_already_attached_to_robot:
+            self.state_diff[(self.tool_id, 'a')] = True
 
 
 class RoboticFreeMovement(RoboticMovement):

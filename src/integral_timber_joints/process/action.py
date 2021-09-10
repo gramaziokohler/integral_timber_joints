@@ -305,25 +305,21 @@ class OperatorAttachScrewdriverAction(OperatorAction):
     def create_movements(self, process):
         # type: (RobotClampAssemblyProcess) -> None
         self.movements = []
-        beam_id = self.beam_id
-        joint_id = self.joint_id
         beam = process.assembly.beam(self.beam_id)
+        screwdriver = process.tool(self.tool_id)
 
-        # Obtaining the screwdriver set at assembled and attached state.
-
-        screwdriver = process.get_tool_of_joint(joint_id, 'screwdriver_pickup_attached')
-        screwdriver_frame_at_position = screwdriver.current_frame
-        # Moving it to whereever the beam location is (self.beam_position)
-        # t_BeamFinal_BeamAtPosition = process.assembly.get_beam_transformaion_to(beam_id, self.beam_position)
-        # assert t_BeamFinal_BeamAtPosition is not None
-        # screwdriver_frame_at_position = screwdriver.current_frame.transformed(t_BeamFinal_BeamAtPosition)
+        t_beam_from_tool_tcp = process.assembly.get_joint_attribute(self.joint_id, 't_beam_ocf_from_tool_tcp')
+        t_world_from_beam_final = Transformation.from_frame(beam.frame)
+        t_tool_tcp_from_tool_base = screwdriver.t_tcf_from_t0cf
+        t_world_from_beam_at_position = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, self.beam_position))
+        t_world_from_screwdriver_base_at_position = t_world_from_beam_at_position * t_beam_from_tool_tcp * t_tool_tcp_from_tool_base
 
         self.movements.append(OperatorAttachToolMovement(
             beam_id=self.beam_id,
             joint_id=self.joint_id,
             tool_type=self.tool_type,
             tool_id=self.tool_id,
-            target_frame=screwdriver_frame_at_position,
+            target_frame=Frame.from_transformation(t_world_from_screwdriver_base_at_position),
             tag="Opeartor Attach %s to %s." % (self._tool_string, self._joint_string),
         ))
         self.assign_movement_ids()

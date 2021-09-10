@@ -114,6 +114,8 @@ class Assembly(Network):
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
             'sequence_earlier': False,
+            't_beam_ocf_from_tool_tcp': None,       # Transformation from Beam Frame to TCP of Clamp or Screwdriver (effectively a grasp)
+
             'clamp_wcf_attachapproach1': None,      # Clamp position beforing approaching attachment point (1 happens before 2)
             'clamp_wcf_attachapproach2': None,      # Clamp position beforing approaching attachment point
             'clamp_wcf_final': None,                # Clamp position at attachment point "clamp_frame_wcf"
