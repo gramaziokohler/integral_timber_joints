@@ -4,7 +4,7 @@ import Rhino.Geometry as rg
 import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
 from compas.datastructures import Mesh
-from compas.geometry import Cylinder, Polyhedron
+from compas.geometry import Cylinder, Polyhedron, Shape
 from compas_rhino.utilities import clear_layer, delete_objects, draw_breps, draw_cylinders, draw_mesh
 from compas_rhino.geometry.transformations import xform_from_transformation
 from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
@@ -97,7 +97,7 @@ class AssemblyNurbsArtist(object):
             rs.EnableRedraw(True)
 
     def draw_beam(self, beam_id, delete_old=False, redraw=True, other_feature_shapes=[], verbose=False):
-        # type: (str, bool, bool, list[Shapes], bool) -> None
+        # type: (str, bool, bool, list[Shape], bool) -> None
         """Function to draw specified beam with nurbs.
 
         By default `delete_old` is False.

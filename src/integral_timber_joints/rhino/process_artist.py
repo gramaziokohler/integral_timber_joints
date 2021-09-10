@@ -4,7 +4,7 @@ import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
 from compas.datastructures import Mesh
-from compas.geometry import Frame, Transformation
+from compas.geometry import Frame, Transformation, Cylinder
 from compas.robots import Configuration
 from compas_rhino.artists import MeshArtist, RobotModelArtist
 from compas_rhino.geometry import RhinoPlane
@@ -19,7 +19,7 @@ from integral_timber_joints.process.state import ObjectState, SceneState
 from integral_timber_joints.rhino.tool_artist import ToolArtist
 from integral_timber_joints.rhino.utility import purge_objects
 from integral_timber_joints.rhino.assembly_artist import AssemblyNurbsArtist
-from integral_timber_joints.tools import Clamp, Gripper, Tool
+from integral_timber_joints.tools import Clamp, Gripper, Screwdriver, Tool
 
 try:
     from typing import Any, Dict, List, Optional, Tuple, Type
@@ -545,8 +545,9 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
+
     def draw_beam_brep(self, beam_id, delete_old_brep=True, update_mesh_cache=False, redraw=True):
-        # type:(str, bool, bool, bool) -> None
+        #type: (str, bool, bool, bool) -> List[guid]
         assembly = self.process.assembly
         if beam_id not in assembly.beam_ids():
             raise KeyError("Beam %i not in Assembly" % beam_id)
@@ -559,22 +560,17 @@ class ProcessArtist(object):
         layer = 'itj::interactive::beams_brep'
         rs.CurrentLayer(layer)
 
-        # Draw Nurbs using Nurbs Assembly Artist
-        other_feature_shapes = []
-        # for joint_id in self.process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
-        #     try:
-        #         tool = self.process.get_tool_of_joint(joint_id)
-        #         tool.set_state
-        #         other_feature_shapes.
-        #     except:
-        #         print ("Warninig: cannot get tool of joint %s for Boolean" % joint_id)
+        # Obtain tool features on Beam from Process
+        other_feature_shapes = self.process.get_tool_features_on_beam(beam_id)
 
+        # * Call assembly artist with all the extra feature shapes
         guids = self.assembly_artist.draw_beam(beam_id=beam_id, delete_old=delete_old_brep, redraw=False, other_feature_shapes=other_feature_shapes)
         self.interactive_guids_at_layer(beam_id, layer).extend(guids)
 
         # Redraw
         if redraw:
             rs.EnableRedraw(True)
+
 
     def redraw_interactive_beam(self, beam_id, force_update=True, draw_mesh=False, draw_nurbs=True, draw_tag=True, redraw=True):
         ''' Redraw beam visualizations.

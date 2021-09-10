@@ -3,7 +3,7 @@ from copy import deepcopy
 import compas
 from compas.data import Data
 from compas.datastructures import Mesh
-from compas.geometry import Frame, Transformation, Translation, Vector, dot_vectors
+from compas.geometry import Frame, Transformation, Translation, Vector, Shape, Cylinder, dot_vectors
 from compas.robots import RobotModel
 from compas.rpc import Proxy
 from compas_fab.robots import Configuration
@@ -292,11 +292,11 @@ class RobotClampAssemblyProcess(Data):
         # type: (str) -> None
         """Delete existing Clamp, Screwdriver or Gripper
         by the tool_id given."""
-        if tool_id is self.attributes['clamps']:
+        if tool_id in self.attributes['clamps']:
             del self.attributes['clamps'][tool_id]
-        elif tool_id is self.attributes['screwdrivers']:
+        elif tool_id in self.attributes['screwdrivers']:
             del self.attributes['screwdrivers'][tool_id]
-        elif tool_id is self.attributes['grippers']:
+        elif tool_id in self.attributes['grippers']:
             del self.attributes['grippers'][tool_id]
         else:
             raise ValueError("Tool id %s cannot be found to be deleted." % tool_id)
@@ -752,6 +752,36 @@ class RobotClampAssemblyProcess(Data):
         # Beam frame expressed in the world's coordinate
         world_from_beam = world_from_gripper_tcp * self.assembly.get_t_gripper_tcf_from_beam(beam_id)
         return Frame.from_transformation(world_from_beam)
+
+    def get_tool_features_on_beam(self, beam_id):
+        #type: (str) -> List[Shape]
+        assembly = self.assembly
+        # * Retrieve Clamps and Screwdrivers attached to this beam
+        other_feature_shapes = []
+        def draw_drill_cylinders_of_tool_at_wcf(tool):
+            cylinders = []
+            t_world_tool_at_final = Transformation.from_frame(tool.current_frame)
+            for line in tool.gripper_drill_lines:
+                cylinder = Cylinder.from_line_radius(line, tool.gripper_drill_diameter/2.0)
+                cylinders.append(cylinder.transformed(t_world_tool_at_final))
+            return cylinders
+
+        # Gripper
+        gripper = self.get_gripper_of_beam(beam_id)
+        other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(gripper)
+
+        # Clamps Attached to this beam
+        for neighbour_id in assembly.get_unbuilt_neighbors(beam_id):
+            if assembly.get_assembly_method(neighbour_id) == BeamAssemblyMethod.CLAMPED:
+                clamp = self.get_tool_of_joint((beam_id, neighbour_id)) # type: Clamp
+                other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(clamp)
+
+        # # Screwdrivers Attached to this beam
+        if assembly.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
+            for neighbour_id in assembly.get_already_built_neighbors(beam_id):
+                screwdriver = self.get_tool_of_joint((neighbour_id, beam_id))
+                other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(screwdriver)
+        return other_feature_shapes
 
     # -----------------
     # Clamps Algorithms
