@@ -18,6 +18,7 @@ from .action import (
     OperatorAction,
     OperatorAttachScrewdriverAction,
     OperatorAttachToolMovement,
+    PickAndRotateBeamForAttachingScrewdriverAction,
     PickBeamWithGripperAction,
     PickBeamWithScrewdriverAction,
     PickClampFromStorageAction,

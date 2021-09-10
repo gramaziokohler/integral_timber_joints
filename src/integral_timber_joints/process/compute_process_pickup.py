@@ -1,4 +1,4 @@
-from compas.geometry import Translation, Vector, Transformation, Frame
+from compas.geometry import Translation, Vector, Transformation, Frame, identity_matrix
 from integral_timber_joints.assembly import BeamAssemblyMethod
 from integral_timber_joints.process.dependency import ComputationalResult
 from integral_timber_joints.tools import StackedPickupStation, GripperAlignedPickupStation, PickupStation
@@ -273,10 +273,15 @@ def compute_beam_pickupretract(process, beam_id):
     """Compute 'assembly_wcf_pickupretract' from beam attributes:
     by transforming 'assembly_wcf_pickup' along 'PickupStation.pickup_retract_vector'.
 
+    For Beams in BeamAssemblyMethod.screw_methods, compute 'assembly_wcf_screwdriver_attachment_pose'
+    The Beam assembly direction (representing the screwdriver pointy end direction)
+    is used to guide the rotation of the beam above the retract frame.
+
     State Change
     ------------
     This functions sets the following beam_attribute
     - 'assembly_wcf_pickupretract'
+    - 'assembly_wcf_screwdriver_attachment_pose' (BeamAssemblyMethod in screw_methods)
 
     Return
     ------
@@ -289,13 +294,45 @@ def compute_beam_pickupretract(process, beam_id):
         print("pickup_station is not set")
         return ComputationalResult.ValidCannotContinue
 
-    retract_vector = process.pickup_station.pickup_retract_vector
-
-    # Compute assembly_wcf_pickupretract
+    # * Compute assembly_wcf_pickupretract
     assembly_wcf_pickup = process.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup')
+    retract_vector = process.pickup_station.pickup_retract_vector
     T = Translation.from_vector(retract_vector)
     assembly_wcf_pickupretract = assembly_wcf_pickup.transformed(T)
     process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupretract', assembly_wcf_pickupretract)
+
+    # Check if beam is of type SCREWED, otherwise stop here
+    if process.assembly.get_beam_attribute(beam_id, 'assembly_method') not in BeamAssemblyMethod.screw_methods:
+        return ComputationalResult.ValidCanContinue
+
+    # * Compute assembly_wcf_screwdriver_attachment_pose
+    beam = process.assembly.beam(beam_id)
+    assembly_vector_final_in_wcf = process.assembly.get_beam_attribute(beam_id, 'assembly_vector_final')
+    T = process.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_pickup')
+    assembly_vector_at_pickup_in_wcf = assembly_vector_final_in_wcf.transformed(T)
+    print(assembly_vector_at_pickup_in_wcf)
+
+    assembly_vector_up_amount = Vector(0, 0, 1).dot(assembly_vector_at_pickup_in_wcf)
+    print(assembly_vector_up_amount)
+
+    if abs(assembly_vector_up_amount) < 0.1:  # If assembly vector is facing parallel to ground
+        # Rotate Face 1 to 2
+        t_world_from_beam_final = Transformation.from_frame(beam.get_face_frame(1))
+        t_world_from_beam_final_newpose = Transformation.from_frame(beam.get_face_frame(2))
+        t_beam_at_pickupretract_from_beam_newpose = t_world_from_beam_final.inverse() * t_world_from_beam_final_newpose
+    elif assembly_vector_up_amount > 0:  # Facing Up
+        # Rotate Face 1 to 3
+        t_world_from_beam_final = Transformation.from_frame(beam.get_face_frame(1))
+        t_world_from_beam_final_newpose = Transformation.from_frame(beam.get_face_frame(3))
+        t_beam_at_pickupretract_from_beam_newpose = t_world_from_beam_final.inverse() * t_world_from_beam_final_newpose
+    else:  # Facing Down
+        t_beam_at_pickupretract_from_beam_newpose = Transformation.from_matrix(identity_matrix(4))
+
+    t_world_from_beam_at_pickupretract = Transformation.from_frame(assembly_wcf_pickupretract)
+    t_world_from_beam_at_newpose = t_world_from_beam_at_pickupretract * t_beam_at_pickupretract_from_beam_newpose
+    process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_screwdriver_attachment_pose', Frame.from_transformation(t_world_from_beam_at_newpose))
+
+    # beam.reference_side_ocf
 
     return ComputationalResult.ValidCanContinue
 

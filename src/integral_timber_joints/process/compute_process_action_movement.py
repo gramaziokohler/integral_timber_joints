@@ -372,7 +372,7 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
     joint_ids = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
     tool_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
 
-    act = GenericFreeMoveBeamWithGripperAction(beam_id=beam_id, gripper_id=gripper_id, beam_position='assembly_wcf_screwdriver_attachment_pose')
+    act = PickAndRotateBeamForAttachingScrewdriverAction(beam_id=beam_id, gripper_id=gripper_id)
     actions.append(act)
 
     for joint_id, tool_id in zip(joint_ids, tool_ids):
