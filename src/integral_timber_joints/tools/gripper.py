@@ -137,6 +137,16 @@ class Gripper (Tool):
     def gripper_drill_lines(self, v):
         self.attributes['gripper_drill_lines'] = v
 
+    @property
+    def gripper_drill_diameter(self):
+        """ List of Lines where the interface between gripper with the
+        beams require drilling guide holes """
+        return self.attributes.get('gripper_drill_diameter', 10)
+
+    @gripper_drill_diameter.setter
+    def gripper_drill_diameter(self, v):
+        self.attributes['gripper_drill_diameter'] = v
+
     # ----------------------------------
     # Functions for kinematic state
     # ----------------------------------
@@ -203,6 +213,9 @@ def ParallelGripperFactory(
     approach_vector,
     jaw_vector_l=None,           # In Ref to T0CF
     jaw_vector_r=None,           # In Ref to T0CF
+    gripper_drill_lines=[],
+    gripper_drill_diameter=10,
+
 ):
     """ A Parallel gripper will have a base and two gripper jaw.
     Modelling guide
@@ -223,6 +236,9 @@ def ParallelGripperFactory(
                           beam_length_limit_max=beam_length_limit_max,
                           approach_vector=approach_vector
                           )
+
+    robot_model.gripper_drill_lines = gripper_drill_lines
+    robot_model.gripper_drill_diameter = gripper_drill_diameter
 
     gripper_base = robot_model.add_link('gripper_base', visual_meshes=mesh_gripper_base, collision_meshes=mesh_gripper_base)
     gripper_jaw_l = robot_model.add_link('gripper_jaw_l', visual_meshes=mesh_gripper_jaw_l, collision_meshes=mesh_gripper_jaw_l)

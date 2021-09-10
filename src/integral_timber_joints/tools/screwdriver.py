@@ -223,7 +223,9 @@ def SL1ScrewdriverFactory(
     approach_vector,
     detachretract_vector,
     storageapproach1_vector,
-    storageapproach2_vector
+    storageapproach2_vector,
+    gripper_drill_lines,
+    gripper_drill_diameter,
 ):
     """ A Parallel gripper will have a base and two gripper jaw.
     Modelling guide
@@ -250,6 +252,9 @@ def SL1ScrewdriverFactory(
 
     robot_model.storageapproach1_vector = storageapproach1_vector   # This vector is ref to t0cf
     robot_model.storageapproach2_vector = storageapproach2_vector   # This vector is ref to t0cf
+
+    robot_model.gripper_drill_lines = gripper_drill_lines
+    robot_model.gripper_drill_diameter = gripper_drill_diameter
 
     #world_link = robot_model.add_link('world')
     gripper_base = robot_model.add_link('gripper_base', visual_meshes=mesh_gripper_base, collision_meshes=mesh_gripper_base)
