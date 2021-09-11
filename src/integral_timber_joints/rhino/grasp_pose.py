@@ -85,8 +85,6 @@ def compute_collision_show_color(process):
     assembly = process.assembly
     rs.EnableRedraw(False)
 
-
-
     # Get Mesh - Current Beam
     current_beam_meshes = []
     current_beam_meshes.extend(artist.beam_guids_at_position(selected_beam_id, 'assembly_wcf_final'))
@@ -203,7 +201,7 @@ def show_menu(process):
             go.AddOption("cPrevKeyPos")
             if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
                 go.AddOption("ChangeGraspingJoint")
-            else: # Methods with gripper
+            else:  # Methods with gripper
                 go.AddOption("GripperMovePos")
                 go.AddOption("GripperMoveNeg")
                 go.AddOption("GripperType")
@@ -212,6 +210,7 @@ def show_menu(process):
             if assembly_method == BeamAssemblyMethod.CLAMPED:
                 go.AddOption("FlipClampAttachPosition")
             go.AddOption("ExitKeepGeo")
+
     ###################################
     # Showing Different Beam
     ###################################
@@ -219,26 +218,15 @@ def show_menu(process):
     def select_next_beam():
         """ Function invoked by user to change active element to the next one.
         """
-        # Hide the current beam and grippers
-        artist.hide_beam_all_positions(artist.selected_beam_id)
-        artist.hide_gripper_all_positions(artist.selected_beam_id)
-        artist.hide_asstool_all_positions(artist.selected_beam_id)
         # Increment the selected id
         artist.select_next_beam()
         artist.selected_key_position.final_position()
-        show_sequence_color(process)
 
     def select_previous_beam():
         """ Function invoked by user to change active element to the previous one.
         """
-        # Hide the current beam and grippers
-        artist.hide_beam_all_positions(artist.selected_beam_id)
-        artist.hide_gripper_all_positions(artist.selected_beam_id)
-        artist.hide_asstool_all_positions(artist.selected_beam_id)
         # Decrement the selected id
         artist.select_previous_beam()
-        artist.selected_key_position.final_position()
-        show_sequence_color(process)
 
     ###################################
     # Showing Different Key Position
@@ -246,21 +234,12 @@ def show_menu(process):
 
     def next_key_position():
         artist.selected_key_position.next_position()
-        _show_key_position_beam_gripper_clamp()
 
     def prev_key_position():
         artist.selected_key_position.prev_position()
-        _show_key_position_beam_gripper_clamp()
 
     def first_key_position():
         artist.selected_key_position.first_position()
-        _show_key_position_beam_gripper_clamp()
-
-    def _show_key_position_beam_gripper_clamp():
-        artist.show_beam_at_one_position(artist.selected_beam_id)
-        artist.show_gripper_at_one_position(artist.selected_beam_id)
-        artist.show_asstool_at_one_position(artist.selected_beam_id)
-        show_sequence_color(process)
 
     ###################################
     # Changing Gripper Definitions
@@ -291,8 +270,6 @@ def show_menu(process):
         artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
         if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
             artist.draw_asstool_all_positions(beam_id, delete_old=True, redraw=False)
-        rs.EnableRedraw(True)
-        show_sequence_color(process)
 
     def _gripper_as_gripper_changetype(beam_id):
         """ Function invoked by user to change gripper type.
@@ -322,7 +299,6 @@ def show_menu(process):
             print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
             process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
             process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
-
 
     def _screwdriver_as_gripper_changetype(beam_id):
         """ Function invoked by user to change gripper type.
@@ -363,8 +339,7 @@ def show_menu(process):
         beam_id = artist.selected_beam_id
         process.adjust_gripper_pos(beam_id, +30)
         process.dependency.compute_all(beam_id)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True)
-        show_sequence_color(process)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
 
     def gripper_move_neg():
         """ Function invoked by user to move grasp pose.
@@ -372,8 +347,7 @@ def show_menu(process):
         beam_id = artist.selected_beam_id
         process.adjust_gripper_pos(beam_id, -30)
         process.dependency.compute_all(beam_id)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True)
-        show_sequence_color(process)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
 
     def gripper_follow_ass_dir():
         """ Function invoked by user to change grasp face.
@@ -384,9 +358,8 @@ def show_menu(process):
         process.dependency.compute_all(beam_id)
 
         # Redraw Visualization
-        artist.draw_beam_all_positions(beam_id, delete_old=True)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True)
-        show_sequence_color(process)
+        artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
+        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
 
     def grasp_face():
         """ Function invoked by user to change grasp face.
@@ -428,8 +401,8 @@ def show_menu(process):
                 process.dependency.compute_all(beam_id)
 
                 # Redraw Visualization
-                artist.draw_beam_all_positions(beam_id, delete_old=True)
-                artist.draw_gripper_all_positions(beam_id, delete_old=True)
+                artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
+                artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
                 show_sequence_color(process)
                 compute_collision_show_color(process)
 
@@ -529,30 +502,6 @@ def show_menu(process):
             # Unselect obejcts, otherwwise the function will loop infiniitely
             rs.UnselectAllObjects()
 
-            # If this is not the first run, hide previous beam positions
-            # if artist.selected_beam_id is not None:
-                # print("Hiding Beam %s" % artist.selected_beam_id)
-            artist.hide_beam_all_positions(artist.selected_beam_id)
-            artist.hide_gripper_all_positions(artist.selected_beam_id)
-            # show_sequence_color(process)
-
-            # In the first run where user selected an active beam, the optinos are added
-            # if artist.selected_beam_id is None:
-            #     go.AddOption("Finish")
-            #     go.AddOption("NextBeam")
-            #     go.AddOption("PreviousBeam")
-            #     go.AddOption("vNextKeyPos")
-            #     go.AddOption("xFirstKeyPos")
-            #     go.AddOption("cPrevKeyPos")
-            #     go.AddOption("GripperMovePos")
-            #     go.AddOption("GripperMoveNeg")
-            #     go.AddOption("GripperType")
-            #     go.AddOption("GraspFace")
-            #     go.AddOption("GraspFaceFollowAsemblyDirection")
-            #     go.AddOption("ChangeGraspingJoint")
-            #     go.AddOption("FlipClampAttachPosition")
-            #     go.AddOption("ExitKeepGeo")
-                # Reminder that Enter key can repeat
             go.SetDefaultString("Press Enter to repeat.")
 
         print("Showing Beam(%s) (%i of %i) at Position(%s) (%i of %i)" % (
@@ -564,9 +513,8 @@ def show_menu(process):
             artist.selected_key_position.total_pos_number,
         ))
 
-        # artist.show_beam_at_one_position(artist.selected_beam_id)
-        # artist.show_gripper_at_one_position(artist.selected_beam_id)
-        # artist.show_asstool_at_one_position(artist.selected_beam_id)
+        artist.hide_beam_all_positions(artist.selected_beam_id)
+        artist.hide_gripper_all_positions(artist.selected_beam_id)
         show_sequence_color(process)
         compute_collision_show_color(process)
 
