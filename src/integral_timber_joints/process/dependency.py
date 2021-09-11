@@ -75,8 +75,7 @@ class ComputationalDependency(Graph):
 
         # Assigning Tools
         # -------
-        self.add_edge('assign_tool_type_to_joints', 'assign_tool_id_to_beam_joints')
-        self.add_edge('assign_tool_id_to_beam_joints', 'assign_gripper_to_beam')  # Gripper for SCREWED_WITHOUT_GRIPPER will depend on the assigned screwdrivers.
+        self.add_edge('assign_tool_type_to_joints', 'assign_gripper_to_beam')  # Gripper for SCREWED_WITHOUT_GRIPPER will depend on the assigned screwdrivers.
 
         # Gripper / Grasp / Beam at Pickup
         # --------------------------------
@@ -86,7 +85,7 @@ class ComputationalDependency(Graph):
 
         # Clamp Specific Computations (based on search_valid_clamp_orientation_with_guiding_vector)
         # ---------------------------
-        self.add_edge('assign_tool_id_to_beam_joints', 'search_valid_clamp_orientation_with_guiding_vector')
+        self.add_edge('assign_tool_type_to_joints', 'search_valid_clamp_orientation_with_guiding_vector')
         function_names = [
             'compute_clamp_attachapproach_attachretract_detachapproach',
             'compute_clamp_detachretract',
@@ -122,7 +121,7 @@ class ComputationalDependency(Graph):
             'compute_beam_pickupretract',
             'compute_beam_pickupapproach',
             'compute_beam_finalretract',
-            'assign_tool_id_to_beam_joints'
+            'assign_tool_type_to_joints'
         ]
 
         for f in terminal_function_names:
