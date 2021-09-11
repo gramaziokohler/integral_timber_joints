@@ -17,10 +17,18 @@ class BeamAssemblyMethod(object):
     # Gripper information is stored in beam_attributes but
     # `gripper_type` and `gripper_id` will equal to `tool_type` and `tool_id`
     screw_methods = [SCREWED_WITH_GRIPPER, SCREWED_WITHOUT_GRIPPER]
-    readable_names_dict = {
+
+    value_to_names_dict = {
+        UNDEFINED: "UNDEFINED",
+        GROUND_CONTACT: "GroundContact",
+        CLAMPED: "Clamped",
+        SCREWED_WITH_GRIPPER: "ScrewedWithGripper",
+        SCREWED_WITHOUT_GRIPPER: "ScrewedWithoutGripper",
+    }
+    names_to_value_dict = {
+        "UNDEFINED": UNDEFINED,
         "GroundContact": GROUND_CONTACT,
         "Clamped": CLAMPED,
         "ScrewedWithGripper": SCREWED_WITH_GRIPPER,
         "ScrewedWithoutGripper": SCREWED_WITHOUT_GRIPPER,
     }
-

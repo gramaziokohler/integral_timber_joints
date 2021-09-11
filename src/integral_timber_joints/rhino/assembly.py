@@ -374,9 +374,9 @@ def ui_change_assembly_method(process, preselection=[]):
 
     # Ask user if they want to change anything
     while(True):
-        new_assembly_method = rs.GetString("Change Assembly Method to:", "Back", list(BeamAssemblyMethod.readable_names_dict.keys()) + ["Back"])
+        new_assembly_method = rs.GetString("Change Assembly Method to:", "Back", list(BeamAssemblyMethod.names_to_value_dict.keys()) + ["Back"])
         if new_assembly_method is not None and not new_assembly_method.startswith("Back"):
-            new_assembly_method = BeamAssemblyMethod.readable_names_dict[new_assembly_method]
+            new_assembly_method = BeamAssemblyMethod.names_to_value_dict[new_assembly_method]
 
             # Ask user to select which to change
             beam_ids = preselection

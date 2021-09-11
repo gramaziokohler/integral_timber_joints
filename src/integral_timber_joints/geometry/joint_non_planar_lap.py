@@ -316,7 +316,7 @@ class JointNonPlanarLap(Joint):
         elif beam_assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
             return ['SL1_G200', 'SL1']        # Preferentially requesting SL1_G200 (this is likely to be assigned to the gripping joint)
         else:
-            print("Warning: Joint Non planar cannot be assembled with Assemble Method %s" % BeamAssemblyMethod.readable_names_dict[beam_assembly_method])
+            print("Warning: Joint Non planar cannot be assembled with Assemble Method %s" % BeamAssemblyMethod.value_to_names_dict[beam_assembly_method])
             return ['SL1']
 
     def get_joint_center_at_solid_side(self, beam):
