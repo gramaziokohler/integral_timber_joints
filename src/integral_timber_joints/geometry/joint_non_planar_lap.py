@@ -312,7 +312,7 @@ class JointNonPlanarLap(Joint):
         """
 
         if beam_assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
-            return ['SL1']
+            return ['SL1', 'SL1_G200']
         elif beam_assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
             return ['SL1_G200', 'SL1']        # Preferentially requesting SL1_G200 (this is likely to be assigned to the gripping joint)
         else:
