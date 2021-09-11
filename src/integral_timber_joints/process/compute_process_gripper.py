@@ -29,8 +29,8 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
 
     If the attribute `gripper_type` is already assigned, this function will not chage it.
 
-    This function will NOT operate on beam that is SCREWED_WITHOUT_GRIPPER. It will return
-    ComputationalResult.ValidCanContinue.
+    For beam that is SCREWED_WITHOUT_GRIPPER. It will find the grasping joint,
+    and copy the `tool_type` and `tool_id` to 'gripper_type' and 'gripper_id'
 
     State Change
     ------------
@@ -47,7 +47,13 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
     chosen_gripper_type = None
     chosen_gripper_ideal = None
 
+    # * Handle the copy and paste for SCREWED_WITHOUT_GRIPPER
     if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+        grasping_joint_id = process.assembly.get_joint_id_where_screwdriver_is_gripper(beam_id)
+        tool_type = process.assembly.get_joint_attribute(grasping_joint_id, "tool_type")
+        tool_id = process.assembly.get_joint_attribute(grasping_joint_id, "tool_id")
+        process.assembly.set_beam_attribute(beam_id, "gripper_type", tool_type)
+        process.assembly.set_beam_attribute(beam_id, "gripper_id", tool_id)
         return ComputationalResult.ValidCanContinue
 
     # Do not change anything if gripper_type is already set
