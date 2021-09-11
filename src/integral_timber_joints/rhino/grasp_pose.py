@@ -535,7 +535,7 @@ def compute_positions(process, verbose=True):
     process.assembly.update_default_node_attributes({'design_guide_vector_grasp': Vector(0, 0, 1)})
 
     for beam_id in assembly.sequence:
-        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
+        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=False)
 
 
 ######################
