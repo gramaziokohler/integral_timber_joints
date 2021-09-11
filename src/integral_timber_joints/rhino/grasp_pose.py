@@ -190,6 +190,28 @@ def show_menu(process):
     go.SetCommandPrompt("Select beam")
     go.EnablePreSelect(True, True)
 
+    def create_go_options():
+        go.ClearCommandOptions()
+        selected_beam_id = artist.selected_beam_id
+        if selected_beam_id is not None:
+            assembly_method = assembly.get_assembly_method(selected_beam_id)
+            go.AddOption("Finish")
+            go.AddOption("NextBeam")
+            go.AddOption("PreviousBeam")
+            go.AddOption("xFirstKeyPos")
+            go.AddOption("vNextKeyPos")
+            go.AddOption("cPrevKeyPos")
+            if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+                go.AddOption("ChangeGraspingJoint")
+            else: # Methods with gripper
+                go.AddOption("GripperMovePos")
+                go.AddOption("GripperMoveNeg")
+                go.AddOption("GripperType")
+                go.AddOption("GraspFace")
+                go.AddOption("GraspFaceFollowAsemblyDirection")
+            if assembly_method == BeamAssemblyMethod.CLAMPED:
+                go.AddOption("FlipClampAttachPosition")
+            go.AddOption("ExitKeepGeo")
     ###################################
     # Showing Different Beam
     ###################################
@@ -435,7 +457,8 @@ def show_menu(process):
         show_sequence_color(process)
 
     run_cmd = None  # Variable to remember the last command to allow easy rerun.
-    while(True):
+    while True:
+        create_go_options()
         go.SetCustomGeometryFilter(get_existing_beams_filter(process))
         result = go.Get()
         # print (result)
@@ -454,13 +477,13 @@ def show_menu(process):
             if go.Option().EnglishName == "PreviousBeam":
                 run_cmd = select_previous_beam
 
-            if go.Option().EnglishName == "vShowNextKeyPosition":
+            if go.Option().EnglishName == "vNextKeyPos":
                 run_cmd = next_key_position
 
-            if go.Option().EnglishName == "cShowFirstKeyPosition":
+            if go.Option().EnglishName == "xFirstKeyPos":
                 run_cmd = first_key_position
 
-            if go.Option().EnglishName == "xShowPrevKeyPosition":
+            if go.Option().EnglishName == "cPrevKeyPos":
                 run_cmd = prev_key_position
 
             if go.Option().EnglishName == "GripperMovePos":
@@ -501,35 +524,36 @@ def show_menu(process):
             # Show color preview of the sequence at that point
             guid = go.Object(0).ObjectId
             beam_id = get_object_name(guid)
+            artist.selected_beam_id = beam_id
 
             # Unselect obejcts, otherwwise the function will loop infiniitely
             rs.UnselectAllObjects()
 
             # If this is not the first run, hide previous beam positions
-            if artist.selected_beam_id is not None:
+            # if artist.selected_beam_id is not None:
                 # print("Hiding Beam %s" % artist.selected_beam_id)
-                artist.hide_beam_all_positions(artist.selected_beam_id)
-                artist.hide_gripper_all_positions(artist.selected_beam_id)
+            artist.hide_beam_all_positions(artist.selected_beam_id)
+            artist.hide_gripper_all_positions(artist.selected_beam_id)
+            # show_sequence_color(process)
 
             # In the first run where user selected an active beam, the optinos are added
-            if artist.selected_beam_id is None:
-                go.AddOption("Finish")
-                go.AddOption("NextBeam")
-                go.AddOption("PreviousBeam")
-                go.AddOption("vShowNextKeyPosition")
-                go.AddOption("cShowFirstKeyPosition")
-                go.AddOption("xShowPrevKeyPosition")
-                go.AddOption("GripperMovePos")
-                go.AddOption("GripperMoveNeg")
-                go.AddOption("GripperType")
-                go.AddOption("GraspFace")
-                go.AddOption("GraspFaceFollowAsemblyDirection")
-                go.AddOption("FlipClampAttachPosition")
-                go.AddOption("ExitKeepGeo")
+            # if artist.selected_beam_id is None:
+            #     go.AddOption("Finish")
+            #     go.AddOption("NextBeam")
+            #     go.AddOption("PreviousBeam")
+            #     go.AddOption("vNextKeyPos")
+            #     go.AddOption("xFirstKeyPos")
+            #     go.AddOption("cPrevKeyPos")
+            #     go.AddOption("GripperMovePos")
+            #     go.AddOption("GripperMoveNeg")
+            #     go.AddOption("GripperType")
+            #     go.AddOption("GraspFace")
+            #     go.AddOption("GraspFaceFollowAsemblyDirection")
+            #     go.AddOption("ChangeGraspingJoint")
+            #     go.AddOption("FlipClampAttachPosition")
+            #     go.AddOption("ExitKeepGeo")
                 # Reminder that Enter key can repeat
-                go.SetDefaultString("Press Enter to repeat.")
-            artist.selected_beam_id = beam_id
-            show_sequence_color(process)
+            go.SetDefaultString("Press Enter to repeat.")
 
         print("Showing Beam(%s) (%i of %i) at Position(%s) (%i of %i)" % (
             artist.selected_beam_id,
