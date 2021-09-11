@@ -64,7 +64,7 @@ def assign_tool_type_to_joints(process, beam_id, verbose=False):
 
     # * For SCREWED_WITHOUT_GRIPPER, put the grasping joint first
     if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
-        grasping_joint_id = process.assembly.get_joint_id_where_screwdriver_is_gripper(beam_id)
+        grasping_joint_id = process.assembly.get_grasping_joint_id(beam_id)
         joint_ids.remove(grasping_joint_id)
         joint_ids.insert(0, grasping_joint_id)
 

@@ -233,8 +233,8 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
         actions.append(act)
 
         # * Action to retract the Screwdriver that was acting as gripper and place it to storage
-        tool_as_gripper_joint_id = process.assembly.get_joint_id_where_screwdriver_is_gripper(beam_id)
-        actions.append(RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=tool_as_gripper_joint_id, tool_id=gripper_id, additional_attached_objects=flying_tools_id))
+        grasping_joint_id = process.assembly.get_grasping_joint_id(beam_id)
+        actions.append(RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=grasping_joint_id, tool_id=gripper_id, additional_attached_objects=flying_tools_id))
 
         actions.append(PlaceScrewdriverToStorageAction(tool_type=gripper_type, tool_id=gripper_id))
 

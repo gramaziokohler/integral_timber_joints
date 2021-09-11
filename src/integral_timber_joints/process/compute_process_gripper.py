@@ -49,7 +49,7 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
 
     # * Handle the copy and paste for SCREWED_WITHOUT_GRIPPER
     if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
-        grasping_joint_id = process.assembly.get_joint_id_where_screwdriver_is_gripper(beam_id)
+        grasping_joint_id = process.assembly.get_grasping_joint_id(beam_id)
         tool_type = process.assembly.get_joint_attribute(grasping_joint_id, "tool_type")
         tool_id = process.assembly.get_joint_attribute(grasping_joint_id, "tool_id")
         process.assembly.set_beam_attribute(beam_id, "gripper_type", tool_type)
@@ -139,9 +139,9 @@ def compute_gripper_grasp_pose(process, beam_id, verbose=False):
     For Beams with Screwdriver as gripper
     -------------------------------------
     - `tool_id`s and `gripper_id` should be assigned before.
-    - `tool_as_gripper_joint_id` should be assigned before.
+    - `grasping_joint_id` should be assigned before.
     - `gripper_tcp_in_ocf` will be based on the
-        - beam attribute `tool_as_gripper_joint_id` (Set Manually)
+        - beam attribute `grasping_joint_id` (Set Manually)
         - joint_attribute `tool_orientation_frame_index` (Set Manually)
 
 
@@ -167,7 +167,7 @@ def compute_gripper_grasp_pose(process, beam_id, verbose=False):
 
     if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         # Retrive which joint is the gripper screwdriver and the tool_orientation_frame index
-        joint_id = process.assembly.get_joint_id_where_screwdriver_is_gripper(beam_id)  # tool_as_gripper_joint_id
+        joint_id = process.assembly.get_grasping_joint_id(beam_id)  # grasping_joint_id
         tool_orientation_frame_index = process.assembly.get_joint_attribute(joint_id, 'tool_orientation_frame_index')
 
         # Transform the tool orientation frame to beam ocf
