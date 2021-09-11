@@ -109,7 +109,7 @@ class Assembly(Network):
             'beam_cuts': None,                         # Beamcut objects at the start or end or anywhere on the beam. Can be empty
             'assembly_method': BeamAssemblyMethod.UNDEFINED,  # AssemblyMethod determine how individual beam is assembled.
             'actions': [],                         # List of high-level Assembly Actions
-            'grasping_joint_id': None,
+            'grasping_joint_id_preference': None,
         })
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
@@ -947,7 +947,7 @@ class Assembly(Network):
         if self.get_assembly_method(beam_id) != BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
             return None
 
-        value_from_attributes = self.get_beam_attribute(beam_id, 'grasping_joint_id')
+        value_from_attributes = self.get_beam_attribute(beam_id, 'grasping_joint_id_preference')
         if value_from_attributes is not None:
             return value_from_attributes
         else:
