@@ -142,12 +142,11 @@ class JointNonPlanarLap(Joint):
     def thickness(self, value):
         self._thickness = value
 
-    def modify_parameter(self, key, value, relative = True):
+    def modify_parameter(self, key, value, relative=True):
         if key == "thickness":
             if not relative:
                 value = value - self.thickness
             self.thickness += value
-
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
@@ -311,9 +310,14 @@ class JointNonPlanarLap(Joint):
         # type: (BeamAssemblyMethod) -> list[str]
         """Returns a list of clamps types that can assemble this joint
         """
-        clamps = []
-        clamps.append('SL1')
-        return clamps
+
+        if beam_assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
+            return ['SL1']
+        elif beam_assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            return ['SL1_G200', 'SL1']        # Preferentially requesting SL1_G200 (this is likely to be assigned to the gripping joint)
+        else:
+            print("Warning: Joint Non planar cannot be assembled with Assemble Method %s" % BeamAssemblyMethod.readable_names_dict[beam_assembly_method])
+            return ['SL1']
 
     def get_joint_center_at_solid_side(self, beam):
         # type: (Beam) -> Point

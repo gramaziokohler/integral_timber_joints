@@ -104,13 +104,12 @@ class JointHalfLap(Joint):
     def distance_at_center(self):
         return self.distance + self.angled_lead / 2 + self.angled_length / 2
 
-    def modify_parameter(self, key, value, relative = True):
+    def modify_parameter(self, key, value, relative=True):
         if key == "thickness":
             if not relative:
                 value = value - self.thickness
             self.thickness += value
             self.height -= value
-
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
@@ -225,8 +224,10 @@ class JointHalfLap(Joint):
         # type: (BeamAssemblyMethod) -> list[str]
         # Returns a list of clamps types that can assemble this joint
         clamps = []
-        if beam_assembly_method in BeamAssemblyMethod.screw_methods:
-            clamps.append('SL1')
+        if beam_assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
+            return ['SL1']
+        elif beam_assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            return ['SL1_G200', 'SL1']       # Preferentially requesting SL1_G200 (this is likely to be assigned to the gripping joint)
         else:
             if self.angle > 24.9 and self.angle < 90.1:
                 clamps.append('CL3')
