@@ -339,11 +339,11 @@ def show_assembly_method_color(process):
     artist = get_process_artist()
     rs.EnableRedraw(False)
     print("Assembly Method Colour Legend:")
-    print("- Red: \t\tUndefined")
-    print("- Black: \t\tGround")
-    print("- Green: \t\tClamped")
-    print("- LightBlue: \tScrewedWithGripper")
-    print("- LightBlue: \tScrewedWithoutGripper")
+    print("- Red:       Undefined")
+    print("- Black:     Ground")
+    print("- Green:     Clamped")
+    print("- LightBlue: ScrewedWithGripper")
+    print("- DarkBlue:  ScrewedWithoutGripper")
     for beam_id in process.assembly.sequence:
         assembly_method = process.assembly.get_assembly_method(beam_id)
         if assembly_method == BeamAssemblyMethod.GROUND_CONTACT:
