@@ -9,6 +9,7 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.assembly import BeamAssemblyMethod
+from integral_timber_joints.rhino.joints import draw_selectable_joint, delete_all_selectable_joints
 
 
 def show_sequence_color(process):
@@ -162,6 +163,357 @@ def show_normal_color_and_unhide(process):
         artist.show_interactive_beam(beam_id)
     rs.EnableRedraw(True)
 
+###################################
+# Showing Different Beam
+###################################
+
+
+def select_next_beam():
+    """ Function invoked by user to change active element to the next one.
+    """
+    # Increment the selected id
+    artist = get_process_artist()
+    artist.select_next_beam()
+    artist.selected_key_position.final_position()
+
+
+def select_previous_beam():
+    """ Function invoked by user to change active element to the previous one.
+    """
+    # Decrement the selected id
+    artist = get_process_artist()
+    artist.select_previous_beam()
+
+###################################
+# Showing Different Key Position
+###################################
+
+
+def next_key_position():
+    artist = get_process_artist()
+    artist.selected_key_position.next_position()
+
+
+def prev_key_position():
+    artist = get_process_artist()
+    artist.selected_key_position.prev_position()
+
+
+def first_key_position():
+    artist = get_process_artist()
+    artist.selected_key_position.first_position()
+
+###################################
+# Changing Gripper Definitions
+###################################
+
+
+def gripper_changetype():
+    """ Function invoked by user to change gripper type.
+
+    beam_attribute 'gripper_type' and 'gripper_id' will be changed.
+    """
+    process = get_process()
+    artist = get_process_artist()
+    if len(process.grippers) == 0:
+        print("No gripper exist for you to choose. Very bad. Add some grippers first.")
+        return
+
+    # Switching to a sub function depending on SCREWED_WITHOUT_GRIPPER
+    beam_id = artist.selected_beam_id
+    if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+        _screwdriver_as_gripper_changetype(process, beam_id)
+    else:
+        _gripper_as_gripper_changetype(process, beam_id)
+
+    # Invalidate downstream of assign_gripper_to_beam. Recompute all.
+    process.dependency.invalidate(beam_id, process.assign_gripper_to_beam, downstream_only=False)
+    process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True, verbose=True)
+
+    # Redraw Visualization
+    artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+    if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+        artist.draw_asstool_all_positions(beam_id, delete_old=True, redraw=False)
+
+
+def _gripper_as_gripper_changetype(process, beam_id):
+    # type: (RobotClampAssemblyProcess, str) -> None
+    """ Function invoked by user to change gripper type.
+    Sub function that handles using regular gripper as gripper.
+
+    beam_attribute 'gripper_type' and 'gripper_id' will be changed.
+    """
+    # List out current gripper for users to choose
+    print("Available Grippers:")
+    current_gripper_type = process.assembly.get_beam_attribute(beam_id, 'gripper_type')
+    type_names = []
+    gripper_ids = []
+    for gripper in process.grippers:
+        print("- %s : %s" % (gripper.name, gripper.type_name))
+        if gripper.type_name not in type_names:
+            type_names.append(gripper.type_name)
+            gripper_ids.append(gripper.name)
+
+    # Ask user which gripper to delete
+    prompt = "Which gripper to use for Beam(%s)? Current gripper type is: %s" % (beam_id, current_gripper_type)
+    selected_type_name = rs.GetString(prompt, current_gripper_type, type_names)
+    # Dont change anything if the selection is the same
+    if selected_type_name == current_gripper_type:
+        print("Gripper type unchanged")
+        return
+    if selected_type_name in type_names:
+        print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
+        process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
+        process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
+
+
+def _screwdriver_as_gripper_changetype(process, beam_id):
+    # type: (RobotClampAssemblyProcess, str) -> None
+    """ Function invoked by user to change gripper type.
+    Sub function that handles using screwdriver as gripper.
+
+    beam_attribute 'gripper_type' and 'gripper_id' will be changed.
+    """
+
+    # List out current gripper for users to choose
+    print("Available Screwdrivers:")
+    type_names = []
+    gripper_ids = []
+    for screwdriver in process.screwdrivers:
+        print("- %s : %s" % (screwdriver.name, screwdriver.type_name))
+        if screwdriver.type_name not in type_names:
+            type_names.append(screwdriver.type_name)
+            gripper_ids.append(screwdriver.name)
+
+    # Ask user which gripper to delete
+    current_gripper_id = process.assembly.get_beam_attribute(beam_id, 'gripper_id')
+    current_gripper_type = process.assembly.get_beam_attribute(beam_id, 'gripper_type')
+    prompt = "Which screwdriver to use for Beam(%s) as Gripper? Current gripper is: %s : %s" % (beam_id, current_gripper_type, current_gripper_id)
+    selected_type_name = rs.GetString(prompt, current_gripper_type, type_names)
+    # Dont change anything if the selection is the same
+    if selected_type_name == current_gripper_type:
+        print("Gripper type unchanged")
+        return
+    if selected_type_name in type_names:
+        print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
+        process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
+        process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
+
+    process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
+
+
+def gripper_move_pos():
+    """ Function invoked by user to move grasp pose.
+    """
+    process = get_process()
+    artist = get_process_artist()
+    beam_id = artist.selected_beam_id
+    process.adjust_gripper_pos(beam_id, +30)
+    process.dependency.compute_all(beam_id)
+    artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+
+
+def gripper_move_neg():
+    """ Function invoked by user to move grasp pose.
+    """
+    process = get_process()
+    artist = get_process_artist()
+    beam_id = artist.selected_beam_id
+    process.adjust_gripper_pos(beam_id, -30)
+    process.dependency.compute_all(beam_id)
+    artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+
+
+def gripper_follow_ass_dir():
+    """ Function invoked by user to change grasp face.
+    This triggers set_grasp_face_following_assembly_direction
+    """
+    process = get_process()
+    artist = get_process_artist()
+    beam_id = artist.selected_beam_id
+    process.set_grasp_face_following_assembly_direction(beam_id)
+    process.dependency.compute_all(beam_id)
+
+    # Redraw Visualization
+    artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+
+
+def grasp_face():
+    """ Function invoked by user to change grasp face.
+    Uses get to select face 1 to 4.
+
+    This function recursively ask user until cancel is pressed or
+    """
+    # Get current situation
+    process = get_process()
+    artist = get_process_artist()
+    beam_id = artist.selected_beam_id
+
+    for _ in range(10):
+        current_grasp_face = process.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')
+
+        # Ask user which face to grasp
+        options = ['Back', 'Face1', 'Face2', 'Face3', 'Face4']
+        options_number = ['Back', '1', '2', '3', '4']
+        selected_grasp_face = rs.GetString("Which face to grasp for Beam(%s)? Current grasp face is: %s" %
+                                           (beam_id, options[current_grasp_face]), options[current_grasp_face], options)
+        if selected_grasp_face is None:
+            # User press Escape
+            return  # Exit loop
+        elif selected_grasp_face in options:
+            # User selected one of the Buttons
+            selected_grasp_face = options.index(selected_grasp_face)
+        elif selected_grasp_face in options_number:
+            # User typed in just a number
+            selected_grasp_face = options_number.index(selected_grasp_face)
+        else:
+            print("Input not recognized : %s" % selected_grasp_face)
+            continue  # Continue loop and try again.
+        if selected_grasp_face == 0:
+            # User selected Back as option
+            return  # Exit loop
+
+        # Check if new selection is the same as before
+        if selected_grasp_face != current_grasp_face:
+            # Recompute dependency
+            process.override_grasp_face(beam_id, selected_grasp_face)
+            process.dependency.compute_all(beam_id)
+
+            # Redraw Visualization
+            artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
+            artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+            show_sequence_color(process)
+            compute_collision_show_color(process)
+
+        else:
+            print("Selection is the same as before, grasp face unchanged.")
+
+###################################
+# Changing Clamp Definitions
+###################################
+
+
+def flip_clamp():
+    process = get_process()
+    artist = get_process_artist()
+    beam_id = artist.selected_beam_id
+    print("get_clamp_orientation_options:")
+    print(process.get_clamp_orientation_options(beam_id))
+
+    # Call fnction to change direction
+    process.flip_clamp_guide_vector(beam_id)
+    # Recompute Dependency
+    process.dependency.invalidate(beam_id, process.search_valid_clamp_orientation_with_guiding_vector)
+    process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
+    # Refresh Display
+    artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.draw_asstool_all_positions(beam_id, delete_old=True)
+    show_sequence_color(process)
+
+
+def change_grasping_joint():
+    process = get_process()
+    artist = get_process_artist()
+
+    beam_id = artist.selected_beam_id
+    joint_ids = process.assembly.get_joint_ids_with_tools_for_beam(beam_id)
+    current_grasping_joint_id = process.assembly.get_grasping_joint_id(beam_id)
+    print(current_grasping_joint_id)
+    # * Draw selectable joints for user to select
+    selectable_guids = []
+    for joint_id in joint_ids:
+        if joint_id[0] == current_grasping_joint_id[0] and joint_id[1] == current_grasping_joint_id[1]:
+            color = (30, 190, 85)
+        else:
+            color = (30, 85, 190)
+        draw_selectable_joint(process, joint_id, redraw=False, color=color)
+        selectable_guids.extend(artist._joint_features[joint_id])
+    rs.EnableRedraw(True)
+
+    # * Ask user to Pick in Rhino UI the grasping joint
+    go = Rhino.Input.Custom.GetObject()
+    def joint_feature_filter(rhino_object, geometry, component_index):
+        return rhino_object.Attributes.ObjectId in selectable_guids
+    go.SetCustomGeometryFilter(joint_feature_filter)
+    go.SetCommandPrompt("Select joint as the Grasping Joint (current joint is Green):")
+    go.EnablePreSelect(False, True)
+    result = go.Get()
+    print (result)
+    if result is None or result == Rhino.Input.GetResult.Cancel:
+        print("Cancel")
+        delete_all_selectable_joints(process)
+        return
+
+    # * Parse user selection
+    guid = go.Object(0).ObjectId
+    name = get_object_name(guid)  # type: str
+    ids = name.split('-')
+    new_grasping_joint_id = (ids[0], ids[1])
+
+    if new_grasping_joint_id == current_grasping_joint_id:
+        print("Grasping Joint unchanged")
+        delete_all_selectable_joints(process)
+        return
+    else:
+        process.assembly.set_beam_attribute(beam_id, 'grasping_joint_id_preference', new_grasping_joint_id)
+        print("Gripper type changed from %s to %s" % (current_grasping_joint_id, new_grasping_joint_id))
+
+    process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
+    process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=False, verbose=True)
+    artist.draw_asstool_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
+    delete_all_selectable_joints(process)
+
+
+def change_screwdriver_orientation():
+    process = get_process()
+    artist = get_process_artist()
+
+    beam_id = artist.selected_beam_id
+    joint_ids = process.assembly.get_joint_ids_with_tools_for_beam(beam_id)
+
+    selectable_guids = []
+    guid_to_joint_id = {}
+    for joint_id in joint_ids:
+        tool_position = artist.selected_key_position.current_clamp_pos
+        guids = artist.asstool_guids_at_position(joint_id, tool_position)
+        selectable_guids.extend(guids)
+        for guid in guids:
+            guid_to_joint_id[guid] = joint_id
+
+
+    # * Ask user to Pick in Rhino UI the screwdriver to flip
+    go = Rhino.Input.Custom.GetObject()
+    def joint_feature_filter(rhino_object, geometry, component_index):
+        return rhino_object.Attributes.ObjectId in selectable_guids
+    go.SetCustomGeometryFilter(joint_feature_filter)
+    go.SetCommandPrompt("Select tool to flip orientation:")
+    go.EnablePreSelect(False, True)
+    result = go.Get()
+    if result is None or result == Rhino.Input.GetResult.Cancel:
+        print("Cancel")
+        return
+    guid = go.Object(0).ObjectId
+    selected_joint_id = guid_to_joint_id[guid]
+    current_index = process.assembly.get_joint_attribute(selected_joint_id, 'tool_orientation_frame_index')
+    if current_index == 0:
+        process.assembly.set_joint_attribute(selected_joint_id, 'tool_orientation_frame_index', 1)
+    else:
+        process.assembly.set_joint_attribute(selected_joint_id, 'tool_orientation_frame_index', 0)
+
+    process.dependency.invalidate(beam_id, process.compute_screwdriver_positions)
+    process.dependency.invalidate(beam_id, process.compute_gripper_grasp_pose)
+    process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=False, verbose=True)
+    artist.draw_asstool_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
+
+###################################
+# Show Rhino Menu
+###################################
+
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -170,7 +522,6 @@ def show_menu(process):
 
     artist.selected_beam_id = None
     artist.selected_key_position.final_position()
-
     # Make sure beam, gripper and clamps are drawn if they are drawn yet
     # Initially hide them.
     rs.EnableRedraw(False)
@@ -181,12 +532,17 @@ def show_menu(process):
         artist.hide_gripper_all_positions(beam_id)
         artist.draw_asstool_all_positions(beam_id, redraw=False)
         artist.hide_asstool_all_positions(beam_id)
+        artist.show_interactive_beam(beam_id)
     rs.EnableRedraw(True)
     rs.Redraw()
 
     go = Rhino.Input.Custom.GetObject()
     go.SetCommandPrompt("Select beam")
     go.EnablePreSelect(True, True)
+
+    ###################################
+    # Option menu
+    ###################################
 
     def create_go_options():
         go.ClearCommandOptions()
@@ -199,6 +555,7 @@ def show_menu(process):
             go.AddOption("xFirstKeyPos")
             go.AddOption("vNextKeyPos")
             go.AddOption("cPrevKeyPos")
+
             if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
                 go.AddOption("ChangeGraspingJoint")
             else:  # Methods with gripper
@@ -207,229 +564,33 @@ def show_menu(process):
                 go.AddOption("GripperType")
                 go.AddOption("GraspFace")
                 go.AddOption("GraspFaceFollowAsemblyDirection")
+
+            if assembly_method in BeamAssemblyMethod.screw_methods:
+                go.AddOption("ChangeToolOrientation")
+
             if assembly_method == BeamAssemblyMethod.CLAMPED:
                 go.AddOption("FlipClampAttachPosition")
             go.AddOption("ExitKeepGeo")
 
-    ###################################
-    # Showing Different Beam
-    ###################################
+    name_to_function_dict = {
+        'NextBeam': select_next_beam,
+        'PreviousBeam': select_previous_beam,
+        'vNextKeyPos': next_key_position,
+        'xFirstKeyPos': first_key_position,
+        'cPrevKeyPos': prev_key_position,
+        'GripperMovePos': gripper_move_pos,
+        'GripperMoveNeg': gripper_move_neg,
+        'GraspFace': grasp_face,
+        'GraspFaceFollowAsemblyDirection': gripper_follow_ass_dir,
+        'GripperType': gripper_changetype,
+        'FlipClampAttachPosition': flip_clamp,
+        'ChangeGraspingJoint': change_grasping_joint,
+        'ChangeToolOrientation': change_screwdriver_orientation,
 
-    def select_next_beam():
-        """ Function invoked by user to change active element to the next one.
-        """
-        # Increment the selected id
-        artist.select_next_beam()
-        artist.selected_key_position.final_position()
-
-    def select_previous_beam():
-        """ Function invoked by user to change active element to the previous one.
-        """
-        # Decrement the selected id
-        artist.select_previous_beam()
-
-    ###################################
-    # Showing Different Key Position
-    ###################################
-
-    def next_key_position():
-        artist.selected_key_position.next_position()
-
-    def prev_key_position():
-        artist.selected_key_position.prev_position()
-
-    def first_key_position():
-        artist.selected_key_position.first_position()
-
-    ###################################
-    # Changing Gripper Definitions
-    ###################################
-
-    def gripper_changetype():
-        """ Function invoked by user to change gripper type.
-
-        beam_attribute 'gripper_type' and 'gripper_id' will be changed.
-        """
-        if len(process.grippers) == 0:
-            print("No gripper exist for you to choose. Very bad. Add some grippers first.")
-            return
-
-        # Switching to a sub function depending on SCREWED_WITHOUT_GRIPPER
-        beam_id = artist.selected_beam_id
-        if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
-            _screwdriver_as_gripper_changetype(beam_id)
-        else:
-            _gripper_as_gripper_changetype(beam_id)
-
-        # Invalidate downstream of assign_gripper_to_beam. Recompute all.
-        process.dependency.invalidate(beam_id, process.assign_gripper_to_beam, downstream_only=False)
-        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True, verbose=True)
-
-        # Redraw Visualization
-        artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
-        if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
-            artist.draw_asstool_all_positions(beam_id, delete_old=True, redraw=False)
-
-    def _gripper_as_gripper_changetype(beam_id):
-        """ Function invoked by user to change gripper type.
-        Sub function that handles using regular gripper as gripper.
-
-        beam_attribute 'gripper_type' and 'gripper_id' will be changed.
-        """
-        # List out current gripper for users to choose
-        print("Available Grippers:")
-        current_gripper_type = process.assembly.get_beam_attribute(beam_id, 'gripper_type')
-        type_names = []
-        gripper_ids = []
-        for gripper in process.grippers:
-            print("- %s : %s" % (gripper.name, gripper.type_name))
-            if gripper.type_name not in type_names:
-                type_names.append(gripper.type_name)
-                gripper_ids.append(gripper.name)
-
-        # Ask user which gripper to delete
-        prompt = "Which gripper to use for Beam(%s)? Current gripper type is: %s" % (beam_id, current_gripper_type)
-        selected_type_name = rs.GetString(prompt, current_gripper_type, type_names)
-        # Dont change anything if the selection is the same
-        if selected_type_name == current_gripper_type:
-            print("Gripper type unchanged")
-            return
-        if selected_type_name in type_names:
-            print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
-            process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
-            process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
-
-    def _screwdriver_as_gripper_changetype(beam_id):
-        """ Function invoked by user to change gripper type.
-        Sub function that handles using screwdriver as gripper.
-
-        beam_attribute 'gripper_type' and 'gripper_id' will be changed.
-        """
-
-        # List out current gripper for users to choose
-        print("Available Screwdrivers:")
-        type_names = []
-        gripper_ids = []
-        for screwdriver in process.screwdrivers:
-            print("- %s : %s" % (screwdriver.name, screwdriver.type_name))
-            if screwdriver.type_name not in type_names:
-                type_names.append(screwdriver.type_name)
-                gripper_ids.append(screwdriver.name)
-
-        # Ask user which gripper to delete
-        current_gripper_id = process.assembly.get_beam_attribute(beam_id, 'gripper_id')
-        current_gripper_type = process.assembly.get_beam_attribute(beam_id, 'gripper_type')
-        prompt = "Which screwdriver to use for Beam(%s) as Gripper? Current gripper is: %s : %s" % (beam_id, current_gripper_type, current_gripper_id)
-        selected_type_name = rs.GetString(prompt, current_gripper_type, type_names)
-        # Dont change anything if the selection is the same
-        if selected_type_name == current_gripper_type:
-            print("Gripper type unchanged")
-            return
-        if selected_type_name in type_names:
-            print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
-            process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
-            process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
-
-        process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
-
-    def gripper_move_pos():
-        """ Function invoked by user to move grasp pose.
-        """
-        beam_id = artist.selected_beam_id
-        process.adjust_gripper_pos(beam_id, +30)
-        process.dependency.compute_all(beam_id)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
-
-    def gripper_move_neg():
-        """ Function invoked by user to move grasp pose.
-        """
-        beam_id = artist.selected_beam_id
-        process.adjust_gripper_pos(beam_id, -30)
-        process.dependency.compute_all(beam_id)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
-
-    def gripper_follow_ass_dir():
-        """ Function invoked by user to change grasp face.
-        This triggers set_grasp_face_following_assembly_direction
-        """
-        beam_id = artist.selected_beam_id
-        process.set_grasp_face_following_assembly_direction(beam_id)
-        process.dependency.compute_all(beam_id)
-
-        # Redraw Visualization
-        artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
-
-    def grasp_face():
-        """ Function invoked by user to change grasp face.
-        Uses get to select face 1 to 4.
-
-        This function recursively ask user until cancel is pressed or
-        """
-        # Get current situation
-        beam_id = artist.selected_beam_id
-
-        for _ in range(10):
-            current_grasp_face = process.assembly.get_beam_attribute(beam_id, 'gripper_grasp_face')
-
-            # Ask user which face to grasp
-            options = ['Back', 'Face1', 'Face2', 'Face3', 'Face4']
-            options_number = ['Back', '1', '2', '3', '4']
-            selected_grasp_face = rs.GetString("Which face to grasp for Beam(%s)? Current grasp face is: %s" %
-                                               (beam_id, options[current_grasp_face]), options[current_grasp_face], options)
-            if selected_grasp_face is None:
-                # User press Escape
-                return  # Exit loop
-            elif selected_grasp_face in options:
-                # User selected one of the Buttons
-                selected_grasp_face = options.index(selected_grasp_face)
-            elif selected_grasp_face in options_number:
-                # User typed in just a number
-                selected_grasp_face = options_number.index(selected_grasp_face)
-            else:
-                print("Input not recognized : %s" % selected_grasp_face)
-                continue  # Continue loop and try again.
-            if selected_grasp_face == 0:
-                # User selected Back as option
-                return  # Exit loop
-
-            # Check if new selection is the same as before
-            if selected_grasp_face != current_grasp_face:
-                # Recompute dependency
-                process.override_grasp_face(beam_id, selected_grasp_face)
-                process.dependency.compute_all(beam_id)
-
-                # Redraw Visualization
-                artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
-                artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
-                show_sequence_color(process)
-                compute_collision_show_color(process)
-
-            else:
-                print("Selection is the same as before, grasp face unchanged.")
-
-    ###################################
-    # Changing Clamp Definitions
-    ###################################
-
-    def flip_clamp():
-        beam_id = artist.selected_beam_id
-        print("get_clamp_orientation_options:")
-        print(process.get_clamp_orientation_options(beam_id))
-
-        # Call fnction to change direction
-        process.flip_clamp_guide_vector(beam_id)
-        # Recompute Dependency
-        process.dependency.invalidate(beam_id, process.search_valid_clamp_orientation_with_guiding_vector)
-        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True)
-        # Refresh Display
-        artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
-        artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
-        artist.draw_asstool_all_positions(beam_id, delete_old=True)
-        show_sequence_color(process)
+    }
 
     run_cmd = None  # Variable to remember the last command to allow easy rerun.
+
     while True:
         create_go_options()
         go.SetCustomGeometryFilter(get_existing_beams_filter(process))
@@ -444,38 +605,8 @@ def show_menu(process):
             if go.Option().EnglishName == "ExitKeepGeo":
                 return Rhino.Commands.Result.Cancel
 
-            if go.Option().EnglishName == "NextBeam":
-                run_cmd = select_next_beam
-
-            if go.Option().EnglishName == "PreviousBeam":
-                run_cmd = select_previous_beam
-
-            if go.Option().EnglishName == "vNextKeyPos":
-                run_cmd = next_key_position
-
-            if go.Option().EnglishName == "xFirstKeyPos":
-                run_cmd = first_key_position
-
-            if go.Option().EnglishName == "cPrevKeyPos":
-                run_cmd = prev_key_position
-
-            if go.Option().EnglishName == "GripperMovePos":
-                run_cmd = gripper_move_pos
-
-            if go.Option().EnglishName == "GripperMoveNeg":
-                run_cmd = gripper_move_neg
-
-            if go.Option().EnglishName == "GraspFace":
-                run_cmd = grasp_face
-
-            if go.Option().EnglishName == "GraspFaceFollowAsemblyDirection":
-                run_cmd = gripper_follow_ass_dir
-
-            if go.Option().EnglishName == "GripperType":
-                run_cmd = gripper_changetype
-
-            if go.Option().EnglishName == "FlipClampAttachPosition":
-                run_cmd = flip_clamp
+            if go.Option().EnglishName in name_to_function_dict:
+                run_cmd = name_to_function_dict[go.Option().EnglishName]
 
             run_cmd()
 
@@ -494,7 +625,7 @@ def show_menu(process):
                 return Rhino.Commands.Result.Cancel
         else:
             # User clicked on a beam.
-            # Show color preview of the sequence at that point
+            # Change artist.selected_beam_id
             guid = go.Object(0).ObjectId
             beam_id = get_object_name(guid)
             artist.selected_beam_id = beam_id
@@ -504,10 +635,9 @@ def show_menu(process):
 
             go.SetDefaultString("Press Enter to repeat.")
 
-        print("Showing Beam(%s) (%i of %i) at Position(%s) (%i of %i)" % (
+        print("Showing Beam(%s) (seq_id = %i) at Position(%s) (%i of %i)" % (
             artist.selected_beam_id,
-            assembly.get_beam_sequence(artist.selected_beam_id) + 1,
-            len(assembly.sequence),
+            assembly.get_beam_sequence(artist.selected_beam_id),
             artist.selected_key_position.current_pos_name,
             artist.selected_key_position.current_pos_num + 1,
             artist.selected_key_position.total_pos_number,

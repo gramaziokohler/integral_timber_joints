@@ -295,7 +295,7 @@ class JointNonPlanarLap(Joint):
         origin = project_point_plane(self.center_frame.point, Plane.from_frame(reference_side_wcf))
 
         forward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis.scaled(-1))
-        backward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis.scaled(1))
+        backward_clamp = Frame(origin, reference_side_wcf.xaxis.scaled(-1), reference_side_wcf.yaxis.scaled(1))
         return [forward_clamp, backward_clamp]
 
     def get_assembly_direction(self, beam):

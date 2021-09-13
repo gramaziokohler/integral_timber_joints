@@ -33,9 +33,15 @@ find_object = sc.doc.Objects.Find
 # ######################################################
 
 
-def draw_selectable_joint(process, joint_id, redraw=True):
-    # type: (RobotClampAssemblyProcess, tuple[str,str],  bool) -> None
+def draw_selectable_joint(process, joint_id, redraw=True, color=None):
+    # type: (RobotClampAssemblyProcess, tuple[str,str], bool, Tuple) -> None
+    """Draw joint feature of a specific joint.
 
+    If color is specified, will use that colour.
+    Otherwise apply a colour scheme based on which side the joint is on.
+    Green for  joint_id[0] < joint_id[1], Red otherwise.
+
+    """
     artist = get_process_artist()
     if not hasattr(artist, '_joint_features'):
         artist._joint_features = {}
@@ -75,8 +81,10 @@ def draw_selectable_joint(process, joint_id, redraw=True):
             continue
         # Naming
         rs.ObjectName(guid, "%s-%s" % (joint_id[0], joint_id[1]))
-        # Red Green Coloring
-        if process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1]):
+        # Apply Color to the geometry
+        if color is not None:
+            rs.ObjectColor(guid, color)
+        elif process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1]):
             rs.ObjectColor(guid, (30, 190, 85))
         else:
             rs.ObjectColor(guid, (250, 80, 60))
@@ -108,6 +116,8 @@ def delete_selectable_joint(process, joint_id, redraw=True):
 def delete_all_selectable_joints(process, redraw=True):
     # type: (RobotClampAssemblyProcess, bool) -> None
     artist = get_process_artist()
+    if not hasattr(artist, '_joint_features'):
+        return
     rs.EnableRedraw(False)
     for joint_id in artist._joint_features:
         delete_selectable_joint(process, joint_id, redraw=False)
