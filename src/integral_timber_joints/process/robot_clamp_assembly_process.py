@@ -418,6 +418,9 @@ class RobotClampAssemblyProcess(Data):
 
         If 'position_name' = None, clamp frame will not be modified.
 
+        If get_tool_type_of_joint(joint_id) is None (meaning joint require no tool),
+        None is returned.
+
         Warning: This clamp object is not deep-copied.
         Modifying it will change its definition in the process.
         """
@@ -425,6 +428,8 @@ class RobotClampAssemblyProcess(Data):
         beam_id = joint_id[0]
         tool_id = self.assembly.get_joint_attribute(joint_id, 'tool_id')
         tool_type = self.get_tool_type_of_joint(joint_id)
+        if tool_type is None:
+            return None
         if tool_id is not None and tool_id in self.tool_ids:
             tool = self.tool(tool_id)
             # print("Getting Joint(%s) Tool %s (%s)" % (joint_id, tool_type, tool_id))
@@ -788,20 +793,25 @@ class RobotClampAssemblyProcess(Data):
             return cylinders
 
         # Gripper
-        gripper = self.get_gripper_of_beam(beam_id)
-        other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(gripper)
+        if self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf") is None:
+            print ("Warning: gripper_tcp_in_ocf is None while calling process.get_tool_features_on_beam(%s)" % (beam_id))
+        else:
+            gripper = self.get_gripper_of_beam(beam_id)
+            other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(gripper)
 
         # Clamps Attached to this beam
         for neighbour_id in assembly.get_unbuilt_neighbors(beam_id):
             if assembly.get_assembly_method(neighbour_id) == BeamAssemblyMethod.CLAMPED:
                 clamp = self.get_tool_of_joint((beam_id, neighbour_id))  # type: Clamp
-                other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(clamp)
+                if clamp is not None:
+                    other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(clamp)
 
         # # Screwdrivers Attached to this beam
         if assembly.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
             for neighbour_id in assembly.get_already_built_neighbors(beam_id):
                 screwdriver = self.get_tool_of_joint((neighbour_id, beam_id))
-                other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(screwdriver)
+                if screwdriver is not None:
+                    other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(screwdriver)
         return other_feature_shapes
 
     # -----------------
