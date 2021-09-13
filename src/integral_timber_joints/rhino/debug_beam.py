@@ -21,17 +21,26 @@ from compas.geometry import Cylinder, Transformation
 
 if __name__ == '__main__':
     process = get_process()
-
+    assembly = process.assembly
     artist = get_process_artist()
-    beam_id = 'b3'
-    artist.draw_beam_brep(beam_id, True)
+    # beam_id = 'b3'
+    # artist.draw_beam_brep(beam_id, True)
     # beam = process.assembly.beam(beam_id)
 
-    s1 = process.screwdriver('s1')
-    print(s1.gripper_drill_lines)
+    for beam_id in assembly.sequence:
+        pref = process.assembly.get_beam_attribute(beam_id, 'grasping_joint_id_preference')
+        print(beam_id, pref)
+        if isinstance(pref, list):
+            process.assembly.set_beam_attribute(beam_id, 'grasping_joint_id_preference', (pref[0],pref[1]))
 
-    g1 = process.gripper('g1')
-    print(g1.gripper_drill_lines)
+    beam = process.assembly.beam('b7')
+    print (assembly.to_jsonstring())
+
+    # s1 = process.screwdriver('s1')
+    # print(s1.gripper_drill_lines)
+
+    # g1 = process.gripper('g1')
+    # print(g1.gripper_drill_lines)
 
     # artist.draw_beam_at_position(beam_id, 'assembly_wcf_pickup', delete_old=True)
     # artist.draw_beam_at_position(beam_id, 'assembly_wcf_screwdriver_attachment_pose', delete_old=True)

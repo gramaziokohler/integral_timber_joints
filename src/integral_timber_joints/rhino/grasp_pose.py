@@ -65,11 +65,21 @@ def show_sequence_color(process):
 
         # Show gripper and clamp
         if seq == selected_seq_num:
-            artist.show_gripper_at_one_position(beam_id, color='normal')
-            artist.show_asstool_at_one_position(beam_id, color='normal')
+            artist.show_asstool_at_one_position(beam_id, color='asstool_normal')
+            artist.show_gripper_at_one_position(beam_id, color='gripper_normal')
+            # Special color for SCREWED_WITHOUT_GRIPPER
+            assembly_method = assembly.get_assembly_method(selected_beam_id)
+            if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+                grasping_joint_id = process.assembly.get_grasping_joint_id(beam_id)
+                tool_position = artist.selected_key_position.current_clamp_pos
+                # print (grasping_joint_id)
+                # print (tool_position)
+                rs.ObjectColor(artist.asstool_guids_at_position(grasping_joint_id, tool_position), artist.color_meaning.get('gripper_normal'))
+
         else:
             artist.hide_gripper_all_positions(beam_id)
             artist.hide_asstool_all_positions(beam_id)
+
 
         # Print out for debug
         if problem:
@@ -426,9 +436,9 @@ def change_grasping_joint():
     selectable_guids = []
     for joint_id in joint_ids:
         if joint_id[0] == current_grasping_joint_id[0] and joint_id[1] == current_grasping_joint_id[1]:
-            color = (30, 190, 85)
+            color = (30, 85, 190) # Blue
         else:
-            color = (30, 85, 190)
+            color = (30, 190, 85) # Green
         draw_selectable_joint(process, joint_id, redraw=False, color=color)
         selectable_guids.extend(artist._joint_features[joint_id])
     rs.EnableRedraw(True)
@@ -438,7 +448,7 @@ def change_grasping_joint():
     def joint_feature_filter(rhino_object, geometry, component_index):
         return rhino_object.Attributes.ObjectId in selectable_guids
     go.SetCustomGeometryFilter(joint_feature_filter)
-    go.SetCommandPrompt("Select joint as the Grasping Joint (current joint is Green):")
+    go.SetCommandPrompt("Select joint as the Grasping Joint (current grasping joint is Blue):")
     go.EnablePreSelect(False, True)
     result = go.Get()
     print (result)
@@ -459,7 +469,7 @@ def change_grasping_joint():
         return
     else:
         process.assembly.set_beam_attribute(beam_id, 'grasping_joint_id_preference', new_grasping_joint_id)
-        print("Gripper type changed from %s to %s" % (current_grasping_joint_id, new_grasping_joint_id))
+        print("Grasping changed from %s to %s" % (current_grasping_joint_id, new_grasping_joint_id))
 
     process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
     process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=False, verbose=True)
