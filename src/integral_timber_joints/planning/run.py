@@ -17,7 +17,7 @@ from integral_timber_joints.planning.state import set_state, set_initial_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 from integral_timber_joints.planning.solve import get_movement_status, MovementStatus, compute_selected_movements
 
-from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement
+from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.movement import RoboticMovement
 
 SOLVE_MODE = [
@@ -28,11 +28,7 @@ SOLVE_MODE = [
     'propagate_only', # 'Only do state propagation and impacted movement planning.'
 ]
 
-# * Need now
-# TODO replay viz from file
-
 # * Next steps
-# TODO further smoothing transit/transfer trajectories
 # TODO use linkstatistics joint weight and resolutions
 # TODO backtrack in case of subsequent sampling cannot find a solution (linear movement with one end specified)
 
@@ -42,6 +38,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     solve_timeout = options.get('solve_timeout', 600)
     solve_iters = options.get('solve_iters', 40)
     return_upon_success = options.get('return_upon_success', True)
+    ignore_taught_confs = options.get('ignore_taught_confs', False)
     runtime_data = {}
 
     start_time = time.time()
@@ -60,8 +57,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         trial_i += 1
         copy_st_time = time.time()
         process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
-        if options['ignore_taught_confs']:
-            # ! remove all taught confs
+        if ignore_taught_confs:
             for m in process.movements:
                 process.set_movement_end_robot_config(m, None)
         client.disconnect()
@@ -93,7 +89,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         altered_movements = []
         with HideOutput(): #args.verbose
             if args.solve_mode == 'nonlinear':
-                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement],
+                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
@@ -216,6 +212,7 @@ def main():
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
+    parser.add_argument('--smooth', action='store_true', help='Apply smoothing right after free motions are found.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
@@ -272,6 +269,7 @@ def main():
         'jump_threshold' : joint_jump_threshold,
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
+        'smooth_iterations' : 50 if args.smooth else None,
     }
 
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)

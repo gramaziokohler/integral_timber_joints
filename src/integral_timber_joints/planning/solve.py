@@ -10,7 +10,7 @@ from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSav
 from compas_fab.robots import Robot
 from compas_fab_pychoreo.utils import compare_configurations
 
-from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement
+from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process import RobotClampAssemblyProcess, Movement
 from integral_timber_joints.planning.stream import compute_free_movement, compute_linear_movement
 from integral_timber_joints.planning.state import set_state
@@ -128,7 +128,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
-    elif isinstance(movement, RoboticClampSyncLinearMovement):
+    elif isinstance(movement, RoboticClampSyncLinearMovement) or \
+         isinstance(movement, RobotScrewdriverSyncLinearMovement):
         lm_options = options.copy()
         # * interpolation step size, in meter
         lm_options.update({

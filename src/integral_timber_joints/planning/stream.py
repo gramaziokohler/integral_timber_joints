@@ -10,15 +10,13 @@ from collections import defaultdict
 from compas.geometry import Frame, distance_point_point, Transformation
 from compas_fab.robots import Configuration, Robot
 
-from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement
-from integral_timber_joints.process.state import get_object_from_flange
+from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement, RobotScrewdriverSyncLinearMovement
 
 import pybullet_planning as pp
 from pybullet_planning import GREY
 from pybullet_planning import link_from_name, get_link_pose, draw_pose, multiply, \
     joints_from_names, LockRenderer, WorldSaver, wait_for_user, joint_from_name, wait_if_gui, has_gui
 from pybullet_planning import link_from_name, sample_tool_ik, is_pose_close
-from pybullet_planning import compute_inverse_kinematics
 from pybullet_planning import INF, invert, get_joint_positions, get_unit_vector, draw_point
 
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
@@ -226,7 +224,8 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
 
 def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
     assert isinstance(movement, RoboticLinearMovement) or \
-        isinstance(movement, RoboticClampSyncLinearMovement)
+        isinstance(movement, RoboticClampSyncLinearMovement) or \
+        isinstance(movement, RobotScrewdriverSyncLinearMovement)
     robot_uid = client.get_robot_pybullet_uid(robot)
 
     # * options
