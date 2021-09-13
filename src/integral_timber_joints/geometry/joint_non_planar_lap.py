@@ -337,8 +337,8 @@ class JointNonPlanarLap(Joint):
             return screw_line_end
 
     @classmethod
-    def from_beam_beam_intersection(cls, beam_stay, beam_move, thickness=None):
-        # type: (Beam, Beam, float) -> tuple[JointNonPlanarLap, Line]
+    def from_beam_beam_intersection(cls, beam_stay, beam_move, thickness=None, joint_face_id_stay=None, joint_face_id_move=None):
+        # type: (Beam, Beam, float, int, int) -> tuple[JointNonPlanarLap, Line]
         ''' Compute the intersection between two beams.
 
         `beam_stay` must be the earlier beam in assembly sequence
@@ -350,6 +350,8 @@ class JointNonPlanarLap(Joint):
         There need to be some offset
 
         `thickness` is the thickness of the lap joint on the moving_beam.
+
+        If `joint_face_id_stay` or `joint_face_id_move` is provided, those faces will be used.
 
         If no intersection can be found or the two beam are not coplanar,
         Returns a tuple of (None, None, None)
@@ -374,17 +376,19 @@ class JointNonPlanarLap(Joint):
 
         normal_dot_product_m = [dot_vectors(beam_move.reference_side_wcf(i + 1).zaxis, v_ms) for i in range(4)]
         normal_dot_product_s = [dot_vectors(beam_stay.reference_side_wcf(i + 1).zaxis, v_sm) for i in range(4)]
-        joint_face_id_m = normal_dot_product_m.index(max(normal_dot_product_m)) + 1
-        joint_face_id_s = normal_dot_product_s.index(max(normal_dot_product_s)) + 1
+        if joint_face_id_stay is None:
+            joint_face_id_stay = normal_dot_product_s.index(max(normal_dot_product_s)) + 1
+        if joint_face_id_move is None:
+            joint_face_id_move = normal_dot_product_m.index(max(normal_dot_product_m)) + 1
 
         # Find the reference side frame and reference edges
-        ref_side_m = beam_move.reference_side_wcf(joint_face_id_m)
-        ref_side_s = beam_stay.reference_side_wcf(joint_face_id_s)
-        ref_edge_m0 = beam_move.reference_edge_wcf(joint_face_id_m)
-        ref_edge_m1 = beam_move.reference_edge_wcf(joint_face_id_m-1)
+        ref_side_m = beam_move.reference_side_wcf(joint_face_id_move)
+        ref_side_s = beam_stay.reference_side_wcf(joint_face_id_stay)
+        ref_edge_m0 = beam_move.reference_edge_wcf(joint_face_id_move)
+        ref_edge_m1 = beam_move.reference_edge_wcf(joint_face_id_move-1)
         # s0 and s1 are defined as which ever is more negative to ref_side_m.xaxis
-        ref_edge_s0 = beam_stay.reference_edge_wcf(joint_face_id_s)
-        ref_edge_s1 = beam_stay.reference_edge_wcf(joint_face_id_s-1)
+        ref_edge_s0 = beam_stay.reference_edge_wcf(joint_face_id_stay)
+        ref_edge_s1 = beam_stay.reference_edge_wcf(joint_face_id_stay-1)
         if dot_vectors(ref_side_s.yaxis, ref_side_m.xaxis) < 0.0:
             ref_edge_s0, ref_edge_s1 = ref_edge_s1, ref_edge_s0
 
@@ -441,7 +445,7 @@ class JointNonPlanarLap(Joint):
         ctl_s_projected = ctl_s.transformed(P)
         cp_m_projected, cp_s_projected = intersection_line_line(ctl_m_projected, ctl_s_projected)
         # Translating the frame to the cheek plane
-        offset_amount = thickness - beam_move.get_face_height(joint_face_id_m)
+        offset_amount = thickness - beam_move.get_face_height(joint_face_id_move)
         T = Translation.from_vector(ref_side_m.zaxis.unitized().scaled(offset_amount))
         joint_center_frame = Frame(Point(* cp_m_projected).transformed(T), ref_side_m.xaxis, ref_side_m.yaxis)
 
@@ -449,16 +453,16 @@ class JointNonPlanarLap(Joint):
         axial_dot_product = dot_vectors(ref_side_s.zaxis, ref_side_m.xaxis)
 
         # Construct joint objects
-        joint_m = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
+        joint_m = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_move, joint_face_id_stay, axial_dot_product, lpx_pts,
                                     is_joint_on_beam_move=True, name='%s-%s' % (beam_move.name, beam_stay.name))
-        joint_s = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_m, joint_face_id_s, axial_dot_product, lpx_pts,
+        joint_s = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_move, joint_face_id_stay, axial_dot_product, lpx_pts,
                                     is_joint_on_beam_move=False, name='%s-%s' % (beam_move.name, beam_stay.name))
 
         # * Compute Screw line
         center_line = Line(joint_center_frame.point, joint_center_frame.point + joint_center_frame.zaxis)
 
-        far_ref_side_m = beam_move.reference_side_wcf((joint_face_id_m + 1) % 4 + 1)
-        far_ref_side_s = beam_stay.reference_side_wcf((joint_face_id_s + 1) % 4 + 1)
+        far_ref_side_m = beam_move.reference_side_wcf((joint_face_id_move + 1) % 4 + 1)
+        far_ref_side_s = beam_stay.reference_side_wcf((joint_face_id_stay + 1) % 4 + 1)
 
         screw_line_start = intersection_line_plane(center_line, Plane.from_frame(far_ref_side_m))
         screw_line_end = intersection_line_plane(center_line, Plane.from_frame(far_ref_side_s))
