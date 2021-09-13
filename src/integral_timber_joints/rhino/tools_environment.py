@@ -197,8 +197,8 @@ def replace_tool(process, cls):
             new_tool.tool_storage_configuration = old_tool.tool_storage_configuration
         artist = get_process_artist()
         artist.delete_tool_in_storage(tool_id)
-        process.delete_clamp(tool_id)
-        process.add_clamp(new_tool)
+        process.delete_tool(tool_id)
+        process.add_tool(new_tool)
         artist.draw_tool_in_storage(tool_id)
         print("%s is replaced by %s." % (old_tool, new_tool))
 

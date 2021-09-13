@@ -333,7 +333,7 @@ def show_menu(process):
             process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
             process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
 
-        process.dependency.invalidate(beam_id, process.assign_tool_id_to_beam_joints)
+        process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
 
     def gripper_move_pos():
         """ Function invoked by user to move grasp pose.

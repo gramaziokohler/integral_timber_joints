@@ -1,7 +1,7 @@
 # import profile
 # from integral_timber_joints.geometry.joint import Joint
 # from integral_timber_joints.geometry.beam import Beam
-# from integral_timber_joints.geometry import Joint_halflap_from_beam_beam_intersection
+# from integral_timber_joints.geometry import JointHalfLap
 # from compas.geometry import Frame, Point, Vector, Line
 # from compas.geometry import intersection_segment_segment, distance_point_point
 
@@ -21,13 +21,13 @@
 #     beam2 = Beam(Frame(Point(-200, 500, 0), Vector(1, 0, 0), Vector(0, 1, 0)))
 #     beam3 = Beam(Frame(Point(-200, 500, 100), Vector(1, 0, 0), Vector(0, 1, 0)))
 #     beam4 = Beam(Frame(Point(0, -100, 100), Vector(0, 1, 0), Vector(-1, 0, 0)))
-#     result = Joint_halflap_from_beam_beam_intersection(beam1, beam2)
-#     result = Joint_halflap_from_beam_beam_intersection(beam1, beam3)
-#     result = Joint_halflap_from_beam_beam_intersection(beam2, beam3)
-#     result = Joint_halflap_from_beam_beam_intersection(beam2, beam4)
-#     result = Joint_halflap_from_beam_beam_intersection(beam2, beam3)
-#     result = Joint_halflap_from_beam_beam_intersection(beam3, beam4)
-#     result = Joint_halflap_from_beam_beam_intersection(beam1, beam4)
+#     result = JointHalfLap.from_beam_beam_intersection(beam1, beam2)
+#     result = JointHalfLap.from_beam_beam_intersection(beam1, beam3)
+#     result = JointHalfLap.from_beam_beam_intersection(beam2, beam3)
+#     result = JointHalfLap.from_beam_beam_intersection(beam2, beam4)
+#     result = JointHalfLap.from_beam_beam_intersection(beam2, beam3)
+#     result = JointHalfLap.from_beam_beam_intersection(beam3, beam4)
+#     result = JointHalfLap.from_beam_beam_intersection(beam1, beam4)
 
 
 # def test2():

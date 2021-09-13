@@ -75,8 +75,7 @@ class ComputationalDependency(Graph):
 
         # Assigning Tools
         # -------
-        self.add_edge('assign_tool_type_to_joints', 'assign_tool_id_to_beam_joints')
-        self.add_edge('assign_tool_id_to_beam_joints', 'assign_gripper_to_beam')  # Gripper for SCREWED_WITHOUT_GRIPPER will depend on the assigned screwdrivers.
+        self.add_edge('assign_tool_type_to_joints', 'assign_gripper_to_beam')  # Gripper for SCREWED_WITHOUT_GRIPPER will depend on the assigned screwdrivers.
 
         # Gripper / Grasp / Beam at Pickup
         # --------------------------------
@@ -86,7 +85,7 @@ class ComputationalDependency(Graph):
 
         # Clamp Specific Computations (based on search_valid_clamp_orientation_with_guiding_vector)
         # ---------------------------
-        self.add_edge('assign_tool_id_to_beam_joints', 'search_valid_clamp_orientation_with_guiding_vector')
+        self.add_edge('assign_tool_type_to_joints', 'search_valid_clamp_orientation_with_guiding_vector')
         function_names = [
             'compute_clamp_attachapproach_attachretract_detachapproach',
             'compute_clamp_detachretract',
@@ -122,7 +121,7 @@ class ComputationalDependency(Graph):
             'compute_beam_pickupretract',
             'compute_beam_pickupapproach',
             'compute_beam_finalretract',
-            'assign_tool_id_to_beam_joints'
+            'assign_tool_type_to_joints'
         ]
 
         for f in terminal_function_names:
@@ -133,6 +132,14 @@ class ComputationalDependency(Graph):
         if self.process is not None and self.process.assembly is not None:
             for beam_id in self.process.assembly.beam_ids():
                 self.update_default_node_attributes({beam_id: ComputationalResult.Invalid})
+
+    def add_beam(self, beam_id):
+        self.update_default_node_attributes({beam_id: ComputationalResult.Invalid})
+
+    def delete_beam(self, beam_id):
+        for node in self.nodes():
+            self.unset_node_attribute(node, beam_id)
+        del self.default_node_attributes[beam_id]
 
     def set_solution_validity(self, beam_id, fx, state, invalidate_downstream=True):
         # type: (str, function, int, bool) -> None

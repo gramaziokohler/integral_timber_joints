@@ -1,10 +1,12 @@
 import uuid
+
 import Rhino.Geometry as rg
 import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
 from compas.datastructures import Mesh
-from compas.geometry import Cylinder, Polyhedron
+from compas.geometry import Cylinder, Polyhedron, Shape
 from compas_rhino.utilities import clear_layer, delete_objects, draw_breps, draw_cylinders, draw_mesh
+from compas_rhino.geometry.transformations import xform_from_transformation
 from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
 from System.Drawing import Color  # type: ignore
 
@@ -94,8 +96,8 @@ class AssemblyNurbsArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
-    def draw_beam(self, beam_id, delete_old=False, redraw=True, verbose=False):
-        # type: (str, bool, bool, bool) -> None
+    def draw_beam(self, beam_id, delete_old=False, redraw=True, other_feature_shapes=[], verbose=False):
+        # type: (str, bool, bool, list[Shape], bool) -> None
         """Function to draw specified beam with nurbs.
 
         By default `delete_old` is False.
@@ -115,36 +117,33 @@ class AssemblyNurbsArtist(object):
             mesh_box = self.assembly.beam(beam_id).draw_uncut_mesh()
             positive_brep_guids = draw_breps(mesh_to_brep(mesh_box), join=True, redraw=False)
 
-            # Collect all the negative features
-            joints = self.assembly.get_joints_of_beam(beam_id)
-            beam_cuts = self.assembly.beam_cuts(beam_id)
-            features = joints
-            features += beam_cuts
+            # Retrieve all the negative features
+            negative_shapes = self.assembly.get_beam_negative_shapes(beam_id)
+            negative_shapes += other_feature_shapes
 
             guids = []  # Hold the guids of the final boolean result
-            if len(features) > 0:
+            if len(negative_shapes) > 0:
                 negative_brep_guids = []
                 # Get the negative meshes from the features and convert them to nurbs
-                for feature in features:
-                    for negative_shape in feature.get_feature_shapes(self.assembly.beam(beam_id)):
+                for negative_shape in negative_shapes:
+                    if verbose:
+                        print(negative_shape.__class__)
+                    if isinstance(negative_shape, Polyhedron):
+                        vertices_and_faces = negative_shape.to_vertices_and_faces()
+                        struct = vertices_and_faces_to_brep_struct(vertices_and_faces)
                         if verbose:
-                            print(negative_shape.__class__)
-                        if isinstance(negative_shape, Polyhedron):
-                            vertices_and_faces = negative_shape.to_vertices_and_faces()
-                            struct = vertices_and_faces_to_brep_struct(vertices_and_faces)
-                            if verbose:
-                                print("Polyhedron :", struct)
-                            negative_guids = draw_breps(struct, join=True, redraw=False)
-                            negative_brep_guids.extend(negative_guids)
-                        elif isinstance(negative_shape, Cylinder):
-                            cylinder = negative_shape
-                            start = cylinder.center + cylinder.normal.scaled(cylinder.height / 2)
-                            end = cylinder.center - cylinder.normal.scaled(cylinder.height / 2)
-                            struct = {'start': list(start), 'end': list(end), 'radius': cylinder.circle.radius}
-                            if verbose:
-                                print("Cylinder : ", struct)
-                            negative_guids = draw_cylinders([struct], cap=True, redraw=False)
-                            negative_brep_guids.extend(negative_guids)
+                            print("Polyhedron :", struct)
+                        negative_guids = draw_breps(struct, join=True, redraw=False)
+                        negative_brep_guids.extend(negative_guids)
+                    elif isinstance(negative_shape, Cylinder):
+                        cylinder = negative_shape
+                        start = cylinder.center + cylinder.normal.scaled(cylinder.height / 2)
+                        end = cylinder.center - cylinder.normal.scaled(cylinder.height / 2)
+                        struct = {'start': list(start), 'end': list(end), 'radius': cylinder.circle.radius}
+                        if verbose:
+                            print("Cylinder : ", struct)
+                        negative_guids = draw_cylinders([struct], cap=True, redraw=False)
+                        negative_brep_guids.extend(negative_guids)
 
                 # Perform Boolean Difference
                 positive_breps = [rs.coercebrep(guid) for guid in positive_brep_guids]
@@ -180,3 +179,16 @@ class AssemblyNurbsArtist(object):
         # Save resulting guid(s) into guid dictionary and also return them
         self.beam_guids(beam_id).extend(guids)
         return guids
+
+    def draw_beam_at_position(self, beam_id, beam_position, delete_old=False, redraw=True, verbose=False):
+        # * Draws the beam at final position
+        guids = self.draw_beam(beam_id, delete_old=delete_old, redraw=False, verbose=verbose)
+
+        find_object = sc.doc.Objects.Find
+        for guid in guids:
+            obj = find_object(guid)
+
+            # Transform it to target location
+            t = self.assembly.get_beam_transformaion_to(beam_id, beam_position)
+            xform = xform_from_transformation(t)
+            sc.doc.Objects.Transform(obj, xform, True)

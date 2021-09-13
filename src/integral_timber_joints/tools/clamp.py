@@ -322,6 +322,7 @@ def CL3Factory(
     detachretract1_vector,
     detachretract2_vector,
     gripper_drill_lines,
+    gripper_drill_diameter
 ):
     """ A Parallel gripper will have a base and two gripper jaw.
     Modelling guide
@@ -343,6 +344,7 @@ def CL3Factory(
     robot_model.detachretract1_vector = detachretract1_vector   # This vector is ref to t0cf
     robot_model.detachretract2_vector = detachretract2_vector   # This vector is ref to t0cf
     robot_model.gripper_drill_lines = gripper_drill_lines
+    robot_model.gripper_drill_diameter = gripper_drill_diameter
 
     #world_link = robot_model.add_link('world')
     gripper_base = robot_model.add_link('gripper_base', visual_meshes=base_mesh, collision_meshes=base_mesh)
