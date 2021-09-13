@@ -3,7 +3,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc
 import re
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
-from integral_timber_joints.geometry import JointHalfLap
+from integral_timber_joints.geometry import JointHalfLap, JointNonPlanarLap
 from integral_timber_joints.rhino.assembly_artist import AssemblyNurbsArtist
 from integral_timber_joints.assembly import BeamAssemblyMethod
 from integral_timber_joints.tools import Clamp, Screwdriver, Gripper
@@ -23,18 +23,25 @@ if __name__ == '__main__':
     process = get_process()
     assembly = process.assembly
     artist = get_process_artist()
-    # beam_id = 'b3'
-    # artist.draw_beam_brep(beam_id, True)
-    # beam = process.assembly.beam(beam_id)
+    beam_id = 'b35'
 
-    for beam_id in assembly.sequence:
-        pref = process.assembly.get_beam_attribute(beam_id, 'grasping_joint_id_preference')
-        print(beam_id, pref)
-        if isinstance(pref, list):
-            process.assembly.set_beam_attribute(beam_id, 'grasping_joint_id_preference', (pref[0],pref[1]))
+    for joint_id in process.assembly.get_joint_ids_of_beam(beam_id):
+        print ("--------------")
+        print (joint_id)
+        joint = assembly.joint(joint_id)
+        beam_move_face_id = joint.beam_move_face_id
+        print (beam_move_face_id)
+        # beam_move = process.assembly.beam(joint_id[0])
+        # beam_stay = process.assembly.beam(joint_id[1])
 
-    beam = process.assembly.beam('b7')
-    print (assembly.to_jsonstring())
+        # j_s, j_m, screw_line = JointNonPlanarLap.from_beam_beam_intersection(beam_stay, beam_move)
+        # print (j_m.data)
+
+    # artist.delete_interactive_beam_visualization(beam_id)
+    artist.draw_beam_brep(beam_id)
+
+
+
 
     # s1 = process.screwdriver('s1')
     # print(s1.gripper_drill_lines)
