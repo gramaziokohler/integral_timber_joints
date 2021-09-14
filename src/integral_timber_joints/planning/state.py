@@ -181,7 +181,9 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             else:
                 # ! these are attached objects
                 # * promote to attached_collision_object if needed
+                wildcard = '^{}$'.format(object_id)
                 if status == 0:
+                    attached_collision_object_names = client._get_collision_object_names(wildcard)
                     # * attached collision objects haven't been added
                     assert initialize or ('robot', 'f') in scene
                     # object_from_flange = get_object_from_flange(scene, object_id)
@@ -195,10 +197,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     t_world_object = Transformation.from_frame(object_frame)
                     t_world_robot = Transformation.from_frame(flange_frame)
                     robot_flange_from_tool = t_world_robot.inverse() * t_world_object
-
-                    # * create attachments
-                    wildcard = '^{}$'.format(object_id)
-                    collision_object_names = client._get_collision_object_names(wildcard)
 
                     # touched_links is only for the adjacent Robot links
                     touched_robot_links = []
@@ -214,7 +212,8 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                         # beams
                         attached_object_base_link_name = None # process.tool(object_id).get_base_link_name()
 
-                    for name in collision_object_names:
+                    # * create attachments
+                    for name in attached_collision_object_names:
                         # a faked AttachedCM since we are not adding a new mesh, just promoting collision meshes to AttachedCMes
                         client.add_attached_collision_mesh(
                             AttachedCollisionMesh(CollisionMesh(None, name),
@@ -223,33 +222,37 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                                      'attached_child_link_name': attached_object_base_link_name,
                                      'parent_link_from_child_link_transformation' : robot_flange_from_tool,
                                      })
+                else:
+                    # ! status = 1, already attached
+                    attached_collision_object_names = client._get_attachment_names(wildcard)
 
-                    # * attachments disabled collisions
-                    # list of bodies that should not collide with the current object_id
-                    extra_disabled_bodies = []
-                    if object_id in process.assembly.sequence:
-                        # ! disable collisions between the beam and gripper
-                        # beam is the current object, iterating through all the tools to see which one is attached
-                        # and disable collisions between them
-                        tool_count = 0
-                        for tool_id in process.tool_ids:
-                            if scene[tool_id, 'a']:
-                                extra_disabled_bodies.extend(client._get_bodies('^{}$'.format(tool_id)))
-                                tool_count += 1
-                        assert tool_count > 0, 'At least one tool should be attached to the robot when the beam is attached.'
+                # ! update extra allowed collision regardless of status
+                # * extra attachments disabled collisions (beyond just disabling attachment parent-child)
+                # list of bodies that should not collide with the current object_id
+                extra_disabled_bodies = []
+                if object_id in process.assembly.sequence:
+                    # ! disable collisions between the beam and gripper
+                    # beam is the current object, iterating through all the tools to see which one is attached
+                    # and disable collisions between them
+                    tool_count = 0
+                    for tool_id in process.tool_ids:
+                        if scene[tool_id, 'a']:
+                            print('{} - {}'.format(object_id, tool_id))
+                            extra_disabled_bodies.extend(client._get_bodies('^{}$'.format(tool_id)))
+                            tool_count += 1
+                    assert tool_count > 0, 'At least one tool should be attached to the robot when the beam is attached.'
 
-                    elif object_id in process.tool_ids:
-                        # ! disable collisions between the tool_changer and a tool
-                        extra_disabled_bodies.extend(client._get_bodies('^{}$'.format('tool_changer')))
+                elif object_id in process.tool_ids:
+                    # ! disable collisions between the tool_changer and a tool
+                    extra_disabled_bodies.extend(client._get_bodies('^{}$'.format('tool_changer')))
 
-                    for name in collision_object_names:
-                        at_bodies = client._get_attached_bodies('^{}$'.format(name))
-                        assert len(at_bodies) > 0
-                        for parent_body, child_body in product(extra_disabled_bodies, at_bodies):
-                            client.extra_disabled_collision_links[name].add(
-                                ((parent_body, None), (child_body, None))
-                            )
-            # end if attached_to_robot
+                for name in attached_collision_object_names:
+                    at_bodies = client._get_attached_bodies('^{}$'.format(name))
+                    assert len(at_bodies) > 0
+                    for parent_body, child_body in product(extra_disabled_bodies, at_bodies):
+                        client.extra_disabled_collision_links[name].add(
+                            ((parent_body, None), (child_body, None))
+                        )
 
 #################################
 

@@ -32,9 +32,6 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
 
     # * update state
     set_state(client, robot, process, scene_state, options=options)
-    if debug:
-        client._print_object_summary()
-        wait_if_gui('Set state.')
 
     # * check collisions among the list of attached objects and obstacles in the scene.
     # This includes collisions between:
@@ -44,7 +41,9 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
     if scene_state[process.robot_config_key]:
         pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
         in_collision |= pychore_collision_fn.check_collisions(robot, scene_state[process.robot_config_key], options=options)
-    if debug:
+    # if debug:
+    if debug and in_collision:
+        client._print_object_summary()
         wait_for_user('Collision checked: {}'.format(in_collision))
     return in_collision
 
@@ -182,8 +181,6 @@ def main():
         if not args.id_only:
             print('='*20)
             cprint('(Seq#{}) Beam {}'.format(seq_i, beam_id), 'yellow')
-        if args.debug:
-            process.get_movement_summary_by_beam_id(beam_id)
 
         all_movements = process.get_movements_by_beam_id(beam_id)
         for i, m in enumerate(all_movements):
