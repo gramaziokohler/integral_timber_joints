@@ -341,6 +341,8 @@ class ProcessArtist(object):
         'assembly_method_clamped': (84, 155, 135),  # green
         'assembly_method_screwed_w_gripper': (126, 178, 221),  # lightblue
         'assembly_method_screwed_wo_gripper': (68, 94, 147),  # deepblue
+        'gripper_normal' : (35, 78, 160), # Blue
+        'asstool_normal' : (30, 120, 50), # Green
     }
 
     key_positions = [

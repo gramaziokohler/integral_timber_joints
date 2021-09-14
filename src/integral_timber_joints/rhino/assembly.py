@@ -2,6 +2,7 @@ import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 import scriptcontext
 import re
+from collections import Counter
 
 from compas.geometry import Frame, Vector, Point, bounding_box
 from compas.geometry import Transformation
@@ -15,14 +16,52 @@ from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry import JointHalfLap, JointNonPlanarLap
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.process.compute_process_action_movement import recompute_initial_state
-from integral_timber_joints.geometry import Screw_SL
+from integral_timber_joints.geometry import Screw_SL, Joint
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
-
 try:
     from typing import Dict, Iterator, List, Optional, Tuple, Any
 except:
     pass
+
+
+def _create_joints_for_new_beam(process, new_beam):
+    # type: (RobotClampAssemblyProcess, Beam) -> tuple[list[Joint], list[str]]
+    assembly = process.assembly
+    new_joints = []  # type: list[Joint]
+    affected_neighbours = []  # type: list[str]
+    beam_move = new_beam
+    for existing_beam in assembly.beams():
+        beam_stay = existing_beam
+        if beam_stay == beam_move:
+            continue
+        # * Check for intersections. JointHalfLap first and JointNonPlanarLap next
+        # print('Checking for Planar Joint : %s-%s' % (beam_id, existing_beam.name))
+        j_s, j_m, screw_line = JointHalfLap.from_beam_beam_intersection(beam_stay, beam_move)
+        if j_m is None or j_s is None:
+            # print('Checking for Non-Planar Joint : %s-%s' % (beam_id, existing_beam.name))
+            j_s, j_m, screw_line = JointNonPlanarLap.from_beam_beam_intersection(beam_stay, beam_move)
+
+        if j_m is not None and j_s is not None:
+            print('- New Joint (%s) : %s-%s added to assembly' % (j_m.__class__.__name__, new_beam.name, existing_beam.name))
+            assembly.add_joint_pair(j_s, j_m, beam_stay.name, beam_move.name)
+            new_joints.append(j_m)
+            affected_neighbours.append(beam_stay.name)
+
+    # * Check if the new joints all agreed to the same beam face direction
+    moving_beam_face_ids = set([joint.face_id for joint in new_joints])
+    if len(moving_beam_face_ids) > 1:
+        # Recreate the joints using the majority face_id on the moving beam
+        moving_beam_face_ids_majority = Counter([joint.face_id for joint in new_joints]).most_common(1)[0][0]
+        if all([isinstance(joint, JointNonPlanarLap) for joint in new_joints]):
+            new_joints = []
+            for nbr_id in affected_neighbours:
+                beam_stay = assembly.beam(nbr_id)
+                j_s, j_m, screw_line = JointNonPlanarLap.from_beam_beam_intersection(beam_stay, beam_move, joint_face_id_move=moving_beam_face_ids_majority)
+                assembly.add_joint_pair(j_s, j_m, beam_stay.name, beam_move.name)
+                new_joints.append(j_m)
+
+    return new_joints, affected_neighbours
 
 
 def _add_beams_to_assembly(process, beams):
@@ -50,39 +89,23 @@ def _add_beams_to_assembly(process, beams):
         assembly.add_beam(beam)
 
         # * Check for joints (Joint_Halflap and JointNonPlanarLap)
-        new_joints = []
-        for existing_beam in assembly.beams():
-            beam_stay = existing_beam
-            beam_move = beam
-            if beam == existing_beam:
-                continue
-            # * Check for intersections. JointHalfLap first and JointNonPlanarLap next
-            # print('Checking for Planar Joint : %s-%s' % (beam_id, existing_beam.name))
-            j_s, j_m, screw_line = JointHalfLap.from_beam_beam_intersection(beam_stay, beam_move)
-            if j_m is None or j_s is None:
-                # print('Checking for Non-Planar Joint : %s-%s' % (beam_id, existing_beam.name))
-                j_s, j_m, screw_line = JointNonPlanarLap.from_beam_beam_intersection(beam_stay, beam_move)
-
-            if j_m is not None and j_s is not None:
-                print('- New Joint (%s) : %s-%s added to assembly' % (j_m.__class__.__name__, beam_id, existing_beam.name))
-                assembly.add_joint_pair(j_s, j_m, beam_stay.name, beam_move.name)
-                new_joints.append(j_m)
-                affected_neighbours.append(beam_stay.name)
+        new_joints, affected_neighbours = _create_joints_for_new_beam(process, beam)
+        affected_neighbours.extend(affected_neighbours)
 
         # * Automatically assign Assembly Method
         if len(new_joints) == 0:
             assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.GROUND_CONTACT)
             print("- Automatically assigned Assembly method: GROUND_CONTACT")
-        elif any([isinstance(joint,JointNonPlanarLap) for joint in new_joints]):
+        elif any([isinstance(joint, JointNonPlanarLap) for joint in new_joints]):
             assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.SCREWED_WITH_GRIPPER)
             print("- Automatically assigned Assembly method: SCREWED_WITH_GRIPPER")
         else:
             assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.CLAMPED)
             print("- Automatically assigned Assembly method: CLAMPED")
 
-    # * Initial state changed since
-    process.dependency.add_beam(beam_id)
-    recompute_initial_state(process)
+        # * Initial state changed since we add a new beam
+        process.dependency.add_beam(beam_id)
+        recompute_initial_state(process)
 
     # *Recompute dependent solutions for new beams and affected neighbours
     for beam_id in set(affected_neighbours + new_beam_ids):
@@ -339,11 +362,11 @@ def show_assembly_method_color(process):
     artist = get_process_artist()
     rs.EnableRedraw(False)
     print("Assembly Method Colour Legend:")
-    print("- Red: \t\tUndefined")
-    print("- Black: \t\tGround")
-    print("- Green: \t\tClamped")
-    print("- LightBlue: \tScrewedWithGripper")
-    print("- LightBlue: \tScrewedWithoutGripper")
+    print("- Red:       Undefined")
+    print("- Black:     Ground")
+    print("- Green:     Clamped")
+    print("- LightBlue: ScrewedWithGripper")
+    print("- DarkBlue:  ScrewedWithoutGripper")
     for beam_id in process.assembly.sequence:
         assembly_method = process.assembly.get_assembly_method(beam_id)
         if assembly_method == BeamAssemblyMethod.GROUND_CONTACT:

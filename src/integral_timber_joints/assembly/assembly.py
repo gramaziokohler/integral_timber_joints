@@ -109,7 +109,7 @@ class Assembly(Network):
             'beam_cuts': None,                         # Beamcut objects at the start or end or anywhere on the beam. Can be empty
             'assembly_method': BeamAssemblyMethod.UNDEFINED,  # AssemblyMethod determine how individual beam is assembled.
             'actions': [],                         # List of high-level Assembly Actions
-            'tool_as_gripper_joint_id': None,
+            'grasping_joint_id_preference': None,
         })
         # Default attributes for joints (edge)
         self.update_default_edge_attributes({
@@ -937,21 +937,32 @@ class Assembly(Network):
 
 
 
-    def get_joint_id_where_screwdriver_is_gripper(self, beam_id):
+    def get_grasping_joint_id(self, beam_id):
         # type: (str) -> Optional[Tuple[str, str]]
         """Returns the joint id where a screwdriver is used as gripper.
 
         Returns None if beam is not SCREWED_WITHOUT_GRIPPER type
         or if it has no joints that require tool.
+
+        If `grasping_joint_id_preference` is set, will return that.
+
+        # Note that the `grasping_joint_id_preference` parameter are converted to a list at serialization,
+        this function
         """
         if self.get_assembly_method(beam_id) != BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
             return None
 
-        value_from_attributes = self.get_beam_attribute(beam_id, 'tool_as_gripper_joint_id')
-        if value_from_attributes is not None:
-            return value_from_attributes
+        joint_ids = self.get_joint_ids_with_tools_for_beam(beam_id)
+        value = self.get_beam_attribute(beam_id, 'grasping_joint_id_preference')
+        if value is not None:
+            # Reconstruct the listified tuple back to tuple.
+            joint_id = (value[0], value[1])
+            if joint_id in joint_ids:
+                # To avoid occation when deleting a beam causes that joint to be no longer valid.
+                # Check again if this is a valid joint_id for the beam
+                return joint_id
         else:
-            joint_ids = self.get_joint_ids_with_tools_for_beam(beam_id)
+            # If we can implement joint.distance_at_center() for NP joint. we can have a smarter automatic choice here. # TODO
             if len(joint_ids) > 0:
                 return joint_ids[0]
             else:

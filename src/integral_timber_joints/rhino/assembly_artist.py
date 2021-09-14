@@ -108,8 +108,12 @@ class AssemblyNurbsArtist(object):
 
         # If not delete_old, and there are already items drawn, we preserve them.
         if len(self.beam_guids(beam_id)) > 0 and not delete_old:
-            pass
+            guids = self.beam_guids(beam_id)
         else:
+            # Delete old
+            if len(self.beam_guids(beam_id)) > 0 and delete_old:
+                self.delete_beam(beam_id, redraw=False)
+
             # Layer
             rs.CurrentLayer(self.beam_layer_name)
 
@@ -165,19 +169,21 @@ class AssemblyNurbsArtist(object):
             else:
                 guids = positive_brep_guids
 
-        # Rename newly created object with beam_id
-        for guid in guids:
-            obj = find_object(guid)
-            attr = obj.Attributes
-            attr.Name = beam_id
-            obj.CommitChanges()
+            # Rename newly created object with beam_id
+            for guid in guids:
+                obj = find_object(guid)
+                attr = obj.Attributes
+                attr.Name = beam_id
+                obj.CommitChanges()
 
-        # Enable redraw
-        if redraw:
-            rs.EnableRedraw(True)
+            # Save resulting guid(s) into guid dictionary and also return them
+            self.beam_guids(beam_id).extend(guids)
 
-        # Save resulting guid(s) into guid dictionary and also return them
-        self.beam_guids(beam_id).extend(guids)
+            # Enable redraw
+            if redraw:
+                rs.EnableRedraw(True)
+
+
         return guids
 
     def draw_beam_at_position(self, beam_id, beam_position, delete_old=False, redraw=True, verbose=False):
