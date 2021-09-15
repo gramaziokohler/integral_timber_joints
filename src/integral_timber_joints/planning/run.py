@@ -293,7 +293,7 @@ def main():
     if args.smooth:
         options.update(
             {'smooth_iterations' : 150,
-             'max_smooth_time' : 120,
+             'max_smooth_time' : 60,
              }
         )
 

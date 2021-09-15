@@ -87,10 +87,9 @@ def main():
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
         'verbose' : args.verbose,
-        'smooth_iterations' : 150,
-        'max_smooth_time' : 120,
+        'smooth_iterations' : 200,
+        'max_smooth_time' : 60,
     }
-
 
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
     altered_movements = []
