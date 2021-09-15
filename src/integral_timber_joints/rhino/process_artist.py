@@ -1340,23 +1340,27 @@ class ProcessArtist(object):
         if state_id > len(self.process.movements):
             return
 
-        # * Skip if the movement is not RoboticMovement or if movement.path_from_link is empty
+        # * Skip if the movement is not RoboticMovement or if movement.trajectory is empty
         movement = self.process.movements[state_id - 1]  # type: RoboticMovement
+        movement_id = movement.movement_id
         if not isinstance(movement, RoboticMovement):
             return
-        if movement.path_from_link is None:
+        if movement.trajectory is None:
             return
 
+        # * Perform FK to convert JointTrajectoryPoint to frame (mm scale)
+        trajectory_frames = []
+        for config in movement.trajectory.points:
+            configuration = self.process.robot_initial_config.merged(config)
+            print(configuration)
+            trajectory_frame = self.process.robot_model.forward_kinematics(configuration.scaled(1000), self.process.ROBOT_END_LINK)
+            trajectory_frames.append(trajectory_frame)
+
         # * Convert Trajectory to a list of transforamtion
-        movement_id = movement.movement_id
         t_t0cp_at_final_from_world = Transformation.from_frame(movement.target_frame).inverse()
-        trajectory_frames = movement.path_from_link[self.process.ROBOT_END_LINK]
         transformations = []
         for frame in trajectory_frames:
-            # print (list(frame.point))
-            scaled_frame = Frame(frame.point * 1000, frame.xaxis, frame.yaxis)
-            # Draw tcp line
-            t_world_from_t0cp_at_traj = Transformation.from_frame(scaled_frame)
+            t_world_from_t0cp_at_traj = Transformation.from_frame(frame)
             t = t_world_from_t0cp_at_traj * t_t0cp_at_final_from_world
             transformations.append(t)
 
