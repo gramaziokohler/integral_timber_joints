@@ -794,7 +794,7 @@ class RobotClampAssemblyProcess(Data):
 
         # Gripper
         if self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf") is None:
-            print ("Warning: gripper_tcp_in_ocf is None while calling process.get_tool_features_on_beam(%s)" % (beam_id))
+            print("Warning: gripper_tcp_in_ocf is None while calling process.get_tool_features_on_beam(%s)" % (beam_id))
         else:
             gripper = self.get_gripper_of_beam(beam_id)
             other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(gripper)
@@ -1271,8 +1271,8 @@ class RobotClampAssemblyProcess(Data):
 
     # TODO load specific movement_id and neighbors
 
-    def load_external_movement(self, process_folder_path, movement, verbose=False):
-        # type: (str, Movement, bool) -> list[Movement]
+    def load_external_movement(self, process_folder_path, movement, subdir='movements', verbose=False):
+        # type: (str, Movement, str, bool) -> list[Movement]
         """Load one external Movement from nearby folder if they exist,
         replace the movement in the process with the new movement.
 
@@ -1282,17 +1282,15 @@ class RobotClampAssemblyProcess(Data):
         import os
         from compas.utilities import DataDecoder
 
-        movement_path = os.path.join(process_folder_path, movement.get_filepath())
+        movement_path = os.path.join(process_folder_path, movement.get_filepath(subdir=subdir))
         if os.path.exists(movement_path):
             if verbose:
                 print("Loading External Movement File: movement_path%s" % movement_path)
             with open(movement_path, 'r') as f:
                 movement.data = json.load(f, cls=DataDecoder).data
-            return True
+            return movement
         else:
-            return False
-
-
+            return None
 
     def load_external_movements(self, process_folder_path, movement_id=None, verbose=False):
         # type: (str, str, bool) -> list[Movement]
@@ -1300,7 +1298,6 @@ class RobotClampAssemblyProcess(Data):
         with new movements, returns the list of movements modified.
         If movement_id is None, all movements will be parsed. Otherwise only the given movement
         and its neighbors will be parsed."""
-
 
         if movement_id:
             target_movement = self.get_movement_by_movement_id(movement_id)
