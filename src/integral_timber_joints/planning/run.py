@@ -212,7 +212,7 @@ def main():
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
-    parser.add_argument('--smooth', action='store_true', help='Apply smoothing right after free motions are found.')
+    parser.add_argument('--smooth', action='store_true', help='Apply smoothing.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
@@ -269,7 +269,6 @@ def main():
         'jump_threshold' : joint_jump_threshold,
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
-        'smooth_iterations' : 50 if args.smooth else None,
     }
 
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)

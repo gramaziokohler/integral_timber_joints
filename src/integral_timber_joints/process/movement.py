@@ -58,7 +58,6 @@ class Movement(object):
         self.planning_priority = planning_priority  # type: int
         self.movement_id = ""  # type: str
         self.tag = tag or "Generic Movement"  # type: str
-        self.path_from_link = None  # type: list[Frame]
 
     def to_data(self):
         """Simpliest way to get this class serialized.
@@ -86,7 +85,6 @@ class Movement(object):
             'planning_priority': self.planning_priority,
             'movement_id': self.movement_id,
             'tag': self.tag,
-            'path_from_link': self.path_from_link,
         }
         return data
 
@@ -102,7 +100,6 @@ class Movement(object):
             self.state_diff[ast.literal_eval(key)] = value
         self.movement_id = data.get('movement_id', "")
         self.tag = data.get('tag', "")
-        self.path_from_link = data.get('path_from_link', None)
 
     def get_filepath(self, subdir='movements'):
         # type: (str) -> str
@@ -172,7 +169,6 @@ class RoboticMovement(Movement):
         self.t_flange_from_attached_objects = t_flange_from_attached_objects  # type: List[Transformation]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.trajectory = None  # type: Optional[JointTrajectory]
-        self.path_from_link = None  # Optional[dictionary: robot link name[str] -> list(Frame)]
         self.target_configuration = target_configuration  # type: Optional[Configuration]
         self.allowed_collision_matrix = allowed_collision_matrix  # type: list(tuple(str,str))
         self.tag = tag or "Generic Robotic Movement"
@@ -187,7 +183,6 @@ class RoboticMovement(Movement):
         data['attached_objects'] = self.attached_objects
         data['t_flange_from_attached_objects'] = self.t_flange_from_attached_objects
         data['trajectory'] = self.trajectory
-        data['path_from_link'] = self.path_from_link
         data['speed_type'] = self.speed_type
         data['target_configuration'] = self.target_configuration
         data['allowed_collision_matrix'] = self.allowed_collision_matrix
@@ -203,7 +198,6 @@ class RoboticMovement(Movement):
         self.attached_objects = data.get('attached_objects', [])
         self.t_flange_from_attached_objects = data.get('t_flange_from_attached_objects', [])
         self.trajectory = data.get('trajectory', None)
-        self.path_from_link = data.get('path_from_link', None)
         self.speed_type = data.get('speed_type', "")
         self.target_configuration = data.get('target_configuration', None)
         self.allowed_collision_matrix = data.get('allowed_collision_matrix', [])
