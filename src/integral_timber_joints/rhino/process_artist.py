@@ -3,18 +3,18 @@ import uuid
 import Rhino  # type: ignore
 import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
-from compas.datastructures import Mesh
-from compas.geometry import Frame, Transformation, Cylinder
+from compas.datastructures import Mesh, mesh_weld
+from compas.geometry import Frame, Transformation, Cylinder, transform_points, transpose_matrix
 from compas.robots import Configuration
 from compas_rhino.artists import MeshArtist, RobotModelArtist
 from compas_rhino.geometry import RhinoPlane
-from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
+from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh, draw_polylines
 from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
 from System.Drawing import Color  # type: ignore
 
 from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry import Beam
-from integral_timber_joints.process import RobotClampAssemblyProcess
+from integral_timber_joints.process import RobotClampAssemblyProcess, RoboticMovement
 from integral_timber_joints.process.state import ObjectState, SceneState
 from integral_timber_joints.rhino.tool_artist import ToolArtist
 from integral_timber_joints.rhino.utility import purge_objects
@@ -341,8 +341,8 @@ class ProcessArtist(object):
         'assembly_method_clamped': (84, 155, 135),  # green
         'assembly_method_screwed_w_gripper': (126, 178, 221),  # lightblue
         'assembly_method_screwed_wo_gripper': (68, 94, 147),  # deepblue
-        'gripper_normal' : (35, 78, 160), # Blue
-        'asstool_normal' : (30, 120, 50), # Green
+        'gripper_normal': (35, 78, 160),  # Blue
+        'asstool_normal': (30, 120, 50),  # Green
     }
 
     key_positions = [
@@ -361,6 +361,7 @@ class ProcessArtist(object):
         self._asstool_guids = {}  # type: dict[str, dict[str, list[str]]]
         self._interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
         self._state_visualization_guids = {}  # type: dict[str, list[str]]
+        self._trajectory_visualization_guids = {}  # type: dict[str, list[str]]
         self._tools_in_storage_guids = {}  # type: dict[str, list[str]]
         self._env_mesh_guids = {}  # type: dict[str, list[str]]
         self._robot_guids = {'visual': [], 'collision': []}  # type: dict[str, list[str]]
@@ -547,9 +548,8 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
 
-
     def draw_beam_brep(self, beam_id, delete_old_brep=True, update_mesh_cache=False, redraw=True):
-        #type: (str, bool, bool, bool) -> List[guid]
+        # type: (str, bool, bool, bool) -> List[guid]
         assembly = self.process.assembly
         if beam_id not in assembly.beam_ids():
             raise KeyError("Beam %i not in Assembly" % beam_id)
@@ -572,7 +572,6 @@ class ProcessArtist(object):
         # Redraw
         if redraw:
             rs.EnableRedraw(True)
-
 
     def redraw_interactive_beam(self, beam_id, force_update=True, draw_mesh=False, draw_nurbs=True, draw_tag=True, redraw=True):
         ''' Redraw beam visualizations.
@@ -1185,6 +1184,38 @@ class ProcessArtist(object):
     ######################
     # State
     ######################
+    def _get_state_attached_objects_meshes(self, attached_objects_only=False):
+        # type: (bool) -> Dict[str, Mesh]
+        state_id = self.selected_state_id
+        movement = self.process.movements[state_id - 1]  # type: RoboticMovement
+        scene = self.process.get_movement_end_scene(movement)
+
+        # * Temp holder for object_id and their list of Compas Meshes
+        meshes = {}
+
+        # * Beams
+        for beam_id in self.process.assembly.sequence:
+            if attached_objects_only and not scene[(beam_id, 'a')]:
+                continue
+            beam = self.process.assembly.beam(beam_id)
+            beam_mesh = self.process.assembly.get_beam_mesh_in_wcf(beam_id)
+            T = Transformation.from_frame_to_frame(beam.frame, scene[(beam_id, 'f')])
+            meshes[beam_id] = [beam_mesh.transformed(T)]
+
+        # # * Tools
+        for tool_id in self.process.tool_ids:
+            if attached_objects_only and not scene[(tool_id, 'a')]:
+                continue
+            tool = self.process.tool(tool_id)
+            object_state = ObjectState(scene[(tool_id, 'f')], scene[(tool_id, 'a')], scene[(tool_id, 'c')])
+            meshes[tool_id] = tool.draw_state(object_state)
+
+        # * Tool Changer
+        tool_changer_key = ('tool_changer', 'f')
+        # print ("- Attached Object: tool_changer")
+        object_state = ObjectState(scene[tool_changer_key], True, None)
+        meshes['tool_changer'] = self.process.robot_toolchanger.draw_state(object_state)
+        return meshes
 
     def draw_meshes_get_guids(self, meshes, name, disjoint=True, redraw=False, color=None):
         """
@@ -1232,26 +1263,7 @@ class ProcessArtist(object):
         rs.EnableRedraw(False)
 
         # * Temp holder for object_id and their list of Compas Meshes
-        meshes = {}
-
-        # * Beams
-        for beam_id in self.process.assembly.sequence:
-            beam = self.process.assembly.beam(beam_id)
-            beam_mesh = self.process.assembly.get_beam_mesh_in_wcf(beam_id)
-            T = Transformation.from_frame_to_frame(beam.frame, scene[(beam_id, 'f')])
-            meshes[beam_id] = [beam_mesh.transformed(T)]
-
-        # * Tools
-        for tool_id in self.process.tool_ids:
-            tool = self.process.tool(tool_id)
-            object_state = ObjectState(scene[(tool_id, 'f')], scene[(tool_id, 'a')], scene[(tool_id, 'c')])
-            meshes[tool_id] = tool.draw_state(object_state)
-
-        # * Tool Changer
-        tool_changer_key = ('tool_changer', 'f')
-        object_state = ObjectState(scene[tool_changer_key], True, None)
-        meshes['tool_changer'] = self.process.robot_toolchanger.draw_state(object_state)
-
+        meshes = self._get_state_attached_objects_meshes()
 
         # * Draw Robot if state has robot config otherwise draw robot wrist
         # Drawing Robot Geometry in Rhino and GUIDs is not managed by the draw method above.
@@ -1293,6 +1305,91 @@ class ProcessArtist(object):
         if redraw:
             rs.EnableRedraw(True)
             sc.doc.Views.Redraw()
+
+    ######################
+    # Trajectory
+    ######################
+
+    def _draw_mesh_sweep_polyline(self, mesh, transformations, color=(0, 30, 180)):
+        # type: (Mesh, list[Transformation], Tuple(int,int,int)) -> list[guid]
+        polyline_dicts = []
+        welded_mesh = mesh_weld(mesh, 1e-5)
+        vertices, faces = welded_mesh.to_vertices_and_faces()
+        transposed_transformations = [transpose_matrix(T) for T in transformations]
+
+        for vertex in vertices:
+            polyline_dict = {'points': [], 'color': color}
+            for t in transformations:
+                # vertice = Point(* vertice)
+                # mesh_vertice_on_trajectory = vertice.transformed(t)
+                mesh_vertice_on_trajectory = transform_points([vertex], t)[0]
+                polyline_dict['points'].append(mesh_vertice_on_trajectory)
+            polyline_dicts.append(polyline_dict)
+        return draw_polylines(polyline_dicts, redraw=False)
+
+    def draw_sweep_trajectory(self, redraw=True):
+        # type: (bool) -> None
+        from compas.geometry import Transformation, Frame
+        assembly = self.process.assembly  # type: Assembly
+        rs.EnableRedraw(False)
+
+        # * Skip if the state is at initial_state
+        state_id = self.selected_state_id
+        if state_id <= 0:
+            return
+        if state_id > len(self.process.movements):
+            return
+
+        # * Skip if the movement is not RoboticMovement or if movement.trajectory is empty
+        movement = self.process.movements[state_id - 1]  # type: RoboticMovement
+        movement_id = movement.movement_id
+        if not isinstance(movement, RoboticMovement):
+            return
+        if movement.trajectory is None:
+            return
+
+        # * Perform FK to convert JointTrajectoryPoint to frame (mm scale)
+        trajectory_frames = []
+        for config in movement.trajectory.points:
+            configuration = self.process.robot_initial_config.merged(config)
+            print(configuration)
+            trajectory_frame = self.process.robot_model.forward_kinematics(configuration.scaled(1000), self.process.ROBOT_END_LINK)
+            trajectory_frames.append(trajectory_frame)
+
+        # * Convert Trajectory to a list of transforamtion
+        t_t0cp_at_final_from_world = Transformation.from_frame(movement.target_frame).inverse()
+        transformations = []
+        for frame in trajectory_frames:
+            t_world_from_t0cp_at_traj = Transformation.from_frame(frame)
+            t = t_world_from_t0cp_at_traj * t_t0cp_at_final_from_world
+            transformations.append(t)
+
+        # * Draw Attached objects
+        # Scene
+        guids = {}
+        meshes = self._get_state_attached_objects_meshes(attached_objects_only=True)
+        print("Drawing %s Sweep Trajectory with %i meshes and %i trajectory points." % (movement_id, len(meshes), len(trajectory_frames)))
+        for object_id in meshes:
+            guids[object_id] = []
+            for mesh in meshes[object_id]:
+                new_guids = self._draw_mesh_sweep_polyline(mesh, transformations, (0, 30, 180))
+                guids[object_id].extend(new_guids)
+        self._trajectory_visualization_guids = guids
+        if redraw:
+            rs.EnableRedraw(True)
+
+    def delete_sweep_trajectory(self, redraw=False):
+        # type: (bool) -> None
+        """Delete all geometry that is related to showing object state"""
+        for object_id, guids in self._trajectory_visualization_guids.items():
+            # print ("Del old sweep: %i" % len(guids))
+            purge_objects(guids, redraw=False)
+        self._trajectory_visualization_guids = {}
+        # Delete old robot visualization
+        self.delete_robot()
+        # Enable Redraw
+        if redraw:
+            rs.EnableRedraw(True)
 
 
 def meshes_apply_color(guids, color):

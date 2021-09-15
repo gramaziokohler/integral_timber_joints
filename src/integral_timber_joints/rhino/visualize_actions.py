@@ -21,11 +21,13 @@ try:
 except:
     pass
 
+
 def redraw_state(process):
     artist = get_process_artist()
     artist.delete_state(redraw=False)
     artist.draw_state(redraw=True)  # Visualize the state
     print_current_state_info(process)
+
 
 def ui_next_step(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -35,7 +37,6 @@ def ui_next_step(process):
 
     if artist.selected_state_id < len(all_movements):
         artist.selected_state_id += 1
-        redraw_state(process)
 
 
 def ui_prev_step(process):
@@ -46,7 +47,6 @@ def ui_prev_step(process):
 
     if artist.selected_state_id > 0:
         artist.selected_state_id -= 1
-        redraw_state(process)
 
 
 def ui_goto_state_by_beam_seq(process):
@@ -71,10 +71,9 @@ def ui_goto_state_by_beam_seq(process):
     # Select the start state of the first movement.
     mov_id = all_movements.index(selected_movement)
     artist.selected_state_id = mov_id
-    redraw_state(process)
 
 
-def ui_goto_state_by_state_index(process, selected_state_id = None):
+def ui_goto_state_by_state_index(process, selected_state_id=None):
     # type: (RobotClampAssemblyProcess, Optional[int]) -> None
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
@@ -94,11 +93,10 @@ def ui_goto_state_by_state_index(process, selected_state_id = None):
 
     # Select the start state of the first movement.
     artist.selected_state_id = selected_state_id
-    redraw_state(process)
 
 
-def print_current_state_info(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def print_current_state_info(process, print_prev=True, print_state=True, print_next=True):
+    # type: (RobotClampAssemblyProcess, bool, bool, bool) -> None
     """Note when state_id = 1, it is referring to end of the first (0) movement."""
     artist = get_process_artist()
     all_movements = process.movements
@@ -110,7 +108,7 @@ def print_current_state_info(process):
     print("-----------------------------------------------")
 
     # * Printing Previous Movement Info
-    if prev_movement is not None:
+    if prev_movement is not None and print_prev:
         action = process.get_action_of_movement(prev_movement)
         print("- Prev Movement: %s (%s) (A:%s M:%s)" % (prev_movement.tag, prev_movement.movement_id, action.__class__.__name__, prev_movement.__class__.__name__))
         if isinstance(prev_movement, RoboticMovement):
@@ -119,16 +117,17 @@ def print_current_state_info(process):
             print("  - Operator Confirm: %s" % prev_movement.operator_stop_after)
 
     # * Printing Current State Info
-    if state_id == 0:
-        config_string = "(Robot Initial State)"
-    elif process.movement_has_end_robot_config(prev_movement):
-        config_string = " (Robot Config is Fixed!)"
-    else:
-        config_string = ""
-    print("- Current Scene: #%i [0 to %i]. %s" % (state_id, len(all_movements), config_string))
+    if print_state:
+        if state_id == 0:
+            config_string = "(Robot Initial State)"
+        elif process.movement_has_end_robot_config(prev_movement):
+            config_string = " (Robot Config is Fixed!)"
+        else:
+            config_string = ""
+        print("- Current Scene: #%i [0 to %i]. %s" % (state_id, len(all_movements), config_string))
 
     # * Printing Next Movement Info
-    if next_movement is not None:
+    if next_movement is not None and print_next:
         action = process.get_action_of_movement(next_movement)
         print("- Next Movement: %s (%s) (A:%s M:%s)" % (next_movement.tag, next_movement.movement_id, action.__class__.__name__, next_movement.__class__.__name__))
         if isinstance(next_movement, RoboticMovement):
@@ -178,7 +177,6 @@ def ui_get_ik(process):
         # Draw Robot with IK results
         artist.draw_robot(configuration, True, True, True)
         process.temp_ik[movement_id] = configuration
-
     else:
         print("IK Failed: {} ".format(msg))
 
@@ -200,6 +198,7 @@ def ui_save_ik(process):
     if movement_id in process.temp_ik and process.temp_ik[movement_id] is not None:
         process.set_movement_end_robot_config(prev_movement, process.temp_ik[movement_id])
         print("IK Saved at end of %s : %s" % (prev_movement.__class__.__name__, prev_movement.tag))
+
 
 def ui_show_env_meshes(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -261,21 +260,21 @@ def show_menu(process):
             'message': "Choose Options or Type in State Number directly:",
             'options': [
                 {'name': 'Finish', 'action': 'Exit'
-                },
+                 },
                 {'name': 'NextStep', 'action': ui_next_step
-                },
+                 },
                 {'name': 'PrevStep', 'action': ui_prev_step
-                },
+                 },
                 {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
-                },
+                 },
                 {'name': 'GoToState', 'action': ui_goto_state_by_state_index
-                },
+                 },
                 {'name': 'ShowEnv', 'action': ui_show_env_meshes
-                },
+                 },
                 {'name': 'HideEnv', 'action': ui_hide_env_meshes
-                },
+                 },
                 {'name': 'GetIK', 'action': ui_get_ik
-                },
+                 },
             ]
         }
         # Add the repeat options when command_to_run is available
@@ -308,11 +307,12 @@ def show_menu(process):
         if isinstance(result, str):
             if result.isnumeric():
                 ui_goto_state_by_state_index(process, int(result))
+                redraw_state(process)
                 continue
             elif result.startswith("Cancel"):
                 return on_exit_ui()
             else:
-                continue # CAtch other unknown input that are not numbers.
+                continue  # CAtch other unknown input that are not numbers.
 
         # User click Exit Button
         if result['action'] == 'Exit':
@@ -324,6 +324,10 @@ def show_menu(process):
 
         # Run the selected command
         command_to_run(process)
+
+        # The commands should not handle redrawing the main state.
+        # Redraw State after running commands
+        redraw_state(process)
 
 
 ######################
