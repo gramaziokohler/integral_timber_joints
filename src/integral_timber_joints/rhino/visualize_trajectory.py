@@ -178,19 +178,20 @@ def show_menu(process):
         if isinstance(result, str):
             if result.isnumeric():
                 ui_goto_state_by_state_index(process, int(result))
-                continue
             elif result.startswith("Cancel"):
                 return on_exit_ui()
             else:
                 continue  # Catch other unknown input that are not numbers.
 
-        # Set new command-to-run according to selection, else repeat previous command.
-        if result['action'] != 'Repeat':
-            command_to_run = result['action']
-
+        # Run command
+        if 'action' in result:
+            # Set new command-to-run according to selection
+            if result['action'] != 'Repeat':
+                command_to_run = result['action']
+            command_to_run(process)
         # Run the selected command
         # The commands should not handle redrawing the main state.
-        command_to_run(process)
+
 
         # Draw the trajectory
         load_selected_external_movment_if_exist(process)

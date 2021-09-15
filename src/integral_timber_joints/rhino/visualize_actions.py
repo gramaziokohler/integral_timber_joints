@@ -307,6 +307,7 @@ def show_menu(process):
         if isinstance(result, str):
             if result.isnumeric():
                 ui_goto_state_by_state_index(process, int(result))
+                redraw_state(process)
                 continue
             elif result.startswith("Cancel"):
                 return on_exit_ui()
