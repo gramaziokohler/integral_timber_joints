@@ -26,7 +26,7 @@ def get_activedoc_path_no_ext():
 def get_activedoc_process_path():
     # type: () -> str
     json_path = get_activedoc_path_no_ext() + "_process.json"
-    print(json_path)
+    # print(json_path)
     return json_path
 
 

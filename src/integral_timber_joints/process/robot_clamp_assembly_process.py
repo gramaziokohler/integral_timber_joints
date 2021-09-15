@@ -1271,16 +1271,37 @@ class RobotClampAssemblyProcess(Data):
 
     # TODO load specific movement_id and neighbors
 
+    def load_external_movement(self, process_folder_path, movement, verbose=False):
+        # type: (str, Movement, bool) -> list[Movement]
+        """Load one external Movement from nearby folder if they exist,
+        replace the movement in the process with the new movement.
+
+        Returns the new movement if loaded successfully, otherwise None if file does not exist.
+        """
+        import json
+        import os
+        from compas.utilities import DataDecoder
+
+        movement_path = os.path.join(process_folder_path, movement.get_filepath())
+        if os.path.exists(movement_path):
+            if verbose:
+                print("Loading External Movement File: movement_path%s" % movement_path)
+            with open(movement_path, 'r') as f:
+                movement.data = json.load(f, cls=DataDecoder).data
+            return True
+        else:
+            return False
+
+
+
     def load_external_movements(self, process_folder_path, movement_id=None, verbose=False):
         # type: (str, str, bool) -> list[Movement]
         """Load External Movements from nearby folder if they exist, replace the movements
         with new movements, returns the list of movements modified.
         If movement_id is None, all movements will be parsed. Otherwise only the given movement
         and its neighbors will be parsed."""
-        import json
-        import os
 
-        from compas.utilities import DataDecoder
+
         if movement_id:
             target_movement = self.get_movement_by_movement_id(movement_id)
             target_movements = [target_movement]
@@ -1289,19 +1310,15 @@ class RobotClampAssemblyProcess(Data):
                 target_movements.append(self.movements[m_id-1])
             if m_id+1 < len(self.movements):
                 target_movements.append(self.movements[m_id+1])
-            print(target_movements)
+            # print(target_movements)
         else:
             target_movements = self.movements
 
         movements_modified = []
         for movement in target_movements:
-            movement_path = os.path.join(process_folder_path, movement.get_filepath())
-            if os.path.exists(movement_path):
-                if verbose:
-                    print("Loading External Movement File: movement_path%s" % movement_path)
-                with open(movement_path, 'r') as f:
-                    movement.data = json.load(f, cls=DataDecoder).data
-                movements_modified.append(movement)
+            new_movement = self.load_external_movement(process_folder_path, movement, verbose)
+            if new_movement is not None:
+                movements_modified.append(new_movement)
         return movements_modified
 
     def load_robot_model(self):
