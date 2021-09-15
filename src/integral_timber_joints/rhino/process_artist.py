@@ -1340,16 +1340,18 @@ class ProcessArtist(object):
         if state_id > len(self.process.movements):
             return
 
-        # * Skip if the movement is not RoboticMovement
+        # * Skip if the movement is not RoboticMovement or if movement.path_from_link is empty
         movement = self.process.movements[state_id - 1]  # type: RoboticMovement
         if not isinstance(movement, RoboticMovement):
+            return
+        if movement.path_from_link is None:
             return
 
         # * Convert Trajectory to a list of transforamtion
         movement_id = movement.movement_id
         t_t0cp_at_final_from_world = Transformation.from_frame(movement.target_frame).inverse()
-        transformations = []
         trajectory_frames = movement.path_from_link[self.process.ROBOT_END_LINK]
+        transformations = []
         for frame in trajectory_frames:
             # print (list(frame.point))
             scaled_frame = Frame(frame.point * 1000, frame.xaxis, frame.yaxis)
