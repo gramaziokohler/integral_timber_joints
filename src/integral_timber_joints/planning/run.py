@@ -2,6 +2,7 @@ import os
 import time
 import numpy as np
 import argparse
+import pybullet_planning as pp
 from pybullet_planning.motion_planners.utils import elapsed_time
 
 from termcolor import cprint, colored
@@ -12,10 +13,11 @@ from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSav
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
 from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
-from integral_timber_joints.planning.utils import notify, print_title, beam_ids_from_argparse_seq_n
+from integral_timber_joints.planning.utils import notify, print_title, beam_ids_from_argparse_seq_n, color_from_success
 from integral_timber_joints.planning.state import set_state, set_initial_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 from integral_timber_joints.planning.solve import get_movement_status, MovementStatus, compute_selected_movements
+from integral_timber_joints.planning.smoothing import smooth_movement_trajectory
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.movement import RoboticMovement
@@ -132,11 +134,6 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 else:
                     altered_movements.extend(altered_ms)
 
-                # * export computed movements
-                if args.write:
-                    save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
-                        include_traj_in_process=False)
-
             elif args.solve_mode == 'linear':
                 movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
                 options['movement_id_filter'] = [all_movements[m_i].movement_id for m_i in movement_id_range]
@@ -147,6 +144,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 if not success:
                     print('No success for linear (chained) planning.')
                     return False
+                altered_movements.extend(altered_ms)
 
             elif args.solve_mode == 'free_motion_only':
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],
@@ -155,6 +153,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 if not success:
                     print('No success for free motions')
                     return False
+                altered_movements.extend(altered_ms)
 
             elif args.solve_mode == 'movement_id':
                 # * compute for movement_id movement
@@ -181,8 +180,29 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     None, options=options, diagnosis=args.diagnosis)
                 if not success:
                     return False
+                altered_movements.extend(altered_ms)
             else:
                 raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
+
+    # * export computed movements
+    if args.write:
+        save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
+            include_traj_in_process=False)
+
+    # * smoothing
+    if args.smooth:
+        smoothed_movements = []
+        with pp.LockRenderer(): # not args.debug):
+            for altered_m in altered_movements:
+                if not isinstance(altered_m, RoboticFreeMovement):
+                    continue
+                success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, altered_m, options=options)
+                altered_m.trajectory = smoothed_traj
+                smoothed_movements.append(altered_m)
+                cprint('Smooth success: {} | msg: {}'.format(success, msg), color_from_success(success))
+        if args.write:
+            save_process_and_movements(args.design_dir, args.problem, process, smoothed_movements, overwrite=False,
+                include_traj_in_process=False, movement_subdir='smoothed_movements')
 
     # * final visualization
     if args.watch:
@@ -190,7 +210,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         print_title('Visualize results')
         wait_if_gui('Start simulating results. Press enter to start.')
         set_state(client, robot, process, process.initial_state)
-        for altered_m in altered_ms:
+        for altered_m in altered_movements:
             visualize_movement_trajectory(client, robot, process, altered_m, step_sim=args.step_sim)
 
     if args.verbose:
@@ -212,7 +232,7 @@ def main():
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
-    parser.add_argument('--smooth', action='store_true', help='Apply smoothing right after free motions are found.')
+    parser.add_argument('--smooth', action='store_true', help='Apply smoothing.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
@@ -269,12 +289,12 @@ def main():
         'jump_threshold' : joint_jump_threshold,
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
-        'smooth_iterations' : 50 if args.smooth else None,
     }
 
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)
 
     # restart attempts for each beam
+    success = False
     num_trails = 1
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
     for beam_id in beam_ids:
@@ -285,8 +305,10 @@ def main():
             print('Beam {} | Outer Trail {} #{}'.format(beam_id, args.solve_mode, attempt_i))
             process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
             success, trial_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
+            if success:
+                break
 
-    cprint('Done', 'green')
+    cprint('Planning done.', 'green')
     client.disconnect()
 
 if __name__ == '__main__':

@@ -34,27 +34,6 @@ from integral_timber_joints.planning.utils import notify
 
 ##############################
 
-
-def fill_in_tool_path(client: PyChoreoClient, robot: Robot, traj, group=GANTRY_ARM_GROUP):
-    """Fill FK frames into `path_from_link` attribute to the given trajectory
-    Note that the `path_from_link` attribute will not be serialized if exported as json.
-
-    Returns
-    -------
-    Trajectory
-        updated trajectory
-    """
-    if traj:
-        tool_link_name = robot.get_end_effector_link_name(group=group)
-        traj.path_from_link = defaultdict(list)
-        with WorldSaver():
-            for tj_pt in traj.points:
-                client.set_robot_configuration(robot, tj_pt)
-                traj.path_from_link[tool_link_name].append(client.get_link_frame_from_name(robot, tool_link_name))
-    return traj
-
-##############################
-
 from collections import namedtuple
 IKInfo = namedtuple('IKInfo', ['ik_fn', 'ee_link_name', 'ik_joint_names', 'free_joint_names']) # 'base_link_name',
 
@@ -482,7 +461,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     else:
         if verbose:
             cprint('No linear movement found for {}.'.format(movement.short_summary), 'red')
-    return fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP)
+    return traj
 
 ##############################
 
@@ -740,4 +719,4 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         if lockrenderer:
             lockrenderer = LockRenderer()
 
-    return fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP)
+    return traj

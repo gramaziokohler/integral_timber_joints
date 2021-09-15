@@ -89,7 +89,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             #     options={'link' : flange_link_name})
             # FK_tool_frame.point *= 1/scale
             if scene[('robot', 'f')] is None:
-                # print('Overwrite: ', FK_tool_frame)
                 scene[('robot', 'f')] = FK_tool_frame
             else:
                 # consistency check
@@ -237,7 +236,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     tool_count = 0
                     for tool_id in process.tool_ids:
                         if scene[tool_id, 'a']:
-                            print('{} - {}'.format(object_id, tool_id))
                             extra_disabled_bodies.extend(client._get_bodies('^{}$'.format(tool_id)))
                             tool_count += 1
                     assert tool_count > 0, 'At least one tool should be attached to the robot when the beam is attached.'

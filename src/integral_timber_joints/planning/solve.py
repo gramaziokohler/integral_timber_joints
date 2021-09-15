@@ -169,7 +169,6 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     if traj is not None:
         # update start/end states
         movement.trajectory = traj
-        movement.path_from_link = traj.path_from_link
         process.set_movement_start_robot_config(movement, traj.points[0])
         process.set_movement_end_robot_config(movement, traj.points[-1])
         # # ! update attached objecs' current frame at the end state
