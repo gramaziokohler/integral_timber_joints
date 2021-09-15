@@ -1313,7 +1313,7 @@ class RobotClampAssemblyProcess(Data):
 
         movements_modified = []
         for movement in target_movements:
-            new_movement = self.load_external_movement(process_folder_path, movement, verbose)
+            new_movement = self.load_external_movement(process_folder_path, movement, verbose=verbose)
             if new_movement is not None:
                 movements_modified.append(new_movement)
         return movements_modified

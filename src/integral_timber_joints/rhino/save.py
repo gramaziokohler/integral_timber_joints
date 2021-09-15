@@ -6,7 +6,7 @@ from compas.utilities import DataDecoder, DataEncoder
 
 from integral_timber_joints.assembly import Assembly
 # import integral_timber_joints.process as Process
-from integral_timber_joints.process import RobotClampAssemblyProcess
+from integral_timber_joints.process import RobotClampAssemblyProcess, RoboticMovement
 from integral_timber_joints.rhino.load import get_activedoc_process_path, get_process, get_process_artist, process_is_none
 
 
@@ -19,6 +19,15 @@ def save_process(process):
 
     json_path = get_activedoc_process_path()
     exist = os.path.exists(json_path)
+
+    # * Check if any of the movements have trajectory. If so, do not allow saving
+    if any(m.trajectory is not None for m in process.movements if isinstance(m, RoboticMovement)):
+        print("-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -")
+        print("Error: Some Robotic Movements contain Trajectory. ")
+        print("File cannot be Saved")
+        print("-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -")
+        return
+
 
     # Ask user what indent to use
     indent = rs.GetString("What json indent to Use?", "Four", ["None", "Two", "Four"])
