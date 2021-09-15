@@ -719,4 +719,4 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         if lockrenderer:
             lockrenderer = LockRenderer()
 
-    return fill_in_tool_path(client, robot, traj, group=GANTRY_ARM_GROUP)
+    return traj
