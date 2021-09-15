@@ -1352,7 +1352,6 @@ class ProcessArtist(object):
         trajectory_frames = []
         for config in movement.trajectory.points:
             configuration = self.process.robot_initial_config.merged(config)
-            print(configuration)
             trajectory_frame = self.process.robot_model.forward_kinematics(configuration.scaled(1000), self.process.ROBOT_END_LINK)
             trajectory_frames.append(trajectory_frame)
 
