@@ -290,6 +290,12 @@ def main():
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
     }
+    if args.smooth:
+        options.update(
+            {'smooth_iterations' : 150,
+             'max_smooth_time' : 120,
+             }
+        )
 
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)
 
