@@ -16,7 +16,7 @@ from integral_timber_joints.rhino.load import get_activedoc_process_path, get_pr
 from integral_timber_joints.rhino.process_artist import ProcessArtist
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.rhino.visualize_actions import (print_current_state_info, ui_goto_state_by_beam_seq, ui_goto_state_by_state_index, ui_hide_env_meshes, ui_next_step,
-                                                            ui_prev_step, ui_show_env_meshes)
+                                                            ui_prev_step, ui_show_env_meshes, ui_next_robotic_movement, ui_prev_robotic_movement)
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
 
 
@@ -78,32 +78,6 @@ def show_interactive_beams_delete_state_vis(process):
     sc.doc.Views.Redraw()
 
 
-############
-# Nevigation
-############
-
-def ui_next_robotic_movement(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    assembly = process.assembly  # type: Assembly
-    artist = get_process_artist()
-    all_movements = process.movements
-    while artist.selected_state_id < len(all_movements):
-        artist.selected_state_id += 1
-        movement = all_movements[artist.selected_state_id - 1]
-        if isinstance(movement, RoboticMovement):
-            return
-
-
-def ui_prev_robotic_movement(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    assembly = process.assembly  # type: Assembly
-    artist = get_process_artist()
-    all_movements = process.movements
-    while artist.selected_state_id > 0:
-        artist.selected_state_id -= 1
-        movement = all_movements[artist.selected_state_id - 1]
-        if isinstance(movement, RoboticMovement):
-            return
 
 
 ##############
