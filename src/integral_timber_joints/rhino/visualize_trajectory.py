@@ -15,7 +15,7 @@ from integral_timber_joints.process import Movement, RobotClampAssemblyProcess, 
 from integral_timber_joints.rhino.load import get_activedoc_process_path, get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.process_artist import ProcessArtist
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
-from integral_timber_joints.rhino.visualize_actions import (print_current_state_info, ui_goto_state_by_beam_seq, ui_goto_state_by_state_index, ui_hide_env_meshes, ui_next_step,
+from integral_timber_joints.rhino.visualize_movement import (print_current_state_info, ui_goto_state_by_beam_seq, ui_goto_state_by_state_index, ui_hide_env_meshes, ui_next_step,
                                                             ui_prev_step, ui_show_env_meshes, ui_next_robotic_movement, ui_prev_robotic_movement)
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
 
