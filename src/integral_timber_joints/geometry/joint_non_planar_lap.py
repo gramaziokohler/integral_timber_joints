@@ -70,7 +70,7 @@ class JointNonPlanarLap(Joint):
 
         :param face_id:   int
         """
-        self.center_frame = deepcopy(center_frame)
+        self.center_frame = deepcopy(center_frame) # type: (Frame)
         self._thickness = thickness
         self.beam_move_face_id = beam_move_face_id
         self.beam_stay_face_id = beam_stay_face_id
@@ -160,7 +160,12 @@ class JointNonPlanarLap(Joint):
     def set_parameter(self, key, value):
         # type: (str, Any) -> None
         if key == "thickness":
+            # Offset `center_frame`
+            offset_amount = value - self.thickness
+            self.center_frame.point = self.center_frame.point + self.center_frame.normal.scaled(offset_amount)
+            # Change thickness parameter
             self.thickness = value
+
             return
         raise KeyError("%s is invalid for JointHalfLap" % key)
 
