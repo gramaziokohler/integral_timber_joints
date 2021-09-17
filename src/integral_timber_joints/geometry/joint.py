@@ -71,7 +71,7 @@ class Joint(object):
         #type: (str) -> Any
         raise NotImplementedError
 
-    def get_paraneter_dict(self):
+    def get_parameters_dict(self):
         #type: () -> Dict[str, Any]
         return dict(zip(self.parameter_keys, [self.get_parameter(key) for key in self.parameter_keys]))
 

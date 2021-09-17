@@ -363,7 +363,7 @@ class JointNonPlanarLap(Joint):
 
     @classmethod
     def from_beam_beam_intersection(cls, beam_stay, beam_move, thickness=None, joint_face_id_stay=None, joint_face_id_move=None):
-        # type: (Beam, Beam, float, int, int) -> tuple[JointNonPlanarLap, Line]
+        # type: (Beam, Beam, float, int, int) -> tuple[JointNonPlanarLap, JointNonPlanarLap, Line]
         ''' Compute the intersection between two beams.
 
         `beam_stay` must be the earlier beam in assembly sequence
