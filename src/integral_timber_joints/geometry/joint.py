@@ -58,9 +58,30 @@ class Joint(object):
         assert hasattr(self, 'data'), "Inherited class %s do not have data attribute" % self.__class__.__name__
         return self.data
 
-    def modify_parameter(self, key, value, relative = True):
-        #type: (str, Any, bool) -> None
+    # #####################
+    # Modifyable Parameters
+    # #####################
+
+    @property
+    def parameter_keys(self):
+        #type: () -> list[str]
         raise NotImplementedError
+
+    def get_parameter(self, key):
+        #type: (str) -> Any
+        raise NotImplementedError
+
+    def get_paraneter_dict(self):
+        #type: () -> Dict[str, Any]
+        return dict(zip(self.parameter_keys, [self.get_parameter(key) for key in self.parameter_keys]))
+
+    def set_parameter(self, key, value):
+        #type: (str, Any) -> None
+        raise NotImplementedError
+
+    # #####################
+    # Joint Shape
+    # #####################
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Shape]

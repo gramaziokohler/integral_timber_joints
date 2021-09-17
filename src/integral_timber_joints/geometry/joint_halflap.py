@@ -15,7 +15,7 @@ from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMet
 
 
 try:
-    from typing import Dict, List, Optional, Tuple, cast
+    from typing import Dict, List, Optional, Tuple, cast, Any
 
     from integral_timber_joints.process import RobotClampAssemblyProcess
 except:
@@ -104,12 +104,33 @@ class JointHalfLap(Joint):
     def distance_at_center(self):
         return self.distance + self.angled_lead / 2 + self.angled_length / 2
 
-    def modify_parameter(self, key, value, relative=True):
+    # #####################
+    # Modifyable Parameters
+    # #####################
+
+    @property
+    def parameter_keys(self):
+        # type: () -> list[str]
+        return ['thickness']
+
+    def get_parameter(self, key):
+        # type: (str) -> Any
+        if key == 'thickness':
+            return self.thickness
+        raise KeyError("%s is invalid for JointHalfLap" % key)
+
+    def set_parameter(self, key, value):
+        # type: (str, Any) -> None
         if key == "thickness":
-            if not relative:
-                value = value - self.thickness
-            self.thickness += value
-            self.height -= value
+            diff = value - self.thickness
+            self.thickness += diff
+            self.height -= diff
+            return
+        raise KeyError("%s is invalid for JointHalfLap" % key)
+
+    # #####################
+    # Joint Shape
+    # #####################
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
