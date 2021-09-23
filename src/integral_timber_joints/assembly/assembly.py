@@ -514,6 +514,7 @@ class Assembly(Network):
         # type: (str, Beamcut) -> None
         """Set the Beamcut object at the end of beam. None if un-cut."""
         del self.beam_cuts(beam_id)[:]
+        self.beam(beam_id).remove_cached_mesh()
 
     # --------------------------------------------
     # Iterating through all Beams and Joints
