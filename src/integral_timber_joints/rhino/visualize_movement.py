@@ -28,7 +28,8 @@ except:
 
 def redraw_state(process):
     artist = get_process_artist()
-    artist.delete_state(redraw=False)
+    # artist.delete_state(redraw=False)
+    # print(artist._get_state_attached_objects_meshes(moved_objects_only=True))
     artist.draw_state(redraw=True)  # Visualize the state
     print_current_state_info(process)
 

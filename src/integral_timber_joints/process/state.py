@@ -166,6 +166,17 @@ class ObjectState(object):
         return "State: current frame: {} | config: {} | attached to robot: {}".format(
             self.current_frame, self.kinematic_config, self.attached_to_robot)
 
+    def __eq__(self, other):
+        if not hasattr(other, 'current_frame') or not hasattr(other, 'attached_to_robot') or not hasattr(other, 'kinematic_config'):
+            return False
+        if self.current_frame != other.current_frame:
+            return False
+        if self.attached_to_robot != other.attached_to_robot:
+            return False
+        if self.kinematic_config != other.kinematic_config:
+            return False
+        return True
+
 
 def get_object_from_flange(object_states, object_id):
     flange_frame = object_states['robot'].current_frame
