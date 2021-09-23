@@ -206,12 +206,17 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
     # * final visualization
     if args.watch:
+        # order movement according to their ids
+        viz_movements = {}
+        for am in altered_movements:
+            index = process.movements.index(am)
+            viz_movements[index] = am
         print('='*20)
         print_title('Visualize results')
         wait_if_gui('Start simulating results. Press enter to start.')
         set_state(client, robot, process, process.initial_state)
-        for altered_m in altered_movements:
-            visualize_movement_trajectory(client, robot, process, altered_m, step_sim=args.step_sim)
+        for m_id in sorted(viz_movements.keys()):
+            visualize_movement_trajectory(client, robot, process, viz_movements[m_id], step_sim=args.step_sim)
 
     if args.verbose:
         notify('A plan has been found for beam id {}!'.format(beam_id))
@@ -232,7 +237,7 @@ def main():
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
-    parser.add_argument('--smooth', action='store_true', help='Apply smoothing.')
+    parser.add_argument('--smooth', action='store_false', help='Apply smoothing.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
