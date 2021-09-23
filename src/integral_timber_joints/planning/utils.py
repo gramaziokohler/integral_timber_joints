@@ -103,7 +103,7 @@ def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
         elif len(seq_n) == 1:
             beam_ids = [process.assembly.sequence[seq_n[0]]]
         elif len(seq_n) == 2:
-            beam_ids = [process.assembly.sequence[seq_i] for seq_i in range(seq_n[0], seq_n[1])]
+            beam_ids = [process.assembly.sequence[seq_i] for seq_i in range(seq_n[0], seq_n[1]+1)]
         else:
             beam_ids = [process.assembly.sequence[seq_i] for seq_i in seq_n]
         cprint('Solving for beam {}'.format(beam_ids), 'cyan')
