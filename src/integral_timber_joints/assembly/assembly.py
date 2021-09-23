@@ -130,7 +130,7 @@ class Assembly(Network):
             'screwdriver_assembled_retracted': None,   # Screwdriver position when beam = assembled, tool = retracted from beam.
             'screwdriver_assembled_retractedfurther': None,   # Screwdriver position when beam = assembled, tool = retractedfurther from beam.
 
-            'tool_orientation_frame_index' : 0,
+            'tool_orientation_frame_index': 0,
             'tool_type': None,                  # Computed tool type for the joint.
             'tool_type_preference': None,       # User preference for tool_type
             'tool_id': None,
@@ -462,7 +462,6 @@ class Assembly(Network):
                 else:
                     self.flip_lap_joint(joint_id)
 
-
             # Recompute all affected beams screw hole, assembly directions and realign joints if needed.
             for _beam_id in list(neighbour_with_joint_to_flip) + [beam_id]:
                 self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
@@ -472,7 +471,6 @@ class Assembly(Network):
                         print('Search for another joint config for Beam %s' % _beam_id)
                         self.search_for_halflap_joints_with_previous_beams(_beam_id, self.get_beam_attribute(beam_id, 'assembly_vector_final'))
                         self.compute_beam_assembly_direction_from_joints_and_sequence(_beam_id)
-
 
             # The affected beams include all_affected_earlier_neighbours
             affected_ids = affected_ids.union(all_affected_earlier_neighbours)
@@ -490,6 +488,11 @@ class Assembly(Network):
             self.set_beam_attribute(beam_id, 'beam_cuts', [])
         return self.get_beam_attribute(beam_id, 'beam_cuts')
 
+    def add_beam_cut(self, beam_id, beamcut):
+        # type: (str, Beamcut) -> None
+        self.beam_cuts(beam_id).append(beamcut)
+        self.beam(beam_id).remove_cached_mesh()
+
     def add_ocf_beam_cut_from_wcf_plane(self, beam_id, wcf_plane):
         # type: (str, Plane) -> None
         """Add a OCF type Beamcut object to a beam.
@@ -500,19 +503,18 @@ class Assembly(Network):
 
         Note: beam(beam_id).cached_mesh will be reset to None
         """
-
         beam = self.beam(beam_id)
         beam_from_world = Transformation.from_frame(beam.frame).inverse()
 
         ocf_plane = wcf_plane.transformed(beam_from_world)
         beam_cut = Beamcut_plane(ocf_plane)
-        self.beam_cuts(beam_id).append(beam_cut)
-        self.beam(beam_id).remove_cached_mesh()
+        self.add_beam_cut(beam_id, beam_cut)
 
     def remove_all_beam_cuts(self, beam_id):
         # type: (str, Beamcut) -> None
         """Set the Beamcut object at the end of beam. None if un-cut."""
         del self.beam_cuts(beam_id)[:]
+        self.beam(beam_id).remove_cached_mesh()
 
     # --------------------------------------------
     # Iterating through all Beams and Joints
@@ -872,54 +874,53 @@ class Assembly(Network):
         return [(neighbour_id, beam_id) for neighbour_id in self.get_already_built_neighbors(beam_id)]
 
     def get_screw_line_of_joint(self, joint_id):
-        #type: (Tuple[str,str]) -> Line
+        # type: (Tuple[str,str]) -> Line
         i, j = joint_id
         # Note on the head side:
         # Head Side = Moving Beam Side = Later Beam + Joint_id (later_beam_id, earlier_beam_id)
         # Thread Side = Staying Beam Side = Earlier Beam + Joint_id (earlier_beam_id, later_beam_id)
-        if self.sequence.index(i) >  self.sequence.index(j):
-            i , j  = j , i
+        if self.sequence.index(i) > self.sequence.index(j):
+            i, j = j, i
         beam_stay_id, beam_move_id = i, j
         st_point = self.joint((beam_move_id, beam_stay_id)).get_joint_center_at_solid_side(self.beam(beam_move_id))
         en_point = self.joint((beam_stay_id, beam_move_id)).get_joint_center_at_solid_side(self.beam(beam_stay_id))
         return Line(st_point, st_point)
 
     def get_head_side_thickness_of_joint(self, joint_id):
-        #type: (Tuple[str,str]) -> float
+        # type: (Tuple[str,str]) -> float
         i, j = joint_id
         # Note on the head side:
         # Head Side = Moving Beam Side = Later Beam + Joint_id (later_beam_id, earlier_beam_id)
         # Thread Side = Staying Beam Side = Earlier Beam + Joint_id (earlier_beam_id, later_beam_id)
-        if self.sequence.index(i) >  self.sequence.index(j):
-            joint_head_side = self.joint((i,j))
+        if self.sequence.index(i) > self.sequence.index(j):
+            joint_head_side = self.joint((i, j))
         else:
             joint_head_side = self.joint((j, i))
         return joint_head_side.thickness
 
     def get_has_screw_of_joint(self, joint_id):
-        #type: (Tuple[str,str]) -> bool
+        # type: (Tuple[str,str]) -> bool
         """Compute if the joint has screw.
         If the assemblt method of the "later beam" is a screw method, then it will need screw.
 
         `joint_id` input is reversible.
         """
         i, j = joint_id
-        if self.sequence.index(i) >  self.sequence.index(j):
-            earlier_beam_id , later_beam_id = j, i
+        if self.sequence.index(i) > self.sequence.index(j):
+            earlier_beam_id, later_beam_id = j, i
         else:
             earlier_beam_id, later_beam_id = i, j
 
         if self.get_assembly_method(later_beam_id) in BeamAssemblyMethod.screw_methods:
             return True
 
-
     def get_screw_of_joint(self, joint_id):
-        #type: (Tuple[str,str]) -> Screw_SL
+        # type: (Tuple[str,str]) -> Screw_SL
 
         if self.get_has_screw_of_joint(joint_id):
             i, j = joint_id
-            if self.sequence.index(i) >  self.sequence.index(j):
-                earlier_beam_id , later_beam_id = j, i
+            if self.sequence.index(i) > self.sequence.index(j):
+                earlier_beam_id, later_beam_id = j, i
             else:
                 earlier_beam_id, later_beam_id = i, j
             later_beam = self.beam(later_beam_id)
@@ -931,11 +932,9 @@ class Assembly(Network):
             st = self.joint((later_beam_id, earlier_beam_id)).get_joint_center_at_solid_side(later_beam)
             en = self.joint((earlier_beam_id, later_beam_id)).get_joint_center_at_solid_side(earlier_beam)
             head_side_thickness = self.joint((later_beam_id, earlier_beam_id)).thickness
-            return Screw_SL.AutoLength_Factory(center_line=Line(st,en), head_side_thickness=head_side_thickness)
+            return Screw_SL.AutoLength_Factory(center_line=Line(st, en), head_side_thickness=head_side_thickness)
         else:
             return None
-
-
 
     def get_grasping_joint_id(self, beam_id):
         # type: (str) -> Optional[Tuple[str, str]]
@@ -1035,7 +1034,6 @@ class Assembly(Network):
         self.set_beam_attribute(beam_id, 'assembly_wcf_inclamp', None)
         self.beam(beam_id).remove_cached_mesh()
         self.beam(neighbour_id).remove_cached_mesh()
-
 
     # -----------------------
     # Assembly Directions

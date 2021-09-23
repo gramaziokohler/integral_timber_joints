@@ -19,7 +19,7 @@ from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMet
 
 
 try:
-    from typing import Dict, List, Optional, Tuple, cast
+    from typing import Dict, List, Optional, Tuple, cast, Any
 
 except:
     pass
@@ -70,7 +70,7 @@ class JointNonPlanarLap(Joint):
 
         :param face_id:   int
         """
-        self.center_frame = deepcopy(center_frame)
+        self.center_frame = deepcopy(center_frame) # type: (Frame)
         self._thickness = thickness
         self.beam_move_face_id = beam_move_face_id
         self.beam_stay_face_id = beam_stay_face_id
@@ -142,11 +142,36 @@ class JointNonPlanarLap(Joint):
     def thickness(self, value):
         self._thickness = value
 
-    def modify_parameter(self, key, value, relative=True):
+    # #####################
+    # Modifyable Parameters
+    # #####################
+
+    @property
+    def parameter_keys(self):
+        # type: () -> list[str]
+        return ['thickness']
+
+    def get_parameter(self, key):
+        # type: (str) -> Any
+        if key == 'thickness':
+            return self.thickness
+        raise KeyError("%s is invalid for JointHalfLap" % key)
+
+    def set_parameter(self, key, value):
+        # type: (str, Any) -> None
         if key == "thickness":
-            if not relative:
-                value = value - self.thickness
-            self.thickness += value
+            # Offset `center_frame`
+            offset_amount = value - self.thickness
+            self.center_frame.point = self.center_frame.point + self.center_frame.normal.scaled(offset_amount)
+            # Change thickness parameter
+            self.thickness = value
+
+            return
+        raise KeyError("%s is invalid for JointHalfLap" % key)
+
+    # #####################
+    # Joint Shape
+    # #####################
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
@@ -338,7 +363,7 @@ class JointNonPlanarLap(Joint):
 
     @classmethod
     def from_beam_beam_intersection(cls, beam_stay, beam_move, thickness=None, joint_face_id_stay=None, joint_face_id_move=None):
-        # type: (Beam, Beam, float, int, int) -> tuple[JointNonPlanarLap, Line]
+        # type: (Beam, Beam, float, int, int) -> tuple[JointNonPlanarLap, JointNonPlanarLap, Line]
         ''' Compute the intersection between two beams.
 
         `beam_stay` must be the earlier beam in assembly sequence
