@@ -1185,9 +1185,23 @@ class ProcessArtist(object):
     ######################
     # State
     ######################
-    def _get_state_attached_objects_meshes(self, attached_objects_only=False, moved_objects_only=False):
-        # type: (bool, bool) -> Dict[str, Tuple[Frame, List[Mesh]]]
-        """Returns a dictionary of all object meshes in the currently selected state.
+
+    def get_current_selected_scene_state(self):
+        # type: () -> SceneState
+        """
+        Return the currently selected SceneState
+        Note state_id = 1 is referring to end of the first (0) movement.
+        """
+        state_id = self.selected_state_id
+        if state_id == 0:
+            return self.process.initial_state
+        else:
+            movement = self.process.movements[state_id - 1]  # type: RoboticMovement
+            return self.process.get_movement_end_scene(movement)
+
+    def _get_state_attached_objects_meshes(self, scene, attached_objects_only=False, moved_objects_only=False):
+        # type: (SceneState, bool, bool) -> Dict[str, Tuple[Frame, List[Mesh]]]
+        """Returns all object meshes in the given scene
 
         Meshes of each object is accessed from `dict[object_id]`.
         This contains a tuple:
@@ -1201,9 +1215,6 @@ class ProcessArtist(object):
         This is useful for drawing sweep visualization for attached geometry.
 
         """
-        state_id = self.selected_state_id
-        movement = self.process.movements[state_id - 1]  # type: RoboticMovement
-        scene = self.process.get_movement_end_scene(movement)
 
         # * Temp holder for object_id and their list of Compas Meshes
         meshes_for_objects = {}
@@ -1274,20 +1285,14 @@ class ProcessArtist(object):
                 self.selected_state_id = 0
             if self.selected_state_id > len(self.process.movements):
                 self.selected_state_id = len(self.process.movements)
-
-            if self.selected_state_id == 0:
-                scene = self.process.initial_state
-                print("Drawing Initial State")
-            else:
-                # Note state_id = 1 is referring to end of the first (0) movement.
-                scene = self.process.get_movement_end_scene(self.process.movements[self.selected_state_id - 1])
+            scene = self.get_current_selected_scene_state()
 
         # Layer:
         rs.CurrentLayer(self.state_visualization_layer)
         rs.EnableRedraw(False)
 
         # * Temp holder for object_id and their list of Compas Meshes
-        meshes_for_objects = self._get_state_attached_objects_meshes(moved_objects_only=True)
+        meshes_for_objects = self._get_state_attached_objects_meshes(scene, moved_objects_only=True)
 
         # * Draw Robot if state has robot config otherwise draw robot wrist
         # Drawing Robot Geometry in Rhino and GUIDs is not managed by the draw method above.
@@ -1414,11 +1419,13 @@ class ProcessArtist(object):
         # * Draw Attached objects
         # Scene
         guids = {}
-        meshes_for_objects = self._get_state_attached_objects_meshes(attached_objects_only=True)
+        scene = self.get_current_selected_scene_state()
+        meshes_for_objects = self._get_state_attached_objects_meshes(scene, attached_objects_only=True)
         print("Drawing %s Sweep Trajectory with %i meshes and %i trajectory points." % (movement_id, len(meshes_for_objects), len(trajectory_frames)))
         for object_id in meshes_for_objects:
             guids[object_id] = []
-            for mesh in meshes_for_objects[object_id]:
+            object_state, meshes = meshes_for_objects[object_id]
+            for mesh in meshes:
                 new_guids = self._draw_mesh_sweep_polyline(mesh, transformations, (0, 30, 180))
                 guids[object_id].extend(new_guids)
         self._trajectory_visualization_guids = guids
