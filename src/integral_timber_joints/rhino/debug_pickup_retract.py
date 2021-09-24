@@ -18,6 +18,7 @@ from compas.data import DataEncoder
 from compas.geometry import Cylinder, Transformation, Translation, Vector, Frame
 
 
+
 def compute_beam_pickupretract(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """Compute 'assembly_wcf_pickupretract' from beam attributes:
@@ -49,10 +50,15 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
 
     # * Compute assembly_wcf_pickupretract
     assembly_wcf_pickup = process.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup')
+    vprint("assembly_wcf_pickup = %s" % (assembly_vector_at_pickup_in_wcf))
+
     retract_vector = process.pickup_station.pickup_retract_vector
+    vprint("retract_vector = %s" % (retract_vector))
     t_beam_final_from_beam_at_pickup = Translation.from_vector(retract_vector)
     assembly_wcf_pickupretract = assembly_wcf_pickup.transformed(t_beam_final_from_beam_at_pickup)
-    # process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupretract', assembly_wcf_pickupretract)
+    vprint("assembly_wcf_pickupretract = %s" % (assembly_wcf_pickupretract))
+
+    process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupretract', assembly_wcf_pickupretract)
     vprint("process.assembly.set_beam_attribute(%s, 'assembly_wcf_pickupretract', %s)" % (beam_id, assembly_wcf_pickupretract))
 
     # Check if beam is of type SCREWED, otherwise stop here
@@ -87,6 +93,7 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
 
     possible_rotation_vectors = []
     possible_rotation_vector_dowm_amount = []
+    # Trying all four possible rotations to get a new assembly and compare it so see which one points downwards
     for t_change_of_basis_rotation_at_final in four_possible_rotations():
         vprint("t_change_of_basis_rotation_at_final = %s" % t_change_of_basis_rotation_at_final)
         new_assembly_vector_in_ocf = assembly_vector_in_ocf.transformed(t_change_of_basis_rotation_at_final)
@@ -99,6 +106,7 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
         possible_rotation_vector_dowm_amount.append(new_assembly_vector_down_amount)
         vprint("--------------")
 
+    # After identifying the best rotation. Apply it to find the new pose of the beam after pickup
     x = max(possible_rotation_vector_dowm_amount)
 
     best_rotation_index = possible_rotation_vector_dowm_amount.index(x)
@@ -109,12 +117,14 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
     process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_screwdriver_attachment_pose', f_world_from_beam_at_newpose)
     vprint("process.assembly.set_beam_attribute(%s, 'assembly_wcf_screwdriver_attachment_pose', %s)" % (beam_id, f_world_from_beam_at_newpose))
 
+    return ComputationalResult.ValidCanContinue
+
 
 if __name__ == '__main__':
     process = get_process()
     assembly = process.assembly
     artist = get_process_artist()
-    beam_id = 'b3'
+    beam_id = 'b12'
 
-    compute_beam_pickupretract(process, beam_id)
+    compute_beam_pickupretract(process, beam_id, verbose=True)
     # artist.draw_beam_brep(beam_id)

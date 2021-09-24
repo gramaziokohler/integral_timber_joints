@@ -299,10 +299,15 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
 
     # * Compute assembly_wcf_pickupretract
     assembly_wcf_pickup = process.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup')
+    vprint("assembly_wcf_pickup = %s" % (assembly_wcf_pickup))
+
     retract_vector = process.pickup_station.pickup_retract_vector
+    vprint("retract_vector = %s" % (retract_vector))
     t_beam_final_from_beam_at_pickup = Translation.from_vector(retract_vector)
     assembly_wcf_pickupretract = assembly_wcf_pickup.transformed(t_beam_final_from_beam_at_pickup)
-    # process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupretract', assembly_wcf_pickupretract)
+    vprint("assembly_wcf_pickupretract = %s" % (assembly_wcf_pickupretract))
+
+    process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupretract', assembly_wcf_pickupretract)
     vprint("process.assembly.set_beam_attribute(%s, 'assembly_wcf_pickupretract', %s)" % (beam_id, assembly_wcf_pickupretract))
 
     # Check if beam is of type SCREWED, otherwise stop here
