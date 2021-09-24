@@ -28,7 +28,7 @@ except:
 
 def redraw_state(process):
     artist = get_process_artist()
-    artist.delete_state(redraw=False)
+    # artist.delete_state(redraw=False)
     artist.draw_state(redraw=True)  # Visualize the state
     print_current_state_info(process)
 

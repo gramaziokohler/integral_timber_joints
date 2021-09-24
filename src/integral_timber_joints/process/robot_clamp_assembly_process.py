@@ -240,12 +240,12 @@ class RobotClampAssemblyProcess(Data):
 
     @property
     def initial_state(self):
-        # type: () -> dict[str, ObjectState]
+        # type: () -> SceneState
         return self.attributes['initial_state']
 
     @initial_state.setter
     def initial_state(self, value):
-        # type: (dict(str, ObjectState)) -> None
+        # type: (SceneState) -> None
         self.attributes['initial_state'] = value
 
     # ----------------

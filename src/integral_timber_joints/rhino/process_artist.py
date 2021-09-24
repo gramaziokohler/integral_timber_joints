@@ -361,6 +361,7 @@ class ProcessArtist(object):
         self._asstool_guids = {}  # type: dict[str, dict[str, list[str]]]
         self._interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
         self._state_visualization_guids = {}  # type: dict[str, list[str]]
+        self.state_visualization_current_state = {}
         self._trajectory_visualization_guids = {}  # type: dict[str, list[str]]
         self._tools_in_storage_guids = {}  # type: dict[str, list[str]]
         self._env_mesh_guids = {}  # type: dict[str, list[str]]
@@ -1184,38 +1185,70 @@ class ProcessArtist(object):
     ######################
     # State
     ######################
-    def _get_state_attached_objects_meshes(self, attached_objects_only=False):
-        # type: (bool) -> Dict[str, Mesh]
+
+    def get_current_selected_scene_state(self):
+        # type: () -> SceneState
+        """
+        Return the currently selected SceneState
+        Note state_id = 1 is referring to end of the first (0) movement.
+        """
         state_id = self.selected_state_id
-        movement = self.process.movements[state_id - 1]  # type: RoboticMovement
-        scene = self.process.get_movement_end_scene(movement)
+        if state_id == 0:
+            return self.process.initial_state
+        else:
+            movement = self.process.movements[state_id - 1]  # type: RoboticMovement
+            return self.process.get_movement_end_scene(movement)
+
+    def _get_state_attached_objects_meshes(self, scene, attached_objects_only=False, moved_objects_only=False):
+        # type: (SceneState, bool, bool) -> Dict[str, Tuple[Frame, List[Mesh]]]
+        """Returns all object meshes in the given scene
+
+        Meshes of each object is accessed from `dict[object_id]`.
+        This contains a tuple:
+        - First item is the ObjectState of that object
+        - Second item is a list of all the Meshes
+
+        If `moved_objects_only == True` it will return only object whose current state is different from
+        that in `self.state_visualization_current_state`. This can allow more efficiently redrawing to avoid repeating already existing geometry.
+
+        If `attached_objects_only == True`, it will return only the the objects whose `scene[(obj_id, 'a')]` == True
+        This is useful for drawing sweep visualization for attached geometry.
+
+        """
 
         # * Temp holder for object_id and their list of Compas Meshes
-        meshes = {}
+        meshes_for_objects = {}
 
         # * Beams
         for beam_id in self.process.assembly.sequence:
             if attached_objects_only and not scene[(beam_id, 'a')]:
                 continue
+            object_state = ObjectState(scene[(beam_id, 'f')], scene[(beam_id, 'a')], scene[(beam_id, 'c')])
+            if moved_objects_only and object_state == self.state_visualization_current_state.get(beam_id, None):
+                continue
             beam = self.process.assembly.beam(beam_id)
             beam_mesh = self.process.assembly.get_beam_mesh_in_wcf(beam_id)
             T = Transformation.from_frame_to_frame(beam.frame, scene[(beam_id, 'f')])
-            meshes[beam_id] = [beam_mesh.transformed(T)]
+            meshes_for_objects[beam_id] = (object_state, [beam_mesh.transformed(T)])
 
         # # * Tools
         for tool_id in self.process.tool_ids:
             if attached_objects_only and not scene[(tool_id, 'a')]:
                 continue
-            tool = self.process.tool(tool_id)
             object_state = ObjectState(scene[(tool_id, 'f')], scene[(tool_id, 'a')], scene[(tool_id, 'c')])
-            meshes[tool_id] = tool.draw_state(object_state)
+            if moved_objects_only and object_state == self.state_visualization_current_state.get(tool_id, None):
+                continue
+            tool = self.process.tool(tool_id)
+            meshes_for_objects[tool_id] = (object_state, tool.draw_state(object_state))
 
         # * Tool Changer
-        tool_changer_key = ('tool_changer', 'f')
-        # print ("- Attached Object: tool_changer")
-        object_state = ObjectState(scene[tool_changer_key], True, None)
-        meshes['tool_changer'] = self.process.robot_toolchanger.draw_state(object_state)
-        return meshes
+        object_state = ObjectState(scene[('tool_changer', 'f')], True, None)
+        if moved_objects_only and object_state == self.state_visualization_current_state.get('tool_changer', None):
+            pass
+        else:
+            meshes_for_objects['tool_changer'] = (object_state, self.process.robot_toolchanger.draw_state(object_state))
+
+        return meshes_for_objects
 
     def draw_meshes_get_guids(self, meshes, name, disjoint=True, redraw=False, color=None):
         """
@@ -1242,7 +1275,8 @@ class ProcessArtist(object):
         # type: (SceneState, bool) -> None
         """Draw objects that relates to a specific object state dictionary.
 
-        Please call delete_state() to erase previous geometry before calling this.
+        You do not have to call delete_state() to erase previous geometry.
+        Old geometry that are same as new geometry will not be redrawn
 
         """
         if scene is None:
@@ -1251,47 +1285,65 @@ class ProcessArtist(object):
                 self.selected_state_id = 0
             if self.selected_state_id > len(self.process.movements):
                 self.selected_state_id = len(self.process.movements)
-
-            if self.selected_state_id == 0:
-                scene = self.process.initial_state
-            else:
-                # Note state_id = 1 is referring to end of the first (0) movement.
-                scene = self.process.get_movement_end_scene(self.process.movements[self.selected_state_id - 1])
+            scene = self.get_current_selected_scene_state()
 
         # Layer:
         rs.CurrentLayer(self.state_visualization_layer)
         rs.EnableRedraw(False)
 
         # * Temp holder for object_id and their list of Compas Meshes
-        meshes = self._get_state_attached_objects_meshes()
+        meshes_for_objects = self._get_state_attached_objects_meshes(scene, moved_objects_only=True)
 
         # * Draw Robot if state has robot config otherwise draw robot wrist
         # Drawing Robot Geometry in Rhino and GUIDs is not managed by the draw method above.
         # It is directly managed by the draw_robot() function
         if ('robot', 'c') in scene and scene[('robot', 'c')] is not None:
+            # Delete rob_wrist
+            if len(self.state_visualization_guids('rob_wrist')) > 0:
+                self.delete_state_by_object_id('rob_wrist')
+            # Draw Robot
             configuration = scene[('robot', 'c')]
             self.draw_robot(configuration)
+
         else:
-            # Draw rob_wrist at tool_changer.current_frame
+            # Delete Robot
+            self.delete_robot()
+            # Draw rob_wrist
             robot_wrist = self.process.robot_wrist
             robot_wrist.current_frame = scene[('robot', 'f')]
-            meshes['rob_wrist'] = robot_wrist.draw_visual()
+            meshes_for_objects['rob_wrist'] = (scene[('robot', 'f')], robot_wrist.draw_visual())
 
-        # * Draw meshes to Rhinoand add guids to tracking dict
-        for object_id in meshes:
-            if meshes[object_id] is not None:
-                guids = self.draw_meshes_get_guids(meshes[object_id], object_id, redraw=False)
-                self.state_visualization_guids(object_id).extend(guids)
-                # Add a color to the objects that are attached-to-robot
-                attachment_key = (object_id, 'a')
-                if attachment_key in scene and scene[attachment_key]:
-                    meshes_apply_color(guids, (0.7, 1, 1, 1))
-                if object_id == 'rob_wrist':
-                    meshes_apply_color(guids, (0.6, 1, 1, 1))
+        # * Draw meshes to Rhino and add guids to tracking dict
+        for object_id in meshes_for_objects:
+            object_state, meshes = meshes_for_objects[object_id]
+            if meshes is None:
+                continue
+
+            # * Delete old geometry automatically
+            if len(self.state_visualization_guids(object_id)) > 0:
+                self.delete_state_by_object_id(object_id)
+
+            # * Draw mesh, save its current frame for faster partial refresh later.
+            guids = self.draw_meshes_get_guids(meshes, object_id, redraw=False)
+            self.state_visualization_guids(object_id).extend(guids)
+            self.state_visualization_current_state[object_id] = object_state
+            # Add a color to the objects that are attached-to-robot
+            attachment_key = (object_id, 'a')
+            if attachment_key in scene and scene[attachment_key]:
+                meshes_apply_color(guids, (0.7, 1, 1, 1))
+            if object_id == 'rob_wrist':
+                meshes_apply_color(guids, (0.6, 1, 1, 1))
+
         # Enable Redraw
         if redraw:
             rs.EnableRedraw(True)
             sc.doc.Views.Redraw()
+
+    def delete_state_by_object_id(self, object_id):
+        guids = self.state_visualization_guids(object_id)
+        purge_objects(guids, redraw=False)
+        del self.state_visualization_guids(object_id)[:]
+        del self.state_visualization_current_state[object_id]
 
     def delete_state(self, redraw=True):
         # type: (bool) -> None
@@ -1299,6 +1351,7 @@ class ProcessArtist(object):
         for object_id, guids in self._state_visualization_guids.items():
             purge_objects(guids, redraw=False)
         self._state_visualization_guids = {}
+        self.state_visualization_current_state = {}
         # Delete old robot visualization
         self.delete_robot()
         # Enable Redraw
@@ -1366,11 +1419,13 @@ class ProcessArtist(object):
         # * Draw Attached objects
         # Scene
         guids = {}
-        meshes = self._get_state_attached_objects_meshes(attached_objects_only=True)
-        print("Drawing %s Sweep Trajectory with %i meshes and %i trajectory points." % (movement_id, len(meshes), len(trajectory_frames)))
-        for object_id in meshes:
+        scene = self.get_current_selected_scene_state()
+        meshes_for_objects = self._get_state_attached_objects_meshes(scene, attached_objects_only=True)
+        print("Drawing %s Sweep Trajectory with %i meshes and %i trajectory points." % (movement_id, len(meshes_for_objects), len(trajectory_frames)))
+        for object_id in meshes_for_objects:
             guids[object_id] = []
-            for mesh in meshes[object_id]:
+            object_state, meshes = meshes_for_objects[object_id]
+            for mesh in meshes:
                 new_guids = self._draw_mesh_sweep_polyline(mesh, transformations, (0, 30, 180))
                 guids[object_id].extend(new_guids)
         self._trajectory_visualization_guids = guids
