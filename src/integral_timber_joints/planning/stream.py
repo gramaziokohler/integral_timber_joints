@@ -61,73 +61,6 @@ def _get_sample_bare_arm_ik_fn(client: PyChoreoClient, robot: Robot):
     sample_ik_fn = get_sample_ik_fn(robot_uid, ikfast_fn, ik_base_link, ik_joints)
     return sample_ik_fn
 
-def base_sample_inverse_kinematics(robot_uid, ik_info, world_from_target,
-                              fixed_joints=[], max_ik_attempts=200, max_ik_time=INF,
-                              norm=INF, max_joint_distance=INF, free_delta=0.01, use_pybullet=False, **kwargs):
-    assert (max_ik_attempts < INF) or (max_ik_time < INF)
-    if max_joint_distance is None:
-        max_joint_distance = INF
-    #assert is_ik_compiled(ikfast_info)
-    # ikfast = import_ikfast(ikfast_info)
-    # ik_joints = get_ik_joints(robot, ikfast_info, tool_link)
-    ik_joints = joints_from_names(robot_uid, ik_info.ik_joint_names)
-    free_joints = joints_from_names(robot_uid, ik_info.free_joint_names) if ik_info.free_joint_names else []
-    ee_link = link_from_name(robot_uid, ik_info.ee_link_name)
-    # base_from_ee = get_base_from_ee(robot_uid, ikfast_info, tool_link, world_from_target)
-
-    difference_fn = get_difference_fn(robot_uid, ik_joints)
-    current_conf = get_joint_positions(robot_uid,ik_joints)
-    current_positions = get_joint_positions(robot_uid, free_joints)
-
-    # TODO: handle circular joints
-    # TODO: use norm=INF to limit the search for free values
-    free_deltas = np.array([0. if joint in fixed_joints else free_delta for joint in free_joints])
-    lower_limits = np.maximum(get_min_limits(robot_uid, free_joints), current_positions - free_deltas)
-    upper_limits = np.minimum(get_max_limits(robot_uid, free_joints), current_positions + free_deltas)
-    generator = chain([current_positions], # TODO: sample from a truncated Gaussian nearby
-                      interval_generator(lower_limits, upper_limits))
-    if max_ik_attempts < INF:
-        generator = islice(generator, max_ik_attempts)
-    start_time = time.time()
-    for free_positions in generator:
-        if max_ik_time < elapsed_time(start_time):
-            break
-        # ! set free joint
-        set_joint_positions(robot_uid, free_joints, free_positions)
-        if use_pybullet:
-            sub_robot, selected_joints, sub_target_link = create_sub_robot(robot_uid, ik_joints[0], ee_link)
-            sub_joints = prune_fixed_joints(sub_robot, get_ordered_ancestors(sub_robot, sub_target_link))
-            # ! call ik fn on ik_joints
-            all_confs = []
-            sub_kinematic_conf = inverse_kinematics(sub_robot, sub_target_link, world_from_target)
-                                                    # pos_tolerance=pos_tolerance, ori_tolerance=ori_tolerance)
-            if sub_kinematic_conf is not None:
-                #set_configuration(sub_robot, sub_kinematic_conf)
-                sub_kinematic_conf = get_joint_positions(sub_robot, sub_joints)
-                set_joint_positions(robot_uid, selected_joints, sub_kinematic_conf)
-                all_confs = [sub_kinematic_conf]
-        else:
-            all_confs = ik_info.ik_fn(world_from_target)
-
-        for conf in randomize(all_confs):
-            #solution(robot, ik_joints, conf, tool_link, world_from_target)
-            difference = difference_fn(current_conf, conf)
-            if not violates_limits(robot_uid, ik_joints, conf) and (get_length(difference, norm=norm) <= max_joint_distance):
-                #set_joint_positions(robot, ik_joints, conf)
-                yield (free_positions, conf)
-            # else:
-            #     print('current_conf: ', current_conf)
-            #     print('conf: ', conf)
-            #     print('diff: {}', difference)
-        # else:
-        #     min_distance = min([INF] + [get_length(difference_fn(q, current_conf), norm=norm) for q in all_confs])
-            # print('None of out {} solutions works, min distance {}.'.format(len(all_confs), min_distance))
-            #     lower_limits, upper_limits = get_custom_limits(robot_uid, ik_joints)
-            #     print('L: ', lower_limits)
-            #     print('U: ', upper_limits)
-        if use_pybullet:
-            remove_body(sub_robot)
-
 def get_solve_trac_ik_info(trac_ik_solver, robot_uid):
     init_lower, init_upper = trac_ik_solver.get_joint_limits()
     base_link = link_from_name(robot_uid, trac_ik_solver.base_link)
@@ -324,15 +257,15 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
         # * sample from a ball near the pose
         gantry_base_gen_fn = gantry_base_generator(client, robot, interp_frames[0], reachable_range=reachable_range, scale=1.0)
         for gi, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
-            if verbose:
-                cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
+            # if verbose:
+            #     cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
             samples_cnt += 1
             # * bare-arm IK sampler
             arm_conf_vals = sample_ik_fn(pose_from_frame(interp_frames[0], scale=1))
             # * iterate through all 6-axis IK solution
             for ik_iter, arm_conf_val in enumerate(arm_conf_vals):
-                if verbose:
-                    cprint('   -- IK iter {}'.format(ik_iter), 'magenta')
+                # if verbose:
+                #     cprint('   -- IK iter {}'.format(ik_iter), 'magenta')
                 if arm_conf_val is None:
                     continue
                 gantry_arm_conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
@@ -599,6 +532,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         # ik_info = IKInfo(sample_ik_fn, tool_link_name, ik_joint_names, gantry_joint_names) # 'base_link_name',
         # options['customized_ikinfo'] = ik_info
 
+    # * computer retraction buffer motion before/after the free motion to avoid narrow passages
     current_mid = process.movements.index(movement)
     if current_mid-1 < 0 or not any([isinstance(process.movements[current_mid-1], m_type) \
             for m_type in [RoboticLinearMovement, RoboticClampSyncLinearMovement]]):
@@ -629,7 +563,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     retraction_candidates = [0.0] if start_retraction_vector is None and end_retraction_vector is None else retraction_candidates
     for retraction_dist in retraction_candidates:
         if verbose:
-            print('Free motion: trying retraction dist {:.4f}'.format(retraction_dist))
+            print('Free motion | START linear buffer: trying retraction dist {:.4f}'.format(retraction_dist))
         start_cart_traj = None
         end_cart_traj = None
         if abs(retraction_dist) > 1e-6:
@@ -643,6 +577,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         draw_pose(retract_start_pose, length=0.05)
                         client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
                         wait_if_gui('Retract pose drawn. start vec: {}'.format(start_retraction_vector))
+                # TODO try floating attachment only planning before full cartesian planning.keys())?
                 start_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(start_pose), frame_from_pose(retract_start_pose)], start_configuration=start_conf,
                     group=GANTRY_ARM_GROUP, options=options)
                 if not start_cart_traj:
@@ -720,3 +655,72 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
             lockrenderer = LockRenderer()
 
     return traj
+
+##########################################
+# def base_sample_inverse_kinematics(robot_uid, ik_info, world_from_target,
+#                               fixed_joints=[], max_ik_attempts=200, max_ik_time=INF,
+#                               norm=INF, max_joint_distance=INF, free_delta=0.01, use_pybullet=False, **kwargs):
+#     assert (max_ik_attempts < INF) or (max_ik_time < INF)
+#     if max_joint_distance is None:
+#         max_joint_distance = INF
+#     #assert is_ik_compiled(ikfast_info)
+#     # ikfast = import_ikfast(ikfast_info)
+#     # ik_joints = get_ik_joints(robot, ikfast_info, tool_link)
+#     ik_joints = joints_from_names(robot_uid, ik_info.ik_joint_names)
+#     free_joints = joints_from_names(robot_uid, ik_info.free_joint_names) if ik_info.free_joint_names else []
+#     ee_link = link_from_name(robot_uid, ik_info.ee_link_name)
+#     # base_from_ee = get_base_from_ee(robot_uid, ikfast_info, tool_link, world_from_target)
+
+#     difference_fn = get_difference_fn(robot_uid, ik_joints)
+#     current_conf = get_joint_positions(robot_uid,ik_joints)
+#     current_positions = get_joint_positions(robot_uid, free_joints)
+
+#     # TODO: handle circular joints
+#     # TODO: use norm=INF to limit the search for free values
+#     free_deltas = np.array([0. if joint in fixed_joints else free_delta for joint in free_joints])
+#     lower_limits = np.maximum(get_min_limits(robot_uid, free_joints), current_positions - free_deltas)
+#     upper_limits = np.minimum(get_max_limits(robot_uid, free_joints), current_positions + free_deltas)
+#     generator = chain([current_positions], # TODO: sample from a truncated Gaussian nearby
+#                       interval_generator(lower_limits, upper_limits))
+#     if max_ik_attempts < INF:
+#         generator = islice(generator, max_ik_attempts)
+#     start_time = time.time()
+#     for free_positions in generator:
+#         if max_ik_time < elapsed_time(start_time):
+#             break
+#         # ! set free joint
+#         set_joint_positions(robot_uid, free_joints, free_positions)
+#         if use_pybullet:
+#             sub_robot, selected_joints, sub_target_link = create_sub_robot(robot_uid, ik_joints[0], ee_link)
+#             sub_joints = prune_fixed_joints(sub_robot, get_ordered_ancestors(sub_robot, sub_target_link))
+#             # ! call ik fn on ik_joints
+#             all_confs = []
+#             sub_kinematic_conf = inverse_kinematics(sub_robot, sub_target_link, world_from_target)
+#                                                     # pos_tolerance=pos_tolerance, ori_tolerance=ori_tolerance)
+#             if sub_kinematic_conf is not None:
+#                 #set_configuration(sub_robot, sub_kinematic_conf)
+#                 sub_kinematic_conf = get_joint_positions(sub_robot, sub_joints)
+#                 set_joint_positions(robot_uid, selected_joints, sub_kinematic_conf)
+#                 all_confs = [sub_kinematic_conf]
+#         else:
+#             all_confs = ik_info.ik_fn(world_from_target)
+
+#         for conf in randomize(all_confs):
+#             #solution(robot, ik_joints, conf, tool_link, world_from_target)
+#             difference = difference_fn(current_conf, conf)
+#             if not violates_limits(robot_uid, ik_joints, conf) and (get_length(difference, norm=norm) <= max_joint_distance):
+#                 #set_joint_positions(robot, ik_joints, conf)
+#                 yield (free_positions, conf)
+#             # else:
+#             #     print('current_conf: ', current_conf)
+#             #     print('conf: ', conf)
+#             #     print('diff: {}', difference)
+#         # else:
+#         #     min_distance = min([INF] + [get_length(difference_fn(q, current_conf), norm=norm) for q in all_confs])
+#             # print('None of out {} solutions works, min distance {}.'.format(len(all_confs), min_distance))
+#             #     lower_limits, upper_limits = get_custom_limits(robot_uid, ik_joints)
+#             #     print('L: ', lower_limits)
+#             #     print('U: ', upper_limits)
+#         if use_pybullet:
+#             remove_body(sub_robot)
+

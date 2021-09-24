@@ -14,7 +14,8 @@ from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry import Beam, EnvironmentModel, Joint
 from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
-from integral_timber_joints.process.movement import Movement, RoboticFreeMovement, RoboticLinearMovement, RoboticMovement
+from integral_timber_joints.process.movement import Movement, RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, \
+    RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.state import ObjectState, SceneState, copy_state_dict
 from integral_timber_joints.tools.beam_storage import BeamStorage
 from integral_timber_joints.tools.clamp import Clamp
@@ -1391,11 +1392,14 @@ def _colored_planning_priority(p):
 
 def _colored_movement_short_summary(m):
     try:
-        if isinstance(m, RoboticLinearMovement):
+        if isinstance(m, RoboticClampSyncLinearMovement) or isinstance(m, RobotScrewdriverSyncLinearMovement):
+            return colored(m.short_summary, 'red', 'on_yellow')
+        elif isinstance(m, RoboticLinearMovement):
             return colored(m.short_summary, 'white', 'on_blue')
         elif isinstance(m, RoboticFreeMovement):
             return colored(m.short_summary, 'yellow', 'on_cyan')
         else:
             return m.short_summary
     except:
+        print('exception')
         return m.short_summary

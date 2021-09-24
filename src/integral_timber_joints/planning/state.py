@@ -169,61 +169,54 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
         # * attachment management
         for object_id in chain(process.assembly.sequence, process.tool_ids, ['tool_changer']):
             wildcard = '^{}$'.format(object_id)
-            # -1 if not attached and not collision object
-            # 0 if collision object, 1 if attached
-            status = client._get_body_status(wildcard)
-            if scene[(object_id, 'a')] != True:
+            object_names, status = client.get_object_names_and_status(wildcard)
+            if scene[(object_id, 'a')] == False:
                 # ! these are not attached objects
                 # * demote attachedCM to collision_objects
-                if status == 1:
+                if status == 'attached_object':
                     client.detach_attached_collision_mesh(object_id, {'wildcard': wildcard})
-            else:
+            elif scene[(object_id, 'a')] == True:
                 # ! these are attached objects
                 # * promote to attached_collision_object if needed
                 wildcard = '^{}$'.format(object_id)
-                if status == 0:
-                    attached_collision_object_names = client._get_collision_object_names(wildcard)
-                    # * attached collision objects haven't been added
-                    assert initialize or ('robot', 'f') in scene
-                    # object_from_flange = get_object_from_flange(scene, object_id)
-                    flange_frame = scene[('robot', 'f')].copy()
-                    object_frame = scene[(object_id, 'f')].copy()
-                    # convert to meter
-                    flange_frame.point *= scale
-                    object_frame.point *= scale
+                assert initialize or ('robot', 'f') in scene
+                # object_from_flange = get_object_from_flange(scene, object_id)
+                flange_frame = scene[('robot', 'f')].copy()
+                object_frame = scene[(object_id, 'f')].copy()
+                # convert to meter
+                flange_frame.point *= scale
+                object_frame.point *= scale
 
-                    # * Derive transformation robot_flange_from_tool  for attachment
-                    t_world_object = Transformation.from_frame(object_frame)
-                    t_world_robot = Transformation.from_frame(flange_frame)
-                    robot_flange_from_tool = t_world_robot.inverse() * t_world_object
+                # * Derive transformation robot_flange_from_tool for attachment
+                t_world_object = Transformation.from_frame(object_frame)
+                t_world_robot = Transformation.from_frame(flange_frame)
+                robot_flange_from_tool = t_world_robot.inverse() * t_world_object
 
-                    # touched_links is only for the adjacent Robot links
-                    touched_robot_links = []
-                    attached_object_base_link_name = None # default to use BASE_LINK if None
-                    if object_id == 'tool_changer':
-                        # tool changer
-                        attached_object_base_link_name = process.robot_toolchanger.get_base_link_name()
-                        touched_robot_links = ['{}_tool0'.format(MAIN_ROBOT_ID), '{}_link_6'.format(MAIN_ROBOT_ID)]
-                    elif object_id in process.tool_ids:
-                        # tools
-                        attached_object_base_link_name = process.tool(object_id).get_base_link_name()
-                    else:
-                        # beams
-                        attached_object_base_link_name = None # process.tool(object_id).get_base_link_name()
-
-                    # * create attachments
-                    for name in attached_collision_object_names:
-                        # a faked AttachedCM since we are not adding a new mesh, just promoting collision meshes to AttachedCMes
-                        client.add_attached_collision_mesh(
-                            AttachedCollisionMesh(CollisionMesh(None, name),
-                                                  flange_link_name, touch_links=touched_robot_links),
-                            options={'robot': robot,
-                                     'attached_child_link_name': attached_object_base_link_name,
-                                     'parent_link_from_child_link_transformation' : robot_flange_from_tool,
-                                     })
+                # touched_links is only for the adjacent Robot links
+                touched_robot_links = []
+                attached_object_base_link_name = None # default to use BASE_LINK if None
+                if object_id == 'tool_changer':
+                    # tool changer
+                    attached_object_base_link_name = process.robot_toolchanger.get_base_link_name()
+                    touched_robot_links = ['{}_tool0'.format(MAIN_ROBOT_ID), '{}_link_6'.format(MAIN_ROBOT_ID)]
+                elif object_id in process.tool_ids:
+                    # tools
+                    attached_object_base_link_name = process.tool(object_id).get_base_link_name()
                 else:
-                    # ! status = 1, already attached
-                    attached_collision_object_names = client._get_attachment_names(wildcard)
+                    # beams
+                    attached_object_base_link_name = None # process.tool(object_id).get_base_link_name()
+
+                # * create attachments
+                for name in object_names:
+                    # a faked AttachedCM since we are not adding a new mesh, just promoting collision meshes to AttachedCMes
+                    # if attachedCM already exist, update it's grasp and other info.
+                    client.add_attached_collision_mesh(
+                        AttachedCollisionMesh(CollisionMesh(None, name),
+                                              flange_link_name, touch_links=touched_robot_links),
+                        options={'robot': robot,
+                                 'attached_child_link_name': attached_object_base_link_name,
+                                 'parent_link_from_child_link_transformation' : robot_flange_from_tool,
+                                 })
 
                 # ! update extra allowed collision regardless of status
                 # * extra attachments disabled collisions (beyond just disabling attachment parent-child)
@@ -244,13 +237,16 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # ! disable collisions between the tool_changer and a tool
                     extra_disabled_bodies.extend(client._get_bodies('^{}$'.format('tool_changer')))
 
-                for name in attached_collision_object_names:
+                for name in object_names:
                     at_bodies = client._get_attached_bodies('^{}$'.format(name))
                     assert len(at_bodies) > 0
                     for parent_body, child_body in product(extra_disabled_bodies, at_bodies):
                         client.extra_disabled_collision_links[name].add(
                             ((parent_body, None), (child_body, None))
                         )
+            else:
+                # * status == 'not_exist'
+                assert False, 'Object set as attached in scene but object not added to the scene!'
 
 #################################
 
