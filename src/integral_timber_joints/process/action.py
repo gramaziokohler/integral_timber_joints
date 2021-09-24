@@ -1028,7 +1028,7 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.gripper.approach',
             tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id),
-            target_configuration=process.pickup_station.beam_pickup_configuration
+            target_configuration=process.pickup_station.get_robot_config_at_pickup(gripper_id=self.gripper_id)
         ))  # Tool Final Frame at structure
 
         # Close Gripper and liftoff
@@ -1196,7 +1196,7 @@ class GenericGripperApproachBeamPickupAction(RobotAction):
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.gripper.approach',
             tag="Linear Advance to Storage Frame of Beam ('%s')" % (self.beam_id),
-            target_configuration=process.pickup_station.beam_pickup_configuration,
+            target_configuration=process.pickup_station.get_robot_config_at_pickup(gripper_id=self.gripper_id),
             allowed_collision_matrix=tool_env_acm,
         ))  # Tool Final Frame at structure
 

@@ -1,12 +1,14 @@
 from compas_fab.robots import Configuration
-
+from compas.data import Data
 try:
     from typing import Dict, List, Optional, Tuple, cast
 
     from integral_timber_joints.process import RobotClampAssemblyProcess
 except:
     pass
-class PickupStation (object):
+
+
+class PickupStation (Data):
 
     def __init__(self, alignment_frame=None, pickup_retract_vector=None):
         # Frame (in WCF) for the beam to align to
@@ -15,7 +17,7 @@ class PickupStation (object):
         # Vector for the robot to move (in WCF) after picking up beams
         self.pickup_retract_vector = pickup_retract_vector
         # Optional configuration for a static pickup robot configuration. This will be applied to all gripper types.
-        self.beam_pickup_configuration = None #type: Configuration
+        self.beam_pickup_configuration = None  # type: Configuration
 
         self.collision_meshes = []
 
@@ -24,14 +26,9 @@ class PickupStation (object):
         self.align_face_Y0 = True
         self.align_face_Z0 = True
 
-    def to_data(self):
-        return self.data
-
-    @classmethod
-    def from_data(cls, data):
-        station = cls()
-        station.data = data
-        return station
+    def get_robot_config_at_pickup(self, gripper_id):
+        # type: (str) -> Configuration
+        return self.beam_pickup_configuration
 
     @property
     def data(self):
@@ -67,7 +64,7 @@ class StackedPickupStation (PickupStation):
 
     @property
     def data(self):
-        data = super(StackedPickupStation, self).to_data()
+        data = super(StackedPickupStation, self).data
         data['number_of_rows'] = self.number_of_rows
         data['hori_spacing'] = self.hori_spacing
         data['vert_spacing'] = self.vert_spacing
@@ -75,16 +72,10 @@ class StackedPickupStation (PickupStation):
 
     @data.setter
     def data(self, data):
-        super(StackedPickupStation, type(self)).data.fset(self, data)
+        PickupStation.data.fset(self, data)
         self.number_of_rows = data.get('number_of_rows', 4)
         self.hori_spacing = data.get('hori_spacing', 100)
         self.vert_spacing = data.get('vert_spacing', 100)
-
-    @classmethod
-    def from_data(cls, data):
-        station = cls()
-        station.data = data
-        return station
 
 
 class GripperAlignedPickupStation(PickupStation):
@@ -93,8 +84,36 @@ class GripperAlignedPickupStation(PickupStation):
 
     """
 
+    def __init__(self, default_pickup_frame=None, pickup_retract_vector=None):
+        # Frame (in WCF) for the beam to align to
+        super(GripperAlignedPickupStation, self).__init__(alignment_frame=default_pickup_frame, pickup_retract_vector = pickup_retract_vector)
+        self.gripper_tcp_frame_at_pickup = {}
+        self.robot_config_at_pickup = {}
 
+    @property
+    def data(self):
+        data = super(GripperAlignedPickupStation, self).data
+        data['gripper_tcp_frame_at_pickup'] = self.gripper_tcp_frame_at_pickup
+        data['robot_config_at_pickup'] = self.robot_config_at_pickup
+        return data
 
+    @data.setter
+    def data(self, data):
+        PickupStation.data.fset(self, data)
+        self.gripper_tcp_frame_at_pickup = data.get('gripper_tcp_frame_at_pickup', {})
+        self.robot_config_at_pickup = data.get('robot_config_at_pickup', {})
+
+    def get_gripper_tcp_frame_at_pickup(self, gripper_id):
+        if gripper_id in self.gripper_tcp_frame_at_pickup:
+            return self.gripper_tcp_frame_at_pickup[gripper_id]
+        else:
+            return self.alignment_frame
+
+    def get_robot_config_at_pickup(self, gripper_id):
+        if gripper_id in self.robot_config_at_pickup:
+            return self.robot_config_at_pickup[gripper_id]
+        else:
+            return None
 
     def compute_pickup_frame(self, process, beam_id):
         # type: (RobotClampAssemblyProcess, str) -> None
@@ -102,7 +121,7 @@ class GripperAlignedPickupStation(PickupStation):
         by aligning the grasp frame to the given pickup_station_frame.
         The effect is that the gripper stays at the same place.
 
-        compute_gripper_grasp_pose should be run before hand to set 'gripper_tcp_in_ocf'
+        `gripper_tcp_in_ocf` and 'gripper_id` should be set before hand to set 'gripper_tcp_in_ocf'
 
         Side Effect
         -----------
@@ -119,7 +138,8 @@ class GripperAlignedPickupStation(PickupStation):
         gripper_tcp_from_ocf = ocf_from_gripper_tcp.inverse()
 
         # Gripper position in world
-        world_from_gripper_tcp = Transformation.from_frame(self.alignment_frame)
+        gripper_id = process.assembly.get_beam_attribute(beam_id, 'gripper_id')
+        world_from_gripper_tcp = Transformation.from_frame(self.get_gripper_tcp_frame_at_pickup(gripper_id))
 
         # Transformation
         world_from_ocf = Frame.from_transformation(world_from_gripper_tcp * gripper_tcp_from_ocf)

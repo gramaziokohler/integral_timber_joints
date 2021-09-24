@@ -6,6 +6,7 @@ import rhinoscriptsyntax as rs
 from compas.geometry.primitives.frame import Frame
 from compas.geometry.primitives.vector import Vector
 from compas.utilities import DataDecoder
+from compas_fab.robots.configuration import Configuration
 from compas_rhino.geometry import RhinoMesh, RhinoPoint
 from compas_rhino.ui import CommandMenu
 from compas_rhino.utilities.objects import get_object_name
@@ -13,10 +14,10 @@ from compas_rhino.utilities.objects import get_object_name
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
+from integral_timber_joints.rhino.tools_environment import ui_ask_user_for_tool_id
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
-from integral_timber_joints.tools import Clamp, Gripper, PickupStation, StackedPickupStation, GripperAlignedPickupStation
+from integral_timber_joints.tools import Clamp, Gripper, GripperAlignedPickupStation, PickupStation, StackedPickupStation
 from integral_timber_joints.tools.beam_storage import BeamStorage
-from compas_fab.robots.configuration import Configuration
 
 
 def create_pickup_station(process):
@@ -83,7 +84,7 @@ def create_gripper_aligning_pickup_station(process):
         station.collision_meshes.append(cm)
 
     # Ask for origin
-    origin = rs.GetPoint("Pick point as alignment origin.")
+    origin = rs.GetPoint("Pick point as default alignment origin.")
     # Ask for X axis and Y Axis
     x_point = rs.GetPoint("Pick point on X direction. (length of beam)")
     y_point = rs.GetPoint("Pick point on Y direction. (side)")
@@ -158,15 +159,74 @@ def create_beam_storage(process):
 
 def set_pickup_robot_config(process):
     # type: (RobotClampAssemblyProcess) -> None
-    # Ask user to pick a Configuration json
-    path = rs.OpenFileName("Open a Configuration json, representing the pick up location robot config.", "Configuration File (*.json)|*.json|All Files (*.*)|*.*||")
-    if path:
-        with open(path, 'r') as f:
-            configuration = json.load(f, cls=DataDecoder)  # type: Configuration
-            assert isinstance(configuration, Configuration)
-            process.pickup_station.beam_pickup_configuration = configuration
-            print("Pickup station Beam Pickup Configuration is successfully loaded from %s" % path)
+    """
+    Allow user to set robot configuration for pickup pose.
 
+    If GripperAlignedPickupStation, a per-tool setting is possible
+    Otherwise, a global pickup configuration is used.
+    """
+
+    while True:
+
+        # Ask user which tool
+        if isinstance(process.pickup_station, GripperAlignedPickupStation):
+            tool_id = ui_ask_user_for_tool_id(process, message="Which tool to set Pickup config? (ESC to finish)", include_clamp=False)
+            if tool_id is None:
+                return
+
+        # Ask user to pick a Configuration json
+        path = rs.OpenFileName("Open a Configuration json, representing the pick up location robot config.", "Configuration File (*.json)|*.json|All Files (*.*)|*.*||")
+        if path:
+            with open(path, 'r') as f:
+                configuration = json.load(f, cls=DataDecoder)  # type: Configuration
+                assert isinstance(configuration, Configuration)
+                if isinstance(process.pickup_station, GripperAlignedPickupStation):
+                    process.pickup_station.robot_config_at_pickup[tool_id] = configuration
+                else:
+                    process.pickup_station.beam_pickup_configuration = configuration
+
+                print("Pickup station Beam Pickup Configuration is successfully loaded from %s" % path)
+        else:
+            print("No Config File opened.")
+            return
+
+
+def modify_tool_specific_pickup_frame(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """
+    Allow user to set robot configuration for pickup pose.
+
+    If GripperAlignedPickupStation, a per-tool setting is possible
+    Otherwise, a global pickup configuration is used.
+    """
+    # Ask user which tool
+    if not isinstance(process.pickup_station, GripperAlignedPickupStation):
+        print ("Tool Specific pickup frame is only possible for GripperAlignedPickupStation")
+        return
+
+    while True:
+        tool_id = ui_ask_user_for_tool_id(process, message="Which tool to set Pickup Frame (Gripper TCP)? (ESC to finish)", include_clamp=False)
+        if tool_id is None:
+            return
+
+        # Ask for origin
+        origin = rs.GetPoint("Pick point as default alignment origin. (Gripper TCP)")
+        if origin is None:
+            return
+        # Ask for X axis and Y Axis
+        x_point = rs.GetPoint("Pick point on X direction. (length of beam)")
+        if x_point is None:
+            return
+
+        y_point = rs.GetPoint("Pick point on Y direction. (side)")
+        if y_point is None:
+            return
+
+        # Alignment frame
+        alignment_frame = Frame(origin, x_point - origin, y_point - origin)
+        process.pickup_station.gripper_tcp_frame_at_pickup[tool_id] = alignment_frame
+
+        print("New pickup tcp frame for %s set to %s" % (tool_id, alignment_frame))
 
 def not_implemented(process):
     #
@@ -196,9 +256,9 @@ def show_menu(process):
             'options': [
                 {'name': 'Finish', 'action': 'Exit'
                  },
-                {'name': 'DefinePickupStation', 'action': create_pickup_station
-                 },
                 {'name': 'DefineGripperAlignedPickupStation', 'action': create_gripper_aligning_pickup_station
+                 },
+                {'name': 'ModifyGripperSpecificPickupFrame', 'action': modify_tool_specific_pickup_frame
                  },
                 {'name': 'DefineStackedPickupStation', 'action': create_stacked_pickup_station
                  },
