@@ -115,6 +115,9 @@ def compute_screwdriver_positions(process, beam_id):
         f_pickup_attached = f_assembled_attached.transformed(process.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_pickup'))
         assembly.set_joint_attribute(joint_id, 'screwdriver_pickup_attached', f_pickup_attached)
 
+        f_pickup_attached = f_assembled_attached.transformed(process.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_screwdriver_attachment_pose'))
+        assembly.set_joint_attribute(joint_id, 'screwdriver_attachment_pose_attached', f_pickup_attached)
+
         # TODO assembly_wcf_pickupretract
 
     return ComputationalResult.ValidCanContinue

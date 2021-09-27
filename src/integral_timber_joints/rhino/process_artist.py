@@ -125,7 +125,12 @@ class ProcessKeyPosition(object):
         ('beam_pickup',
          'assembly_wcf_pickup',  # Beam Position
          'assembly_wcf_pickup.close_gripper',  # Gripper Position
-         'screwdriver_pickup_attached.close_gripper'),  # Screwdriver Position
+         None),  # Screwdriver Position
+
+        ('screwdriver_attachment_pose',
+         'assembly_wcf_screwdriver_attachment_pose',  # Beam Position
+         'assembly_wcf_screwdriver_attachment_pose.close_gripper',  # Gripper Position
+         'screwdriver_attachment_pose_attached.close_gripper'),  # Screwdriver Position
 
         ('screwdriver_assembleapproach',
          'assembly_wcf_assembleapproach',  # Beam Position
@@ -152,8 +157,13 @@ class ProcessKeyPosition(object):
     pos_names_for_beam_with_screwdriver_without_gripper = [
         ('beam_pickup',
          'assembly_wcf_pickup',  # Beam Position
-         None,
-         'screwdriver_pickup_attached.close_gripper'),  # Screwdriver Position
+         'assembly_wcf_pickup.close_gripper',
+         None),  # Screwdriver Position
+
+        ('screwdriver_attachment_pose',
+         'assembly_wcf_screwdriver_attachment_pose',  # Beam Position
+         None,  # Gripper Position
+         'screwdriver_attachment_pose_attached.close_gripper'),  # Screwdriver Position
 
         ('screwdriver_assembleapproach',
          'assembly_wcf_assembleapproach',  # Beam Position
@@ -282,7 +292,7 @@ class ProcessKeyPosition(object):
     @property
     def get_all_asstool_positions(self):
         """Returning all possible Assembly Tool Positions according to the current beam"""
-        return set([x[3] for x in self._get_pos_names()])
+        return set([x[3] for x in self._get_pos_names() if x[3] is not None])
 
     def to_data(self):
         # type: () -> dict[str, Any]
