@@ -833,7 +833,7 @@ class Assembly(Network):
     # --------------------------------------------
 
     def get_joints_of_beam_connected_to_already_built(self, beam_id):
-        # type: (str, bool) -> list[tuple[str,str]]
+        # type: (str) -> list[tuple[str,str]]
         """Return the joints ids (beam_id, neighbor_id) that are connected to already-assembled beams
         """
         sequence_i_of_beam = self.get_beam_sequence(beam_id)

@@ -16,6 +16,8 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
+from integral_timber_joints.report.gripper import gripper_report
+from integral_timber_joints.report.screw import screw_report
 
 
 def print_sequence(process):
@@ -37,6 +39,10 @@ def print_tools(process):
     rs.EditBox(message, "Tools at Joint", "Sequence")
 
 
+def ui_preproduction_report(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    gripper_report(process)
+    screw_report(process)
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -50,6 +56,8 @@ def show_menu(process):
             {'name': 'Finish', 'action': 'Exit'
              },
             {'name': 'PrintSequence', 'action': print_sequence
+             },
+            {'name': 'PreProductionReport', 'action': ui_preproduction_report
              },
             {'name': 'PrintTools', 'action': print_tools
              },
@@ -72,14 +80,6 @@ def show_menu(process):
         if result['action'] == 'Exit':
             print('Exit Function')
             return Rhino.Commands.Result.Cancel
-
-        # Add the repeat options after the first loop
-        if command_to_run is None:
-            config['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
-
-        # Set command-to-run according to selection, else repeat previous command.
-        if result['action'] != 'Repeat':
-            command_to_run = result['action']
 
         # Run the selected command
         command_to_run(process)
