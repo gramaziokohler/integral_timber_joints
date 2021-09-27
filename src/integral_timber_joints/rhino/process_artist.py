@@ -178,7 +178,7 @@ class ProcessKeyPosition(object):
         ('screwdriver_retracted',
          'assembly_wcf_final',  # Beam Position
          None,
-         'screwdriver_assembled_retracted.open_gripper'),  # Screwdriver Position
+         'screwdriver_assembled_retractedfurther.open_gripper'),  # Screwdriver Position
     ]
 
     @property
