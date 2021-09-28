@@ -92,9 +92,16 @@ def color_from_success(success : bool):
 def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
     full_seq_len = len(process.assembly.sequence)
     if movement_id is not None:
-        beam_ids = [process.get_beam_id_from_movement_id(movement_id)]
-        cprint('Solving for movement {}'.format(movement_id), 'cyan')
+        if movement_id.startswith('A'):
+            movement = process.get_movement_by_movement_id(movement_id)
+            beam_ids = [process.get_beam_id_from_movement_id(movement_id)]
+        else:
+            movement = process.movements[int(movement_id)]
+            beam_ids = [process.get_beam_id_from_movement_id(movement.movement_id)]
+        global_movement_id = process.movements.index(movement)
+        cprint('Solving for movement #({}) {}'.format(global_movement_id, movement.movement_id), 'cyan')
     else:
+        seq_n = seq_n or list(range(full_seq_len))
         for seq_i in seq_n:
             assert seq_i < full_seq_len and seq_i >= 0, 'Invalid seq_n input {}'.format(seq_i)
         if len(seq_n) == 0:

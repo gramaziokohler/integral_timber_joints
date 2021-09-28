@@ -159,7 +159,10 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 # * compute for movement_id movement
                 cprint('Computing only for {}'.format(args.movement_id), 'yellow')
                 options['movement_id_filter'] = [args.movement_id]
-                chosen_m = process.get_movement_by_movement_id(args.movement_id)
+                if args.movement_id.startswith('A'):
+                    chosen_m = process.get_movement_by_movement_id(args.movement_id)
+                else:
+                    chosen_m = process.movements[int(args.movement_id)]
                 # * if linear movement and has both end specified, ask user keep start or end
                 if get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.has_traj, MovementStatus.both_done]:
                     chosen_m.trajectory = None
@@ -191,6 +194,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
     # * smoothing
     if args.smooth:
+        print('Smoothing trajectory...')
         smoothed_movements = []
         with pp.LockRenderer(): # not args.debug):
             for altered_m in altered_movements:
@@ -233,7 +237,7 @@ def main():
     parser.add_argument('--problem_subdir', default='.',
                         help='subdir of the process file, default to `.`. Popular use: `results`')
     #
-    parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided, ')
+    parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')

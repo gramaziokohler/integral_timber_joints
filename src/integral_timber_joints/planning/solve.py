@@ -5,7 +5,7 @@ from collections import defaultdict
 from termcolor import cprint, colored
 
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get_random_seed
-from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver, HideOutput
+from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
 
 from compas_fab.robots import Robot
 from compas_fab_pychoreo.utils import compare_configurations
@@ -218,7 +218,13 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
     all_movements = process.get_movements_by_beam_id(beam_id)
     movement_types = movement_types or []
     if len(movement_id_filter) > 0:
-        selected_movements = [process.get_movement_by_movement_id(mid) for mid in movement_id_filter]
+        selected_movements = []
+        for mid in movement_id_filter:
+            if mid.startswith('A'):
+                chosen_m = process.get_movement_by_movement_id(mid)
+            else:
+                chosen_m = process.movements[int(mid)]
+            selected_movements.append(chosen_m)
         if verbose:
             print('='*20)
             print_title('* compute movement ids: {}'.format(movement_id_filter))
