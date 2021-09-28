@@ -129,7 +129,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticClampSyncLinearMovement) or \
-         isinstance(movement, RobotScrewdriverSyncLinearMovement):
+         isinstance(movement, RobotScrewdriverSyncLinearMovement) or \
+         'reorient' in movement.short_summary:
         lm_options = options.copy()
         # * interpolation step size, in meter
         lm_options.update({

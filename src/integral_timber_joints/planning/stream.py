@@ -135,9 +135,9 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
 ##############################
 
 def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
-    assert isinstance(movement, RoboticLinearMovement) or \
-        isinstance(movement, RoboticClampSyncLinearMovement) or \
-        isinstance(movement, RobotScrewdriverSyncLinearMovement)
+    # assert isinstance(movement, RoboticLinearMovement) or \
+    #     isinstance(movement, RoboticClampSyncLinearMovement) or \
+    #     isinstance(movement, RobotScrewdriverSyncLinearMovement)
     robot_uid = client.get_robot_pybullet_uid(robot)
 
     # * options
@@ -400,7 +400,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
 
 def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement,
         options=None, diagnosis=False):
-    assert isinstance(movement, RoboticFreeMovement)
+    # assert isinstance(movement, RoboticFreeMovement)
     options = options or {}
     # * options
     debug = options.get('debug', False)
