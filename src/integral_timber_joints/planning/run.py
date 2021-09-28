@@ -1,5 +1,6 @@
 import os
 import time
+import logging
 import numpy as np
 import argparse
 import pybullet_planning as pp
@@ -21,6 +22,8 @@ from integral_timber_joints.planning.smoothing import smooth_movement_trajectory
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.movement import RoboticMovement
+
+logging.basicConfig(filename='run.log', format='%(asctime)s | %(levelname)s | %(message)s', level=logging.DEBUG)
 
 SOLVE_MODE = [
     'nonlinear',
@@ -95,6 +98,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found using nonlinear planning at stage 1 for beam {}!'.format(beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -105,6 +109,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found using nonlinear planning at stage 2 for beam {}!'.format(beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -118,6 +123,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found using nonlinear planning at stage 3 for beam {}!'.format(beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -129,6 +135,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.both_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found using nonlinear planning at stage 4 for beam {}!'.format(beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -143,6 +150,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     check_type_only=True)
                 if not success:
                     print('No success for linear (chained) planning.')
+                    logging.info('A plan NOT found using linear (chained) planning {}!'.format(beam_id))
                     return False
                 altered_movements.extend(altered_ms)
 
@@ -152,6 +160,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     options=options, diagnosis=args.diagnosis)
                 if not success:
                     print('No success for free motions')
+                    logging.info('A plan NOT found for free motion in beam id {}!'.format(beam_id))
                     return False
                 altered_movements.extend(altered_ms)
 
@@ -182,6 +191,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
                     None, options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found for movement_id {}!'.format(args.movement_id))
                     return False
                 altered_movements.extend(altered_ms)
             else:
@@ -224,6 +234,8 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
     if args.verbose:
         notify('A plan has been found for beam id {}!'.format(beam_id))
+
+    logging.info('A plan has been found for beam id {}!'.format(beam_id))
     return success
 
 #################################
@@ -258,6 +270,8 @@ def main():
     #
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
     parser.add_argument('--max_distance', default=0.0, type=float, help='Buffering distance for collision checking, larger means safer. Defaults to 0.')
+    parser.add_argument('--solve_timeout', default=600.0, type=float, help='For automatic planning retry, number of seconds before giving up. Defaults to 600.')
+
     args = parser.parse_args()
     print('Arguments:', args)
     print('='*10)
@@ -298,6 +312,7 @@ def main():
         'jump_threshold' : joint_jump_threshold,
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
+        'solve_timeout': args.solve_timeout,
     }
     if args.smooth:
         options.update(
