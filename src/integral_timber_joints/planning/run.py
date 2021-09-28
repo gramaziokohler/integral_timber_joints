@@ -23,8 +23,6 @@ from integral_timber_joints.planning.smoothing import smooth_movement_trajectory
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.movement import RoboticMovement
 
-logging.basicConfig(filename='run.log', format='%(asctime)s | %(levelname)s | %(message)s', level=logging.DEBUG)
-
 SOLVE_MODE = [
     'nonlinear',
     'linear',
@@ -274,6 +272,12 @@ def main():
 
     args = parser.parse_args()
     print('Arguments:', args)
+
+    log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir='results'))
+    log_path = os.path.join(log_folder, 'run.log')
+    logging.basicConfig(filename=log_path, format='%(asctime)s | %(levelname)s | %(message)s', level=logging.DEBUG)
+    logging.info("planning.run.py started with args: %s" % args)
+
     print('='*10)
     if args.movement_id is not None:
         args.solve_mode = 'movement_id'
