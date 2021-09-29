@@ -149,8 +149,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
         resolution_ratio = 10.0 if low_res else 1.0
-        fm_options = options.copy()
-        fm_options.update({
+        fm_options = {
             'rrt_restarts' : 2, #20,
             'rrt_iterations' : 400, # ! value < 100 might not find solutions even if there is one
             'smooth_iterations': None, # ! Done: smoothing in postprocessing
@@ -161,7 +160,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
             'max_step' : 0.01, # interpolation step size, in meter, used in buffering motion
             'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
-            })
+            }
+        fm_options.update(options)
         traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis)
     else:
         raise ValueError()

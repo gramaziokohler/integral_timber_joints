@@ -269,6 +269,8 @@ def main():
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
     parser.add_argument('--max_distance', default=0.0, type=float, help='Buffering distance for collision checking, larger means safer. Defaults to 0.')
     parser.add_argument('--solve_timeout', default=600.0, type=float, help='For automatic planning retry, number of seconds before giving up. Defaults to 600.')
+    parser.add_argument('--rrt_iterations', default=400, type=int, help='Number of iterations within one rrt session. Defaults to 400.')
+    parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
 
     args = parser.parse_args()
     print('Arguments:', args)
@@ -317,7 +319,12 @@ def main():
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
         'solve_timeout': args.solve_timeout,
+        'rrt_iterations': args.rrt_iterations,
     }
+    if len(args.reachable_range) == 2:
+        options.update({
+        'reachable_range': (args.reachable_range[0], args.reachable_range[1]),
+        })
     if args.smooth:
         options.update(
             {'smooth_iterations' : 150,
