@@ -60,11 +60,25 @@ class BeamcutFourCorners(Beamcut):
         point_y = Point(0, self.dist_y, 0)
         point_z = Point(0, 0, - self.dist_z)
         vertices = [point_o, point_x, point_y, point_z]
-        move_vertex_from_neighbor(vertices, [1,1,2,2,3,3], [2,3,1,3,1,2], OVERSIZE) # Expand triangle
-        faces = [[0,1,2], [0,3,1], [0,2,3], [3,2,1]]
+        move_vertex_from_neighbor(vertices, [1, 1, 2, 2, 3, 3], [2, 3, 1, 3, 1, 2], OVERSIZE)  # Expand triangle
+        faces = [[0, 1, 2], [0, 3, 1], [0, 2, 3], [3, 2, 1]]
         polyhedron = Polyhedron(vertices, faces)
         polyhedron.transform(Transformation.from_change_of_basis(reference_side_frame, Frame.worldXY()))
         return polyhedron
+
+    # ###########################
+    # Transformation of Extrinsic
+    # ###########################
+
+    def transform(self, transformation):
+        # type: (Transformation) -> None
+        """Transforming the beamcut object in WCF.
+        Typically called by assembly.transform when initiated by user."""
+        pass
+
+    # #############
+    # Boolean Shape
+    # #############
 
     def get_feature_shapes(self, beam):
         # type: (Beam) -> list[Shape]
@@ -78,9 +92,9 @@ class BeamcutFourCorners(Beamcut):
 
         # Get reference sides from Beam
         if self.on_beam_start:
-            tet_frames = [beam.reference_side_wcf(i) for i in range (1,5)]
+            tet_frames = [beam.reference_side_wcf(i) for i in range(1, 5)]
         else:
-            tet_frames = [beam.ending_reference_side_wcf(i) for i in range (1,5)]
+            tet_frames = [beam.ending_reference_side_wcf(i) for i in range(1, 5)]
 
         # Construct tets and return
         shapes = []

@@ -580,8 +580,11 @@ class Assembly(Network):
         """Transform the assembly.
         Tansformation should contain translation and rotation only.
         """
-        # Change the frame in beam
+        # Change the frame in beam, joints and end_cut
         [beam.transform(transformation) for beam in self.beams()]
+        [joint.transform(transformation) for joint in self.joints()]
+        for beam_id in self.sequence:
+            [cut.transform for cut in self.beam_cuts(beam_id)]
 
         # Helper function to transform attributes
         def transform_beam_attribute_if_not_none(beam_id, attribute_name, _transformation):

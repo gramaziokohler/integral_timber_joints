@@ -14,7 +14,7 @@
 import json
 
 from compas.datastructures import Mesh
-from compas.geometry import Cylinder, Polyhedron, Shape
+from compas.geometry import Shape, Transformation
 
 try:
     from integral_timber_joints.geometry.beam import Beam
@@ -23,6 +23,7 @@ try:
 
 except:
     pass
+
 
 class Joint(object):
 
@@ -64,19 +65,25 @@ class Joint(object):
 
     @property
     def parameter_keys(self):
-        #type: () -> list[str]
+        # type: () -> list[str]
         raise NotImplementedError
 
     def get_parameter(self, key):
-        #type: (str) -> Any
+        # type: (str) -> Any
         raise NotImplementedError
 
     def get_parameters_dict(self):
-        #type: () -> Dict[str, Any]
+        # type: () -> Dict[str, Any]
         return dict(zip(self.parameter_keys, [self.get_parameter(key) for key in self.parameter_keys]))
 
     def set_parameter(self, key, value):
-        #type: (str, Any) -> None
+        # type: (str, Any) -> None
+        raise NotImplementedError
+
+    def transform(self, transformation):
+        # type: (Transformation) -> None
+        """Transforming the joint object in WCF.
+        Typically called by assembly.transform when initiated by user."""
         raise NotImplementedError
 
     # #####################

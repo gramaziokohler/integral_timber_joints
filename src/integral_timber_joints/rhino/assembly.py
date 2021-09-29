@@ -568,12 +568,14 @@ def ui_orient_assembly(process):
     # It would be nice if there exist a function to update their frames, but sadly, no.
     process.dependency.invalidate(beam_id, process.compute_pickup_frame)
 
+    print("Assembly transformation complete, redrawing beams")
+
     # Prompt artist to redraw almost everything
     for beam_id in assembly.sequence:
-        artist.redraw_interactive_beam(beam_id, force_update=False, redraw=False)
+        artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
     rs.EnableRedraw(True)
 
-    print("Please wait, transforming assembly from %s to %s" % (source_frame, target_frame))
+    print("Assembly transformation redraw complete.")
 
 
 def something(process):

@@ -5,7 +5,7 @@ import math
 
 import compas
 from compas.datastructures import Mesh
-from compas.geometry import Box, Frame, Point, Line, Projection, Translation, Vector, distance_point_point, intersection_line_line, intersection_segment_segment
+from compas.geometry import Box, Frame, Point, Line, Transformation, Vector, distance_point_point, intersection_line_line, intersection_segment_segment
 
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
@@ -103,6 +103,16 @@ class JointHalfLap(Joint):
     @property
     def distance_at_center(self):
         return self.distance + self.angled_lead / 2 + self.angled_length / 2
+
+    # ###########################
+    # Transformation of Extrinsic
+    # ###########################
+
+    def transform(self, transformation):
+        #type: (Transformation) -> None
+        """Transforming the joint object in WCF.
+        Typically called by assembly.transform when initiated by user."""
+        pass
 
     # #####################
     # Modifyable Parameters
