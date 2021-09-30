@@ -1,7 +1,9 @@
+from collections import Counter
+
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.report.beam_report import BeamReport
-from integral_timber_joints.tools import Gripper
 from integral_timber_joints.rhino.load import get_activedoc_path_no_ext, get_process, process_is_none
+from integral_timber_joints.tools import Gripper
 
 
 def gripper_report(process, file_path=None):
@@ -9,6 +11,8 @@ def gripper_report(process, file_path=None):
     assembly = process.assembly
 
     report = BeamReport("Gripper Report")
+    gripper_id_counter = Counter()
+    gripper_type_counter = Counter()
 
     for beam_id in process.assembly.sequence:
         beam = assembly.beam(beam_id)
@@ -17,6 +21,8 @@ def gripper_report(process, file_path=None):
         gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
         gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
         report.add_info(beam_id, 'Gripper Type (id): %s (%s)' % (gripper_type, gripper_id))
+        gripper_id_counter[gripper_id] += 1
+        gripper_type_counter[gripper_type] += 1
 
         # * Check inconsistancy
         if gripper_type is None:
@@ -33,6 +39,9 @@ def gripper_report(process, file_path=None):
             limits = gripper.beam_length_limits
             if beam.length < limits[0] or beam.length > limits[1]:
                 report.add_warn(beam_id, 'beam.length (%s) is outside Gripper Limits: [%s , %s]' % (beam.length, limits[0], limits[1]))
+
+    report.attributes['gripper_id_num_of_times_used'] = gripper_id_counter
+    report.attributes['gripper_type_num_of_times_used'] = gripper_type_counter
 
     # * Boiler plate functions to save report and print summary
     if file_path is None:

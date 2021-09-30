@@ -10,7 +10,7 @@ from compas.geometry import intersection_line_line, intersection_line_plane, int
 from compas.geometry import is_point_infront_plane, distance_point_point, dot_vectors, distance_point_plane
 from compas.geometry import Frame, Line, Plane, Point, Vector
 from compas.geometry import Box, Polyhedron
-from compas.geometry import Projection, Translation
+from compas.geometry import Projection, Translation, Transformation, transform_points
 
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
@@ -70,7 +70,7 @@ class JointNonPlanarLap(Joint):
 
         :param face_id:   int
         """
-        self.center_frame = deepcopy(center_frame) # type: (Frame)
+        self.center_frame = deepcopy(center_frame)  # type: (Frame)
         self._thickness = thickness
         self.beam_move_face_id = beam_move_face_id
         self.beam_stay_face_id = beam_stay_face_id
@@ -168,6 +168,17 @@ class JointNonPlanarLap(Joint):
 
             return
         raise KeyError("%s is invalid for JointHalfLap" % key)
+
+    # ###########################
+    # Transformation of Extrinsic
+    # ###########################
+
+    def transform(self, transformation):
+        # type: (Transformation) -> None
+        """Transforming the joint object in WCF.
+        Typically called by assembly.transform when initiated by user."""
+        self.center_frame.transform(transformation)
+        self.pt_jc = transform_points(self.pt_jc, transformation)
 
     # #####################
     # Joint Shape
