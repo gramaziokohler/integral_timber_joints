@@ -15,12 +15,11 @@ from compas.geometry import Projection, Translation, Transformation, transform_p
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.utils import *
-from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
 
 
 try:
     from typing import Dict, List, Optional, Tuple, cast, Any
-
+    from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
 except:
     pass
 
@@ -346,7 +345,7 @@ class JointNonPlanarLap(Joint):
         # type: (BeamAssemblyMethod) -> list[str]
         """Returns a list of clamps types that can assemble this joint
         """
-
+        from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
         if beam_assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
             return ['SL1', 'SL1_G200']
         elif beam_assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
