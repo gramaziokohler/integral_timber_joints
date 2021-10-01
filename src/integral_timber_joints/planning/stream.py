@@ -442,13 +442,13 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         continue
                     orig_start_conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
                         gantry_arm_joint_types, gantry_arm_joint_names)
-                    if debug:
-                            client.set_robot_configuration(robot, orig_start_conf)
-                            print(orig_start_conf.joint_values)
-                            wait_if_gui('Sampled start conf')
                     if not client.check_collisions(robot, orig_start_conf, options=options):
                         sample_found = True
                         if verbose: print('Start conf sample found after {} gantry iters.'.format(gantry_iter))
+                        if debug:
+                                client.set_robot_configuration(robot, orig_start_conf)
+                                print(orig_start_conf.joint_values)
+                                wait_if_gui('Sampled start conf')
                         break
                 if sample_found:
                     break
@@ -482,13 +482,13 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         continue
                     orig_end_conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
                         gantry_arm_joint_types, gantry_arm_joint_names)
-                    if debug:
-                            client.set_robot_configuration(robot, orig_end_conf)
-                            print(orig_end_conf.joint_values)
-                            wait_if_gui('Sampled end conf')
                     if not client.check_collisions(robot, orig_end_conf, options=options):
                         sample_found = True
                         if verbose: print('End conf sample found after {} gantry iters.'.format(gantry_iter))
+                        if debug:
+                                client.set_robot_configuration(robot, orig_end_conf)
+                                print(orig_end_conf.joint_values)
+                                wait_if_gui('Sampled end conf')
                         break
                 if sample_found:
                     break
@@ -613,7 +613,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
 
                     new_start_conf = start_conf if start_cart_traj is None else start_cart_traj.points[-1]
                     new_end_conf = end_conf if end_cart_traj is None else end_cart_traj.points[0]
-                    if diagnosis:
+                    if debug:
                         client.set_robot_configuration(robot, new_start_conf)
                         # print('start conf: ', new_start_conf)
                         wait_if_gui('Start conf after retraction.')
@@ -622,7 +622,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         # print('end conf: ', new_end_conf)
                         wait_if_gui('End conf after retraction.')
 
-                    with LockRenderer(): #not diagnosis
+                    with LockRenderer(not diagnosis):
                         goal_constraints = robot.constraints_from_configuration(new_end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
                         d_options = options.copy()
                         # if diagnosis:

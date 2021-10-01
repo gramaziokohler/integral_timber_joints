@@ -5,7 +5,7 @@ from collections import defaultdict
 from termcolor import cprint, colored
 
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get_random_seed
-from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
+from pybullet_planning import wait_if_gui, wait_for_user, WorldSaver
 
 from compas_fab.robots import Robot
 from compas_fab_pychoreo.utils import compare_configurations
@@ -129,8 +129,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticClampSyncLinearMovement) or \
-         isinstance(movement, RobotScrewdriverSyncLinearMovement) or \
-         'reorient' in movement.short_summary:
+         isinstance(movement, RobotScrewdriverSyncLinearMovement):
+        #  'reorient' in movement.short_summary:
         lm_options = options.copy()
         # * interpolation step size, in meter
         lm_options.update({
