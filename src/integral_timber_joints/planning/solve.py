@@ -5,7 +5,7 @@ from collections import defaultdict
 from termcolor import cprint, colored
 
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get_random_seed
-from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver
+from pybullet_planning import wait_if_gui, wait_for_user, WorldSaver
 
 from compas_fab.robots import Robot
 from compas_fab_pychoreo.utils import compare_configurations
@@ -130,6 +130,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticClampSyncLinearMovement) or \
          isinstance(movement, RobotScrewdriverSyncLinearMovement):
+        #  'reorient' in movement.short_summary:
         lm_options = options.copy()
         # * interpolation step size, in meter
         lm_options.update({
@@ -215,7 +216,6 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
     propagate_only = options.get('propagate_only', False)
     m_attempts = options.get('movement_planning_reattempts', 1)
     movement_id_filter = options.get('movement_id_filter', [])
-    all_movements = process.get_movements_by_beam_id(beam_id)
     movement_types = movement_types or []
     if len(movement_id_filter) > 0:
         selected_movements = []
@@ -240,7 +240,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         altered_movements = []
         if movement_statuses is None or \
             any([get_movement_status(process, m, movement_types, check_type_only=check_type_only).value - m_st.value == 0 for m_st in movement_statuses]):
-            m_id = all_movements.index(m)
+            m_id = process.movements.index(m)
             if verbose:
                 print('-'*10)
                 print('({})'.format(m_id))
@@ -288,7 +288,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
             continue
 
         # * propagate to -1 movements
-        altered_new_movements, impact_movements = propagate_states(process, altered_movements, all_movements, options=options)
+        altered_new_movements, impact_movements = propagate_states(process, altered_movements, options=options)
         altered_movements.extend(altered_new_movements)
         total_altered_movements.extend(altered_movements)
     # if verbose:
@@ -298,8 +298,8 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
 
 ###########################################
 
-def propagate_states(process, selected_movements, all_movements, options=None):
-    # type: (RobotClampAssemblyProcess, List[Movement], List[Movement], Dict) -> Tuple[List[Movement], List[Movement]]
+def propagate_states(process, selected_movements, options=None):
+    # type: (RobotClampAssemblyProcess, List[Movement], Dict) -> Tuple[List[Movement], List[Movement]]
     options = options or {}
     verbose = options.get('verbose', False)
     jump_threshold = options.get('jump_threshold', {})
@@ -307,6 +307,7 @@ def propagate_states(process, selected_movements, all_movements, options=None):
     altered_movements = []
     # movements that needs to be recomputed
     impact_movements = []
+    all_movements = process.movements
     for target_m in selected_movements:
         if not isinstance(target_m, RoboticMovement) or target_m.trajectory is None:
             continue

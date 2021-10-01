@@ -1,11 +1,7 @@
-import os
-import sys
-import pybullet
 import numpy as np
 from termcolor import cprint
-from copy import copy, deepcopy
+from copy import copy
 from itertools import product
-from collections import defaultdict
 
 from compas.geometry import Frame, distance_point_point, Transformation
 from compas_fab.robots import Configuration, Robot
@@ -135,9 +131,9 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
 ##############################
 
 def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
-    assert isinstance(movement, RoboticLinearMovement) or \
-        isinstance(movement, RoboticClampSyncLinearMovement) or \
-        isinstance(movement, RobotScrewdriverSyncLinearMovement)
+    # assert isinstance(movement, RoboticLinearMovement) or \
+    #     isinstance(movement, RoboticClampSyncLinearMovement) or \
+    #     isinstance(movement, RobotScrewdriverSyncLinearMovement)
     robot_uid = client.get_robot_pybullet_uid(robot)
 
     # * options
@@ -400,7 +396,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
 
 def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement,
         options=None, diagnosis=False):
-    assert isinstance(movement, RoboticFreeMovement)
+    # assert isinstance(movement, RoboticFreeMovement)
     options = options or {}
     # * options
     debug = options.get('debug', False)
@@ -446,13 +442,13 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         continue
                     orig_start_conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
                         gantry_arm_joint_types, gantry_arm_joint_names)
-                    if debug:
-                            client.set_robot_configuration(robot, orig_start_conf)
-                            print(orig_start_conf.joint_values)
-                            wait_if_gui('Sampled start conf')
                     if not client.check_collisions(robot, orig_start_conf, options=options):
                         sample_found = True
                         if verbose: print('Start conf sample found after {} gantry iters.'.format(gantry_iter))
+                        if debug:
+                                client.set_robot_configuration(robot, orig_start_conf)
+                                print(orig_start_conf.joint_values)
+                                wait_if_gui('Sampled start conf')
                         break
                 if sample_found:
                     break
@@ -486,13 +482,13 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         continue
                     orig_end_conf = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
                         gantry_arm_joint_types, gantry_arm_joint_names)
-                    if debug:
-                            client.set_robot_configuration(robot, orig_end_conf)
-                            print(orig_end_conf.joint_values)
-                            wait_if_gui('Sampled end conf')
                     if not client.check_collisions(robot, orig_end_conf, options=options):
                         sample_found = True
                         if verbose: print('End conf sample found after {} gantry iters.'.format(gantry_iter))
+                        if debug:
+                                client.set_robot_configuration(robot, orig_end_conf)
+                                print(orig_end_conf.joint_values)
+                                wait_if_gui('Sampled end conf')
                         break
                 if sample_found:
                     break
@@ -507,8 +503,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     start_conf = orig_start_conf
     end_conf = orig_end_conf
 
-    # https://github.com/yijiangh/compas_fab_pychoreo/blob/7afe6bc74f2c14caf79f573bc6a6fd95442b779a/examples/itj/stream.py#L459
-    # TODO insert cartesian segment before and after the free motion
+    # * computer retraction buffer motion before/after the free motion to avoid narrow passages
     robot_uid = client.get_robot_pybullet_uid(robot)
     tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
     tool_link = link_from_name(robot_uid, tool_link_name)
@@ -532,7 +527,6 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         # ik_info = IKInfo(sample_ik_fn, tool_link_name, ik_joint_names, gantry_joint_names) # 'base_link_name',
         # options['customized_ikinfo'] = ik_info
 
-    # * computer retraction buffer motion before/after the free motion to avoid narrow passages
     current_mid = process.movements.index(movement)
     if current_mid-1 < 0 or not any([isinstance(process.movements[current_mid-1], m_type) \
             for m_type in [RoboticLinearMovement, RoboticClampSyncLinearMovement]]):
@@ -546,99 +540,112 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         # ? attach -> retreat, vector = retreat(end) - attach(start)
         start_retraction_vector = get_unit_vector(list(prev_end_state[('robot', 'f')].point - prev_start_state[('robot', 'f')].point))
 
-    if current_mid+1 > len(process.movements) or not any([isinstance(process.movements[current_mid+1], m_type) \
-            for m_type in [RoboticLinearMovement, RoboticClampSyncLinearMovement]]):
-        # no retraction needed
-        end_retraction_vector = None
-    else:
-        next_movement = process.movements[current_mid+1]
-        next_start_state = process.get_movement_start_scene(next_movement)
-        next_end_state = process.get_movement_end_scene(next_movement)
-        # convert to meter
-        # ? retreat -> attach, vector = retreat(start) - attach(end)
-        end_retraction_vector = get_unit_vector(list(next_start_state[('robot', 'f')].point - next_end_state[('robot', 'f')].point))
+    # * local vectors for retraction motions
+    tmp_xyz = list(np.vstack([np.eye(3), -np.eye(3)]))
+    start_retraction_vectors = tmp_xyz
+    end_retraction_vectors = tmp_xyz
 
-    retraction_candidates = options.get('max_free_retraction_distance', np.linspace(0, 0.1, 5))
+    if debug:
+        def debug_buffer_linear_motion(target_pose, retract_pose, dist, retract_v, msg=''):
+            pp.remove_all_debug()
+            pp.camera_focus_on_point(retract_pose[0])
+            with WorldSaver():
+                draw_pose(target_pose, length=0.1)
+                draw_pose(retract_pose, length=0.05)
+                client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
+                wait_if_gui('Retract pose drawn at {} (bigger=1st). start vec: {}, dist {:.4f}'.format(msg, retract_v, dist))
+
+    retraction_distances = options.get('max_free_retraction_distance', np.linspace(0, 0.1, 3))
+    # retraction_distances = [0.0] if start_retraction_vector is None and end_retraction_vector is None else retraction_candidates
     traj = None
-    retraction_candidates = [0.0] if start_retraction_vector is None and end_retraction_vector is None else retraction_candidates
-    for retraction_dist in retraction_candidates:
-        if verbose:
-            print('Free motion | START linear buffer: trying retraction dist {:.4f}'.format(retraction_dist))
-        start_cart_traj = None
-        end_cart_traj = None
-        if abs(retraction_dist) > 1e-6:
-            if start_retraction_vector is not None:
-                retract_start_pose = multiply(pp.Pose(retraction_dist*pp.Point(*start_retraction_vector)), start_pose)
+    start_cart_traj = None
+    end_cart_traj = None
+    free_traj = None
+    # ! retraction vector to determine the start retraction pose
+    for start_v in start_retraction_vectors:
+        # ! retraction vector magnitude to determine the start retraction pose
+        for start_dist in retraction_distances:
+            start_cart_traj = None
+            if verbose:
+                print('Free motion | START linear buffer: trying retraction dist {:.4f} in {}'.format(start_dist, start_v))
+            if abs(start_dist) > 1e-6:
+                start_v /= np.linalg.norm(start_v)
+                retract_start_pose = multiply(pp.Pose(start_dist*pp.Point(*start_v)), start_pose)
                 if debug:
-                    with WorldSaver():
-                        draw_point(prev_start_state[('robot', 'f')].point*1e-3)
-                        draw_point(prev_end_state[('robot', 'f')].point*1e-3)
-                        draw_pose(start_pose, length=0.1)
-                        draw_pose(retract_start_pose, length=0.05)
-                        client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
-                        wait_if_gui('Retract pose drawn. start vec: {}'.format(start_retraction_vector))
+                    debug_buffer_linear_motion(start_pose, retract_start_pose, start_dist, start_v, 'start')
                 # TODO try floating attachment only planning before full cartesian planning.keys())?
                 start_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(start_pose), frame_from_pose(retract_start_pose)], start_configuration=start_conf,
                     group=GANTRY_ARM_GROUP, options=options)
                 if not start_cart_traj:
                     if verbose: cprint('No start cart traj found.', 'red')
-                    # continue
+                    # ! continue to next start_dist trail
+                    continue
                 else:
                     if verbose: cprint('Start cart traj found.', 'green')
+            else:
+                cprint('Start 0.0 retraction dist along {}'.format(start_v), 'green')
 
-            if end_retraction_vector is not None:
-                retract_end_pose = multiply(pp.Pose(retraction_dist*pp.Point(*end_retraction_vector)), end_pose)
-                if debug:
-                    with WorldSaver():
-                        draw_point(next_start_state[('robot', 'f')].point*1e-3)
-                        draw_point(next_end_state[('robot', 'f')].point*1e-3)
-                        draw_pose(end_pose, length=0.1)
-                        draw_pose(retract_end_pose, length=0.05)
-                        client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
-                        wait_if_gui('Retract pose drawn. end vec: {}'.format(end_retraction_vector))
-                end_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(end_pose), frame_from_pose(retract_end_pose)], start_configuration=end_conf,
-                    group=GANTRY_ARM_GROUP, options=options)
-                if not end_cart_traj:
-                    if verbose: cprint('No end cart traj found.', 'red')
-                else:
-                    if verbose: cprint('End cart traj found.', 'green')
-                    end_cart_traj = reverse_trajectory(end_cart_traj)
-        # else:
-        # # ! skip no -buffe attempt
-        #     continue
+            end_cart_traj = None
+            # ! retraction vector to determine the end retraction pose
+            for end_v in end_retraction_vectors:
+                # ! retraction magnitude to determine the end retraction pose
+                for end_dist in retraction_distances:
+                    end_cart_traj = None
+                    if verbose:
+                        print('- Free motion | END linear buffer: trying retraction dist {:.4f} in {}'.format(end_dist, end_v))
+                    if abs(end_dist) > 1e-6:
+                        end_v /= np.linalg.norm(end_v)
+                        retract_end_pose = multiply(pp.Pose(end_dist*pp.Point(*end_v)), end_pose)
+                        if debug:
+                            debug_buffer_linear_motion(end_pose, retract_end_pose, end_dist, end_v, 'end')
 
-        with LockRenderer(not diagnosis):
-            new_start_conf = start_conf if start_cart_traj is None else start_cart_traj.points[-1]
-            new_end_conf = end_conf if end_cart_traj is None else end_cart_traj.points[0]
-            goal_constraints = robot.constraints_from_configuration(new_end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
-            d_options = options.copy()
-            if diagnosis:
-                client.set_robot_configuration(robot, new_start_conf)
-                print('start conf: ', new_start_conf)
-                wait_if_gui()
+                        end_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(end_pose), frame_from_pose(retract_end_pose)], start_configuration=end_conf,
+                            group=GANTRY_ARM_GROUP, options=options)
+                        if not end_cart_traj:
+                            if verbose: cprint('No end cart traj found.', 'red')
+                            # ! continue to next end_dist trial
+                            continue
+                        else:
+                            if verbose: cprint('End cart traj found.', 'green')
+                            end_cart_traj = reverse_trajectory(end_cart_traj)
+                    else:
+                        cprint('End 0.0 retraction dist along {}'.format(end_v), 'green')
 
-                client.set_robot_configuration(robot, new_end_conf)
-                print('end conf: ', new_end_conf)
-                wait_if_gui()
+                    new_start_conf = start_conf if start_cart_traj is None else start_cart_traj.points[-1]
+                    new_end_conf = end_conf if end_cart_traj is None else end_cart_traj.points[0]
+                    if debug:
+                        client.set_robot_configuration(robot, new_start_conf)
+                        # print('start conf: ', new_start_conf)
+                        wait_if_gui('Start conf after retraction.')
 
-                d_options['diagnosis'] = True
-            free_traj = client.plan_motion(robot, goal_constraints, start_configuration=new_start_conf, group=GANTRY_ARM_GROUP,
-                                      options=d_options)
-        if free_traj is not None:
-            full_trajs = []
-            if start_cart_traj:
-                full_trajs.append(start_cart_traj)
-            full_trajs.append(free_traj)
-            if end_cart_traj:
-                full_trajs.append(end_cart_traj)
-            traj = merge_trajectories(full_trajs)
-            break
+                        client.set_robot_configuration(robot, new_end_conf)
+                        # print('end conf: ', new_end_conf)
+                        wait_if_gui('End conf after retraction.')
 
-    if verbose:
-        if traj is None:
-            cprint('No free movement found for {}.'.format(movement.short_summary), 'red')
-        else:
-            cprint('Free movement found for {}!'.format(movement.short_summary), 'green')
+                    with LockRenderer(not diagnosis):
+                        goal_constraints = robot.constraints_from_configuration(new_end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
+                        d_options = options.copy()
+                        # if diagnosis:
+                        #     d_options['diagnosis'] = True
+                        free_traj = client.plan_motion(robot, goal_constraints, start_configuration=new_start_conf,
+                            group=GANTRY_ARM_GROUP, options=d_options)
+
+                    retraction_msg = "(st {}|{:.4f} ; end {}|{:.4f})".format(start_v, start_dist, end_v, end_dist)
+                    if free_traj is not None:
+                        # ! concatenate three trajectories
+                        full_trajs = []
+                        if start_cart_traj:
+                            full_trajs.append(start_cart_traj)
+                        full_trajs.append(free_traj)
+                        if end_cart_traj:
+                            full_trajs.append(end_cart_traj)
+                        traj = merge_trajectories(full_trajs)
+                        # ! trajectory found!
+                        if verbose:
+                            cprint('Free movement found for {} under current retraction {}!'.format(movement.short_summary, retraction_msg), 'green')
+                        return traj
+                    else:
+                        cprint('No free motion found under current retraction {}.'.format(retraction_msg), 'red')
 
     if traj is None and diagnosis:
         client._print_object_summary()
@@ -653,8 +660,10 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                                   options=d_options)
         if lockrenderer:
             lockrenderer = LockRenderer()
+    if verbose:
+        cprint('No free movement found for {}.'.format(movement.short_summary), 'red')
+    return None
 
-    return traj
 
 ##########################################
 # def base_sample_inverse_kinematics(robot_uid, ik_info, world_from_target,

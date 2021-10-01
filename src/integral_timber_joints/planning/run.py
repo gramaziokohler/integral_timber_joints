@@ -23,6 +23,8 @@ from integral_timber_joints.planning.smoothing import smooth_movement_trajectory
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.movement import RoboticMovement
 
+from compas_fab_pychoreo.backend_features.pychoreo_plan_motion import MOTION_PLANNING_ALGORITHMS
+
 SOLVE_MODE = [
     'nonlinear',
     'linear',
@@ -85,7 +87,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     if 'movement_id_filter' in options:
         del options['movement_id_filter']
 
-    with LockRenderer(not args.debug) as lockrenderer:
+    with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
         options['lockrenderer'] = lockrenderer
         # TODO loop and backtrack
         # TODO have to find a way to recover movements
@@ -263,13 +265,16 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Debug mode.')
     parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode, show collisions whenever encountered')
     parser.add_argument('--verbose', action='store_false', help='Print out verbose. Defaults to True.')
+    parser.add_argument('--draw_mp_exploration', action='store_true', help='Draw motion planning graph exploration. Should be used together with diagnosis')
     #
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     #
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
     parser.add_argument('--max_distance', default=0.0, type=float, help='Buffering distance for collision checking, larger means safer. Defaults to 0.')
     parser.add_argument('--solve_timeout', default=600.0, type=float, help='For automatic planning retry, number of seconds before giving up. Defaults to 600.')
+    parser.add_argument('--mp_algorithm', default='birrt', type=str, choices=MOTION_PLANNING_ALGORITHMS, help='Motion planning algorithms.')
     parser.add_argument('--rrt_iterations', default=400, type=int, help='Number of iterations within one rrt session. Defaults to 400.')
+    parser.add_argument('--birrt_enforce_alternate', action='store_true', help='Enfroce tree exploration alternation in birrt.')
     parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
 
     args = parser.parse_args()
@@ -320,6 +325,9 @@ def main():
         'propagate_only' : args.solve_mode == 'propagate_only',
         'solve_timeout': args.solve_timeout,
         'rrt_iterations': args.rrt_iterations,
+        'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,
+        'mp_algorithm' : args.mp_algorithm,
+        'birrt_enforce_alternate' : args.birrt_enforce_alternate,
     }
     if len(args.reachable_range) == 2:
         options.update({

@@ -96,7 +96,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 if not robot_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance*scale):
                     if (1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
                         if verbose:
-                            msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point))
+                            msg = 'set_state: Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point))
                             cprint(msg, 'yellow')
                             cprint('!!! Overwriting the current_frame {} by the given robot conf\'s FK {} | robot conf {}. Please confirm this.'.format(
                                 robot_frame.point, FK_tool_frame.point, robot_config.joint_values
