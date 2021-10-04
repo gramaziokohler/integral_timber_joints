@@ -583,8 +583,8 @@ class RobotClampAssemblyProcess(Data):
         # Compute the vector length to clear jaw, and return the `assembly_vector_jawapproach`
         return self.compute_jawapproach_vector_length(beam_id, design_guide_vector_jawapproach)
 
-    def compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(self, beam_id):
-        # type: (str) -> Vector
+    def compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(self, beam_id, verbose=False):
+        # type: (str, bool) -> Vector
         """Return a `assembly_vector_jawapproach` that follows the direction of `design_guide_vector_jawapproach`
         Returns None if the clamps do not present a feasible region.
         """
@@ -604,9 +604,15 @@ class RobotClampAssemblyProcess(Data):
         # Compute the analytical result of the feasible region and take a average from the resulting region
         feasible_disassem_rays, lin_set = geometric_blocking.compute_feasible_region_from_block_dir(blocking_vectors)
         if len(feasible_disassem_rays) == 0:
+            print ('- Warning : no feasible_disassem_rays from compute_feasible_region_from_block_dir')
             return None
+
+        if verbose:
+            print ('feasible_disassem_rays from compute_feasible_region_from_block_dir: %s' % feasible_disassem_rays)
+
         # # Remove the feasible_rays that are linear (bi-directional)
-        feasible_disassem_rays = [Vector(*ray) for (index, ray) in enumerate(feasible_disassem_rays) if (index not in lin_set)]
+        if len(feasible_disassem_rays) > 1:
+            feasible_disassem_rays = [Vector(*ray) for (index, ray) in enumerate(feasible_disassem_rays) if (index not in lin_set)]
         feasible_rays_averaged = Vector.sum_vectors(feasible_disassem_rays)
 
         # Compute the vector length to clear jaw, and return the `assembly_vector_jawapproach`
@@ -636,8 +642,8 @@ class RobotClampAssemblyProcess(Data):
             return self.compute_jawapproach_vector_length(beam_id, face_y_axis.copy())
         return None
 
-    def search_valid_jawapproach_vector_prioritizing_guide_vector(self, beam_id):
-        # type: (str) -> Vector
+    def search_valid_jawapproach_vector_prioritizing_guide_vector(self, beam_id, verbose=False):
+        # type: (str, bool) -> Vector
         """Search for the `assembly_vector_jawapproach` and `assembly_wcf_inclampapproach`.
         1st priority is to follow direction of `design_guide_vector_jawapproach`.
         2nd priority is to use a vector in the middle of the feisible non-blocking region from the clamp jaw.
@@ -656,7 +662,7 @@ class RobotClampAssemblyProcess(Data):
         # Each strategy function must return None if no valid solution is found.
         assembly_vector_jawapproach = self.compute_jawapproach_vector_from_guide_vector_dir(beam_id)
         if assembly_vector_jawapproach is None:
-            assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id)
+            assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id, verbose=verbose)
         if assembly_vector_jawapproach is None:
             return None
 
@@ -671,8 +677,8 @@ class RobotClampAssemblyProcess(Data):
 
         return assembly_vector_jawapproach
 
-    def search_valid_jawapproach_vector_prioritizing_beam_side(self, beam_id):
-        # type: (str) -> Vector
+    def search_valid_jawapproach_vector_prioritizing_beam_side(self, beam_id, verbose=False):
+        # type: (str, bool) -> Vector
         """Search for the `assembly_vector_jawapproach` and `assembly_wcf_inclampapproach`.
         1st priority is to follow direction of engaging-joints reference side Y direction.
         2nd priority is to use a vector in the middle of the feisible non-blocking region from the clamp jaw.
@@ -706,7 +712,7 @@ class RobotClampAssemblyProcess(Data):
         # Each strategy function must return None if no valid solution is found.
         assembly_vector_jawapproach = self.compute_jawapproach_vector_from_joints_y(beam_id)
         if assembly_vector_jawapproach is None:
-            assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id)
+            assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id, verbose=verbose)
         if assembly_vector_jawapproach is None:
             return ComputationalResult.ValidCannotContinue
 
@@ -857,7 +863,8 @@ class RobotClampAssemblyProcess(Data):
             self.assembly.set_beam_attribute(beam_id, 'design_guide_vector_jawapproach', beam_xaxis.scaled(1))
         print("New guide_vector: ", self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach'))
 
-    def search_valid_clamp_orientation_with_guiding_vector(self, beam_id):
+    def search_valid_clamp_orientation_with_guiding_vector(self, beam_id, verbose=False):
+        # type: (str, bool) -> ComputationalResult
         """ Search and choose clamp attachment frame based on guide vector alignment
 
         This is applied to all the joints on beam(beam_id) that needs to be clamped.

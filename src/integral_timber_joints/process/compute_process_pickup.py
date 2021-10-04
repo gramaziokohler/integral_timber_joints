@@ -21,8 +21,8 @@ except:
 # -------------------------------------
 
 
-def compute_pickup_frame(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_pickup_frame(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """ Compute the pickup frame of a beam
     Beam assembly direcion must be valid. Grasp face and PickupStation and must be assigned before.
 
@@ -63,8 +63,8 @@ def compute_pickup_frame(process, beam_id):
         return ComputationalResult.ValidCannotContinue
 
 
-def compute_pickup_location_by_aligning_corner(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_pickup_location_by_aligning_corner(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """ Compute 'assembly_wcf_pickup' alignment frame
     by aligning a choosen corner relative to the 'gripper_grasp_face'
     to the given pickup_station_frame.
@@ -174,8 +174,8 @@ def _compute_alignment_corner_from_grasp_face(process, beam_id, align_face_X0=Tr
     return corner
 
 
-def compute_beam_pickupapproach(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_beam_pickupapproach(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """ Compute gripper retract positions from 'assembly_wcf_pickup'.
     Approach vector is taken from gripper's approach vector (tcf) -> (beam ocf)
 
@@ -227,8 +227,8 @@ def compute_beam_pickupapproach(process, beam_id):
     return ComputationalResult.ValidCanContinue
 
 
-def compute_beam_finalretract(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_beam_finalretract(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """ Compute gripper retract positions from 'assembly_wcf_final'.
     Retraction direction and amount wcf) is taken from gripper attribute 'approach_vector', reversed.
 
@@ -406,8 +406,8 @@ def _compute_gripper_approach_vector_wcf_final(process, beam_id, verbose=False):
     return approach_vector_wcf_final
 
 
-def compute_storeage_frame(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_storeage_frame(process, beam_id, verbose = False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """Compute the storage frame of a beam in the stack.
 
     Note

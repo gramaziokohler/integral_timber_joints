@@ -214,7 +214,7 @@ class ComputationalDependency(Graph):
         # If all partents are okay, compute itself if it is not valid
         validity = self.get_solution_validity(beam_id, fx)
         if validity not in ComputationalResult.ValidResults:
-            validity = fx(beam_id)
+            validity = fx(beam_id, verbose=verbose)
             # Invalidate downsteram results.
             if verbose:
                 print("Beam(%s) Dependency compute(%s) Validity \t= %s" % (beam_id, fx_name, ComputationalResult.STRING_REPR[validity]))

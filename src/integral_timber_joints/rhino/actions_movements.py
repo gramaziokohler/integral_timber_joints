@@ -22,22 +22,18 @@ def reset_dependency_graph(process):
     print("Dependency graph is reset.")
 
 
-def compute_states(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def compute_states(process, verbose=False, beam_ids=None):
+    # type: (RobotClampAssemblyProcess, bool, str) -> None
     """User triggered function to compute Actions from Assembly Sequence
     """
-    # Optimization is not yet pully implemented
-    # process.optimize_actions_place_pick_gripper()
-    # process.optimize_actions_place_pick_clamp()
-
-    # Ask user if recompute actions
-    # recompute_initial_states = rs.GetString("Recompute Initial States?", "No", ["No", "Yes"])
-    # if recompute_initial_states == "Yes":
     process.recompute_initial_state()
 
     # Make sure everything is computed and nothing is missing
-    for beam_id in process.assembly.sequence:
-        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True, verbose=True)
+    if beam_ids is None:
+        beam_ids = process.assembly.sequence
+    for beam_id in beam_ids:
+        process.dependency.invalidate_all(beam_id)
+        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=False, verbose=verbose)
 
     invalid_beams = process.dependency.get_invalid_beam_ids()
     if len(invalid_beams) > 0:
@@ -59,6 +55,29 @@ def compute_states(process):
         diff_count += len(movement.state_diff)
     print("Total: %i diffs computed for %i object states." % (diff_count, len(process.initial_state)))
     print("Total: %i Movements in %i Acttions for %i Beams." % (len(process.movements), len(process.actions), len(process.assembly.sequence)))
+
+
+def compute_states_verbose(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Similar to compute states.
+    Users can pick chich beam_id or seq_n to recompute.
+    """
+    sequence = process.assembly.sequence
+    str = rs.GetString('Which seq_n (0 to %i) or beam_id to recompute [default = all]' % (len(sequence)), 'all')
+    if str == 'all':
+        return compute_states(process, verbose=True)
+
+    if str in sequence:
+        beam_id = str
+        return compute_states(process, verbose=True, beam_ids=[beam_id])
+
+    if all([char.isdigit() for char in str]):
+        seq_n = int(str)
+        if seq_n >= 0 and seq_n < len(sequence):
+            beam_id = sequence[seq_n]
+            return compute_states(process, verbose=True, beam_ids=[beam_id])
+
+    print("Input %s is not valid" % str)
 
 
 def remove_actions(process):
@@ -98,6 +117,8 @@ def show_menu(process):
                 {'name': 'ResetDependencyGraph', 'action': reset_dependency_graph
                  },
                 {'name': 'ComputeStates', 'action': compute_states
+                 },
+                {'name': 'ComputeStatesVerbose', 'action': compute_states_verbose
                  },
                 {'name': 'RemoveActionsAndStates', 'action': remove_actions
                  },

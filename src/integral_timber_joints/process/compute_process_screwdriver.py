@@ -22,8 +22,8 @@ except:
 SCREWDRIVER_APPROACH_AMOUNT = 20
 
 
-def compute_screwdriver_positions(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_screwdriver_positions(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """Compute /pre-compute Screwdriver attached frames,
     saving the results in process.assembly.joint_attribute.
 

@@ -11,13 +11,14 @@ from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.screw import Screw_SL
 from integral_timber_joints.geometry.utils import *
-from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
+
 
 
 try:
     from typing import Dict, List, Optional, Tuple, cast, Any
 
     from integral_timber_joints.process import RobotClampAssemblyProcess
+    from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
 except:
     pass
 
@@ -254,6 +255,7 @@ class JointHalfLap(Joint):
     def assembly_tool_types(self, beam_assembly_method):
         # type: (BeamAssemblyMethod) -> list[str]
         # Returns a list of clamps types that can assemble this joint
+        from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
         clamps = []
         if beam_assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
             return ['SL1', 'SL1_G200']
