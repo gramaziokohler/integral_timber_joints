@@ -611,7 +611,8 @@ class RobotClampAssemblyProcess(Data):
             print ('feasible_disassem_rays from compute_feasible_region_from_block_dir: %s' % feasible_disassem_rays)
 
         # # Remove the feasible_rays that are linear (bi-directional)
-        feasible_disassem_rays = [Vector(*ray) for (index, ray) in enumerate(feasible_disassem_rays) if (index not in lin_set)]
+        if len(feasible_disassem_rays) > 1:
+            feasible_disassem_rays = [Vector(*ray) for (index, ray) in enumerate(feasible_disassem_rays) if (index not in lin_set)]
         feasible_rays_averaged = Vector.sum_vectors(feasible_disassem_rays)
 
         # Compute the vector length to clear jaw, and return the `assembly_vector_jawapproach`

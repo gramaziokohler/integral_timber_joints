@@ -296,6 +296,7 @@ def change_joint_type(process):
 
     for beam_id in affected_beam_ids:
         artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
+        process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
     show_all_selectable_joints(process, redraw=True)
     return
 
@@ -480,6 +481,7 @@ def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
         affected_joints.add(joint_id)
         affected_joints.add(joint_id_nbr)
 
+    [process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints) for beam_id in affected_beams]
     return (affected_beams, affected_joints)
 
 
@@ -540,6 +542,7 @@ def _change_joint_non_planar_lap_beam_move_face_id(process, joint_ids):
         affected_joints.add(joint_id)
         affected_joints.add(joint_id_nbr)
 
+    [process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints) for beam_id in affected_beams]
     return (affected_beams, affected_joints)
 
 

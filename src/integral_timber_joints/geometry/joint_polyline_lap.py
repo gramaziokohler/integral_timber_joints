@@ -98,7 +98,16 @@ class JointPolylineLap(Joint):
     def angle(self):
         v1 = Vector.from_start_end(self.corner_pts[0], self.corner_pts[3])
         v2 = Vector.from_start_end(self.corner_pts[2], self.corner_pts[3])
-        return v1.angle(v2)
+        if self.is_joint_on_top :
+            if  self.is_joint_on_beam_move:
+                return math.degrees(v1.angle(v2))
+            else:
+                return math.degrees(v1.angle(v2.scaled(-1)))
+        else:
+            if  self.is_joint_on_beam_move:
+                return math.degrees(v1.angle(v2.scaled(-1)))
+            else:
+                return math.degrees(v1.angle(v2))
 
     @property
     def _total_thickness(self):
@@ -337,10 +346,10 @@ class JointPolylineLap(Joint):
         """
         # The clamp frame locate at the opposite
         origin = self.get_joint_center_at_solid_side(beam)
-        reference_side_wcf = beam.reference_side_wcf()
+        reference_side_wcf = beam.reference_side_wcf(self.face_id)
 
-        forward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis.scaled(-1))
-        backward_clamp = Frame(origin, reference_side_wcf.xaxis.scaled(-1), reference_side_wcf.yaxis)
+        forward_clamp = Frame(origin, reference_side_wcf.xaxis, reference_side_wcf.yaxis)
+        backward_clamp = Frame(origin, reference_side_wcf.xaxis.scaled(-1), reference_side_wcf.yaxis.scaled(-1))
         return [forward_clamp, backward_clamp]
 
     def get_joint_center_at_open_side(self, beam):
