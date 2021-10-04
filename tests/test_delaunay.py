@@ -12,7 +12,7 @@ points = [
     [101.70537271666296, -27.037781930331107, 0],
     [159.2109847160535, -37.083394683637223, 0]
 ]
-points = [[round(x) for x in point] for point in points]
+# points = [[round(x) for x in point] for point in points]
 points = [[p[0], p[1], 0] for p in points]
 print(len(points))
 v, f = conforming_delaunay_triangulation(points)

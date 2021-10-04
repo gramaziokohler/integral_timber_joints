@@ -236,6 +236,14 @@ class JointPolylineLap(Joint):
         height_fraction = 1.0 - (self.top_side_thickness / self._total_thickness) + oversize
         return self._extline_at_height(line_index, height_fraction)
 
+    @property
+    def bottom_side_thickness(self):
+        return self._total_thickness - self.top_side_thickness
+
+    @property
+    def height_fraction_at_mid(self):
+        return self.bottom_side_thickness  / self._total_thickness
+
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
         """Compute the negative shape of the joint.
@@ -257,23 +265,21 @@ class JointPolylineLap(Joint):
 
         """
         shapes = []
+
+        # vector_to_top =
         # i is an index that help rotate the quad index by 1
         i = 0 if self.is_joint_on_beam_move else 1
         if self.is_joint_on_top:
-            poly_line_mid = self._polyline_at_mid(i) + self._extline_at_mid(i+1) + self._polyline_at_mid(i+2) + self._extline_at_mid(i+3)
-            poly_line_top = self._polyline_at_top(i) + self._extline_at_top(i+1) + self._polyline_at_top(i+2) + self._extline_at_top(i+3)
-            # vertices = simplify_polygon(poly_line_mid) + simplify_polygon(poly_line_top)
-            # shapes.append(polyhedron_box_from_vertices(vertices))
-            print("vertices a ", poly_line_mid + poly_line_top)
-            shapes.append(polyhedron_box_from_vertices(poly_line_mid + poly_line_top))
-        else:
-            poly_line_btm = self._polyline_at_btm(i) + self._extline_at_btm(i+1) + self._polyline_at_btm(i+2) + self._extline_at_btm(i+3)
-            poly_line_mid = self._polyline_at_mid(i) + self._extline_at_mid(i+1) + self._polyline_at_mid(i+2) + self._extline_at_mid(i+3)
-            # vertices = simplify_polygon(poly_line_btm) + simplify_polygon(poly_line_mid)
-            # shapes.append(polyhedron_box_from_vertices(vertices))
-            print("vertices b ",  poly_line_btm + poly_line_mid)
+            hf = self.height_fraction_at_mid
+            poly_line_mid = self._polyline_at_height(i, hf) + self._extline_at_height(i+1, hf) + self._polyline_at_height(i+2, hf) + self._extline_at_height(i+3, hf)
+            vector_to_top = Vector.from_start_end(self.corner_pts[0], self.corner_pts[4]).unitized().scaled(self.top_side_thickness).scaled(1.1)
+            shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_mid, vector_to_top))
 
-            shapes.append(polyhedron_box_from_vertices(poly_line_btm + poly_line_mid))
+        else:
+            hf = self.height_fraction_at_mid
+            poly_line_mid = self._polyline_at_height(i, hf) + self._extline_at_height(i+1, hf) + self._polyline_at_height(i+2, hf) + self._extline_at_height(i+3, hf)
+            vector_to_bottom = Vector.from_start_end(self.corner_pts[4], self.corner_pts[0]).unitized().scaled(self._total_thickness - self.top_side_thickness).scaled(1.1)
+            shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_mid, vector_to_bottom))
 
         # Adding the two side cuts (if they have > 2 points)
         tol = 1e-3 if self.is_joint_on_top else -1e-3

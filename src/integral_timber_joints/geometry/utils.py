@@ -1,8 +1,8 @@
 import uuid
 
-from compas.datastructures.mesh import Mesh, mesh_weld
+from compas.datastructures.mesh import Mesh, mesh_weld, meshes_join
 from compas.geometry import Frame, Point, Vector
-from compas.geometry import Box, Polyhedron, Line, Transformation
+from compas.geometry import Box, Polyhedron, Line, Transformation, Translation
 from compas.geometry import is_polygon_convex, transform_points
 
 
@@ -77,6 +77,36 @@ def conforming_delaunay_triangulation(pts, normal):
     print("After flipping cycles, len(v) = %s, len(f) = %s" % (len(v), len(f)))
     return v, f
 
+def polyhedron_extrude_from_concave_vertices(cap_vertices, extrude_direction):
+        # type: (list[Point], Vector) -> Mesh
+    """ Creates an polygon-extrude-like-box.
+    The algorithm will call conforming_delaunay_triangulation to patch polygons with concave polygons.
+    Note that the ordering of the given vertices are clockwise from top view.
+
+    """
+    faces = []
+
+    # * Create bottom mesh cap
+    v_btm, f = conforming_delaunay_triangulation(cap_vertices, extrude_direction)
+    mesh_btm = Mesh.from_vertices_and_faces(v_btm, f)
+    mesh_btm.flip_cycles()
+
+    # * Create top cap
+    move = Translation.from_vector(extrude_direction)
+    v_top = transform_points(v_btm, move)
+    mesh_top = Mesh.from_vertices_and_faces(v_top, f)
+
+    # * Join mesh and create side walls
+    mesh = meshes_join([mesh_btm, mesh_top])
+
+    n = len(v_btm)
+    for x, y in mesh_btm.edges_on_boundary():
+        mesh.add_face([x, y, y + n, x + n])
+        # faces.append([x, y, y + n, x + n])
+
+    v, f = mesh.to_vertices_and_faces()
+    polyhedron = Polyhedron(v, f)
+    return polyhedron
 
 def polyhedron_box_from_vertices(vertices):
     # type: (list[Point]) -> Mesh
@@ -91,45 +121,18 @@ def polyhedron_box_from_vertices(vertices):
     faces = []
 
     # Top and bottom caps - triangles
-    if is_polygon_convex(vertices[:n]):
-        # Btm and top cap
-        for i in range(n - 2):
-            faces.append([0, i+1, i+2])
-            faces.append([i+2+n, i+1+n, n])
 
-        # Side walls - quads
-        for i in range(n):
-            x = i % n
-            y = (i+1) % n
-            faces.append([y, x, x+n, y+n])
+    # Btm and top cap
+    for i in range(n - 2):
+        faces.append([0, i+1, i+2])
+        faces.append([i+2+n, i+1+n, n])
 
-    else:
-        btm_vertices = vertices[:n]
-        vec_top_btm = Vector.from_start_end(vertices[n], vertices[0])
-        # btm_vertices.append(btm_vertices[0])
-        top_vertices = vertices[n:]
-        vec_btm_top = Vector.from_start_end(vertices[0], vertices[n])
-        # top_vertices.append(top_vertices[0])
+    # Side walls - quads
+    for i in range(n):
+        x = i % n
+        y = (i+1) % n
+        faces.append([y, x, x+n, y+n])
 
-        v, f = conforming_delaunay_triangulation(btm_vertices, vec_top_btm)
-        mesh_btm = Mesh.from_vertices_and_faces(v, f)
-        print("edges_on_boundary", mesh_btm.edges_on_boundary())
-        vertices = v
-        faces = f
-
-        v, f = conforming_delaunay_triangulation(top_vertices, vec_btm_top)
-        assert len(v) == len(vertices)
-        n = len(v)  # Remove overlapping point
-        for face in f:
-            faces.append([i + n for i in face])
-        vertices.extend(v)
-
-        for x, y in mesh_btm.edges_on_boundary():
-            faces.append([x, y, y + n, x + n])
-
-        # Welding vertices and faces after this delaunay capping
-        # mesh = mesh_weld(Mesh.from_vertices_and_faces(vertices, faces), 1e-8)
-        # vertices, faces = mesh.to_vertices_and_faces()
 
     polyhedron = Polyhedron(vertices, faces)
     return polyhedron
