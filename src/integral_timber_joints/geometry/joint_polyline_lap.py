@@ -61,13 +61,12 @@ class JointPolylineLap(Joint):
     def data(self):
         data = {
             'face_id': self.face_id,
-            'distance': self.distance,
-            'angle': self.angle,
-            'beam_width': self.beam_width,
-            'nbr_beam_width': self.nbr_beam_width,
-            'height': self.height,
+            'center_distance': self.center_distance,
+            'top_side_thickness': self.top_side_thickness,
+            'corner_pts': self.corner_pts,
             'polylines': self.polylines,
-            'thickness': self.thickness,
+            'is_joint_on_beam_move': self.is_joint_on_beam_move,
+            'is_joint_on_top': self.is_joint_on_top,
             'name': self.name,
         }
         return data
@@ -79,15 +78,21 @@ class JointPolylineLap(Joint):
         """
         joint = cls()
         joint.face_id = data.get('face_id', 1)
-        joint.distance = data.get('distance', 100)
-        joint.angle = data.get('angle', 90)
-        joint.beam_width = data.get('beam_width', 100)
-        joint.nbr_beam_width = data.get('nbr_beam_width', 100)
-        joint.height = data.get('height', 50)
+        joint.center_distance = data.get('center_distance', 100)
+        joint.top_side_thickness = data.get('top_side_thickness', 90)
+        joint.corner_pts = data.get('corner_pts', [])
         joint.polylines = data.get('polylines', [])
-        joint.thickness = data.get('thickness', 50)
+        joint.is_joint_on_beam_move = data.get('is_joint_on_beam_move', False)
+        joint.is_joint_on_top = data.get('is_joint_on_top', False)
         joint.name = data.get('name', None)
         return joint
+
+    @property
+    def height(self):
+        if self.is_joint_on_top:
+            return self.top_side_thickness
+        else:
+            return self.bottom_side_thickness
 
     @property
     def _total_thickness(self):

@@ -163,12 +163,15 @@ def _get_guids_of_selectable_joints(process, joint_types=[], forward_joint=True,
 
     return (selectable_joint_guids, non_selectable_joint_guids)
 
+
 def _get_filter_of_selectable_joints(process, joint_types=[], forward_joint=True, backward_joint=True):
     # type: (RobotClampAssemblyProcess, list[type], bool, bool) -> Tuple[list[guid], list[guid]]
     selectable_joint_guids, _ = _get_guids_of_selectable_joints(process, joint_types=joint_types, forward_joint=forward_joint, backward_joint=backward_joint)
+
     def joint_feature_filter(rhino_object, geometry, component_index):
         return rhino_object.Attributes.ObjectId in selectable_joint_guids
     return joint_feature_filter
+
 
 def show_selectable_joints_by_types(process, joint_types=[], forward_joint=True, backward_joint=True, redraw=False):
     # type: (RobotClampAssemblyProcess, list[type], bool, bool, bool) -> None
@@ -272,7 +275,7 @@ def change_joint_type(process):
     affected_joint_ids = []
     for joint_id in joint_ids:
         beam_s_id, beam_m_id = joint_id
-        if sequence.index(beam_s_id) <  sequence.index(beam_m_id) :
+        if sequence.index(beam_s_id) < sequence.index(beam_m_id):
             beam_s_id, beam_m_id = beam_m_id, beam_s_id
         beam_stay = assembly.beam(beam_s_id)
         beam_move = assembly.beam(beam_m_id)
@@ -429,7 +432,7 @@ def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
     # * Print out current joint parameters
     existing_face_id = set()
     for joint_id in joint_ids:
-        joint_on_move = process.assembly.joint(joint_id) #type: (JointNonPlanarLap)
+        joint_on_move = process.assembly.joint(joint_id)  # type: (JointNonPlanarLap)
         current_face_id = joint_on_move.beam_stay_face_id
         existing_face_id.add(current_face_id)
         print("Joint (%s-%s) beam_stay_face_id = %s" % (joint_id[0], joint_id[1], current_face_id))
@@ -463,7 +466,7 @@ def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
             thickness=joint_on_move.thickness,
             joint_face_id_move=joint_on_move.beam_move_face_id,
             joint_face_id_stay=new_face_id,
-            )
+        )
         process.assembly.add_joint_pair(new_joint_on_stay, new_joint_on_move, beam_id_stay, beam_id_move)
         for key, value in joint_on_stay.get_parameters_dict().items():
             new_joint_on_stay.set_parameter(key, value)
@@ -489,7 +492,7 @@ def _change_joint_non_planar_lap_beam_move_face_id(process, joint_ids):
     # * Print out current joint parameters
     existing_face_id = set()
     for joint_id in joint_ids:
-        joint_on_move = process.assembly.joint(joint_id) #type: (JointNonPlanarLap)
+        joint_on_move = process.assembly.joint(joint_id)  # type: (JointNonPlanarLap)
         current_face_id = joint_on_move.beam_move_face_id
         existing_face_id.add(current_face_id)
         print("Joint (%s-%s) beam_move_face_id = %s" % (joint_id[0], joint_id[1], current_face_id))
@@ -523,7 +526,7 @@ def _change_joint_non_planar_lap_beam_move_face_id(process, joint_ids):
             thickness=joint_on_move.thickness,
             joint_face_id_move=new_face_id,
             joint_face_id_stay=joint_on_move.beam_stay_face_id,
-            )
+        )
         process.assembly.add_joint_pair(new_joint_on_stay, new_joint_on_move, beam_id_stay, beam_id_move)
         for key, value in joint_on_stay.get_parameters_dict().items():
             new_joint_on_stay.set_parameter(key, value)
@@ -538,6 +541,7 @@ def _change_joint_non_planar_lap_beam_move_face_id(process, joint_ids):
         affected_joints.add(joint_id_nbr)
 
     return (affected_beams, affected_joints)
+
 
 def change_joint_non_planar_lap_parameters(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -572,7 +576,7 @@ def change_joint_non_planar_lap_parameters(process):
         joint_ids = _joint_id_from_rhino_guids([obj.ObjectId for obj in go.Objects()])
         if para_change_result == Rhino.Input.GetResult.Option:
             selected_parameter = go.Option().EnglishName
-            print ("joint_ids: ", len(joint_ids))
+            print("joint_ids: ", len(joint_ids))
             # print ("go.Objects():", len(list(go.Objects())))
 
             # * If user pressed an Option while there are selected joints, activate the _change function.
