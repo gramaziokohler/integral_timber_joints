@@ -152,6 +152,10 @@ class AssemblyNurbsArtist(object):
                 # Perform Boolean Difference
                 positive_breps = [rs.coercebrep(guid) for guid in positive_brep_guids]
                 negative_breps = [rs.coercebrep(guid) for guid in negative_brep_guids]
+
+                # Perform MergeCoplanarFaces before boolean to reduce chance of failure
+                [brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance) for brep in negative_breps]
+
                 if verbose:
                     print(positive_breps, negative_breps)
                 boolean_result = rg.Brep.CreateBooleanDifference(positive_breps, negative_breps, TOL)
@@ -159,6 +163,8 @@ class AssemblyNurbsArtist(object):
                     print("ERROR: AssemblyNurbArtist draw_beam(%s) Boolean Failure" % beam_id)
                 else:
                     for brep in boolean_result:
+                        # Perform MergeCoplanarFaces after boolean to clean up
+                        brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance)
                         # New guids from boolean results
                         guid = add_brep(brep)
                         if guid:
@@ -182,7 +188,6 @@ class AssemblyNurbsArtist(object):
             # Enable redraw
             if redraw:
                 rs.EnableRedraw(True)
-
 
         return guids
 
