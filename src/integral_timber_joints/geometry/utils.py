@@ -56,25 +56,19 @@ def conforming_delaunay_triangulation(pts, normal):
     # print(pts)
     v, f = triangle.conforming_delaunay_triangulation(pts)
     v = transform_points(v, T)
-    print("Original len(v) = %i, Resulting len(v) = %i, len(f) = %s" % (len(pts), len(v), len(f)))
+    # print("Original len(v) = %i, Resulting len(v) = %i, len(f) = %s" % (len(pts), len(v), len(f)))
 
-    # Unify mesh normal to be equal to intended normal
-    # print(f)
-    # n = len(v) - 1
-    # f = [[i % n for i in face] for face in f]
-    # print ("f = %s" % f)
-
-    # mesh = Mesh.from_vertices_and_faces(v[:-1], f)
+    # * Get rid of extra vertice at end of loop
     mesh = Mesh.from_vertices_and_faces(v, f)
     mesh_weld(mesh, 1e-6)
     v, f = mesh.to_vertices_and_faces()
-    print("After cenverting to mesh, len(v) = %s, len(f) = %s" % (len(v), len(f)))
+    # print("After cenverting to mesh, len(v) = %s, len(f) = %s" % (len(v), len(f)))
 
-    # mesh.unify_cycles()
+    # * Aligh face cycles witht given normal
     if normal.dot(mesh.face_normal(0)) < 0:
         mesh.flip_cycles()
     v, f = mesh.to_vertices_and_faces()
-    print("After flipping cycles, len(v) = %s, len(f) = %s" % (len(v), len(f)))
+    # print("After flipping cycles, len(v) = %s, len(f) = %s" % (len(v), len(f)))
     return v, f
 
 def polyhedron_extrude_from_concave_vertices(cap_vertices, extrude_direction):

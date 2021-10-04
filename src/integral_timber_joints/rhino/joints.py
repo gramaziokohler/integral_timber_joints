@@ -15,7 +15,7 @@ from compas_rhino.utilities import clear_layer, delete_objects, draw_breps, draw
 from compas_rhino.utilities.objects import get_object_name, get_object_names
 
 from integral_timber_joints.assembly import Assembly
-from integral_timber_joints.geometry import EnvironmentModel, JointHalfLap, JointNonPlanarLap
+from integral_timber_joints.geometry import EnvironmentModel, JointHalfLap, JointNonPlanarLap, JointPolylineLap
 from integral_timber_joints.process import Movement, RobotClampAssemblyProcess, RoboticMovement
 from integral_timber_joints.rhino.artist import mesh_to_brep, vertices_and_faces_to_brep_struct
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
@@ -256,7 +256,44 @@ def cull_double_selected_joint_ids(process, joint_ids):
 
 def change_joint_type(process):
     # type: (RobotClampAssemblyProcess) -> None
-    print("Function not implemented yet. :(")
+    artist = get_process_artist()
+    assembly = process.assembly
+    result = rs.GetString("Change to HalfLap or PolylineLap :", strings=['JointHalfLap', 'JointPolylineLap'])
+    show_selectable_joints_by_types(process, joint_types=[JointHalfLap], backward_joint=False, redraw=True)
+    # show_selectable_joints_by_types(process, joint_types=[JointPolylineLap], backward_joint=False, redraw=True)
+
+    joint_ids = users_select_feature(process, joint_types=[JointHalfLap])
+    if joint_ids is None or len(joint_ids) == 0:
+        show_all_selectable_joints(process, redraw=True)
+        return None
+
+    sequence = assembly.sequence
+    affected_beam_ids = []
+    affected_joint_ids = []
+    for joint_id in joint_ids:
+        beam_s_id, beam_m_id = joint_id
+        if sequence.index(beam_s_id) <  sequence.index(beam_m_id) :
+            beam_s_id, beam_m_id = beam_m_id, beam_s_id
+        beam_stay = assembly.beam(beam_s_id)
+        beam_move = assembly.beam(beam_m_id)
+        current_face_id = assembly.joint((beam_m_id, beam_s_id)).face_id
+        j_s, j_m, screw_line = JointPolylineLap.from_beam_beam_intersection(beam_stay, beam_move, joint_face_id_move=current_face_id)
+
+        if j_m is not None and j_s is not None:
+            print('- Joint (%s-%s) chagned to %s' % (beam_s_id, beam_m_id, j_m.__class__.__name__))
+            assembly.add_joint_pair(j_s, j_m, beam_s_id, beam_m_id)
+            affected_beam_ids.append(beam_s_id)
+            affected_beam_ids.append(beam_m_id)
+
+            # Redraw new selectable joint feature
+            delete_selectable_joint(process, (beam_s_id, beam_m_id))
+            delete_selectable_joint(process, (beam_m_id, beam_s_id))
+            draw_selectable_joint(process, (beam_s_id, beam_m_id))
+            draw_selectable_joint(process, (beam_m_id, beam_s_id))
+
+    for beam_id in affected_beam_ids:
+        artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
+    show_all_selectable_joints(process, redraw=True)
     return
 
 
