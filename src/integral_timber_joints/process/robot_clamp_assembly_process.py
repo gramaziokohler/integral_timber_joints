@@ -636,8 +636,8 @@ class RobotClampAssemblyProcess(Data):
             return self.compute_jawapproach_vector_length(beam_id, face_y_axis.copy())
         return None
 
-    def search_valid_jawapproach_vector_prioritizing_guide_vector(self, beam_id):
-        # type: (str) -> Vector
+    def search_valid_jawapproach_vector_prioritizing_guide_vector(self, beam_id, verbose=False):
+        # type: (str, bool) -> Vector
         """Search for the `assembly_vector_jawapproach` and `assembly_wcf_inclampapproach`.
         1st priority is to follow direction of `design_guide_vector_jawapproach`.
         2nd priority is to use a vector in the middle of the feisible non-blocking region from the clamp jaw.
@@ -671,8 +671,8 @@ class RobotClampAssemblyProcess(Data):
 
         return assembly_vector_jawapproach
 
-    def search_valid_jawapproach_vector_prioritizing_beam_side(self, beam_id):
-        # type: (str) -> Vector
+    def search_valid_jawapproach_vector_prioritizing_beam_side(self, beam_id, verbose=False):
+        # type: (str, bool) -> Vector
         """Search for the `assembly_vector_jawapproach` and `assembly_wcf_inclampapproach`.
         1st priority is to follow direction of engaging-joints reference side Y direction.
         2nd priority is to use a vector in the middle of the feisible non-blocking region from the clamp jaw.
@@ -857,7 +857,8 @@ class RobotClampAssemblyProcess(Data):
             self.assembly.set_beam_attribute(beam_id, 'design_guide_vector_jawapproach', beam_xaxis.scaled(1))
         print("New guide_vector: ", self.assembly.get_beam_attribute(beam_id, 'design_guide_vector_jawapproach'))
 
-    def search_valid_clamp_orientation_with_guiding_vector(self, beam_id):
+    def search_valid_clamp_orientation_with_guiding_vector(self, beam_id, verbose=False):
+        # type: (str, bool) -> ComputationalResult
         """ Search and choose clamp attachment frame based on guide vector alignment
 
         This is applied to all the joints on beam(beam_id) that needs to be clamped.

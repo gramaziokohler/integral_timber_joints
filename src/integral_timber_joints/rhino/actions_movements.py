@@ -22,8 +22,8 @@ def reset_dependency_graph(process):
     print("Dependency graph is reset.")
 
 
-def compute_states(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def compute_states(process, verbose=False):
+    # type: (RobotClampAssemblyProcess, bool) -> None
     """User triggered function to compute Actions from Assembly Sequence
     """
     # Optimization is not yet pully implemented
@@ -37,7 +37,7 @@ def compute_states(process):
 
     # Make sure everything is computed and nothing is missing
     for beam_id in process.assembly.sequence:
-        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True, verbose=True)
+        process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=True, verbose=verbose)
 
     invalid_beams = process.dependency.get_invalid_beam_ids()
     if len(invalid_beams) > 0:
@@ -59,6 +59,10 @@ def compute_states(process):
         diff_count += len(movement.state_diff)
     print("Total: %i diffs computed for %i object states." % (diff_count, len(process.initial_state)))
     print("Total: %i Movements in %i Acttions for %i Beams." % (len(process.movements), len(process.actions), len(process.assembly.sequence)))
+
+
+def compute_states_verbose(process):
+    compute_states(process, True)
 
 
 def remove_actions(process):
@@ -98,6 +102,8 @@ def show_menu(process):
                 {'name': 'ResetDependencyGraph', 'action': reset_dependency_graph
                  },
                 {'name': 'ComputeStates', 'action': compute_states
+                 },
+                {'name': 'ComputeStatesVerbose', 'action': compute_states_verbose
                  },
                 {'name': 'RemoveActionsAndStates', 'action': remove_actions
                  },
