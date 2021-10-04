@@ -583,8 +583,8 @@ class RobotClampAssemblyProcess(Data):
         # Compute the vector length to clear jaw, and return the `assembly_vector_jawapproach`
         return self.compute_jawapproach_vector_length(beam_id, design_guide_vector_jawapproach)
 
-    def compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(self, beam_id):
-        # type: (str) -> Vector
+    def compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(self, beam_id, verbose=False):
+        # type: (str, bool) -> Vector
         """Return a `assembly_vector_jawapproach` that follows the direction of `design_guide_vector_jawapproach`
         Returns None if the clamps do not present a feasible region.
         """
@@ -604,7 +604,12 @@ class RobotClampAssemblyProcess(Data):
         # Compute the analytical result of the feasible region and take a average from the resulting region
         feasible_disassem_rays, lin_set = geometric_blocking.compute_feasible_region_from_block_dir(blocking_vectors)
         if len(feasible_disassem_rays) == 0:
+            print ('- Warning : no feasible_disassem_rays from compute_feasible_region_from_block_dir')
             return None
+
+        if verbose:
+            print ('feasible_disassem_rays from compute_feasible_region_from_block_dir: %s' % feasible_disassem_rays)
+
         # # Remove the feasible_rays that are linear (bi-directional)
         feasible_disassem_rays = [Vector(*ray) for (index, ray) in enumerate(feasible_disassem_rays) if (index not in lin_set)]
         feasible_rays_averaged = Vector.sum_vectors(feasible_disassem_rays)
@@ -656,7 +661,7 @@ class RobotClampAssemblyProcess(Data):
         # Each strategy function must return None if no valid solution is found.
         assembly_vector_jawapproach = self.compute_jawapproach_vector_from_guide_vector_dir(beam_id)
         if assembly_vector_jawapproach is None:
-            assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id)
+            assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id, verbose=verbose)
         if assembly_vector_jawapproach is None:
             return None
 
@@ -706,7 +711,7 @@ class RobotClampAssemblyProcess(Data):
         # Each strategy function must return None if no valid solution is found.
         assembly_vector_jawapproach = self.compute_jawapproach_vector_from_joints_y(beam_id)
         if assembly_vector_jawapproach is None:
-            assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id)
+            assembly_vector_jawapproach = self.compute_jawapproach_vector_from_clamp_jaw_non_blocking_region(beam_id, verbose=verbose)
         if assembly_vector_jawapproach is None:
             return ComputationalResult.ValidCannotContinue
 
