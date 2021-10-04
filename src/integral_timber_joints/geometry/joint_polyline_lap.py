@@ -95,6 +95,12 @@ class JointPolylineLap(Joint):
             return self.bottom_side_thickness
 
     @property
+    def angle(self):
+        v1 = Vector.from_start_end(self.corner_pts[0], self.corner_pts[3])
+        v2 = Vector.from_start_end(self.corner_pts[2], self.corner_pts[3])
+        return v1.angle(v2)
+
+    @property
     def _total_thickness(self):
         return max([distance_point_point(self.corner_pts[i], self.corner_pts[i+4]) for i in range(4)])
 
@@ -205,7 +211,7 @@ class JointPolylineLap(Joint):
         else:
             return self._polyline_at_height(line_index, 0.0)
 
-    def _polyline_at_mid(self, line_index, oversize = 0):
+    def _polyline_at_mid(self, line_index, oversize=0):
         # type: (int, float) -> list[Point]
         height_fraction = 1.0 - (self.top_side_thickness / self._total_thickness) + oversize
         return self._polyline_at_height(line_index, height_fraction)
@@ -236,7 +242,7 @@ class JointPolylineLap(Joint):
         else:
             return self._extline_at_height(line_index, 0.0)
 
-    def _extline_at_mid(self, line_index, oversize = 0):
+    def _extline_at_mid(self, line_index, oversize=0):
         # type: (int, float) -> list[Point]
         height_fraction = 1.0 - (self.top_side_thickness / self._total_thickness) + oversize
         return self._extline_at_height(line_index, height_fraction)
@@ -247,7 +253,7 @@ class JointPolylineLap(Joint):
 
     @property
     def height_fraction_at_mid(self):
-        return self.bottom_side_thickness  / self._total_thickness
+        return self.bottom_side_thickness / self._total_thickness
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
@@ -298,7 +304,7 @@ class JointPolylineLap(Joint):
                 poly_line_top = self._polyline_at_top(i+1)[::-1] + self._extline_at_top(i+1)
                 shapes.append(polyhedron_box_from_vertices(poly_line_mid + poly_line_top))
 
-        if len(self.polylines[(i+3)%4]) > 2:
+        if len(self.polylines[(i+3) % 4]) > 2:
             if self.is_joint_on_top:
                 poly_line_mid = self._polyline_at_mid(i+3, tol)[::-1] + self._extline_at_mid(i+3, tol)
                 poly_line_btm = self._polyline_at_btm(i+3)[::-1] + self._extline_at_btm(i+3)
