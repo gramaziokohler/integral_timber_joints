@@ -170,12 +170,17 @@ class JointPolylineLap(Joint):
         # type: (str) -> Any
         if key == 'param_string':
             return self.param_string
+        if key == 'thickness':
+            return self.thickness
         raise KeyError("%s is invalid for JointPolylineLap" % key)
 
     def set_parameter(self, key, value):
         # type: (str, Any) -> None
         if key == "param_string":
             self.param_string = value
+            return
+        if key == "thickness":
+            self.thickness = value
             return
         raise KeyError("%s is invalid for JointPolylineLap" % key)
 
