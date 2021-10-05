@@ -194,6 +194,21 @@ def _get_filter_of_selectable_joints(process, joint_types=[], forward_joint=True
         return rhino_object.Attributes.ObjectId in selectable_joint_guids
     return joint_feature_filter
 
+def show_selectable_joints_by_id(process, joint_ids=[], redraw=False):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str,str]], bool) -> None
+    artist = get_process_artist()
+    rs.EnableRedraw(False)
+
+    # * Hide joints that are not the right type:
+    for joint_id in process.assembly.joint_ids():
+        if joint_id in joint_ids:
+            rs.ShowObjects(artist._joint_features[joint_id])
+        else:
+            rs.ShowObjects(artist._joint_features[joint_id])
+
+    if redraw:
+        rs.EnableRedraw(True)
+
 
 def show_selectable_joints_by_types(process, joint_types=[], forward_joint=True, backward_joint=True, redraw=False):
     # type: (RobotClampAssemblyProcess, list[type], bool, bool, bool) -> None
@@ -233,6 +248,11 @@ def _joint_id_from_rhino_guids(guids):
 
 def users_select_feature(process, joint_types=None, forward_joint=True, backward_joint=True, prompt='Select joints:'):
     # type: (RobotClampAssemblyProcess, list[type], bool, bool, str) -> list[Tuple[str, str]]
+    """Returns a list of selected joints.
+    Multi select is possible as an option but by default can only be belonging to one type.
+
+    If user presses Cancel, return None.
+    """
     artist = get_process_artist()
 
     # * Menu for user
@@ -251,6 +271,10 @@ def users_select_feature(process, joint_types=None, forward_joint=True, backward
 
     if result is None or result == Rhino.Input.GetResult.Cancel:
         return None
+
+    if isinstance(result, str):
+        if result.startswith("Cancel"):
+            return None
 
     # Retrive joint_ids from object name
     joint_ids = _joint_id_from_rhino_guids([obj.ObjectId for obj in go.Objects()])
@@ -949,6 +973,15 @@ def change_joint_polyline_lap_parameters(process, joint_type=JointPolylineLap):
         for beam_id in affected_beams:
             artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
 
+def select_joint_parameter_to_change(process, joint_ids):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
+
+    joint_type = process.assembly.joint(joint_ids[0]).__class__
+    assert len(set(process.assembly.joint(joint_id).__class__.__name__ for joint_id in joint_ids)) == 1
+
+    print ("Change parameter for %s. Type %s" % (str(joint_ids), joint_type))
+    print ("Done")
+
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -974,8 +1007,6 @@ def show_menu(process):
         print('Exit Function')
         return Rhino.Commands.Result.Cancel
 
-    command_to_run = None
-
     def construct_menu():
         # Menu for user
         menu = {
@@ -993,9 +1024,6 @@ def show_menu(process):
                  },
             ]
         }
-        # Add the repeat options when command_to_run is available
-        if command_to_run is not None:
-            menu['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
 
         return menu
 
@@ -1003,32 +1031,18 @@ def show_menu(process):
     while (True):
 
         # Create Menu
-        result = CommandMenu(construct_menu()).select_action()
+        # result = CommandMenu(construct_menu()).select_action()
+        show_all_selectable_joints(process, redraw=True)
+        selected_joint_ids = users_select_feature(process, [JointPolylineLap, JointHalfLap, JointNonPlanarLap], backward_joint=False, prompt="Select a Joint to Edit")
 
         # User cancel command by Escape
-        if result is None:
+        if selected_joint_ids is None:
             return on_exit_ui()
 
-        # Shortcut to allow user to type in state directly
-        if isinstance(result, str):
-            if result.isnumeric():
-                pass
-                continue
-            elif result.startswith("Cancel"):
-                return on_exit_ui()
-            else:
-                continue  # Catch other unknown input that are not numbers.
-
-        # User click Exit Button
-        if result['action'] == 'Exit':
+        if len(selected_joint_ids) == 0:
             return on_exit_ui()
-
-        # Set command-to-run according to selection, else repeat previous command.
-        if result['action'] != 'Repeat':
-            command_to_run = result['action']
-
-        # Run the selected command
-        command_to_run(process)
+        show_selectable_joints_by_id(process, selected_joint_ids, redraw=True)
+        select_joint_parameter_to_change(process, selected_joint_ids)
 
 
 ######################
