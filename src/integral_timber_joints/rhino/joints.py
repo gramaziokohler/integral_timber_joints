@@ -76,11 +76,14 @@ def draw_selectable_joint(process, joint_id, redraw=True, color=None):
             # print("Cylinder : ", struct)
             guids_for_union.extend(draw_cylinders([struct], cap=True, redraw=False))
     breps = [rs.coercebrep(guid) for guid in guids_for_union]
+
+    # ! First attempt at boolean all objects together
     success = [brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance) for brep in breps]
-    print ("MergeCoplanarFaces success : %s" % success)
+    # print("MergeCoplanarFaces success : %s" % success)
     boolean_result = rg.Brep.CreateBooleanUnion(breps, sc.doc.ModelAbsoluteTolerance)
     # print (boolean_result)
 
+    # ! Second attempt at boolean objects iteratively together
     if boolean_result is None:
         print("Warning: joints.py draw_joint_boolean_feature(%s-%s) Group Boolean Union Failure" % joint_id)
         temp_result = [breps[0]]
@@ -641,7 +644,63 @@ def change_joint_non_planar_lap_parameters(process):
             artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
 
 
-def _change_joint_polyline_lap_string(process, joint_ids):
+def _change_joint_thickness(process, joint_ids):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
+    """
+    Returns (affected_beams, affected_joints)
+
+    If user pressed cancel in the data entering process, return None
+    """
+    # * Print out current joint parameters
+    existing_thickness = set()
+    for joint_id in joint_ids:
+        joint = process.assembly.joint(joint_id)
+        current_thickness = joint.get_parameter('thickness')
+        existing_thickness.add(current_thickness)
+        print("Joint (%s-%s) thickness = %s" % (joint_id[0], joint_id[1], current_thickness))
+
+    # * Ask user for new paramter value
+    new_thickness = rs.GetReal("New thickness of the lap joint: (Existing Thickness are: %s" % existing_thickness)
+    if new_thickness is None:
+        return None
+
+    # * Make changes to selected joints
+    affected_beams = set()
+    affected_joints = set()
+    for joint_id in joint_ids:
+        # Update this joint and its neighbour
+        beam_id1, beam_id2 = joint_id
+        joint_id_nbr = (beam_id2, beam_id1)
+        joint = process.assembly.joint(joint_id)  # type:(JointNonPlanarLap)
+        joint_nbr = process.assembly.joint(joint_id_nbr)  # type:(JointNonPlanarLap)
+
+        # Skip if there are no change
+        current_thickness = joint.get_parameter('thickness')
+        if new_thickness == current_thickness:
+            continue
+
+        # Warn and Skip if thickness is => beam thickness
+        beam = process.assembly.beam(beam_id1)
+        beam_depth = beam.get_face_height(joint.face_id)
+        if new_thickness >= beam_depth:
+            print("Warning: Cannot set joint thickness >= beam depth (=%s)" % (beam_depth))
+            print("Thickness of joint pair (%s) unchanged (=%s)." % (joint_id, joint_nbr.thickness))
+            continue
+
+        # * Logic to update this joint and its neighbour
+        diff = new_thickness - joint.get_parameter('thickness')
+        joint.set_parameter('thickness', new_thickness)
+        joint_nbr.set_parameter('thickness', joint_nbr.get_parameter('thickness') - diff)
+        print("Thickness of joint pair (%s) changed to %s." % (joint_id, joint_nbr.thickness))
+        affected_beams.add(beam_id1)
+        affected_beams.add(beam_id2)
+        affected_joints.add(joint_id)
+        affected_joints.add(joint_id_nbr)
+
+    return (affected_beams, affected_joints)
+
+
+def _joint_polyline_lap_change_polyline_string(process, joint_ids):
     # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
     """
     Returns (affected_beams, affected_joints)
@@ -682,7 +741,7 @@ def _change_joint_polyline_lap_string(process, joint_ids):
             # Check if successful
             assert isinstance(joint.thickness, float)
             assert len(joint.polylines) == 4
-            print("String of joint pair (%s-%s) changed." % (joint_id))
+            print("String of Joint (%s-%s) changed." % (joint_id))
             affected_beams.add(beam_id1)
             affected_beams.add(beam_id2)
             affected_joints.add(joint_id)
@@ -690,12 +749,131 @@ def _change_joint_polyline_lap_string(process, joint_ids):
         except:
             joint.set_parameter('param_string', current_string)
             joint_nbr.set_parameter('param_string', current_string)
-            print("Error changing string for (%s-%s), change reverted." % (joint_id))
+            print("Error changing string for Joint (%s-%s), change reverted." % (joint_id))
 
     return (affected_beams, affected_joints)
 
 
-def change_joint_polyline_lap_parameters(process, joint_type = JointPolylineLap):
+def _joint_polyline_lap_rotate(process, joint_ids, rotate_cw=True):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]], bool) -> Tuple[list[str], list[str, str]]
+    """
+    Returns (affected_beams, affected_joints)
+
+    If user pressed cancel in the data entering process, return None
+    """
+
+    # * Make changes to selected joints
+    affected_beams = set()
+    affected_joints = set()
+    for joint_id in joint_ids:
+        # Update this joint and its neighbour
+        beam_id1, beam_id2 = joint_id
+        joint_id_nbr = (beam_id2, beam_id1)
+        joint = process.assembly.joint(joint_id)  # type:(JointNonPlanarLap)
+        joint_nbr = process.assembly.joint(joint_id_nbr)  # type:(JointNonPlanarLap)
+
+        # Rotate Polyline
+        current_polylines = joint.polylines
+        if rotate_cw:
+            new_polylines = current_polylines[-1:] + current_polylines[:-1]
+        else:
+            new_polylines = current_polylines[1:] + current_polylines[:1]
+
+        # Skip if there are no change
+        if new_polylines == current_polylines:
+            continue
+
+        try:
+            # * Logic to update this joint and its neighbour
+            joint.polylines = new_polylines
+            joint_nbr.polylines = new_polylines
+            # Check if successful
+            assert len(joint.polylines) == 4
+            print("Joint (%s-%s) rotated." % (joint_id))
+            affected_beams.add(beam_id1)
+            affected_beams.add(beam_id2)
+            affected_joints.add(joint_id)
+            affected_joints.add(joint_id_nbr)
+        except:
+            joint.polylines = current_polylines
+            joint_nbr.polylines = current_polylines
+            print("Error changing Joint (%s-%s), change reverted." % (joint_id))
+
+    return (affected_beams, affected_joints)
+
+
+def _joint_polyline_lap_rotate_cw(process, joint_ids):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
+    return _joint_polyline_lap_rotate(process, joint_ids, rotate_cw=True)
+
+
+def _joint_polyline_lap_rotate_ccw(process, joint_ids):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
+    return _joint_polyline_lap_rotate(process, joint_ids, rotate_cw=False)
+
+
+def _joint_polyline_lap_mirror(process, joint_ids, direction_u=True):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]], bool) -> Tuple[list[str], list[str, str]]
+    """
+    Returns (affected_beams, affected_joints)
+
+    If user pressed cancel in the data entering process, return None
+    """
+
+    # * Make changes to selected joints
+    affected_beams = set()
+    affected_joints = set()
+    for joint_id in joint_ids:
+        # Update this joint and its neighbour
+        beam_id1, beam_id2 = joint_id
+        joint_id_nbr = (beam_id2, beam_id1)
+        joint = process.assembly.joint(joint_id)  # type:(JointNonPlanarLap)
+        joint_nbr = process.assembly.joint(joint_id_nbr)  # type:(JointNonPlanarLap)
+
+        # Mirror polyline
+        current_polylines = joint.polylines
+        if direction_u:
+            new_polylines = [current_polylines[i] for i in [2, 1, 0, 3]]
+        else:
+            new_polylines = [current_polylines[i] for i in [0, 3, 2, 1]]
+        # Reverse order of each line
+        for i in range(4):
+            new_polylines[i] = [[1-u, v] for u, v in new_polylines[i]][::-1]
+
+        # Skip if there are no change
+        if new_polylines == current_polylines:
+            continue
+
+        try:
+            # * Logic to update this joint and its neighbour
+            joint.polylines = new_polylines
+            joint_nbr.polylines = new_polylines
+            # Check if successful
+            assert len(joint.polylines) == 4
+            print("Joint (%s-%s) rotated." % (joint_id))
+            affected_beams.add(beam_id1)
+            affected_beams.add(beam_id2)
+            affected_joints.add(joint_id)
+            affected_joints.add(joint_id_nbr)
+        except:
+            joint.polylines = current_polylines
+            joint_nbr.polylines = current_polylines
+            print("Error changing Joint (%s-%s), change reverted." % (joint_id))
+
+    return (affected_beams, affected_joints)
+
+
+def _joint_polyline_lap_mirror_u(process, joint_ids):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
+    return _joint_polyline_lap_mirror(process, joint_ids, direction_u=True)
+
+
+def _joint_polyline_lap_mirror_v(process, joint_ids):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
+    return _joint_polyline_lap_mirror(process, joint_ids, direction_u=False)
+
+
+def change_joint_polyline_lap_parameters(process, joint_type=JointPolylineLap):
     # type: (RobotClampAssemblyProcess, type) -> None
     artist = get_process_artist()
     selected_parameter = ""
@@ -705,9 +883,12 @@ def change_joint_polyline_lap_parameters(process, joint_type = JointPolylineLap)
 
         # * Option Menu for user
         para_change_function = {
-            # "thickness": _change_joint_polyline_lap_thickness,
-            # "polyline": _change_joint_polyline_lap_beam_stay_face_id,
-            "encoded_string": _change_joint_polyline_lap_string,
+            "mirror_u": _joint_polyline_lap_mirror_u,
+            "mirror_v": _joint_polyline_lap_mirror_v,
+            "rotate_cw": _joint_polyline_lap_rotate_cw,
+            "rotate_ccw": _joint_polyline_lap_rotate_ccw,
+            "encoded_polyline": _joint_polyline_lap_change_polyline_string,
+            "thickness": _change_joint_thickness,
         }
         selected_parameter = list(para_change_function.keys())[0]
 
@@ -767,7 +948,6 @@ def change_joint_polyline_lap_parameters(process, joint_type = JointPolylineLap)
             draw_selectable_joint(process, joint_id, redraw=False)
         for beam_id in affected_beams:
             artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
-
 
 
 def show_menu(process):
