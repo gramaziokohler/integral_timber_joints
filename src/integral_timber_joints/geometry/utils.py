@@ -50,7 +50,7 @@ def conforming_delaunay_triangulation(pts, normal):
     # Transform the points to XY plane.
     T = Transformation.from_frame(Frame(pts[0], v_x, v_y))
     pts = transform_points(pts, T.inverse())
-    pts = [[round(x, 2) for x in point] for point in pts]
+    # pts = [[round(x, 2) for x in point] for point in pts]
     from compas.rpc import Proxy
     triangle = Proxy('compas.geometry')
     # print(pts)
