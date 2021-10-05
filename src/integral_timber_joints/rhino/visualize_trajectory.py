@@ -15,8 +15,8 @@ from integral_timber_joints.process import Movement, RobotClampAssemblyProcess, 
 from integral_timber_joints.rhino.load import get_activedoc_process_path, get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.process_artist import ProcessArtist
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
-from integral_timber_joints.rhino.visualize_actions import (print_current_state_info, ui_goto_state_by_beam_seq, ui_goto_state_by_state_index, ui_hide_env_meshes, ui_next_step,
-                                                            ui_prev_step, ui_show_env_meshes)
+from integral_timber_joints.rhino.visualize_movement import (print_current_state_info, ui_goto_state_by_beam_seq, ui_goto_state_by_state_index, ui_hide_env_meshes, ui_next_step,
+                                                             ui_prev_step, ui_show_env_meshes, ui_next_robotic_movement, ui_prev_robotic_movement)
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
 
 
@@ -50,9 +50,10 @@ def load_selected_external_movment_if_exist(process):
 
 def redraw_state_and_trajectory(artist, process):
     # type: (ProcessArtist, RobotClampAssemblyProcess) -> None
-    artist.delete_state(redraw=False)
+    # artist.delete_state(redraw=False)
     artist.delete_sweep_trajectory(redraw=False)
-    artist.draw_state(redraw=False)  # Visualize the state
+    scene = artist.get_current_selected_scene_state()
+    artist.draw_state(scene=scene, redraw=False)  # Visualize the state
     artist.draw_sweep_trajectory(redraw=False)
     print_current_state_info(process, print_next=False)
 
@@ -76,34 +77,6 @@ def show_interactive_beams_delete_state_vis(process):
     [artist.show_interactive_beam(beam_id) for beam_id in process.assembly.sequence]
     rs.EnableRedraw(True)
     sc.doc.Views.Redraw()
-
-
-############
-# Nevigation
-############
-
-def ui_next_robotic_movement(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    assembly = process.assembly  # type: Assembly
-    artist = get_process_artist()
-    all_movements = process.movements
-    while artist.selected_state_id < len(all_movements):
-        artist.selected_state_id += 1
-        movement = all_movements[artist.selected_state_id - 1]
-        if isinstance(movement, RoboticMovement):
-            return
-
-
-def ui_prev_robotic_movement(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    assembly = process.assembly  # type: Assembly
-    artist = get_process_artist()
-    all_movements = process.movements
-    while artist.selected_state_id > 0:
-        artist.selected_state_id -= 1
-        movement = all_movements[artist.selected_state_id - 1]
-        if isinstance(movement, RoboticMovement):
-            return
 
 
 ##############

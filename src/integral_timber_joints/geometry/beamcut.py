@@ -5,7 +5,7 @@
 #   It can be used to generate the geometry of a boolean object for beam visualization.
 #   It can be used to generate BTL processing object for BTL output
 from compas.datastructures import Mesh
-from compas.geometry import Cylinder, Polyhedron, Shape
+from compas.geometry import Cylinder, Polyhedron, Shape, Transformation
 
 from integral_timber_joints.geometry.beam import Beam
 
@@ -47,6 +47,12 @@ class Beamcut(object):
         beamcut = cls()
         beamcut.data = data
         return beamcut
+
+    def transform_(self, transformation):
+        # type: (Transformation) -> None
+        """Transforming the beamcut object in WCF.
+        Typically called by assembly.transform when initiated by user."""
+        raise NotImplementedError
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Shape]

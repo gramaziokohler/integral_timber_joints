@@ -137,7 +137,7 @@ def delete_tool(process, cls):
         print("- tool_id: %s, type: %s" % (tool.name, tool.type_name))
 
     # Ask user which clamp to delete
-    tool_id = rs.GetString("Which %a to delete?" % tool_type_name, "Cancel", ["Cancel"] + existing_tools_ids)
+    tool_id = rs.GetString("Which %s to delete?" % tool_type_name, "Cancel", ["Cancel"] + existing_tools_ids)
     if tool_id in existing_tools_ids:
         process.delete_tool(tool_id)
         artist = get_process_artist()

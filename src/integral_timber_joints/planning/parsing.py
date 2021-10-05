@@ -47,7 +47,10 @@ def get_process_path(design_dir, assembly_name, subdir='.'):
         filename = os.path.basename(assembly_name)
     else:
         filename = '{}.json'.format(assembly_name)
-    model_path = os.path.abspath(os.path.join(DESIGN_STUDY_DIR, design_dir, subdir, filename))
+    folder_dir = os.path.abspath(os.path.join(DESIGN_STUDY_DIR, design_dir, subdir))
+    model_path = os.path.join(folder_dir, filename)
+    if not os.path.exists(folder_dir):
+        os.makedirs(folder_dir)
     return model_path
 
 def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyProcess:

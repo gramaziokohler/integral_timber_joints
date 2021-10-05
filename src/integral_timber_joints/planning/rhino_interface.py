@@ -15,6 +15,7 @@ from integral_timber_joints.planning.stream import _get_sample_bare_arm_ik_fn
 
 def get_ik_solutions(process, movement_index, options={}):
     # TODO how to recover the client and robot if one is running already?
+    options = options or {}
     movement = process.movements[movement_index]
     if not isinstance(movement, RoboticMovement):
         return (False, None, 'Not an robotic movement')
@@ -26,13 +27,19 @@ def get_ik_solutions(process, movement_index, options={}):
 
     start_time = time.time()
 
-    # if not pp.is_connected():
-    # * Connect to path planning backend and initialize robot parameters
-    # ! initial state must be set to make robot R12 conf correct
-    client, robot, _ = load_RFL_world(viewer=viewer)
-    process.set_initial_state_robot_config(process.robot_initial_config)
-    set_state(client, robot, process, process.initial_state, initialize=True,
-        options={'include_env' : True, 'reinit_tool' : False})
+    # * pass in client and robot if resuing a client
+    reuse_client = False
+    client = options.get('client', None)
+    robot = options.get('robot', None)
+    if client and robot and pp.is_connected():
+        reuse_client = True
+    else:
+        # * Connect to path planning backend and initialize robot parameters
+        # ! initial state must be set to make robot R12 conf correct
+        client, robot, _ = load_RFL_world(viewer=viewer)
+        process.set_initial_state_robot_config(process.robot_initial_config)
+        set_state(client, robot, process, process.initial_state, initialize=True,
+            options={'include_env' : True, 'reinit_tool' : False})
 
     end_scene = process.get_movement_end_scene(movement)
     set_state(client, robot, process, end_scene)
@@ -105,7 +112,8 @@ def get_ik_solutions(process, movement_index, options={}):
 
     if temp_name in client.extra_disabled_collision_links:
         del client.extra_disabled_collision_links[temp_name]
-    client.disconnect()
+    if not reuse_client:
+        client.disconnect()
 
     return (success, conf, msg)
 

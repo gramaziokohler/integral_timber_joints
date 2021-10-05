@@ -477,28 +477,38 @@ def change_grasping_joint():
     artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
     delete_all_selectable_joints(process)
 
-
-def change_screwdriver_orientation():
+def _assembly_tools_guid_to_joint_id(beam_id, guid):
     process = get_process()
     artist = get_process_artist()
-
-    beam_id = artist.selected_beam_id
     joint_ids = process.assembly.get_joint_ids_with_tools_for_beam(beam_id)
+    for joint_id in joint_ids:
+        tool_position = artist.selected_key_position.current_clamp_pos
+        guids = artist.asstool_guids_at_position(joint_id, tool_position)
+        for _guid in guids:
+            if _guid == guid:
+                return joint_id
+    return None
 
+def _assembly_tools_selectable_guids(beam_id):
+    process = get_process()
+    artist = get_process_artist()
+    joint_ids = process.assembly.get_joint_ids_with_tools_for_beam(beam_id)
     selectable_guids = []
-    guid_to_joint_id = {}
     for joint_id in joint_ids:
         tool_position = artist.selected_key_position.current_clamp_pos
         guids = artist.asstool_guids_at_position(joint_id, tool_position)
         selectable_guids.extend(guids)
-        for guid in guids:
-            guid_to_joint_id[guid] = joint_id
+    return selectable_guids
 
+def change_screwdriver_orientation():
+    process = get_process()
+    artist = get_process_artist()
+    beam_id = artist.selected_beam_id
 
     # * Ask user to Pick in Rhino UI the screwdriver to flip
     go = Rhino.Input.Custom.GetObject()
     def joint_feature_filter(rhino_object, geometry, component_index):
-        return rhino_object.Attributes.ObjectId in selectable_guids
+        return rhino_object.Attributes.ObjectId in _assembly_tools_selectable_guids(beam_id)
     go.SetCustomGeometryFilter(joint_feature_filter)
     go.SetCommandPrompt("Select tool to flip orientation:")
     go.EnablePreSelect(False, True)
@@ -507,7 +517,7 @@ def change_screwdriver_orientation():
         print("Cancel")
         return
     guid = go.Object(0).ObjectId
-    selected_joint_id = guid_to_joint_id[guid]
+    selected_joint_id = _assembly_tools_guid_to_joint_id(beam_id, guid)
     current_index = process.assembly.get_joint_attribute(selected_joint_id, 'tool_orientation_frame_index')
     if current_index == 0:
         process.assembly.set_joint_attribute(selected_joint_id, 'tool_orientation_frame_index', 1)
@@ -516,6 +526,56 @@ def change_screwdriver_orientation():
 
     process.dependency.invalidate(beam_id, process.compute_screwdriver_positions)
     process.dependency.invalidate(beam_id, process.compute_gripper_grasp_pose)
+    process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=False, verbose=True)
+    artist.draw_asstool_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
+
+
+def change_screwdriver_type():
+    process = get_process()
+    artist = get_process_artist()
+    beam_id = artist.selected_beam_id
+
+    # * Ask user to Pick in Rhino UI the screwdriver to flip
+    go = Rhino.Input.Custom.GetObject()
+    def joint_feature_filter(rhino_object, geometry, component_index):
+        return rhino_object.Attributes.ObjectId in _assembly_tools_selectable_guids(beam_id)
+    go.SetCustomGeometryFilter(joint_feature_filter)
+    go.SetCommandPrompt("Select tool to change type:")
+    go.EnablePreSelect(False, True)
+    result = go.Get()
+    if result is None or result == Rhino.Input.GetResult.Cancel:
+        print("Cancel")
+        return
+    guid = go.Object(0).ObjectId
+    selected_joint_id = _assembly_tools_guid_to_joint_id(beam_id, guid)
+
+    # Sort out available screwdriver types
+    current_type = process.assembly.get_joint_attribute(selected_joint_id, 'tool_type')
+    type_names = []
+    for screwdriver in process.screwdrivers:
+        print("- %s : %s" % (screwdriver.name, screwdriver.type_name))
+        if screwdriver.type_name not in type_names:
+            type_names.append(screwdriver.type_name)
+
+    # Ask user which gripper to delete
+    prompt = "Which screwdriver to use for Joint(%s)? Current gripper type is: %s" % (selected_joint_id, current_type)
+    selected_type_name = rs.GetString(prompt, current_type, type_names)
+    # Dont change anything if the selection is the same
+    if selected_type_name == current_type:
+        print("Screwdriver type unchanged")
+        return
+    if selected_type_name in type_names:
+        print("Screwdriver type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
+        process.assembly.set_joint_attribute(selected_joint_id, 'tool_type_preference', selected_type_name)
+
+    current_index = process.assembly.get_joint_attribute(selected_joint_id, 'tool_orientation_frame_index')
+    if current_index == 0:
+        process.assembly.set_joint_attribute(selected_joint_id, 'tool_orientation_frame_index', 1)
+    else:
+        process.assembly.set_joint_attribute(selected_joint_id, 'tool_orientation_frame_index', 0)
+
+    process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
     process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=False, verbose=True)
     artist.draw_asstool_all_positions(beam_id, delete_old=True, redraw=False)
     artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
@@ -577,6 +637,7 @@ def show_menu(process):
 
             if assembly_method in BeamAssemblyMethod.screw_methods:
                 go.AddOption("ChangeToolOrientation")
+                go.AddOption("ChangeScrewdriverType")
 
             if assembly_method == BeamAssemblyMethod.CLAMPED:
                 go.AddOption("FlipClampAttachPosition")
@@ -596,6 +657,7 @@ def show_menu(process):
         'FlipClampAttachPosition': flip_clamp,
         'ChangeGraspingJoint': change_grasping_joint,
         'ChangeToolOrientation': change_screwdriver_orientation,
+        'ChangeScrewdriverType': change_screwdriver_type,
 
     }
 

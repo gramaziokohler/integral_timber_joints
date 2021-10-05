@@ -5,19 +5,20 @@ import math
 
 import compas
 from compas.datastructures import Mesh
-from compas.geometry import Box, Frame, Point, Line, Projection, Translation, Vector, distance_point_point, intersection_line_line, intersection_segment_segment
+from compas.geometry import Box, Frame, Point, Line, Transformation, Vector, distance_point_point, intersection_line_line, intersection_segment_segment
 
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
 from integral_timber_joints.geometry.screw import Screw_SL
 from integral_timber_joints.geometry.utils import *
-from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
+
 
 
 try:
-    from typing import Dict, List, Optional, Tuple, cast
+    from typing import Dict, List, Optional, Tuple, cast, Any
 
     from integral_timber_joints.process import RobotClampAssemblyProcess
+    from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
 except:
     pass
 
@@ -104,12 +105,43 @@ class JointHalfLap(Joint):
     def distance_at_center(self):
         return self.distance + self.angled_lead / 2 + self.angled_length / 2
 
-    def modify_parameter(self, key, value, relative=True):
+    # ###########################
+    # Transformation of Extrinsic
+    # ###########################
+
+    def transform(self, transformation):
+        #type: (Transformation) -> None
+        """Transforming the joint object in WCF.
+        Typically called by assembly.transform when initiated by user."""
+        pass
+
+    # #####################
+    # Modifyable Parameters
+    # #####################
+
+    @property
+    def parameter_keys(self):
+        # type: () -> list[str]
+        return ['thickness']
+
+    def get_parameter(self, key):
+        # type: (str) -> Any
+        if key == 'thickness':
+            return self.thickness
+        raise KeyError("%s is invalid for JointHalfLap" % key)
+
+    def set_parameter(self, key, value):
+        # type: (str, Any) -> None
         if key == "thickness":
-            if not relative:
-                value = value - self.thickness
-            self.thickness += value
-            self.height -= value
+            diff = value - self.thickness
+            self.thickness += diff
+            self.height -= diff
+            return
+        raise KeyError("%s is invalid for JointHalfLap" % key)
+
+    # #####################
+    # Joint Shape
+    # #####################
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Mesh]
@@ -223,6 +255,7 @@ class JointHalfLap(Joint):
     def assembly_tool_types(self, beam_assembly_method):
         # type: (BeamAssemblyMethod) -> list[str]
         # Returns a list of clamps types that can assemble this joint
+        from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
         clamps = []
         if beam_assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
             return ['SL1', 'SL1_G200']

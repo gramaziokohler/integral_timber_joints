@@ -22,8 +22,8 @@ except:
 SCREWDRIVER_APPROACH_AMOUNT = 20
 
 
-def compute_screwdriver_positions(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_screwdriver_positions(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """Compute /pre-compute Screwdriver attached frames,
     saving the results in process.assembly.joint_attribute.
 
@@ -114,6 +114,9 @@ def compute_screwdriver_positions(process, beam_id):
         # Moving tool backwards along tool.detachretract_vector.
         f_pickup_attached = f_assembled_attached.transformed(process.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_pickup'))
         assembly.set_joint_attribute(joint_id, 'screwdriver_pickup_attached', f_pickup_attached)
+
+        f_pickup_attached = f_assembled_attached.transformed(process.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_screwdriver_attachment_pose'))
+        assembly.set_joint_attribute(joint_id, 'screwdriver_attachment_pose_attached', f_pickup_attached)
 
         # TODO assembly_wcf_pickupretract
 

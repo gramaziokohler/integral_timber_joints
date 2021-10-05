@@ -45,6 +45,20 @@ class Beamcut_plane(Beamcut):
         normal = self.plane_ocf.normal
         return normal.x < 0.0
 
+    # ###########################
+    # Transformation of Extrinsic
+    # ###########################
+
+    def transform(self, transformation):
+        # type: (Transformation) -> None
+        """Transforming the beamcut object in WCF.
+        Typically called by assembly.transform when initiated by user."""
+        pass
+
+    # #############
+    # Boolean Shape
+    # #############
+
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Shape]
         """Compute the negative mesh volume of the joint.

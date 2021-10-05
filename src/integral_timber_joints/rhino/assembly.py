@@ -4,7 +4,7 @@ import scriptcontext
 import re
 from collections import Counter
 
-from compas.geometry import Frame, Vector, Point, bounding_box
+from compas.geometry import Frame, Vector, Point, bounding_box, dot_vectors, cross_vectors, length_vector, subtract_vectors, close
 from compas.geometry import Transformation
 from compas_rhino.geometry import RhinoCurve, RhinoSurface
 from compas_rhino.ui import CommandMenu
@@ -202,6 +202,54 @@ def ui_add_beam_from_lines(process):
     _add_beams_to_assembly(process, new_beams)
 
 
+def beam_frame_from_points_and_vectors(points, edge_vectors, face_normals):
+    # type: (list[Point], list[Vector], list[Vector]) -> Frame
+
+    def caliper(vector, _points):
+        values = [dot_vectors(vector, point) for point in _points]
+        return (max(values) - min(values))
+
+    def best_aligned_vector(vectors, guide_vector):
+        alignment = [dot_vectors(guide_vector, v) for v in vectors]
+        return vectors[alignment.index(max(alignment))]
+
+    def unitize_vectors(vectors, non_zero=1e-7):
+        results = []
+        for vector in vectors:
+            length = length_vector(vector)
+            if length > non_zero:
+                results.append([value / length for value in vector])
+        return results
+
+    edge_vectors = unitize_vectors(edge_vectors)
+    face_normals = unitize_vectors(face_normals)
+
+    # * Compute caliper size for vector_z candidates
+    bounding_widths = [caliper(vector, points) for vector in face_normals]
+    beam_z_size = min(bounding_widths)
+    # * Sort out the vector(s) that have the smallest caliper size
+    vector_z_candidates = [vector for vector, widths in zip(face_normals, bounding_widths) if close(widths, beam_z_size)]
+    # * To break tie, an alignment vector is used
+    vector_z = best_aligned_vector(vector_z_candidates, [0.01, 0.1, 1])
+
+    # * Prepare vector_y candidates
+    vector_y_candidates = [cross_vectors(vector_z, vector) for vector in face_normals + edge_vectors]
+    vector_y_candidates = unitize_vectors(vector_y_candidates)  # Unitize
+    # * Compute caliper size and pick smallest one
+    bounding_widths = [caliper(vector, points) for vector in vector_y_candidates]
+    beam_y_size = min(bounding_widths)
+    vector_y_candidates = [vector for vector, widths in zip(vector_y_candidates, bounding_widths) if close(widths, beam_y_size)]
+    vector_y = best_aligned_vector(vector_y_candidates, [0, 1, 0])
+
+    vector_x = cross_vectors(vector_y, vector_z)
+    origin_x = min([dot_vectors(vector_x, point) for point in points])
+    origin_y = min([dot_vectors(vector_x, point) for point in points])
+    origin_z = min([dot_vectors(vector_x, point) for point in points])
+
+    frame = Frame([0, 0, 0], vector_x, vector_y)
+    return frame
+
+
 def ui_add_beam_from_brep_box(process):
     # type: (RobotClampAssemblyProcess) -> None
     ''' Ask user for line(s) to create new beams.
@@ -210,57 +258,35 @@ def ui_add_beam_from_brep_box(process):
     # ask user to pick boxes
     print("Object names in Rhino can be used to srot beams.")
     guids = rs.GetObjects("Select Brep (uncut 6 sided box only)", filter=rs.filter.polysurface)
-    # print(guids)
-
-    def beam_frame_from_vectors(vectors):
-        # type: (list[Vector]) -> Frame
-
-        # Pick longest vector as X axis
-        vectors.sort(key=lambda v: v.length, reverse=True)
-        x_vector = vectors[0]
-        # Pick shortest vector to be Z Axis
-        vectors.sort(key=lambda v: v.length)
-        for vector in vectors:
-            if Vector.cross(vector, x_vector).length > 1e-4:
-                z_vector = vector
-                break
-        frame = Frame([0, 0, 0], x_vector, Vector.cross(x_vector, z_vector).scaled(-1))
-        return frame
 
     if guids is None:
         return
 
     new_beams = []
     for rhino_select_order, guid in enumerate(guids):
+        # Extract the vertices and face_normals from the Brep
+        # The normal at the (u,v) middle of the faces are used
         brep = rs.coercebrep(guid)  # type: Rhino.Geometry.Brep
-        edges = brep.DuplicateEdgeCurves(False)
-        vectors = []  # type: list[Vector]
-        corners = []
-        for edge in edges:
-            start = [edge.PointAtStart.X, edge.PointAtStart.Y, edge.PointAtStart.Z]
-            end = [edge.PointAtEnd.X, edge.PointAtEnd.Y, edge.PointAtEnd.Z]
-            vector = Vector.from_start_end(start, end)
-            vectors.append(vector)
-            corners.append(start)
-            corners.append(end)
-        # Find the frame of the beam (no origin yet)
-        beam_frame = beam_frame_from_vectors(vectors)
+        vertices = [[coor for coor in vertex.Location] for vertex in brep.Vertices]
+        edge_vectors = [subtract_vectors([_ for _ in edge.PointAtStart], [_ for _ in edge.PointAtEnd]) for edge in brep.Edges]
+        face_normals = [[_ for _ in face.NormalAt(face.Domain(0).Mid, face.Domain(1).Mid)] for face in brep.Faces]
 
-        # Find the origin of the beam frame
-        aligned_corners = [beam_frame.to_local_coordinates(point) for point in corners]
+        # * Find the frame of the beam (no origin yet)
+        beam_frame = beam_frame_from_points_and_vectors(vertices, edge_vectors, face_normals)
+
+        # * Origin of the beam frame at minima
+        aligned_corners = [beam_frame.to_local_coordinates(point) for point in vertices]
         bb = bounding_box(aligned_corners)
         bounds_in_wcf = [beam_frame.to_world_coordinates(point) for point in bb]
-        min_corner = bounds_in_wcf[0]
-        max_corner = bounds_in_wcf[6]
-        beam_frame.point = min_corner
+        beam_frame.point = bounds_in_wcf[0]  # min_corner
 
-        # Find the size of the beam from the aligned bounding box.
+        # * Size of the beam from the bounding box.
         bb_size = Vector.from_start_end(bb[0], bb[6])
         length = bb_size.x
         height = bb_size.y
         width = bb_size.z
 
-        # Construct beam object
+        # * Construct beam object
         beam = Beam(frame=beam_frame, length=length, width=width, height=height)
         # Find out the name in Rhino Properities for sorting
         beam.rhino_name = rs.ObjectName(guid)
@@ -542,12 +568,14 @@ def ui_orient_assembly(process):
     # It would be nice if there exist a function to update their frames, but sadly, no.
     process.dependency.invalidate(beam_id, process.compute_pickup_frame)
 
+    print("Assembly transformation complete, redrawing beams")
+
     # Prompt artist to redraw almost everything
     for beam_id in assembly.sequence:
-        artist.redraw_interactive_beam(beam_id, force_update=False, redraw=False)
+        artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
     rs.EnableRedraw(True)
 
-    print("Please wait, transforming assembly from %s to %s" % (source_frame, target_frame))
+    print("Assembly transformation redraw complete.")
 
 
 def something(process):

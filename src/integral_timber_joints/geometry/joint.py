@@ -14,7 +14,7 @@
 import json
 
 from compas.datastructures import Mesh
-from compas.geometry import Cylinder, Polyhedron, Shape
+from compas.geometry import Shape, Transformation
 
 try:
     from integral_timber_joints.geometry.beam import Beam
@@ -23,6 +23,7 @@ try:
 
 except:
     pass
+
 
 class Joint(object):
 
@@ -58,9 +59,36 @@ class Joint(object):
         assert hasattr(self, 'data'), "Inherited class %s do not have data attribute" % self.__class__.__name__
         return self.data
 
-    def modify_parameter(self, key, value, relative = True):
-        #type: (str, Any, bool) -> None
+    # #####################
+    # Modifyable Parameters
+    # #####################
+
+    @property
+    def parameter_keys(self):
+        # type: () -> list[str]
         raise NotImplementedError
+
+    def get_parameter(self, key):
+        # type: (str) -> Any
+        raise NotImplementedError
+
+    def get_parameters_dict(self):
+        # type: () -> Dict[str, Any]
+        return dict(zip(self.parameter_keys, [self.get_parameter(key) for key in self.parameter_keys]))
+
+    def set_parameter(self, key, value):
+        # type: (str, Any) -> None
+        raise NotImplementedError
+
+    def transform(self, transformation):
+        # type: (Transformation) -> None
+        """Transforming the joint object in WCF.
+        Typically called by assembly.transform when initiated by user."""
+        raise NotImplementedError
+
+    # #####################
+    # Joint Shape
+    # #####################
 
     def get_feature_shapes(self, BeamRef):
         # type: (Beam) -> list[Shape]

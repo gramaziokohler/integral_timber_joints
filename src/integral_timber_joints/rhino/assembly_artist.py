@@ -106,6 +106,10 @@ class AssemblyNurbsArtist(object):
         """
         rs.EnableRedraw(False)
 
+        def vprint(str):
+            if verbose:
+                print(str)
+
         # If not delete_old, and there are already items drawn, we preserve them.
         if len(self.beam_guids(beam_id)) > 0 and not delete_old:
             guids = self.beam_guids(beam_id)
@@ -130,13 +134,11 @@ class AssemblyNurbsArtist(object):
                 negative_brep_guids = []
                 # Get the negative meshes from the features and convert them to nurbs
                 for negative_shape in negative_shapes:
-                    if verbose:
-                        print(negative_shape.__class__)
+                    vprint(negative_shape.__class__)
                     if isinstance(negative_shape, Polyhedron):
                         vertices_and_faces = negative_shape.to_vertices_and_faces()
                         struct = vertices_and_faces_to_brep_struct(vertices_and_faces)
-                        if verbose:
-                            print("Polyhedron :", struct)
+                        vprint("Polyhedron : %s" % struct)
                         negative_guids = draw_breps(struct, join=True, redraw=False)
                         negative_brep_guids.extend(negative_guids)
                     elif isinstance(negative_shape, Cylinder):
@@ -144,21 +146,41 @@ class AssemblyNurbsArtist(object):
                         start = cylinder.center + cylinder.normal.scaled(cylinder.height / 2)
                         end = cylinder.center - cylinder.normal.scaled(cylinder.height / 2)
                         struct = {'start': list(start), 'end': list(end), 'radius': cylinder.circle.radius}
-                        if verbose:
-                            print("Cylinder : ", struct)
+                        vprint("Cylinder : %s" % struct)
                         negative_guids = draw_cylinders([struct], cap=True, redraw=False)
                         negative_brep_guids.extend(negative_guids)
 
                 # Perform Boolean Difference
                 positive_breps = [rs.coercebrep(guid) for guid in positive_brep_guids]
                 negative_breps = [rs.coercebrep(guid) for guid in negative_brep_guids]
-                if verbose:
-                    print(positive_breps, negative_breps)
+
+                # Perform MergeCoplanarFaces before boolean to reduce chance of failure
+                [brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance) for brep in negative_breps]
+
+                vprint("negative_breps : %s" % negative_breps)
+                # ! First attempt at boolean all objects together
                 boolean_result = rg.Brep.CreateBooleanDifference(positive_breps, negative_breps, TOL)
+
+                # ! Second attempt at boolean objects one by one
                 if boolean_result is None:
-                    print("ERROR: AssemblyNurbArtist draw_beam(%s) Boolean Failure" % beam_id)
+                    vprint("WARNING: AssemblyNurbArtist draw_beam(%s) Group Boolean Failure" % beam_id)
+                    pos = positive_breps
+                    for neg in negative_breps:
+                        pos = rg.Brep.CreateBooleanDifference(pos, [neg], TOL)
+                        if pos is None:
+                            vprint("WARNING: AssemblyNurbArtist draw_beam(%s) Iterative Boolean Failure" % beam_id)
+                            break
+                    boolean_result = pos
+
+                if boolean_result is None:
+                    print("ERROR: AssemblyNurbArtist draw_beam(%s) Boolean All Failure" % beam_id)
+                    # delete_objects(positive_brep_guids + negative_brep_guids, purge=True, redraw=False)
+                    # delete_objects(negative_brep_guids, purge=True, redraw=False)
+                    # [sc.doc.Objects.AddBrep(brep) for brep in negative_breps]
                 else:
                     for brep in boolean_result:
+                        # Perform MergeCoplanarFaces after boolean to clean up
+                        brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance)
                         # New guids from boolean results
                         guid = add_brep(brep)
                         if guid:
@@ -182,7 +204,6 @@ class AssemblyNurbsArtist(object):
             # Enable redraw
             if redraw:
                 rs.EnableRedraw(True)
-
 
         return guids
 

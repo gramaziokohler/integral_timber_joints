@@ -21,8 +21,8 @@ except:
 # -------------------------------------
 
 
-def compute_pickup_frame(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_pickup_frame(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """ Compute the pickup frame of a beam
     Beam assembly direcion must be valid. Grasp face and PickupStation and must be assigned before.
 
@@ -63,8 +63,8 @@ def compute_pickup_frame(process, beam_id):
         return ComputationalResult.ValidCannotContinue
 
 
-def compute_pickup_location_by_aligning_corner(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_pickup_location_by_aligning_corner(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """ Compute 'assembly_wcf_pickup' alignment frame
     by aligning a choosen corner relative to the 'gripper_grasp_face'
     to the given pickup_station_frame.
@@ -174,8 +174,8 @@ def _compute_alignment_corner_from_grasp_face(process, beam_id, align_face_X0=Tr
     return corner
 
 
-def compute_beam_pickupapproach(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_beam_pickupapproach(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """ Compute gripper retract positions from 'assembly_wcf_pickup'.
     Approach vector is taken from gripper's approach vector (tcf) -> (beam ocf)
 
@@ -227,8 +227,8 @@ def compute_beam_pickupapproach(process, beam_id):
     return ComputationalResult.ValidCanContinue
 
 
-def compute_beam_finalretract(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_beam_finalretract(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """ Compute gripper retract positions from 'assembly_wcf_final'.
     Retraction direction and amount wcf) is taken from gripper attribute 'approach_vector', reversed.
 
@@ -268,8 +268,8 @@ def compute_beam_finalretract(process, beam_id):
     return ComputationalResult.ValidCanContinue
 
 
-def compute_beam_pickupretract(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_beam_pickupretract(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """Compute 'assembly_wcf_pickupretract' from beam attributes:
     by transforming 'assembly_wcf_pickup' along 'PickupStation.pickup_retract_vector'.
 
@@ -292,47 +292,79 @@ def compute_beam_pickupretract(process, beam_id):
     # Check to ensure prerequisite
     if process.pickup_station is None:
         print("pickup_station is not set")
-        return ComputationalResult.ValidCannotContinue
+
+    def vprint(str):
+        if verbose:
+            print(str)
 
     # * Compute assembly_wcf_pickupretract
     assembly_wcf_pickup = process.assembly.get_beam_attribute(beam_id, 'assembly_wcf_pickup')
+    vprint("assembly_wcf_pickup = %s" % (assembly_wcf_pickup))
+
     retract_vector = process.pickup_station.pickup_retract_vector
-    T = Translation.from_vector(retract_vector)
-    assembly_wcf_pickupretract = assembly_wcf_pickup.transformed(T)
+    vprint("retract_vector = %s" % (retract_vector))
+    t_beam_final_from_beam_at_pickup = Translation.from_vector(retract_vector)
+    assembly_wcf_pickupretract = assembly_wcf_pickup.transformed(t_beam_final_from_beam_at_pickup)
+    vprint("assembly_wcf_pickupretract = %s" % (assembly_wcf_pickupretract))
+
     process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_pickupretract', assembly_wcf_pickupretract)
+    vprint("process.assembly.set_beam_attribute(%s, 'assembly_wcf_pickupretract', %s)" % (beam_id, assembly_wcf_pickupretract))
 
     # Check if beam is of type SCREWED, otherwise stop here
     if process.assembly.get_beam_attribute(beam_id, 'assembly_method') not in BeamAssemblyMethod.screw_methods:
-        return ComputationalResult.ValidCanContinue
+        vprint("return ComputationalResult.ValidCanContinue")
 
     # * Compute assembly_wcf_screwdriver_attachment_pose
     beam = process.assembly.beam(beam_id)
     assembly_vector_final_in_wcf = process.assembly.get_beam_attribute(beam_id, 'assembly_vector_final')
-    T = process.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_pickup')
-    assembly_vector_at_pickup_in_wcf = assembly_vector_final_in_wcf.transformed(T)
-    print(assembly_vector_at_pickup_in_wcf)
+    t_beam_final_from_beam_at_pickup = process.assembly.get_beam_transformaion_to(beam_id, 'assembly_wcf_pickup')
+    assembly_vector_at_pickup_in_wcf = assembly_vector_final_in_wcf.transformed(t_beam_final_from_beam_at_pickup)
+    vprint("assembly_vector_at_pickup_in_wcf = %s" % (assembly_vector_at_pickup_in_wcf))
 
     assembly_vector_up_amount = Vector(0, 0, 1).dot(assembly_vector_at_pickup_in_wcf)
-    print(assembly_vector_up_amount)
+    vprint("assembly_vector_up_amount = %s" % (assembly_vector_up_amount))
 
-    if abs(assembly_vector_up_amount) < 0.1:  # If assembly vector is facing parallel to ground
-        # Rotate Face 1 to 2
-        t_world_from_beam_final = Transformation.from_frame(beam.get_face_frame(1))
-        t_world_from_beam_final_newpose = Transformation.from_frame(beam.get_face_frame(2))
-        t_beam_at_pickupretract_from_beam_newpose = t_world_from_beam_final.inverse() * t_world_from_beam_final_newpose
-    elif assembly_vector_up_amount > 0:  # Facing Up
-        # Rotate Face 1 to 3
-        t_world_from_beam_final = Transformation.from_frame(beam.get_face_frame(1))
-        t_world_from_beam_final_newpose = Transformation.from_frame(beam.get_face_frame(3))
-        t_beam_at_pickupretract_from_beam_newpose = t_world_from_beam_final.inverse() * t_world_from_beam_final_newpose
-    else:  # Facing Down
-        t_beam_at_pickupretract_from_beam_newpose = Transformation.from_matrix(identity_matrix(4))
+    def four_possible_rotations():
+        rotations = []
+        for i in range(1, 5):
+            # ! This is the same code spelled out in matrix transformation:
+            # t_world_from_beam_final = Transformation.from_frame(beam.get_face_frame(1))
+            # t_world_from_beam_final_newpose = Transformation.from_frame(beam.get_face_frame(i))
+            # t_beam_at_pickupretract_from_beam_newpose = t_world_from_beam_final.inverse() * t_world_from_beam_final_newpose
+            # rotations.append(t_beam_at_pickupretract_from_beam_newpose)
+            rotations.append(Transformation.from_change_of_basis(beam.get_face_frame(i), beam.get_face_frame(1)))
+        return rotations
 
+    t_world_from_beam_at_final = Transformation.from_frame(beam.frame)
+    assembly_vector_in_ocf = assembly_vector_final_in_wcf.transformed(t_world_from_beam_at_final.inverse())
+    vprint('assembly_vector_final_in_wcf = %s' % assembly_vector_final_in_wcf)
+    vprint('assembly_vector_in_ocf = %s' % assembly_vector_in_ocf)
+
+    possible_rotation_vectors = []
+    possible_rotation_vector_dowm_amount = []
+    # Trying all four possible rotations to get a new assembly and compare it so see which one points downwards
+    for t_change_of_basis_rotation_at_final in four_possible_rotations():
+        vprint("t_change_of_basis_rotation_at_final = %s" % t_change_of_basis_rotation_at_final)
+        new_assembly_vector_in_ocf = assembly_vector_in_ocf.transformed(t_change_of_basis_rotation_at_final)
+        vprint('new_assembly_vector_in_ocf = %s' % new_assembly_vector_in_ocf)
+        new_assembly_vector_at_pickup_in_wcf = new_assembly_vector_in_ocf.transformed(t_world_from_beam_at_final).transformed(t_beam_final_from_beam_at_pickup)
+        vprint('new_assembly_vector_at_pickup_in_wcf = %s' % new_assembly_vector_at_pickup_in_wcf)
+        new_assembly_vector_down_amount = Vector(0, 0, -1).dot(new_assembly_vector_at_pickup_in_wcf)
+        vprint('new_assembly_vector_down_amount = %s' % new_assembly_vector_down_amount)
+        possible_rotation_vectors.append(t_change_of_basis_rotation_at_final)
+        possible_rotation_vector_dowm_amount.append(new_assembly_vector_down_amount)
+        vprint("--------------")
+
+    # After identifying the best rotation. Apply it to find the new pose of the beam after pickup
+    x = max(possible_rotation_vector_dowm_amount)
+
+    best_rotation_index = possible_rotation_vector_dowm_amount.index(x)
     t_world_from_beam_at_pickupretract = Transformation.from_frame(assembly_wcf_pickupretract)
-    t_world_from_beam_at_newpose = t_world_from_beam_at_pickupretract * t_beam_at_pickupretract_from_beam_newpose
-    process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_screwdriver_attachment_pose', Frame.from_transformation(t_world_from_beam_at_newpose))
+    t_world_from_beam_at_newpose = t_world_from_beam_at_pickupretract * possible_rotation_vectors[best_rotation_index]
 
-    # beam.reference_side_ocf
+    f_world_from_beam_at_newpose = Frame.from_transformation(t_world_from_beam_at_newpose)
+    process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_screwdriver_attachment_pose', f_world_from_beam_at_newpose)
+    vprint("process.assembly.set_beam_attribute(%s, 'assembly_wcf_screwdriver_attachment_pose', %s)" % (beam_id, f_world_from_beam_at_newpose))
 
     return ComputationalResult.ValidCanContinue
 
@@ -374,8 +406,8 @@ def _compute_gripper_approach_vector_wcf_final(process, beam_id, verbose=False):
     return approach_vector_wcf_final
 
 
-def compute_storeage_frame(process, beam_id):
-    # type: (RobotClampAssemblyProcess, str) -> ComputationalResult
+def compute_storeage_frame(process, beam_id, verbose = False):
+    # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """Compute the storage frame of a beam in the stack.
 
     Note

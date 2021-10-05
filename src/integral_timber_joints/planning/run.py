@@ -1,5 +1,6 @@
 import os
 import time
+import logging
 import numpy as np
 import argparse
 import pybullet_planning as pp
@@ -21,6 +22,8 @@ from integral_timber_joints.planning.smoothing import smooth_movement_trajectory
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.movement import RoboticMovement
+
+from compas_fab_pychoreo.backend_features.pychoreo_plan_motion import MOTION_PLANNING_ALGORITHMS
 
 SOLVE_MODE = [
     'nonlinear',
@@ -84,7 +87,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     if 'movement_id_filter' in options:
         del options['movement_id_filter']
 
-    with LockRenderer(not args.debug) as lockrenderer:
+    with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
         options['lockrenderer'] = lockrenderer
         # TODO loop and backtrack
         # TODO have to find a way to recover movements
@@ -95,6 +98,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found using nonlinear planning at stage 1 for beam {}!'.format(beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -105,6 +109,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found using nonlinear planning at stage 2 for beam {}!'.format(beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -118,6 +123,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found using nonlinear planning at stage 3 for beam {}!'.format(beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -129,6 +135,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.both_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found using nonlinear planning at stage 4 for beam {}!'.format(beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -143,6 +150,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     check_type_only=True)
                 if not success:
                     print('No success for linear (chained) planning.')
+                    logging.info('A plan NOT found using linear (chained) planning {}!'.format(beam_id))
                     return False
                 altered_movements.extend(altered_ms)
 
@@ -152,6 +160,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     options=options, diagnosis=args.diagnosis)
                 if not success:
                     print('No success for free motions')
+                    logging.info('A plan NOT found for free motion in beam id {}!'.format(beam_id))
                     return False
                 altered_movements.extend(altered_ms)
 
@@ -159,7 +168,10 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 # * compute for movement_id movement
                 cprint('Computing only for {}'.format(args.movement_id), 'yellow')
                 options['movement_id_filter'] = [args.movement_id]
-                chosen_m = process.get_movement_by_movement_id(args.movement_id)
+                if args.movement_id.startswith('A'):
+                    chosen_m = process.get_movement_by_movement_id(args.movement_id)
+                else:
+                    chosen_m = process.movements[int(args.movement_id)]
                 # * if linear movement and has both end specified, ask user keep start or end
                 if get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.has_traj, MovementStatus.both_done]:
                     chosen_m.trajectory = None
@@ -179,6 +191,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
                     None, options=options, diagnosis=args.diagnosis)
                 if not success:
+                    logging.info('A plan NOT found for movement_id {}!'.format(args.movement_id))
                     return False
                 altered_movements.extend(altered_ms)
             else:
@@ -191,6 +204,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
     # * smoothing
     if args.smooth:
+        print('Smoothing trajectory...')
         smoothed_movements = []
         with pp.LockRenderer(): # not args.debug):
             for altered_m in altered_movements:
@@ -206,15 +220,22 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
     # * final visualization
     if args.watch:
+        # order movement according to their ids
+        viz_movements = {}
+        for am in altered_movements:
+            index = process.movements.index(am)
+            viz_movements[index] = am
         print('='*20)
         print_title('Visualize results')
         wait_if_gui('Start simulating results. Press enter to start.')
         set_state(client, robot, process, process.initial_state)
-        for altered_m in altered_movements:
-            visualize_movement_trajectory(client, robot, process, altered_m, step_sim=args.step_sim)
+        for m_id in sorted(viz_movements.keys()):
+            visualize_movement_trajectory(client, robot, process, viz_movements[m_id], step_sim=args.step_sim)
 
     if args.verbose:
         notify('A plan has been found for beam id {}!'.format(beam_id))
+
+    logging.info('A plan has been found for beam id {}!'.format(beam_id))
     return success
 
 #################################
@@ -228,11 +249,11 @@ def main():
     parser.add_argument('--problem_subdir', default='.',
                         help='subdir of the process file, default to `.`. Popular use: `results`')
     #
-    parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided, ')
+    parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
-    parser.add_argument('--smooth', action='store_true', help='Apply smoothing.')
+    parser.add_argument('--smooth', action='store_false', help='Apply smoothing.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
@@ -244,13 +265,26 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Debug mode.')
     parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode, show collisions whenever encountered')
     parser.add_argument('--verbose', action='store_false', help='Print out verbose. Defaults to True.')
+    parser.add_argument('--draw_mp_exploration', action='store_true', help='Draw motion planning graph exploration. Should be used together with diagnosis')
     #
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     #
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
     parser.add_argument('--max_distance', default=0.0, type=float, help='Buffering distance for collision checking, larger means safer. Defaults to 0.')
+    parser.add_argument('--solve_timeout', default=600.0, type=float, help='For automatic planning retry, number of seconds before giving up. Defaults to 600.')
+    parser.add_argument('--mp_algorithm', default='birrt', type=str, choices=MOTION_PLANNING_ALGORITHMS, help='Motion planning algorithms.')
+    parser.add_argument('--rrt_iterations', default=400, type=int, help='Number of iterations within one rrt session. Defaults to 400.')
+    parser.add_argument('--birrt_enforce_alternate', action='store_true', help='Enfroce tree exploration alternation in birrt.')
+    parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
+
     args = parser.parse_args()
     print('Arguments:', args)
+
+    log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir='results'))
+    log_path = os.path.join(log_folder, 'run.log')
+    logging.basicConfig(filename=log_path, format='%(asctime)s | %(levelname)s | %(message)s', level=logging.DEBUG)
+    logging.info("planning.run.py started with args: %s" % args)
+
     print('='*10)
     if args.movement_id is not None:
         args.solve_mode = 'movement_id'
@@ -289,7 +323,16 @@ def main():
         'jump_threshold' : joint_jump_threshold,
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
+        'solve_timeout': args.solve_timeout,
+        'rrt_iterations': args.rrt_iterations,
+        'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,
+        'mp_algorithm' : args.mp_algorithm,
+        'birrt_enforce_alternate' : args.birrt_enforce_alternate,
     }
+    if len(args.reachable_range) == 2:
+        options.update({
+        'reachable_range': (args.reachable_range[0], args.reachable_range[1]),
+        })
     if args.smooth:
         options.update(
             {'smooth_iterations' : 150,

@@ -409,6 +409,7 @@ class Beam(Network):
     def reference_side_ocf(self, side_id):
         # type: (int) -> Frame
         """ Returns the Coordinate Frame of a reference side as defined in BTLx 1.1
+
         Reference to OCF
         """
         if side_id == 1:
@@ -469,6 +470,34 @@ class Beam(Network):
         compas.geometry.Line
         """
         return self.frame.to_world_coordinates(self.reference_edge_ocf(edge_id, wrap_edge_id))
+
+    def ending_reference_side_ocf(self, side_id):
+        # type: (int) -> Frame
+        """ Returns the Coordinate Frame of a reference side similar to reference_side_ocf()
+        but on the ending side of the beam.
+
+        Reference to OCF
+        """
+        if side_id == 1:
+            return Frame(self.corner_ocf(8), Vector.Xaxis().scaled(-1), Vector.Zaxis().scaled(-1))
+        if side_id == 2:
+            return Frame(self.corner_ocf(5), Vector.Xaxis().scaled(-1), Vector.Yaxis())
+        if side_id == 3:
+            return Frame(self.corner_ocf(6), Vector.Xaxis().scaled(-1), Vector.Zaxis())
+        if side_id == 4:
+            return Frame(self.corner_ocf(7), Vector.Xaxis().scaled(-1), Vector.Yaxis().scaled(-1))
+        raise IndexError("side_id only accepts (int) 1 - 4")
+
+    def ending_reference_side_wcf(self, side_id):
+        # type: (int) -> Frame
+        """ Returns the Coordinate Frame of a reference side similar to reference_side_ocf()
+        but on the ending side of the beam.
+
+        Reference to WCF
+        """
+        T = Transformation.from_frame(self.frame)
+        return self.ending_reference_side_ocf(side_id).transformed(T)
+
 
     # -------------------------
     # Transformation

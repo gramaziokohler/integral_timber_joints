@@ -22,11 +22,75 @@ except:
     pass
 
 
+############
+# Drawing
+############
+
 def redraw_state(process):
     artist = get_process_artist()
-    artist.delete_state(redraw=False)
+    # artist.delete_state(redraw=False)
     artist.draw_state(redraw=True)  # Visualize the state
     print_current_state_info(process)
+
+
+def print_current_state_info(process, print_prev=True, print_state=True, print_next=True):
+    # type: (RobotClampAssemblyProcess, bool, bool, bool) -> None
+    """Note when state_id = 1, it is referring to end of the first (0) movement."""
+    artist = get_process_artist()
+    all_movements = process.movements
+    state_id = artist.selected_state_id
+    # Retrive prev and next movement for information print out
+    prev_movement = all_movements[state_id - 1] if state_id > 0 else None  # type: Movement
+    next_movement = all_movements[state_id] if state_id < len(all_movements) else None  # type: Movement
+
+    print("-----------------------------------------------")
+
+    # * Printing Previous Movement Info
+    if prev_movement is not None and print_prev:
+        action = process.get_action_of_movement(prev_movement)
+        print("- Prev Movement: %s (%s) (A:%s M:%s)" % (prev_movement.tag, prev_movement.movement_id, action.__class__.__name__, prev_movement.__class__.__name__))
+        if isinstance(prev_movement, RoboticMovement):
+            print("  - Prev Movement allowed_collision_matrix: %s" % prev_movement.allowed_collision_matrix)
+        if prev_movement.operator_stop_after is not None:
+            print("  - Operator Confirm: %s" % prev_movement.operator_stop_after)
+
+    # * Printing Current State Info
+    if print_state:
+        if state_id == 0:
+            config_string = "(Robot Initial State)"
+        elif process.movement_has_end_robot_config(prev_movement):
+            config_string = " (Robot Config is Fixed!)"
+        else:
+            config_string = ""
+        print("- Current Scene: #%i [0 to %i]. %s" % (state_id, len(all_movements), config_string))
+
+    # * Printing Next Movement Info
+    if next_movement is not None and print_next:
+        action = process.get_action_of_movement(next_movement)
+        print("- Next Movement: %s (%s) (A:%s M:%s)" % (next_movement.tag, next_movement.movement_id, action.__class__.__name__, next_movement.__class__.__name__))
+        if isinstance(next_movement, RoboticMovement):
+            print("  - Next Movement allowed_collision_matrix: %s" % next_movement.allowed_collision_matrix)
+        if next_movement.operator_stop_before is not None:
+            print("  - Operator Confirm: %s" % next_movement.operator_stop_before)
+
+    print("-----------------------------------------------")
+
+
+def ui_show_env_meshes(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    artist = get_process_artist()
+    artist.show_all_env_mesh()
+
+
+def ui_hide_env_meshes(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    artist = get_process_artist()
+    artist.hide_all_env_mesh()
+
+
+############
+# Navigation
+############
 
 
 def ui_next_step(process):
@@ -47,6 +111,30 @@ def ui_prev_step(process):
 
     if artist.selected_state_id > 0:
         artist.selected_state_id -= 1
+
+
+def ui_next_robotic_movement(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+    all_movements = process.movements
+    while artist.selected_state_id < len(all_movements):
+        artist.selected_state_id += 1
+        movement = all_movements[artist.selected_state_id - 1]
+        if isinstance(movement, RoboticMovement):
+            return
+
+
+def ui_prev_robotic_movement(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+    all_movements = process.movements
+    while artist.selected_state_id > 0:
+        artist.selected_state_id -= 1
+        movement = all_movements[artist.selected_state_id - 1]
+        if isinstance(movement, RoboticMovement):
+            return
 
 
 def ui_goto_state_by_beam_seq(process):
@@ -94,48 +182,9 @@ def ui_goto_state_by_state_index(process, selected_state_id=None):
     # Select the start state of the first movement.
     artist.selected_state_id = selected_state_id
 
-
-def print_current_state_info(process, print_prev=True, print_state=True, print_next=True):
-    # type: (RobotClampAssemblyProcess, bool, bool, bool) -> None
-    """Note when state_id = 1, it is referring to end of the first (0) movement."""
-    artist = get_process_artist()
-    all_movements = process.movements
-    state_id = artist.selected_state_id
-    # Retrive prev and next movement for information print out
-    prev_movement = all_movements[state_id - 1] if state_id > 0 else None  # type: Movement
-    next_movement = all_movements[state_id] if state_id < len(all_movements) else None  # type: Movement
-
-    print("-----------------------------------------------")
-
-    # * Printing Previous Movement Info
-    if prev_movement is not None and print_prev:
-        action = process.get_action_of_movement(prev_movement)
-        print("- Prev Movement: %s (%s) (A:%s M:%s)" % (prev_movement.tag, prev_movement.movement_id, action.__class__.__name__, prev_movement.__class__.__name__))
-        if isinstance(prev_movement, RoboticMovement):
-            print("  - Prev Movement allowed_collision_matrix: %s" % prev_movement.allowed_collision_matrix)
-        if prev_movement.operator_stop_after is not None:
-            print("  - Operator Confirm: %s" % prev_movement.operator_stop_after)
-
-    # * Printing Current State Info
-    if print_state:
-        if state_id == 0:
-            config_string = "(Robot Initial State)"
-        elif process.movement_has_end_robot_config(prev_movement):
-            config_string = " (Robot Config is Fixed!)"
-        else:
-            config_string = ""
-        print("- Current Scene: #%i [0 to %i]. %s" % (state_id, len(all_movements), config_string))
-
-    # * Printing Next Movement Info
-    if next_movement is not None and print_next:
-        action = process.get_action_of_movement(next_movement)
-        print("- Next Movement: %s (%s) (A:%s M:%s)" % (next_movement.tag, next_movement.movement_id, action.__class__.__name__, next_movement.__class__.__name__))
-        if isinstance(next_movement, RoboticMovement):
-            print("  - Next Movement allowed_collision_matrix: %s" % next_movement.allowed_collision_matrix)
-        if next_movement.operator_stop_before is not None:
-            print("  - Operator Confirm: %s" % next_movement.operator_stop_before)
-
-    print("-----------------------------------------------")
+############
+# Get IK
+############
 
 
 def ui_get_ik(process):
@@ -200,18 +249,6 @@ def ui_save_ik(process):
         print("IK Saved at end of %s : %s" % (prev_movement.__class__.__name__, prev_movement.tag))
 
 
-def ui_show_env_meshes(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    artist = get_process_artist()
-    artist.show_all_env_mesh()
-
-
-def ui_hide_env_meshes(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    artist = get_process_artist()
-    artist.hide_all_env_mesh()
-
-
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
     assembly = process.assembly  # type: Assembly
@@ -264,6 +301,10 @@ def show_menu(process):
                 {'name': 'NextStep', 'action': ui_next_step
                  },
                 {'name': 'PrevStep', 'action': ui_prev_step
+                 },
+                {'name': 'NextRoboticMovement', 'action': ui_next_robotic_movement
+                 },
+                {'name': 'PrevRoboticMovement', 'action': ui_prev_robotic_movement
                  },
                 {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
                  },
