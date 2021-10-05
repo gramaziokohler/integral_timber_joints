@@ -287,41 +287,45 @@ class JointPolylineLap(Joint):
         shapes = []
 
         # vector_to_top =
+        vector_to_top = Vector.from_start_end(self.corner_pts[0], self.corner_pts[4]).unitized().scaled(self.top_side_thickness).scaled(1.1)
+        vector_to_bottom = Vector.from_start_end(self.corner_pts[4], self.corner_pts[0]).unitized().scaled(self._total_thickness - self.top_side_thickness).scaled(1.1)
         # i is an index that help rotate the quad index by 1
         i = 0 if self.is_joint_on_beam_move else 1
         if self.is_joint_on_top:
             hf = self.height_fraction_at_mid
             poly_line_mid = self._polyline_at_height(i, hf) + self._extline_at_height(i+1, hf) + self._polyline_at_height(i+2, hf) + self._extline_at_height(i+3, hf)
-            vector_to_top = Vector.from_start_end(self.corner_pts[0], self.corner_pts[4]).unitized().scaled(self.top_side_thickness).scaled(1.1)
             shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_mid, vector_to_top))
 
         else:
             hf = self.height_fraction_at_mid
             poly_line_mid = self._polyline_at_height(i, hf) + self._extline_at_height(i+1, hf) + self._polyline_at_height(i+2, hf) + self._extline_at_height(i+3, hf)
-            vector_to_bottom = Vector.from_start_end(self.corner_pts[4], self.corner_pts[0]).unitized().scaled(self._total_thickness - self.top_side_thickness).scaled(1.1)
             shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_mid, vector_to_bottom))
 
         # Adding the two side cuts (if they have > 2 points)
-        tol = 1e-3 if self.is_joint_on_top else -1e-3
+        if self.is_joint_on_top:
+            tol = 1e-3
+            sidecut_extrusion_vector = vector_to_bottom # = Vector.from_start_end(self.corner_pts[4], self.corner_pts[0]).unitized().scaled(self._total_thickness - self.top_side_thickness).scaled(1.1)
+        else:
+            tol = -1e-3
+            sidecut_extrusion_vector = vector_to_top # = Vector.from_start_end(self.corner_pts[0], self.corner_pts[4]).unitized().scaled(self.top_side_thickness).scaled(1.1)
+
         if len(self.polylines[i+1]) > 2:
-            if self.is_joint_on_top:
-                poly_line_mid = self._polyline_at_mid(i+1, tol)[::-1] + self._extline_at_mid(i+1, tol)
-                poly_line_btm = self._polyline_at_btm(i+1)[::-1] + self._extline_at_btm(i+1)
-                shapes.append(polyhedron_box_from_vertices(poly_line_btm + poly_line_mid))
-            else:
-                poly_line_mid = self._polyline_at_mid(i+1, tol)[::-1] + self._extline_at_mid(i+1, tol)
-                poly_line_top = self._polyline_at_top(i+1)[::-1] + self._extline_at_top(i+1)
-                shapes.append(polyhedron_box_from_vertices(poly_line_mid + poly_line_top))
+            poly_line_mid = self._polyline_at_mid(i+1, tol)[::-1] + self._extline_at_mid(i+1, tol)
+            shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_mid, sidecut_extrusion_vector))
 
         if len(self.polylines[(i+3) % 4]) > 2:
-            if self.is_joint_on_top:
-                poly_line_mid = self._polyline_at_mid(i+3, tol)[::-1] + self._extline_at_mid(i+3, tol)
-                poly_line_btm = self._polyline_at_btm(i+3)[::-1] + self._extline_at_btm(i+3)
-                shapes.append(polyhedron_box_from_vertices(poly_line_btm + poly_line_mid))
-            else:
-                poly_line_mid = self._polyline_at_mid(i+3, tol)[::-1] + self._extline_at_mid(i+3, tol)
-                poly_line_top = self._polyline_at_top(i+3)[::-1] + self._extline_at_top(i+3)
-                shapes.append(polyhedron_box_from_vertices(poly_line_mid + poly_line_top))
+            poly_line_mid = self._polyline_at_mid(i+3, tol)[::-1] + self._extline_at_mid(i+3, tol)
+            shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_mid, sidecut_extrusion_vector))
+
+        # hf = self.height_fraction_at_mid + tol
+            # if self.is_joint_on_top:
+            #     poly_line_mid = self._polyline_at_mid(i+3, tol)[::-1] + self._extline_at_mid(i+3, tol)
+            #     poly_line_btm = self._polyline_at_btm(i+3)[::-1] + self._extline_at_btm(i+3)
+            #     shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_btm + poly_line_mid))
+            # else:
+            #     poly_line_mid = self._polyline_at_mid(i+3, tol)[::-1] + self._extline_at_mid(i+3, tol)
+            #     poly_line_top = self._polyline_at_top(i+3)[::-1] + self._extline_at_top(i+3)
+            #     shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_mid + poly_line_top))
 
         return shapes
 
