@@ -76,14 +76,30 @@ def draw_selectable_joint(process, joint_id, redraw=True, color=None):
             # print("Cylinder : ", struct)
             guids_for_union.extend(draw_cylinders([struct], cap=True, redraw=False))
     breps = [rs.coercebrep(guid) for guid in guids_for_union]
-    # [brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance) for brep in breps]
+    success = [brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance) for brep in breps]
+    print ("MergeCoplanarFaces success : %s" % success)
     boolean_result = rg.Brep.CreateBooleanUnion(breps, sc.doc.ModelAbsoluteTolerance)
     # print (boolean_result)
-    delete_objects(guids_for_union, purge=True, redraw=False)
 
     if boolean_result is None:
-        print("ERROR: joints.py draw_joint_boolean_feature(%s-%s) Boolean Failure" % joint_id)
+        print("Warning: joints.py draw_joint_boolean_feature(%s-%s) Group Boolean Union Failure" % joint_id)
+        temp_result = [breps[0]]
+        for brep in breps[1:]:
+            temp_result.append(brep)
+            temp_result = rg.Brep.CreateBooleanUnion(temp_result, sc.doc.ModelAbsoluteTolerance)
+            if temp_result is None:
+                print("Warning: joints.py draw_joint_boolean_feature(%s-%s) Iterative Boolean Union Failure" % joint_id)
+                continue
+            print("Warning: Still OK")
+
+            temp_result = list(temp_result)
+        boolean_result = temp_result
+
+    if boolean_result is None:
+        print("ERROR: joints.py draw_joint_boolean_feature(%s-%s) Boolean Union Failure" % joint_id)
         boolean_result = breps
+    else:
+        delete_objects(guids_for_union, purge=True, redraw=False)
 
     # Add boolean result into Rhino Doc and save their guids
     artist._joint_features[joint_id] = []
