@@ -155,7 +155,7 @@ class AssemblyNurbsArtist(object):
                 negative_breps = [rs.coercebrep(guid) for guid in negative_brep_guids]
 
                 # Perform MergeCoplanarFaces before boolean to reduce chance of failure
-                print ([brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance) for brep in negative_breps])
+                [brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance) for brep in negative_breps]
 
                 vprint("negative_breps : %s" % negative_breps)
                 # ! First attempt at boolean all objects together
