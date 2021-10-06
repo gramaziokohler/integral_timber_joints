@@ -80,7 +80,10 @@ def draw_selectable_joint(process, joint_id, redraw=True, color=None):
     # ! First attempt at boolean all objects together
     success = [brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance) for brep in breps]
     # print("MergeCoplanarFaces success : %s" % success)
-    boolean_result = rg.Brep.CreateBooleanUnion(breps, sc.doc.ModelAbsoluteTolerance)
+    if len(breps) > 1:
+        boolean_result = rg.Brep.CreateBooleanUnion(breps, sc.doc.ModelAbsoluteTolerance)
+    else:
+        boolean_result = breps
     # print (boolean_result)
 
     # ! Second attempt at boolean objects iteratively together
@@ -194,6 +197,7 @@ def _get_filter_of_selectable_joints(process, joint_types=[], forward_joint=True
         return rhino_object.Attributes.ObjectId in selectable_joint_guids
     return joint_feature_filter
 
+
 def show_selectable_joints_by_id(process, joint_ids=[], redraw=False):
     # type: (RobotClampAssemblyProcess, list[Tuple[str,str]], bool) -> None
     artist = get_process_artist()
@@ -267,7 +271,14 @@ def users_select_feature(process, joint_types=None, forward_joint=True, backward
         return rhino_object.Attributes.ObjectId in selectable_joint_guids
     go.SetCustomGeometryFilter(joint_feature_filter)
 
-    result = go.GetMultiple(0, 0)
+    # * First Selection is single select and return
+    go.	AddOption("MultiSelect")
+    result = go.Get()
+
+    # * If user opted for muiltiselect, another selection is prompted
+    if result == Rhino.Input.GetResult.Option and go.Option().EnglishName == "MultiSelect":
+        go.SetCommandPrompt(prompt + " (MultiSelect)")
+        result = go.GetMultiple(0, 0)
 
     if result is None or result == Rhino.Input.GetResult.Cancel:
         return None
@@ -973,14 +984,15 @@ def change_joint_polyline_lap_parameters(process, joint_type=JointPolylineLap):
         for beam_id in affected_beams:
             artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
 
+
 def select_joint_parameter_to_change(process, joint_ids):
     # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
 
     joint_type = process.assembly.joint(joint_ids[0]).__class__
     assert len(set(process.assembly.joint(joint_id).__class__.__name__ for joint_id in joint_ids)) == 1
 
-    print ("Change parameter for %s. Type %s" % (str(joint_ids), joint_type))
-    print ("Done")
+    print("Change parameter for %s. Type %s" % (str(joint_ids), joint_type))
+    print("Done")
 
 
 def show_menu(process):
