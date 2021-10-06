@@ -1,4 +1,5 @@
 import os
+import random
 from integral_timber_joints.planning.pddlstream_definitions import ITJ_PDDLSTREAM_DEF_DIR
 from integral_timber_joints.planning import load_pddlstream
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
@@ -13,23 +14,23 @@ from compas_fab.robots import Trajectory
 
 class EmptyTrajectory(object):
     def __init__(self, tag=''):
-        self.tag = tag
+        self.tag = tag or random.random()
     def __repr__(self):
-        return 'Traj{}'.format(self.tag)
+        return 'Traj-{:.2f}'.format(self.tag)
 
 class EmptyConfiguration(object):
     def __init__(self, tag=''):
-        self.tag = tag
+        self.tag = tag or random.random()
     def __repr__(self):
-        return 'Conf{}'.format(self.tag)
+        return 'Conf-{:.2f}'.format(self.tag)
 
-def get_pddlstream_problem(process, use_partial_order=True, debug=False):
+def get_pddlstream_problem(process, use_partial_order=True, debug=False, reset_to_home=True):
     domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic_domain.pddl'))
     stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic_stream.pddl'))
 
     init = []
 
-    home_conf = EmptyConfiguration('-home')
+    home_conf = EmptyConfiguration(0)
     constant_map = {}
 
     init.extend([
@@ -75,11 +76,11 @@ def get_pddlstream_problem(process, use_partial_order=True, debug=False):
         ])
 
     stream_map = {
-        'sample-move': from_fn(lambda conf1, conf2: (EmptyTrajectory(),)),
-        'sample-pick-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
-        'sample-place-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
-        'sample-pick-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
-        'sample-place-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
+        # 'sample-move': from_fn(lambda conf1, conf2: (EmptyTrajectory(),)),
+        # 'sample-pick-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
+        # 'sample-place-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
+        # 'sample-pick-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
+        # 'sample-place-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
     #     'inverse-kinematics':  from_fn(lambda p: (p + GRASP,)),
     #     'test-cfree': from_test(lambda *args: not collision_test(*args)),
     }
@@ -89,8 +90,9 @@ def get_pddlstream_problem(process, use_partial_order=True, debug=False):
 
     goal_literals = []
     goal_literals.extend(('Assembled', e) for e in beam_seq)
-    goal_literals.extend(('AtRack', t) for t in list(process.clamps) + list(process.grippers))
-    goal_literals.append(('RobotAtConf', home_conf))
+    if reset_to_home:
+        goal_literals.extend(('AtRack', t) for t in list(process.clamps) + list(process.grippers))
+        goal_literals.append(('RobotAtConf', home_conf))
     goal = And(*goal_literals)
 
     pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
