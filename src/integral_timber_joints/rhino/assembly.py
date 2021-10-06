@@ -4,12 +4,12 @@ import scriptcontext
 import re
 from collections import Counter
 
-from compas.geometry import Frame, Vector, Point, bounding_box, dot_vectors, cross_vectors, length_vector, subtract_vectors, close
+from compas.geometry import Frame, Vector, Point, Line, bounding_box, dot_vectors, cross_vectors, length_vector, subtract_vectors, close
 from compas.geometry import Transformation
 from compas_rhino.geometry import RhinoCurve, RhinoSurface
 from compas_rhino.ui import CommandMenu
-# from compas_rhino.utilities import delete_objects
 from compas_rhino.utilities.objects import get_object_name, get_object_names
+import compas_rhino
 
 from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry.beam import Beam
@@ -169,6 +169,9 @@ def ui_add_beam_from_lines(process):
     # guids = select_lines("Select Lines (no curve or polyline)")
     guids = rs.GetObjects("Select Lines (not curve or polyline)", filter=rs.filter.curve)
 
+    if guids is None:
+        return
+
     print(guids)
     width = 100
     height = 100
@@ -176,17 +179,25 @@ def ui_add_beam_from_lines(process):
     # Create Beams form lines
     assembly = process.assembly  # type: Assembly
     new_beams = []
-    for rhino_select_order, guid in enumerate(guids):
-        rhinoline = RhinoCurve.from_guid(guid)  # RhinoLine is not implemented sigh... RhinoCurve is used.
-        centerline = rhinoline.to_compas()
-        centerline_vector = Vector.from_start_end(centerline.start, centerline.end)
-        # Compute guide vector: For vertical lines, guide vector points to world X
-        # Otherwise, guide vector points to Z,
 
-        if centerline_vector.angle(Vector(0, 0, 1)) < 0.001:
-            guide_vector = Vector(1, 0, 0)
-        else:
-            guide_vector = Vector(0, 0, 1)
+    # * Ask user for guide vector
+    guide_vector_rhino = rs.GetLine(mode=1, message1="Pick beam Y Direction Pt 1 (ESC to auto detect)", message2="Pick beam Y Direction (ESC to auto detect)")
+    if guide_vector_rhino is not None:
+        guide_vector = Vector.from_start_end(guide_vector_rhino[0], guide_vector_rhino[1])
+
+    for rhino_select_order, guid in enumerate(guids):
+        rhinocurve = compas_rhino.find_object(guid)
+        centerline = Line(rhinocurve.Geometry.PointAtStart, rhinocurve.Geometry.PointAtEnd)
+
+        if guide_vector_rhino is None:
+            # * Auto detect guide vector: For vertical lines, guide vector points to world X
+            # * Otherwise, guide vector points to Z,
+            centerline_vector = Vector.from_start_end(centerline.start, centerline.end)
+            dot_result = centerline_vector.unitized().dot(Vector(0, 0, 1))
+            if 1 - abs(dot_result) < 1e-5:
+                guide_vector = Vector(1, 0, 0)
+            else:
+                guide_vector = Vector(0, 0, 1)
 
         # Create Beam object
         beam = Beam.from_centerline(centerline, guide_vector, width, height)
