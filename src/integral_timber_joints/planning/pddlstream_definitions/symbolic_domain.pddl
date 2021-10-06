@@ -5,6 +5,7 @@
     (Element ?element)
     (Joint ?element1 ?element2)
     (IsElement ?element)
+    (Grounded ?element)
     ; (JointToolType ?element1 ?element2 ?tool)
 
     (Gripper ?g)
@@ -18,11 +19,11 @@
     (Traj ?traj)
 
     (RobotConf ?conf)
-    (ToolConf ?tool ?conf)
+    ;; (ToolConf ?tool ?conf)
 
     (PlaceAction ?object ?conf1 ?conf2 ?traj)
     (PickAction ?object ?conf1 ?conf2 ?traj)
-    (MoveAction ?conf1 ?conf2)
+    (MoveAction ?conf1 ?conf2 ?traj)
 
     ; * optional
     (Order ?element1 ?element2)
@@ -32,18 +33,23 @@
     ;; (RobotFlangeAtPose ?robot ?pose)
 
     (RobotAtConf ?conf)
+    (Attached ?object) ; o can be element, gripper or clamp
     (RobotToolChangerEmpty)
     (RobotGripperEmpty)
-    (Attached ?object) ; o can be element, gripper or clamp
     (CanMove)
 
     ;; (ToolAtPose ?tool ?pose)
     (ToolAtJoint ?tool ?element1 ?element2)
+    (ToolIdle ?tool)
     (NoToolAtJoint ?element1 ?element2)
     ;; (ToolAtConf ?tool ?conf)
 
     (AtRack ?object) ; object can be either element or tool
     (Assembled ?element)
+
+    ;; * derived
+    (Connected ?element)
+    (AllToolAtJoints ?element)
   )
 
   ; ? with or without attached objects share the same `move` action?
@@ -81,12 +87,12 @@
                   )
     :effect (and (not (AtRack ?element))
                  (Attached ?element)
-                 (not (RobotToolChangerEmpty ?robot))
+                 (not (RobotToolChangerEmpty))
                  ; ! robot conf
                  (not (RobotAtConf ?conf1))
                  (RobotAtConf ?conf2)
                  ; ! switch for move
-                 (CanMove ?r)
+                 (CanMove)
             )
   )
 
@@ -113,7 +119,7 @@
                  (not (RobotAtConf ?conf1))
                  (RobotAtConf ?conf2)
                  ; ! switch for move
-                 (CanMove ?r)
+                 (CanMove)
                  )
   )
 
@@ -133,6 +139,7 @@
                  (not (RobotToolChangerEmpty))
                  (RobotGripperEmpty) ; ! doesn't hurt to turn on for clamp?
                  ; ! tool status
+                 (ToolIdle ?tool)
                  (not (AtRack ?tool))
                  ; ! robot conf
                  (not (RobotAtConf ?conf1))
@@ -157,6 +164,7 @@
     :effect (and (Attached ?tool)
                  (not (RobotToolChangerEmpty))
                  ; ! tool status
+                 (ToolIdle ?tool)
                  (not (ToolAtJoint ?tool ?element1 ?element2))
                  (NoToolAtJoint ?element1 ?element2)
                  ; ! robot conf
@@ -177,6 +185,7 @@
                     (Attached ?tool)
                     (IsClamp ?tool)
                     (Joint ?element1 ?element2)
+                    (ToolIdle ?tool)
                     (NoToolAtJoint ?element1 ?element2)
                     ; ! assembly state precondition
                     ; ! sampled
@@ -185,6 +194,7 @@
     :effect (and (not (Attached ?tool))
                  (RobotToolChangerEmpty)
                  ; ! tool status
+                 (not (ToolIdle ?tool))
                  (ToolAtJoint ?tool ?element1 ?element2)
                  (not (NoToolAtJoint ?element1 ?element2))
                  ; ! robot conf
@@ -202,6 +212,7 @@
                     (RobotAtConf ?conf1)
                     (Attached ?tool)
                     (IsTool ?tool)
+                    (ToolIdle ?tool)
                     (Joint ?element1 ?element2)
                     ; ! assembly state precondition
                     ; ! sampled
@@ -211,6 +222,7 @@
                  (RobotToolChangerEmpty)
                  ; ! tool status
                  (AtRack ?tool)
+                 (not (ToolIdle ?tool))
                  ; ! robot conf
                  (not (RobotAtConf ?conf1))
                  (RobotAtConf ?conf2)

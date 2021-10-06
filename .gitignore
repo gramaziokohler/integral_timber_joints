@@ -135,3 +135,6 @@ src_cpp/motor_control_test/Motor05_PID_Velocity/__vm/
 *.rui_bak
 src/integral_timber_joints/planning/data/
 .favorites.json
+
+# pddlstream
+examples/notebooks/temp/*

@@ -1,9 +1,8 @@
-(define (stream construction)
+(define (stream itj_clamp_only)
    (:stream sample-move
-    :inputs (?conf1 ?conf2 ?traj)
+    :inputs (?conf1 ?conf2)
     :domain (and (RobotConf ?conf1)
                  (RobotConf ?conf2)
-                 (Traj ?traj)
                  )
     ; :fluents (Assembled)
     :outputs (?traj)
@@ -13,31 +12,59 @@
                )
   )
 
-  (:stream sample-pick
+  (:stream sample-pick-tool
     :inputs (?object)
-    :domain (or (IsTool ?object) (IsElement ?object))
+    :domain (IsTool ?object)
     ; :fluents (Assembled)
     :outputs (?conf1 ?conf2 ?traj)
     :certified (and
                     (PickAction ?object ?conf1 ?conf2 ?traj)
-                    (Conf ?conf1)
-                    (Conf ?conf2)
+                    (RobotConf ?conf1)
+                    (RobotConf ?conf2)
                     (Traj ?traj)
                 )
   )
 
-  (:stream sample-place
+  (:stream sample-pick-element
     :inputs (?object)
-    :domain (or (IsTool ?object) (IsElement ?object))
+    :domain (IsElement ?object)
+    ; :fluents (Assembled)
+    :outputs (?conf1 ?conf2 ?traj)
+    :certified (and
+                    (PickAction ?object ?conf1 ?conf2 ?traj)
+                    (RobotConf ?conf1)
+                    (RobotConf ?conf2)
+                    (Traj ?traj)
+                )
+  )
+
+  (:stream sample-place-tool
+    :inputs (?object)
+    :domain (IsTool ?object)
     ; :fluents (Assembled)
     :outputs (?conf1 ?conf2 ?traj)
     :certified (and
                     (PlaceAction ?object ?conf1 ?conf2 ?traj)
-                    (Conf ?conf1)
-                    (Conf ?conf2)
+                    (RobotConf ?conf1)
+                    (RobotConf ?conf2)
                     (Traj ?traj)
                 )
   )
+
+  (:stream sample-place-element
+    :inputs (?object)
+    :domain (IsElement ?object)
+    ; :fluents (Assembled)
+    :outputs (?conf1 ?conf2 ?traj)
+    :certified (and
+                    (PlaceAction ?object ?conf1 ?conf2 ?traj)
+                    (RobotConf ?conf1)
+                    (RobotConf ?conf2)
+                    (Traj ?traj)
+                )
+  )
+
+
 
 ;;   (:stream test-cfree
 ;;     :inputs (?robot ?trajectory ?attached_object)
