@@ -38,7 +38,7 @@
     (Attached ?object) ; o can be element, gripper or clamp
     (RobotToolChangerEmpty)
     (RobotGripperEmpty)
-    (CanMove)
+    (CanFreeMove)
 
     ;; (ToolAtPose ?tool ?pose)
     (ToolAtJoint ?tool ?element1 ?element2)
@@ -55,31 +55,32 @@
   )
 
   ; ? with or without attached objects share the same `move` action?
-;;   (:action move
-;;     :parameters (?conf1 ?conf2 ?traj)
-;;     :precondition (and
-;;                     ; ! state precondition
-;;                     (RobotAtConf ?conf1)
-;;                     (CanMove)
-;;                     ; ! sampled
-;;                     (MoveAction ?conf1 ?conf2 ?traj)
-;;                 )
-;;     :effect (and
-;;                  ; ! state change
-;;                  (not (RobotAtConf ?conf1))
-;;                  (RobotAtConf ?conf2)
-;;                  ; ! switch to avoid transit forever
-;;                  (not (CanMove))
-;;                  ; ! cost-aware
-;;                 ;;  (increase (total-cost) (Distance ?conf1 ?conf2))
-;;             )
-;;   )
+  (:action move
+    :parameters (?conf1 ?conf2 ?traj)
+    :precondition (and
+                    ; ! state precondition
+                    (RobotAtConf ?conf1)
+                    (CanFreeMove)
+                    ; ! sampled
+                    (MoveAction ?conf1 ?conf2 ?traj)
+                )
+    :effect (and
+                 ; ! state change
+                 (not (RobotAtConf ?conf1))
+                 (RobotAtConf ?conf2)
+                 ; ! switch to avoid transit forever
+                 (not (CanFreeMove))
+                 ; ! cost-aware
+                ;;  (increase (total-cost) (Distance ?conf1 ?conf2))
+            )
+  )
 
   (:action pick_element_from_rack
     :parameters (?element ?conf1 ?conf2 ?traj ?tool)
     :precondition (and
                     ; ! state precondition
-                    ;; (RobotAtConf ?conf1)
+                    (not (CanFreeMove))
+                    (RobotAtConf ?conf1)
                     (IsGripper ?tool)
                     (Attached ?tool)
                     (RobotGripperEmpty)
@@ -91,10 +92,10 @@
                  (Attached ?element)
                  (not (RobotGripperEmpty))
                  ; ! robot conf
-                ;;  (not (RobotAtConf ?conf1))
-                ;;  (RobotAtConf ?conf2)
+                 (not (RobotAtConf ?conf1))
+                 (RobotAtConf ?conf2)
                  ; ! switch for move
-                 (CanMove)
+                 (CanFreeMove)
             )
   )
 
@@ -104,12 +105,13 @@
     :parameters (?element ?conf1 ?conf2 ?traj ?tool)
     :precondition (and
                     ; ! robot state precondition
-                    ;; (RobotAtConf ?conf1)
+                    (not (CanFreeMove))
+                    (RobotAtConf ?conf1)
                     (IsGripper ?tool)
                     (Attached ?tool)
                     (Attached ?element)
                     ; ! assembly state precondition
-                    (Connected ?element)
+                    ;; (Connected ?element)
                     ; ! tool state precondition
                     (imply (not (Grounded ?element)) (AllToolAtJoints ?element))
                     ; ! e2 must be assembled before e encoded in the given partial ordering
@@ -120,10 +122,10 @@
     :effect (and (Assembled ?element)
                  (not (Attached ?element))
                  (RobotGripperEmpty)
-                ;;  (not (RobotAtConf ?conf1))
-                ;;  (RobotAtConf ?conf2)
+                 (not (RobotAtConf ?conf1))
+                 (RobotAtConf ?conf2)
                  ; ! switch for move
-                 (CanMove)
+                 (CanFreeMove)
                  )
   )
 
@@ -131,7 +133,8 @@
     :parameters (?tool ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! state precondition
-                    ;; (RobotAtConf ?conf1)
+                    (not (CanFreeMove))
+                    (RobotAtConf ?conf1)
                     (RobotToolChangerEmpty)
                     (IsGripper ?tool)
                     (AtRack ?tool)
@@ -141,14 +144,13 @@
     :effect (and (Attached ?tool)
                  (not (RobotToolChangerEmpty))
                  ; ! tool status
-                ;;  (ToolNotOccupiedOnJoint ?tool)
                  (not (AtRack ?tool))
                  (RobotGripperEmpty)
                  ; ! robot conf
-                ;;  (not (RobotAtConf ?conf1))
-                ;;  (RobotAtConf ?conf2)
+                 (not (RobotAtConf ?conf1))
+                 (RobotAtConf ?conf2)
                  ; ! switch for move
-                 (CanMove)
+                 (CanFreeMove)
             )
   )
 
@@ -156,7 +158,8 @@
     :parameters (?tool ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! state precondition
-                    ;; (RobotAtConf ?conf1)
+                    (not (CanFreeMove))
+                    (RobotAtConf ?conf1)
                     (RobotToolChangerEmpty)
                     (IsClamp ?tool)
                     (AtRack ?tool)
@@ -165,14 +168,12 @@
                   )
     :effect (and (Attached ?tool)
                  (not (RobotToolChangerEmpty))
-                 ; ! tool status
-                ;;  (ToolNotOccupiedOnJoint ?tool)
                  (not (AtRack ?tool))
                  ; ! robot conf
-                ;;  (not (RobotAtConf ?conf1))
-                ;;  (RobotAtConf ?conf2)
+                 (not (RobotAtConf ?conf1))
+                 (RobotAtConf ?conf2)
                  ; ! switch for move
-                 (CanMove)
+                 (CanFreeMove)
             )
   )
 
@@ -180,11 +181,11 @@
     :parameters (?tool ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! robot state precondition
-                    ;; (RobotAtConf ?conf1)
+                    (not (CanFreeMove))
+                    (RobotAtConf ?conf1)
                     (Attached ?tool)
                     (IsTool ?tool)
                     (imply (IsGripper ?tool) (RobotGripperEmpty))
-                    ;; (ToolNotOccupiedOnJoint ?tool)
                     ; ! sampled
                     (PlaceToolAction ?tool ?conf1 ?conf2 ?traj)
                     )
@@ -192,12 +193,11 @@
                  (RobotToolChangerEmpty)
                  ; ! tool status
                  (AtRack ?tool)
-                ;;  (not (ToolNotOccupiedOnJoint ?tool))
                  ; ! robot conf
-                ;;  (not (RobotAtConf ?conf1))
-                ;;  (RobotAtConf ?conf2)
+                 (not (RobotAtConf ?conf1))
+                 (RobotAtConf ?conf2)
                  ; ! switch for move
-                 (CanMove)
+                 (CanFreeMove)
                  )
   )
 
@@ -206,7 +206,8 @@
     :parameters (?tool ?element1 ?element2 ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! state precondition
-                    ;; (RobotAtConf ?conf1)
+                    (not (CanFreeMove))
+                    (RobotAtConf ?conf1)
                     (RobotToolChangerEmpty)
                     (IsClamp ?tool)
                     (ToolAtJoint ?tool ?element1 ?element2)
@@ -220,10 +221,10 @@
                  (not (ToolAtJoint ?tool ?element1 ?element2))
                  (NoToolAtJoint ?element1 ?element2)
                  ; ! robot conf
-                ;;  (not (RobotAtConf ?conf1))
-                ;;  (RobotAtConf ?conf2)
+                 (not (RobotAtConf ?conf1))
+                 (RobotAtConf ?conf2)
                  ; ! switch for move
-                 (CanMove)
+                 (CanFreeMove)
             )
   )
 
@@ -233,7 +234,8 @@
     :parameters (?tool ?element1 ?element2 ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! robot state precondition
-                    ;; (RobotAtConf ?conf1)
+                    (not (CanFreeMove))
+                    (RobotAtConf ?conf1)
                     (Attached ?tool)
                     (IsClamp ?tool)
                     (Joint ?element1 ?element2)
@@ -247,29 +249,28 @@
     :effect (and (not (Attached ?tool))
                  (RobotToolChangerEmpty)
                  ; ! tool status
-                ;;  (not (Tool ?tool))
                  (ToolAtJoint ?tool ?element1 ?element2)
                  (not (NoToolAtJoint ?element1 ?element2))
                  (not (ToolNotOccupiedOnJoint ?tool))
                  ; ! robot conf
-                ;;  (not (RobotAtConf ?conf1))
-                ;;  (RobotAtConf ?conf2)
+                 (not (RobotAtConf ?conf1))
+                 (RobotAtConf ?conf2)
                  ; ! switch for move
-                 (CanMove)
+                 (CanFreeMove)
                  )
   )
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (:derived (Connected ?element)
-   (or (Grounded ?element)
-       (exists (?ei) (and (Joint ?ei ?element)
-                          (Assembled ?ei)
-                          (Connected ?ei)
-                     )
-       )
-   )
-  )
+;;   (:derived (Connected ?element)
+;;    (or (Grounded ?element)
+;;        (exists (?ei) (and (Joint ?ei ?element)
+;;                           (Assembled ?ei)
+;;                           (Connected ?ei)
+;;                      )
+;;        )
+;;    )
+;;   )
 
   (:derived (AllToolAtJoints ?element)
    (forall (?ei) (imply (Joint ?ei ?element)

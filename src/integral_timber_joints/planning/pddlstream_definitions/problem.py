@@ -14,15 +14,15 @@ from compas_fab.robots import Trajectory
 
 class EmptyTrajectory(object):
     def __init__(self, tag=''):
-        self.tag = tag or random.random()
+        self.tag = tag
     def __repr__(self):
-        return 'Traj-{:.2f}'.format(self.tag)
+        return 'Traj-{}'.format(self.tag)
 
 class EmptyConfiguration(object):
     def __init__(self, tag=''):
-        self.tag = tag or random.random()
+        self.tag = tag
     def __repr__(self):
-        return 'Conf-{:.2f}'.format(self.tag)
+        return 'Conf-{}'.format(self.tag)
 
 def get_pddlstream_problem(process, use_partial_order=True, debug=False, reset_to_home=False):
     domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic_domain.pddl'))
@@ -30,13 +30,13 @@ def get_pddlstream_problem(process, use_partial_order=True, debug=False, reset_t
 
     init = []
 
-    home_conf = EmptyConfiguration(0)
+    home_conf = EmptyConfiguration('Home')
     constant_map = {}
 
     init.extend([
         ('RobotConf', home_conf),
         ('RobotAtConf', home_conf),
-        ('CanMove',),
+        ('CanFreeMove',),
         ('RobotToolChangerEmpty',),
     ])
 
@@ -99,7 +99,7 @@ def get_pddlstream_problem(process, use_partial_order=True, debug=False, reset_t
     goal_literals.extend(('Assembled', e) for e in beam_seq)
     if reset_to_home:
         goal_literals.extend(('AtRack', t.name) for t in list(process.clamps) + list(process.grippers))
-        # goal_literals.append(('RobotAtConf', home_conf))
+        goal_literals.append(('RobotAtConf', home_conf))
     goal = And(*goal_literals)
 
     pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)

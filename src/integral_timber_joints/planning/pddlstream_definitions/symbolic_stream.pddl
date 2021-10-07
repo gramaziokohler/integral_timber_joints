@@ -1,16 +1,16 @@
 (define (stream itj_clamp_only)
-;;    (:stream sample-move
-;;     :inputs (?conf1 ?conf2)
-;;     :domain (and (RobotConf ?conf1)
-;;                  (RobotConf ?conf2)
-;;                  )
-;;     ; :fluents (Assembled)
-;;     :outputs (?traj)
-;;     :certified (and
-;;                   (MoveAction ?conf1 ?conf2 ?traj)
-;;                   (Traj ?traj)
-;;                )
-;;   )
+   (:stream sample-move
+    :inputs (?conf1 ?conf2)
+    :domain (and (RobotConf ?conf1)
+                 (RobotConf ?conf2)
+                 )
+    ; :fluents (Assembled)
+    :outputs (?traj)
+    :certified (and
+                  (MoveAction ?conf1 ?conf2 ?traj)
+                  (Traj ?traj)
+               )
+  )
 
   (:stream sample-pick-element
     :inputs (?element)
