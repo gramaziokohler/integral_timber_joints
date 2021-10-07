@@ -1,7 +1,8 @@
 ## Assumptions for now
 - all the retraction movements (approach/retraction) for linear motions are collapsed.
 
-Remember that no negative predicate in preconditions!
+Remember that:
+- (CanMove) must be specified as `('CanMove',)` (don't forget the comma) in the initial or goal.
 
 ## Basic discrete example
 

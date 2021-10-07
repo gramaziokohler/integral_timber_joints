@@ -76,21 +76,20 @@
 ;;   )
 
   (:action pick_element_from_rack
-    :parameters (?element ?conf1 ?conf2 ?traj)
+    :parameters (?element ?conf1 ?conf2 ?traj ?tool)
     :precondition (and
                     ; ! state precondition
                     ;; (RobotAtConf ?conf1)
-                    ;; (Attached ?tool)
-                    ;; (IsGripper ?tool)
-                    ;; (RobotGripperEmpty)
-                    (IsElement ?element)
+                    (IsGripper ?tool)
+                    (Attached ?tool)
+                    (RobotGripperEmpty)
                     ; ! sampled
-                    ;; (PickElementAction ?element ?conf1 ?conf2 ?traj)
+                    (PickElementAction ?element ?conf1 ?conf2 ?traj)
                     (AtRack ?element)
                   )
     :effect (and (not (AtRack ?element))
-                ;;  (Attached ?element)
-                ;;  (not (RobotGripperEmpty))
+                 (Attached ?element)
+                 (not (RobotGripperEmpty))
                  ; ! robot conf
                 ;;  (not (RobotAtConf ?conf1))
                 ;;  (RobotAtConf ?conf2)
@@ -102,24 +101,25 @@
   ; an element can only be placed if all the clamps are (attached) to the corresponding joints
   ; we can query a partial structure and a new element's connection joints using fluent
   (:action place_element_on_structure
-    :parameters (?element ?conf1 ?conf2 ?traj)
+    :parameters (?element ?conf1 ?conf2 ?traj ?tool)
     :precondition (and
                     ; ! robot state precondition
                     ;; (RobotAtConf ?conf1)
-                    ;; (Attached ?element)
-                    (IsElement ?element)
+                    (IsGripper ?tool)
+                    (Attached ?tool)
+                    (Attached ?element)
                     ; ! assembly state precondition
                     ;; (Connected ?element)
                     ; ! tool state precondition
                     ;; (AllToolAtJoints ?element)
                     ; ! e2 must be assembled before e encoded in the given partial ordering
-                    ;; (forall (?ei) (imply (Order ?ei ?element) (Assembled ?ei)))
+                    (forall (?ei) (imply (Order ?ei ?element) (Assembled ?ei)))
                     ; ! sampled
-                    ;; (PlaceElementAction ?element ?conf1 ?conf2 ?traj)
+                    (PlaceElementAction ?element ?conf1 ?conf2 ?traj)
                     )
     :effect (and (Assembled ?element)
-                ;;  (not (Attached ?element))
-                ;;  (RobotGripperEmpty)
+                 (not (Attached ?element))
+                 (RobotGripperEmpty)
                 ;;  (not (RobotAtConf ?conf1))
                 ;;  (RobotAtConf ?conf2)
                  ; ! switch for move
@@ -127,60 +127,56 @@
                  )
   )
 
-;;   ;; * Generic pick_from_rack action for all types of tools
-;;   (:action pick_tool_from_rack
-;;     :parameters (?tool ?conf1 ?conf2 ?traj)
-;;     :precondition (and
-;;                     ; ! state precondition
-;;                     ;; (RobotAtConf ?conf1)
-;;                     (RobotToolChangerEmpty)
-;;                     (IsTool ?tool)
-;;                     (AtRack ?tool)
-;;                     ; ! sampled
-;;                     (PickToolAction ?tool ?conf1 ?conf2 ?traj)
-;;                   )
-;;     :effect (and (Attached ?tool)
-;;                  (not (RobotToolChangerEmpty))
-;;                  (RobotGripperEmpty) ; ! doesn't hurt to turn on for clamp?
-;;                  ; ! tool status
-;;                 ;;  (ToolIdle ?tool)
-;;                  (not (AtRack ?tool))
-;;                  ; ! robot conf
-;;                 ;;  (not (RobotAtConf ?conf1))
-;;                 ;;  (RobotAtConf ?conf2)
-;;                  ; ! switch for move
-;;                  (CanMove)
-;;             )
-;;   )
+  ;; * Generic pick_from_rack action for all types of tools
+  (:action pick_tool_from_rack
+    :parameters (?tool ?conf1 ?conf2 ?traj)
+    :precondition (and
+                    ; ! state precondition
+                    ;; (RobotAtConf ?conf1)
+                    (RobotToolChangerEmpty)
+                    (IsTool ?tool)
+                    (AtRack ?tool)
+                    ; ! sampled
+                    (PickToolAction ?tool ?conf1 ?conf2 ?traj)
+                  )
+    :effect (and (Attached ?tool)
+                 (not (RobotToolChangerEmpty))
+                 (RobotGripperEmpty) ; ! doesn't hurt to turn on for clamp?
+                 ; ! tool status
+                ;;  (ToolIdle ?tool)
+                 (not (AtRack ?tool))
+                 ; ! robot conf
+                ;;  (not (RobotAtConf ?conf1))
+                ;;  (RobotAtConf ?conf2)
+                 ; ! switch for move
+                 (CanMove)
+            )
+  )
 
-;;   (:action place_tool_at_rack
-;;     :parameters (?tool ?conf1 ?conf2 ?traj)
-;;     :precondition (and
-;;                     ; ! robot state precondition
-;;                     ;; (RobotAtConf ?conf1)
-;;                     (Attached ?tool)
-;;                     (IsTool ?tool)
-;;                     ;; (ToolIdle ?tool)
-;;                     (Joint ?element1 ?element2)
-;;                     ; ! assembly state precondition
-;;                     ; ! sampled
-;;                     (PlaceToolAction ?tool ?conf1 ?conf2 ?traj)
-;;                     )
-;;     :effect (and (not (Attached ?tool))
-;;                  (RobotToolChangerEmpty)
-;;                  (not (RobotGripperEmpty)) ; ! doesn't hurt to turn on for clamp?
-;;                  ; ! tool status
-;;                  (AtRack ?tool)
-;;                 ;;  (not (ToolIdle ?tool))
-;;                  ; ! robot conf
-;;                 ;;  (not (RobotAtConf ?conf1))
-;;                 ;;  (RobotAtConf ?conf2)
-;;                  ; ! switch for move
-;;                  (CanMove)
-;;                  )
-;;   )
-
-
+  (:action place_tool_at_rack
+    :parameters (?tool ?conf1 ?conf2 ?traj)
+    :precondition (and
+                    ; ! robot state precondition
+                    ;; (RobotAtConf ?conf1)
+                    (Attached ?tool)
+                    (IsTool ?tool)
+                    ;; (ToolIdle ?tool)
+                    ; ! sampled
+                    (PlaceToolAction ?tool ?conf1 ?conf2 ?traj)
+                    )
+    :effect (and (not (Attached ?tool))
+                 (RobotToolChangerEmpty)
+                 (not (RobotGripperEmpty)) ; ! doesn't hurt to turn on for clamp?
+                 ; ! tool status
+                 (AtRack ?tool)
+                ;;  (not (ToolIdle ?tool))
+                 ; ! robot conf
+                ;;  (not (RobotAtConf ?conf1))
+                ;;  (RobotAtConf ?conf2)
+                 ; ! switch for move
+                 (CanMove)
+                 )
+  )
 
 ;;   ;; * Specific pick_from_joint action for clamps only
 ;;   (:action pick_clamp_from_joint

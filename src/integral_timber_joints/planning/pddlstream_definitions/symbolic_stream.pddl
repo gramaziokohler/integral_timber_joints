@@ -12,57 +12,57 @@
 ;;                )
 ;;   )
 
-;;   (:stream sample-pick-tool
-;;     :inputs (?object)
-;;     :domain (IsTool ?object)
-;;     ; :fluents (Assembled)
-;;     :outputs (?conf1 ?conf2 ?traj)
-;;     :certified (and
-;;                     (PickToolAction ?object ?conf1 ?conf2 ?traj)
-;;                     (RobotConf ?conf1)
-;;                     (RobotConf ?conf2)
-;;                     (Traj ?traj)
-;;                 )
-;;   )
+  (:stream sample-pick-element
+    :inputs (?element)
+    :domain (IsElement ?element)
+    ; :fluents (Assembled)
+    :outputs (?conf1 ?conf2 ?traj)
+    :certified (and
+                    (PickElementAction ?element ?conf1 ?conf2 ?traj)
+                    (RobotConf ?conf1)
+                    (RobotConf ?conf2)
+                    (Traj ?traj)
+                )
+  )
 
-;;   (:stream sample-pick-element
-;;     :inputs (?element)
-;;     :domain (IsElement ?element)
-;;     ; :fluents (Assembled)
-;;     :outputs (?conf1 ?conf2 ?traj)
-;;     :certified (and
-;;                     (PickElementAction ?element ?conf1 ?conf2 ?traj)
-;;                     (RobotConf ?conf1)
-;;                     (RobotConf ?conf2)
-;;                     (Traj ?traj)
-;;                 )
-;;   )
+  (:stream sample-place-element
+    :inputs (?element)
+    :domain (IsElement ?element)
+    ; :fluents (Assembled)
+    :outputs (?conf1 ?conf2 ?traj)
+    :certified (and
+                    (PlaceElementAction ?element ?conf1 ?conf2 ?traj)
+                    (RobotConf ?conf1)
+                    (RobotConf ?conf2)
+                    (Traj ?traj)
+                )
+  )
 
-;;   (:stream sample-place-tool
-;;     :inputs (?object)
-;;     :domain (IsTool ?object)
-;;     ; :fluents (Assembled)
-;;     :outputs (?conf1 ?conf2 ?traj)
-;;     :certified (and
-;;                     (PlaceToolAction ?object ?conf1 ?conf2 ?traj)
-;;                     (RobotConf ?conf1)
-;;                     (RobotConf ?conf2)
-;;                     (Traj ?traj)
-;;                 )
-;;   )
+  (:stream sample-pick-tool
+    :inputs (?object)
+    :domain (IsTool ?object)
+    ; :fluents (Assembled)
+    :outputs (?conf1 ?conf2 ?traj)
+    :certified (and
+                    (PickToolAction ?object ?conf1 ?conf2 ?traj)
+                    (RobotConf ?conf1)
+                    (RobotConf ?conf2)
+                    (Traj ?traj)
+                )
+  )
 
-;;   (:stream sample-place-element
-;;     :inputs (?element)
-;;     :domain (IsElement ?element)
-;;     ; :fluents (Assembled)
-;;     :outputs (?conf1 ?conf2 ?traj)
-;;     :certified (and
-;;                     (PlaceElementAction ?element ?conf1 ?conf2 ?traj)
-;;                     (RobotConf ?conf1)
-;;                     (RobotConf ?conf2)
-;;                     (Traj ?traj)
-;;                 )
-;;   )
+  (:stream sample-place-tool
+    :inputs (?object)
+    :domain (IsTool ?object)
+    ; :fluents (Assembled)
+    :outputs (?conf1 ?conf2 ?traj)
+    :certified (and
+                    (PlaceToolAction ?object ?conf1 ?conf2 ?traj)
+                    (RobotConf ?conf1)
+                    (RobotConf ?conf2)
+                    (Traj ?traj)
+                )
+  )
 
 ;;   (:stream test-cfree
 ;;     :inputs (?robot ?trajectory ?attached_object)
