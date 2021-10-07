@@ -48,25 +48,31 @@ def get_pddlstream_problem(process, use_partial_order=True, debug=False, reset_t
             ('IsElement', e)
         ])
         if process.assembly.get_assembly_method(e) == BeamAssemblyMethod.GROUND_CONTACT:
-            init.append(('Grounded', e))
+            init.extend([
+                ('Grounded', e),
+                # ('Joint', e, 'alum_foundation'),
+                ])
 
     for j in process.assembly.joint_ids():
         init.extend([
             ('Joint', j[0], j[1]),
-            ('NoToolAtJoint', j[0], j[1])
+            ('Joint', j[1], j[0]),
+            ('NoToolAtJoint', j[0], j[1]),
+            ('NoToolAtJoint', j[1], j[0]),
         ])
 
     if use_partial_order:
         for e1, e2 in zip(beam_seq[:-1], beam_seq[1:]):
             init.append(('Order', e1, e2))
 
-    # for c in process.clamps:
-    #     init.extend([
-    #         ('Clamp', c.name),
-    #         ('IsClamp', c.name),
-    #         ('IsTool', c.name),
-    #         ('AtRack', c.name),
-    #     ])
+    for c in process.clamps:
+        init.extend([
+            ('Clamp', c.name),
+            ('IsClamp', c.name),
+            ('IsTool', c.name),
+            ('AtRack', c.name),
+            ('ToolNotOccupiedOnJoint', c.name),
+        ])
     for g in process.grippers:
         init.extend([
             ('Gripper', g.name),
@@ -92,7 +98,7 @@ def get_pddlstream_problem(process, use_partial_order=True, debug=False, reset_t
     # goal_literals.append(('RobotGripperEmpty',))
     goal_literals.extend(('Assembled', e) for e in beam_seq)
     if reset_to_home:
-        goal_literals.extend(('AtRack', t.name) for t in list(process.grippers)) # list(process.clamps) + list(process.grippers))
+        goal_literals.extend(('AtRack', t.name) for t in list(process.clamps) + list(process.grippers))
         # goal_literals.append(('RobotAtConf', home_conf))
     goal = And(*goal_literals)
 
