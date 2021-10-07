@@ -31,6 +31,7 @@ def eval_quad(square, u, v):
 
 
 def simplify_polygon(pts, tol=1e-5):
+    """Simplifies polygon where consecutive points are colinear."""
     new_pts = []
     n = len(pts)
     for i in range(n):
@@ -42,7 +43,7 @@ def simplify_polygon(pts, tol=1e-5):
 
 
 def conforming_delaunay_triangulation(pts, normal):
-    # type: (list[Point], Vector) -> Mesh
+    # type: (list[Point], Vector) -> tuple[list[Point], list[list[int]]]
 
     v_x = Vector.from_start_end(pts[0], pts[1])
     v_y = normal.cross(v_x)
@@ -72,17 +73,41 @@ def conforming_delaunay_triangulation(pts, normal):
     # print (v,f)
     return v, f
 
+
+def convex_triangulation(pts, normal):
+    # type: (list[Point], Vector) -> tuple[list[Point], list[list[int]]]
+    faces = []
+
+    # Top and bottom caps - triangles
+
+    # Btm and top cap
+    for i in range(len(pts) - 2):
+        faces.append([0, i+1, i+2])
+
+    return pts, faces
+
+
 def polyhedron_extrude_from_concave_vertices(cap_vertices, extrude_direction):
-        # type: (list[Point], Vector) -> Mesh
+    # type: (list[Point], Vector) -> Mesh
     """ Creates an polygon-extrude-like-box.
     The algorithm will call conforming_delaunay_triangulation to patch polygons with concave polygons.
     Note that the ordering of the given vertices are clockwise from top view.
 
+    Polygons will be simplified if consecutive segments are collinear
     """
     faces = []
 
-    # * Create bottom mesh cap
-    v_btm, f = conforming_delaunay_triangulation(cap_vertices, extrude_direction)
+    # * Simplify polygon to get rid of degenerate edges, this causes problems with triangulation
+    cap_vertices = simplify_polygon(cap_vertices)
+
+    # * Create bottom mesh cap using triangulation
+    if is_polygon_convex(cap_vertices):
+        # print("%i pts polygon is convex: convex_triangulation()" % len(cap_vertices))
+        v_btm, f = convex_triangulation(cap_vertices, extrude_direction)  # Faster
+    else:
+        # print("%i pts polygon is not convex: conforming_delaunay_triangulation()" % len(cap_vertices))
+        v_btm, f = conforming_delaunay_triangulation(cap_vertices, extrude_direction)
+
     mesh_btm = Mesh.from_vertices_and_faces(v_btm, f)
     mesh_btm.flip_cycles()
 
@@ -102,6 +127,7 @@ def polyhedron_extrude_from_concave_vertices(cap_vertices, extrude_direction):
     v, f = mesh.to_vertices_and_faces()
     polyhedron = Polyhedron(v, f)
     return polyhedron
+
 
 def polyhedron_box_from_vertices(vertices):
     # type: (list[Point]) -> Mesh
@@ -127,7 +153,6 @@ def polyhedron_box_from_vertices(vertices):
         x = i % n
         y = (i+1) % n
         faces.append([y, x, x+n, y+n])
-
 
     polyhedron = Polyhedron(vertices, faces)
     return polyhedron
