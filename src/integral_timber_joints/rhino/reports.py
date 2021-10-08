@@ -82,6 +82,7 @@ def show_menu(process):
             return Rhino.Commands.Result.Cancel
 
         # Run the selected command
+        command_to_run = result['action']
         command_to_run(process)
 
 
