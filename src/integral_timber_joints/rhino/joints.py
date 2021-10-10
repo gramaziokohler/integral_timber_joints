@@ -719,7 +719,8 @@ def _joint_polyine_lap_change_thickness(process, joint_ids):
     """
     # * Print out current joint parameters
     existing_thickness = set()
-    for joint_id in joint_ids:
+    for beam_id1, beam_id2 in joint_ids:
+        joint_id = (beam_id2, beam_id1)
         joint = process.assembly.joint(joint_id)
         current_thickness = joint.get_parameter('thickness')
         existing_thickness.add(current_thickness)
