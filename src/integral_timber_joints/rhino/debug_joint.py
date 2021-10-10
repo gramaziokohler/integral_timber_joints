@@ -16,39 +16,24 @@ if __name__ == '__main__':
     assembly = process.assembly
     # artist = get_process_artist()
     # artist = AssemblyNurbsArtist(process.assembly)
-    beam_id = 'b2'
+    beam_id = 'b25'
     beam = process.assembly.beam(beam_id)
 
-    joint_id = ('b2','b0')
+    joint_id = ('b25','b15')
     joint = assembly.joint(joint_id)
     print (joint_id)
-    print (joint.angle)
+    # print (joint.angle)
     print (joint.data)
     print (joint.assembly_tool_types(BeamAssemblyMethod.CLAMPED))
-    print (joint.get_clamp_frames(beam))
+    print (joint.get_clamp_frames(process.assembly.beam(joint_id[0])))
 
-    joint_id = ('b0','b2')
+    joint_id = ('b26','b15')
     joint = assembly.joint(joint_id)
     print (joint_id)
-    print (joint.angle)
+    # print (joint.angle)
     print (joint.data)
     print (joint.assembly_tool_types(BeamAssemblyMethod.CLAMPED))
-    print (joint.get_clamp_frames(beam))
-
-
-    joint_id = ('b2','b1')
-    joint = assembly.joint(joint_id)
-    print (joint_id)
-    print (joint.angle)
-    print (joint.assembly_tool_types(BeamAssemblyMethod.CLAMPED))
-    print (joint.get_clamp_frames(beam))
-
-    joint_id = ('b1','b2')
-    joint = assembly.joint(joint_id)
-    print (joint_id)
-    print (joint.angle)
-    print (joint.assembly_tool_types(BeamAssemblyMethod.CLAMPED))
-    print (joint.get_clamp_frames(beam))
+    print (joint.get_clamp_frames(process.assembly.beam(joint_id[0])))
 
 
     # artist.draw_beam(beam_id, delete_old=True, verbose=True)

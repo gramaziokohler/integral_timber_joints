@@ -507,32 +507,35 @@ def _change_joint_non_planar_lap_thickness(process, joint_ids):
 
 def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
     """
+    joint_ids are joint_on_stay_id = (beam_id_stay, beam_id_move)
+
+
     Returns (affected_beams, affected_joints)
 
     If user pressed cancel in the data entering process, return None
     """
     # * Print out current joint parameters
     existing_face_id = set()
-    for joint_id in joint_ids:
-        joint_on_move = process.assembly.joint(joint_id)  # type: (JointNonPlanarLap)
+    for joint_on_stay_id in joint_ids:
+        joint_on_move = process.assembly.joint(joint_on_stay_id)  # type: (JointNonPlanarLap)
         current_face_id = joint_on_move.beam_stay_face_id
         existing_face_id.add(current_face_id)
-        print("Joint (%s-%s) beam_stay_face_id = %s" % (joint_id[0], joint_id[1], current_face_id))
+        print("Joint (%s-%s) beam_stay_face_id = %s" % (joint_on_stay_id[0], joint_on_stay_id[1], current_face_id))
 
     # * Ask user for new paramter value
-    new_face_id = rs.GetReal("New face_id on Staying Beam: (Existing face_id are: %s" % existing_face_id)
+    new_face_id = rs.GetInteger("New face_id on Staying Beam: (Existing face_id are: %s" % existing_face_id)
     if new_face_id is None:
         return None
 
     # * Make changes to selected joints
     affected_beams = set()
     affected_joints = set()
-    for joint_id in joint_ids:
+    for joint_on_stay_id in joint_ids:
         # Update this joint and its neighbour
-        beam_id_move, beam_id_stay = joint_id
-        joint_id_nbr = (beam_id_stay, beam_id_move)
-        joint_on_move = process.assembly.joint(joint_id)  # type:(JointNonPlanarLap)
-        joint_on_stay = process.assembly.joint(joint_id_nbr)  # type:(JointNonPlanarLap)
+        beam_id_stay, beam_id_move = joint_on_stay_id
+        joint_on_move_id = (beam_id_move, beam_id_stay)
+        joint_on_move = process.assembly.joint(joint_on_move_id)  # type:(JointNonPlanarLap)
+        joint_on_stay = process.assembly.joint(joint_on_stay_id)  # type:(JointNonPlanarLap)
 
         # Skip if there are no change
         current_face_id = joint_on_move.beam_stay_face_id
@@ -549,6 +552,10 @@ def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
             joint_face_id_move=joint_on_move.beam_move_face_id,
             joint_face_id_stay=new_face_id,
         )
+        if new_joint_on_stay is None or new_joint_on_move is None:
+            print ("No joint returned from JointNonPlanarLap.from_beam_beam_intersection() ")
+            return ([],[])
+
         process.assembly.add_joint_pair(new_joint_on_stay, new_joint_on_move, beam_id_stay, beam_id_move)
         for key, value in joint_on_stay.get_parameters_dict().items():
             new_joint_on_stay.set_parameter(key, value)
@@ -559,8 +566,8 @@ def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
         print("beam_stay_face_id of joint pair (%s) changed to %s." % (joint_on_move.beam_stay_face_id, new_joint_on_move.beam_stay_face_id))
         affected_beams.add(beam_id_move)
         affected_beams.add(beam_id_stay)
-        affected_joints.add(joint_id)
-        affected_joints.add(joint_id_nbr)
+        affected_joints.add(joint_on_stay_id)
+        affected_joints.add(joint_on_move_id)
 
     [process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints) for beam_id in affected_beams]
     return (affected_beams, affected_joints)
@@ -978,15 +985,18 @@ def select_joint_parameter_to_change(process, joint_ids):
 
         if result in all_options[joint_type.__name__]:
             function = all_options[joint_type.__name__][result]
-            affected_beams, affected_joints = function(process, joint_ids)
+            result = function(process, joint_ids)
 
-            # * Redraw new selectable joint feature and affected beams with new joints
-            for joint_id in affected_joints:
-                delete_selectable_joint(process, joint_id, redraw=False)
-                draw_selectable_joint(process, joint_id, redraw=False)
+            # Result is None if user pressed Escape or Cancel
+            if result is not None:
+                affected_beams, affected_joints = result
+                # * Redraw new selectable joint feature and affected beams with new joints
+                for joint_id in affected_joints:
+                    delete_selectable_joint(process, joint_id, redraw=False)
+                    draw_selectable_joint(process, joint_id, redraw=False)
 
-            for beam_id in affected_beams:
-                artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
+                for beam_id in affected_beams:
+                    artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
 
             show_selectable_joints_by_id(process, joint_ids, True)
             print("Function Complete, Anything else?")
