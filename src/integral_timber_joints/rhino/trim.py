@@ -79,7 +79,7 @@ def ui_trim_four_corners(process):
         side = rs.GetString("Which side to trim corners:", "Both", choices)
         if side is None or side not in choices:
             return
-        dist_x = rs.GetReal("Distance on X", number=400, minimum=1, maximum=None)
+        dist_x = rs.GetReal("Distance on X", number=600, minimum=1, maximum=None)
         if dist_x is None:
             return
         dist_y = rs.GetReal("Distance on Y", number=21.1, minimum=1, maximum=None)
