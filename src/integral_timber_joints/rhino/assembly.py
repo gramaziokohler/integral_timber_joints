@@ -64,8 +64,8 @@ def _create_joints_for_new_beam(process, new_beam):
     return new_joints, affected_neighbours
 
 
-def _add_beams_to_assembly(process, beams):
-    # type: (RobotClampAssemblyProcess, list[Beam]) -> None
+def _add_beams_to_assembly(process, beams, auto_joints=True):
+    # type: (RobotClampAssemblyProcess, list[Beam], bool) -> None
     """Shared function to add newly created Beams to Assembly
 
     - Auto assign Assembly Method
@@ -89,11 +89,15 @@ def _add_beams_to_assembly(process, beams):
         assembly.add_beam(beam)
 
         # * Check for joints (Joint_Halflap and JointNonPlanarLap)
-        new_joints, affected_neighbours = _create_joints_for_new_beam(process, beam)
-        affected_neighbours.extend(affected_neighbours)
+        if auto_joints:
+            new_joints, affected_neighbours = _create_joints_for_new_beam(process, beam)
+            affected_neighbours.extend(affected_neighbours)
 
         # * Automatically assign Assembly Method
-        if len(new_joints) == 0:
+        if not auto_joints:
+            assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.MANUAL_ASSEMBLY)
+            print("- Automatically assigned Assembly method: MANUAL_ASSEMBLY")
+        elif len(new_joints) == 0:
             assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.GROUND_CONTACT)
             print("- Automatically assigned Assembly method: GROUND_CONTACT")
         elif any([isinstance(joint, JointNonPlanarLap) for joint in new_joints]):
@@ -105,9 +109,10 @@ def _add_beams_to_assembly(process, beams):
 
         # * Initial state changed since we add a new beam
         process.dependency.add_beam(beam_id)
-        recompute_initial_state(process)
+
 
     # *Recompute dependent solutions for new beams and affected neighbours
+    recompute_initial_state(process)
     for beam_id in set(affected_neighbours + new_beam_ids):
         recompute_dependent_solutions(process, beam_id)
 
@@ -261,8 +266,8 @@ def beam_frame_from_points_and_vectors(points, edge_vectors, face_normals):
     return frame
 
 
-def ui_add_beam_from_brep_box(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def ui_add_beam_from_brep_box(process, auto_joints=True):
+    # type: (RobotClampAssemblyProcess, bool) -> None
     ''' Ask user for line(s) to create new beams.
     '''
     assembly = process.assembly  # type: Assembly
@@ -308,7 +313,12 @@ def ui_add_beam_from_brep_box(process):
     # Sorting by human sorting natural keys
     new_beams.sort(cmp=_beam_order_comparator)
     # Add to assembly
-    _add_beams_to_assembly(process, new_beams)
+    _add_beams_to_assembly(process, new_beams, auto_joints=auto_joints)
+
+def ui_add_scaffold(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Currently this is implemented as a beam with no joints."""
+    return ui_add_beam_from_brep_box(process, auto_joints=False)
 
 
 def ui_delete_beams(process):
@@ -647,6 +657,7 @@ def show_menu(process):
                     {'name': 'FromLines', 'action': ui_add_beam_from_lines},
                     {'name': 'FromBrepBox', 'action': ui_add_beam_from_brep_box},
                 ]},
+                {'name': 'AddScaffold', 'action': ui_add_scaffold},
                 {'name': 'DeleteBeam', 'action': ui_delete_beams},
                 {'name': 'MoveAssembly', 'action': ui_orient_assembly},
                 {'name': 'FlipBeamAssemblyDirection', 'action': ui_flip_beams},

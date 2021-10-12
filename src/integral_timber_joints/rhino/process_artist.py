@@ -814,45 +814,46 @@ class ProcessArtist(object):
         """
         rs.EnableRedraw(False)
 
-        for gripper_position in ProcessKeyPosition().possible_gripper_positions:
-            layer_name = 'itj::gripper::' + gripper_position
-            # If not delete_old, and there are already items drawn, we preserve them.
-            if len(self.gripper_guids_at_position(beam_id, gripper_position)) > 0 and not delete_old:
-                continue
+        if self.process.assembly.get_assembly_method(beam_id) != BeamAssemblyMethod.MANUAL_ASSEMBLY:
+            for gripper_position in ProcessKeyPosition().possible_gripper_positions:
+                layer_name = 'itj::gripper::' + gripper_position
+                # If not delete_old, and there are already items drawn, we preserve them.
+                if len(self.gripper_guids_at_position(beam_id, gripper_position)) > 0 and not delete_old:
+                    continue
 
-            # Check if the position string contains a dot notation for states , such as open gripper
-            tool_states = []  # tool_states are function names that chagen state of the tool
-            attribute_name = gripper_position
-            if '.' in gripper_position:
-                attribute_name = gripper_position.split('.')[0]
-                tool_states = gripper_position.split('.')[1:]
-            layer_name = 'itj::gripper::' + gripper_position
+                # Check if the position string contains a dot notation for states , such as open gripper
+                tool_states = []  # tool_states are function names that chagen state of the tool
+                attribute_name = gripper_position
+                if '.' in gripper_position:
+                    attribute_name = gripper_position.split('.')[0]
+                    tool_states = gripper_position.split('.')[1:]
+                layer_name = 'itj::gripper::' + gripper_position
 
-            # Delete old geometry
-            self.delete_gripper_at_position(beam_id, gripper_position, redraw=False)
+                # Delete old geometry
+                self.delete_gripper_at_position(beam_id, gripper_position, redraw=False)
 
-            # Skip the rest of code if the position does not exist.
-            if self.process.assembly.get_beam_attribute(beam_id, attribute_name) is None:
+                # Skip the rest of code if the position does not exist.
+                if self.process.assembly.get_beam_attribute(beam_id, attribute_name) is None:
+                    if verbose:
+                        print("Skipping Gripper on Beam(%s) at position: %s" % (beam_id, attribute_name))
+                    continue
+
+                # Draw Gripper
                 if verbose:
-                    print("Skipping Gripper on Beam(%s) at position: %s" % (beam_id, attribute_name))
-                continue
+                    print("Drawing Gripper for Beam(%s) in position: %s" % (beam_id, attribute_name))
+                gripper = self.process.get_gripper_of_beam(beam_id, attribute_name)
 
-            # Draw Gripper
-            if verbose:
-                print("Drawing Gripper for Beam(%s) in position: %s" % (beam_id, attribute_name))
-            gripper = self.process.get_gripper_of_beam(beam_id, attribute_name)
+                # Set Tool State (better visualization)
+                for state in tool_states:
+                    getattr(gripper, state)()
 
-            # Set Tool State (better visualization)
-            for state in tool_states:
-                getattr(gripper, state)()
+                artist = ToolArtist(gripper, layer_name)
+                new_guids = gripper.draw_visual(artist)
+                self.gripper_guids_at_position(beam_id, gripper_position).extend(new_guids)
 
-            artist = ToolArtist(gripper, layer_name)
-            new_guids = gripper.draw_visual(artist)
-            self.gripper_guids_at_position(beam_id, gripper_position).extend(new_guids)
-
-            # Draw ToolChanger and Robot Wrist
-            new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, gripper.current_frame, layer_name, )
-            self.gripper_guids_at_position(beam_id, gripper_position).extend(new_guids)
+                # Draw ToolChanger and Robot Wrist
+                new_guids = self.draw_toolchanger_and_robot_wrist(beam_id, gripper.current_frame, layer_name, )
+                self.gripper_guids_at_position(beam_id, gripper_position).extend(new_guids)
 
         if redraw:
             rs.EnableRedraw(True)

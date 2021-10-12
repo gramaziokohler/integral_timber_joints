@@ -635,7 +635,7 @@ def show_menu(process):
 
             if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
                 go.AddOption("ChangeGraspingJoint")
-            else:  # Methods with gripper
+            elif assembly_method != BeamAssemblyMethod.MANUAL_ASSEMBLY:  # Methods with gripper
                 go.AddOption("GripperMovePos")
                 go.AddOption("GripperMoveNeg")
                 go.AddOption("GripperType")
