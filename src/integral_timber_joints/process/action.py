@@ -258,7 +258,7 @@ class LoadBeamAction(OperatorAction):
 class ManaulAssemblyAction(OperatorAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None):
         # type: (int, int, str) -> None
-        super(LoadBeamAction, self).__init__()
+        super(ManaulAssemblyAction, self).__init__()
         self.seq_n = seq_n
         self.act_n = act_n
         self.beam_id = beam_id

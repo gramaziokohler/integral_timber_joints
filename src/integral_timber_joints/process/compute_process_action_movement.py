@@ -37,14 +37,14 @@ def create_actions_from_sequence(process, beam_id, verbose=False):
     """
     # * Dispatching which sub functions gets to do the action creation
     assembly_method = process.assembly.get_assembly_method(beam_id)
-    if len(process.assembly.get_joint_ids_with_tools_for_beam(beam_id)) == 0:
+    if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+        result = _create_actions_for_manual_assembly(process, beam_id, verbose)
+    elif len(process.assembly.get_joint_ids_with_tools_for_beam(beam_id)) == 0:
         result = _create_actions_for_no_tools(process, beam_id, verbose)
     elif assembly_method == BeamAssemblyMethod.CLAMPED:
         result = _create_actions_for_clamped(process, beam_id, verbose)
     elif assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER or assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         result = _create_actions_for_screwed(process, beam_id, verbose)
-    elif assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
-        result = _create_actions_for_manual_assembly(process, beam_id, verbose)
 
     # * Assign Actions Numbers
     if result in ComputationalResult.ValidResults:

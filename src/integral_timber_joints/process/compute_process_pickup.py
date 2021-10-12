@@ -40,6 +40,11 @@ def compute_pickup_frame(process, beam_id, verbose=False):
     `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
 
     """
+    # * Skip if this is manually Assembled
+    assembly_method = process.assembly.get_assembly_method(beam_id)
+    if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+        return ComputationalResult.ValidCanContinue
+
     # Check to ensure prerequisite
     if process.pickup_station is None:
         return ComputationalResult.ValidCannotContinue
