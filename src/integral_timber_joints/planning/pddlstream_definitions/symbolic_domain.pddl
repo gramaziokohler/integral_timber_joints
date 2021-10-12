@@ -79,8 +79,8 @@
     :parameters (?element ?conf1 ?conf2 ?traj ?tool)
     :precondition (and
                     ; ! state precondition
-                    (not (CanFreeMove))
-                    (RobotAtConf ?conf1)
+                    ;; (not (CanFreeMove))
+                    ;; (RobotAtConf ?conf1)
                     (IsGripper ?tool)
                     (Attached ?tool)
                     (RobotGripperEmpty)
@@ -105,13 +105,13 @@
     :parameters (?element ?conf1 ?conf2 ?traj ?tool)
     :precondition (and
                     ; ! robot state precondition
-                    (not (CanFreeMove))
-                    (RobotAtConf ?conf1)
+                    ;; (not (CanFreeMove))
+                    ;; (RobotAtConf ?conf1)
                     (IsGripper ?tool)
                     (Attached ?tool)
                     (Attached ?element)
                     ; ! assembly state precondition
-                    ;; (Connected ?element)
+                    (Connected ?element)
                     ; ! tool state precondition
                     (imply (not (Grounded ?element)) (AllToolAtJoints ?element))
                     ; ! e2 must be assembled before e encoded in the given partial ordering
@@ -133,8 +133,8 @@
     :parameters (?tool ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! state precondition
-                    (not (CanFreeMove))
-                    (RobotAtConf ?conf1)
+                    ;; (not (CanFreeMove))
+                    ;; (RobotAtConf ?conf1)
                     (RobotToolChangerEmpty)
                     (IsGripper ?tool)
                     (AtRack ?tool)
@@ -158,8 +158,8 @@
     :parameters (?tool ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! state precondition
-                    (not (CanFreeMove))
-                    (RobotAtConf ?conf1)
+                    ;; (not (CanFreeMove))
+                    ;; (RobotAtConf ?conf1)
                     (RobotToolChangerEmpty)
                     (IsClamp ?tool)
                     (AtRack ?tool)
@@ -181,8 +181,8 @@
     :parameters (?tool ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! robot state precondition
-                    (not (CanFreeMove))
-                    (RobotAtConf ?conf1)
+                    ;; (not (CanFreeMove))
+                    ;; (RobotAtConf ?conf1)
                     (Attached ?tool)
                     (IsTool ?tool)
                     (imply (IsGripper ?tool) (RobotGripperEmpty))
@@ -206,8 +206,8 @@
     :parameters (?tool ?element1 ?element2 ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! state precondition
-                    (not (CanFreeMove))
-                    (RobotAtConf ?conf1)
+                    ;; (not (CanFreeMove))
+                    ;; (RobotAtConf ?conf1)
                     (RobotToolChangerEmpty)
                     (IsClamp ?tool)
                     (ToolAtJoint ?tool ?element1 ?element2)
@@ -234,8 +234,8 @@
     :parameters (?tool ?element1 ?element2 ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! robot state precondition
-                    (not (CanFreeMove))
-                    (RobotAtConf ?conf1)
+                    ;; (not (CanFreeMove))
+                    ;; (RobotAtConf ?conf1)
                     (Attached ?tool)
                     (IsClamp ?tool)
                     (Joint ?element1 ?element2)
@@ -262,15 +262,15 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;   (:derived (Connected ?element)
-;;    (or (Grounded ?element)
-;;        (exists (?ei) (and (Joint ?ei ?element)
-;;                           (Assembled ?ei)
-;;                           (Connected ?ei)
-;;                      )
-;;        )
-;;    )
-;;   )
+  (:derived (Connected ?element)
+   (or (Grounded ?element)
+       (exists (?ei) (and (Joint ?ei ?element)
+                          (Assembled ?ei)
+                          (Connected ?ei)
+                     )
+       )
+   )
+  )
 
   (:derived (AllToolAtJoints ?element)
    (forall (?ei) (imply (Joint ?ei ?element)
