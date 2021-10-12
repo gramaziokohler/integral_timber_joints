@@ -68,7 +68,7 @@ def load_process():
             process = json.load(f, cls=DataDecoder) #type: RobotClampAssemblyProcess
 
         # Also load RFL model from default location
-        process.load_robot_model()
+        # process.load_robot_model() # Commented out for lazy loading
 
         sc.sticky["itj_process"] = process
         success = True

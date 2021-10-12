@@ -96,6 +96,7 @@ class RobotClampAssemblyProcess(Data):
         self.attributes['screwdrivers'] = {}
 
         self._robot_model = None                                # RobotModel do not get saved with process
+        self._robot_model_load_success = None                         # RobotModel load attempt result
         self.attributes['robot_toolchanger'] = None             # ToolChanger
         self.attributes['robot_wrist'] = None                   # RobotWrist
         self.attributes['robot_initial_config'] = None          # tuple(list(float), flaot)
@@ -140,12 +141,9 @@ class RobotClampAssemblyProcess(Data):
     @property
     def robot_model(self):
         # type: () -> RobotModel
+        if self._robot_model_load_success is None:
+            self.load_robot_model()
         return self._robot_model
-
-    @robot_model.setter
-    def robot_model(self, value):
-        # type: (RobotModel) -> None
-        self._robot_model = value
 
     @property
     def robot_toolchanger(self):
@@ -1376,11 +1374,13 @@ class RobotClampAssemblyProcess(Data):
             robot_model = RobotModel.from_urdf_file(urdf)
             robot_model.load_geometry(loader)
             robot_model.scale(1000)
-            self.robot_model = robot_model  # type: RobotModel
+            self._robot_model = robot_model  # type: RobotModel
+            self._robot_model_load_success = True
             print("- %s Loaded: %i Links, %i Joints" % (robot_model.name, len(robot_model.links), len(robot_model.joints)))
         else:
             # You should have this repo https://github.com/yijiangh/rfl_description/tree/victor/cables as submodule
             print("RobotModel submodule does not exist in: %s" % submodule_path)
+            self._robot_model_load_success = False
 
 
 def _colored_is_none(value):

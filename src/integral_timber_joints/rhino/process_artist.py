@@ -409,12 +409,24 @@ class ProcessArtist(object):
         self.selected_key_position = ProcessKeyPosition(process, self.selected_beam_id, 0)
 
         # Robot
+        self._robot_artist = None
+
+
+    @property
+    def robot_artist(self):
+        # type: () -> RobotModelArtist
+        if self._robot_artist is not None:
+            return self._robot_artist
+
         if self.process.robot_model is not None:
             print("Creating new RobotModelArtist")
-            self.robot_artist = RobotModelArtist(self.process.robot_model, self.robot_layer)
-            self.robot_artist.scale(1000)
+            self._robot_artist = RobotModelArtist(self.process.robot_model, self.robot_layer)
+            self._robot_artist.scale(1000)
+            return self._robot_artist
         else:
-            self.robot_artist = None
+            print("Error: Attempy to create new RobotModelArtist but process.robot_model is None")
+            self._robot_artist = None
+            return None
 
     #######################################
     # Functions to handle the guid records
