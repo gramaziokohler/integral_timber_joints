@@ -181,6 +181,14 @@ class ProcessKeyPosition(object):
          'screwdriver_assembled_retractedfurther.open_gripper'),  # Screwdriver Position
     ]
 
+    # pos_name, beam_pos, gripper_pos, screwdriver_pos
+    pos_names_for_beam_manual_assembly = [
+        ('assembly_wcf_final',
+         'assembly_wcf_final',  # Beam Position
+         None,
+         None),  # Screwdriver Position
+    ]
+
     @property
     def _all_pos_names(self):
         return self.pos_names_for_beam_with_clamps +\
@@ -251,6 +259,8 @@ class ProcessKeyPosition(object):
             return self.pos_names_for_beam_with_screwdriver_with_gripper
         elif self.beam_assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
             return self.pos_names_for_beam_with_screwdriver_without_gripper
+        elif self.beam_assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+            return self.pos_names_for_beam_manual_assembly
         else:
             return []
 
@@ -351,6 +361,7 @@ class ProcessArtist(object):
         'assembly_method_clamped': (84, 155, 135),  # green
         'assembly_method_screwed_w_gripper': (126, 178, 221),  # lightblue
         'assembly_method_screwed_wo_gripper': (68, 94, 147),  # deepblue
+        'assembly_method_manual_assembly': (181, 118, 24),  # Dark Orange
         'gripper_normal': (35, 78, 160),  # Blue
         'asstool_normal': (30, 120, 50),  # Green
     }

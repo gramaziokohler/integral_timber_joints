@@ -65,21 +65,22 @@ def show_sequence_color(process):
 
         # Show gripper and clamp
         if seq == selected_seq_num:
-            artist.show_asstool_at_one_position(beam_id, color='asstool_normal')
-            artist.show_gripper_at_one_position(beam_id, color='gripper_normal')
-            # Special color for SCREWED_WITHOUT_GRIPPER
             assembly_method = assembly.get_assembly_method(selected_beam_id)
-            if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
-                grasping_joint_id = process.assembly.get_grasping_joint_id(beam_id)
-                tool_position = artist.selected_key_position.current_clamp_pos
-                # print (grasping_joint_id)
-                # print (tool_position)
-                rs.ObjectColor(artist.asstool_guids_at_position(grasping_joint_id, tool_position), artist.color_meaning.get('gripper_normal'))
+            # Gripper and clamp only exist if it is not Manually Assembled or Undefined.
+            if assembly_method not in [BeamAssemblyMethod.MANUAL_ASSEMBLY, BeamAssemblyMethod.UNDEFINED]:
+                artist.show_asstool_at_one_position(beam_id, color='asstool_normal')
+                artist.show_gripper_at_one_position(beam_id, color='gripper_normal')
+                # Special color for SCREWED_WITHOUT_GRIPPER
+                if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+                    grasping_joint_id = process.assembly.get_grasping_joint_id(beam_id)
+                    tool_position = artist.selected_key_position.current_clamp_pos
+                    # print (grasping_joint_id)
+                    # print (tool_position)
+                    rs.ObjectColor(artist.asstool_guids_at_position(grasping_joint_id, tool_position), artist.color_meaning.get('gripper_normal'))
 
         else:
             artist.hide_gripper_all_positions(beam_id)
             artist.hide_asstool_all_positions(beam_id)
-
 
         # Print out for debug
         if problem:
@@ -436,22 +437,23 @@ def change_grasping_joint():
     selectable_guids = []
     for joint_id in joint_ids:
         if joint_id[0] == current_grasping_joint_id[0] and joint_id[1] == current_grasping_joint_id[1]:
-            color = (30, 85, 190) # Blue
+            color = (30, 85, 190)  # Blue
         else:
-            color = (30, 190, 85) # Green
+            color = (30, 190, 85)  # Green
         draw_selectable_joint(process, joint_id, redraw=False, color=color)
         selectable_guids.extend(artist._joint_features[joint_id])
     rs.EnableRedraw(True)
 
     # * Ask user to Pick in Rhino UI the grasping joint
     go = Rhino.Input.Custom.GetObject()
+
     def joint_feature_filter(rhino_object, geometry, component_index):
         return rhino_object.Attributes.ObjectId in selectable_guids
     go.SetCustomGeometryFilter(joint_feature_filter)
     go.SetCommandPrompt("Select joint as the Grasping Joint (current grasping joint is Blue):")
     go.EnablePreSelect(False, True)
     result = go.Get()
-    print (result)
+    print(result)
     if result is None or result == Rhino.Input.GetResult.Cancel:
         print("Cancel")
         delete_all_selectable_joints(process)
@@ -477,6 +479,7 @@ def change_grasping_joint():
     artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
     delete_all_selectable_joints(process)
 
+
 def _assembly_tools_guid_to_joint_id(beam_id, guid):
     process = get_process()
     artist = get_process_artist()
@@ -489,6 +492,7 @@ def _assembly_tools_guid_to_joint_id(beam_id, guid):
                 return joint_id
     return None
 
+
 def _assembly_tools_selectable_guids(beam_id):
     process = get_process()
     artist = get_process_artist()
@@ -500,6 +504,7 @@ def _assembly_tools_selectable_guids(beam_id):
         selectable_guids.extend(guids)
     return selectable_guids
 
+
 def change_screwdriver_orientation():
     process = get_process()
     artist = get_process_artist()
@@ -507,6 +512,7 @@ def change_screwdriver_orientation():
 
     # * Ask user to Pick in Rhino UI the screwdriver to flip
     go = Rhino.Input.Custom.GetObject()
+
     def joint_feature_filter(rhino_object, geometry, component_index):
         return rhino_object.Attributes.ObjectId in _assembly_tools_selectable_guids(beam_id)
     go.SetCustomGeometryFilter(joint_feature_filter)
@@ -538,6 +544,7 @@ def change_screwdriver_type():
 
     # * Ask user to Pick in Rhino UI the screwdriver to flip
     go = Rhino.Input.Custom.GetObject()
+
     def joint_feature_filter(rhino_object, geometry, component_index):
         return rhino_object.Attributes.ObjectId in _assembly_tools_selectable_guids(beam_id)
     go.SetCustomGeometryFilter(joint_feature_filter)

@@ -402,10 +402,11 @@ class RobotClampAssemblyProcess(Data):
         None, if the joint do not need a clamp (determined by assembly_method)
         """
         beam_id = joint_id[1]  # This id is the beam to be assembled
-        if self.assembly.get_assembly_method(beam_id) > BeamAssemblyMethod.GROUND_CONTACT:
-            return self.assembly.get_joint_attribute(joint_id, 'tool_type')
-        else:
+        assembly_method = self.assembly.get_assembly_method(beam_id)
+        if assembly_method in [BeamAssemblyMethod.GROUND_CONTACT, BeamAssemblyMethod.UNDEFINED, BeamAssemblyMethod.MANUAL_ASSEMBLY]:
             return None
+        else:
+            return self.assembly.get_joint_attribute(joint_id, 'tool_type')
 
     def get_tool_of_joint(self, joint_id, position_name=''):
         # type: (tuple[str, str], Optional[str]) -> Tool
@@ -604,11 +605,11 @@ class RobotClampAssemblyProcess(Data):
         # Compute the analytical result of the feasible region and take a average from the resulting region
         feasible_disassem_rays, lin_set = geometric_blocking.compute_feasible_region_from_block_dir(blocking_vectors)
         if len(feasible_disassem_rays) == 0:
-            print ('- Warning : no feasible_disassem_rays from compute_feasible_region_from_block_dir')
+            print('- Warning : no feasible_disassem_rays from compute_feasible_region_from_block_dir')
             return None
 
         if verbose:
-            print ('feasible_disassem_rays from compute_feasible_region_from_block_dir: %s' % feasible_disassem_rays)
+            print('feasible_disassem_rays from compute_feasible_region_from_block_dir: %s' % feasible_disassem_rays)
 
         # # Remove the feasible_rays that are linear (bi-directional)
         if len(feasible_disassem_rays) > 1:
@@ -791,6 +792,8 @@ class RobotClampAssemblyProcess(Data):
         # * Retrieve Clamps and Screwdrivers attached to this beam
         other_feature_shapes = []
 
+        assembly_method = self.assembly.get_assembly_method(beam_id)
+
         def draw_drill_cylinders_of_tool_at_wcf(tool):
             cylinders = []
             t_world_tool_at_final = Transformation.from_frame(tool.current_frame)
@@ -799,22 +802,23 @@ class RobotClampAssemblyProcess(Data):
                 cylinders.append(cylinder.transformed(t_world_tool_at_final))
             return cylinders
 
-        # Gripper
-        if self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf") is None:
-            print("Warning: gripper_tcp_in_ocf is None while calling process.get_tool_features_on_beam(%s)" % (beam_id))
-        else:
-            gripper = self.get_gripper_of_beam(beam_id)
-            other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(gripper)
+        # * Gripper (except if it is manually assembled)
+        if assembly_method != BeamAssemblyMethod.MANUAL_ASSEMBLY:
+            if self.assembly.get_beam_attribute(beam_id, "gripper_tcp_in_ocf") is None:
+                print("Warning: gripper_tcp_in_ocf is None while calling process.get_tool_features_on_beam(%s)" % (beam_id))
+            else:
+                gripper = self.get_gripper_of_beam(beam_id)
+                other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(gripper)
 
-        # Clamps Attached to this beam
+        # * Clamps Attached to this beam - Need to check neighbour's assembly method
         for neighbour_id in assembly.get_unbuilt_neighbors(beam_id):
             if assembly.get_assembly_method(neighbour_id) == BeamAssemblyMethod.CLAMPED:
                 clamp = self.get_tool_of_joint((beam_id, neighbour_id))  # type: Clamp
                 if clamp is not None:
                     other_feature_shapes += draw_drill_cylinders_of_tool_at_wcf(clamp)
 
-        # # Screwdrivers Attached to this beam
-        if assembly.get_assembly_method(beam_id) in BeamAssemblyMethod.screw_methods:
+        # * Screwdrivers Attached to this beam
+        if assembly_method in BeamAssemblyMethod.screw_methods:
             for neighbour_id in assembly.get_already_built_neighbors(beam_id):
                 screwdriver = self.get_tool_of_joint((neighbour_id, beam_id))
                 if screwdriver is not None:

@@ -404,6 +404,7 @@ def show_assembly_method_color(process):
     print("- Green:     Clamped")
     print("- LightBlue: ScrewedWithGripper")
     print("- DarkBlue:  ScrewedWithoutGripper")
+    print("- Orange:  ManaulAssembly")
     for beam_id in process.assembly.sequence:
         assembly_method = process.assembly.get_assembly_method(beam_id)
         if assembly_method == BeamAssemblyMethod.GROUND_CONTACT:
@@ -414,6 +415,8 @@ def show_assembly_method_color(process):
             artist.change_interactive_beam_colour(beam_id, 'assembly_method_screwed_w_gripper')
         elif assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
             artist.change_interactive_beam_colour(beam_id, 'assembly_method_screwed_wo_gripper')
+        elif assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+            artist.change_interactive_beam_colour(beam_id, 'assembly_method_manual_assembly')
         else:
             artist.change_interactive_beam_colour(beam_id, 'assembly_method_undefined')
     rs.EnableRedraw(True)

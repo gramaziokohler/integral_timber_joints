@@ -195,9 +195,16 @@ def compute_beam_pickupapproach(process, beam_id, verbose=False):
     `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
 
     """
+    assembly_method = process.assembly.get_assembly_method(beam_id)
+
+    # * Skip MANUAL_ASSEMBLY
+    if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+        if verbose:
+            print("Skipping compute_beam_pickupapproach for MANUAL_ASSEMBLY")
+        return ComputationalResult.ValidCanContinue
 
     # Check for Assembly Type
-    if process.assembly.get_assembly_method(beam_id=beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         return ComputationalResult.ValidCanContinue
 
     # Check to ensure prerequisite
@@ -248,8 +255,16 @@ def compute_beam_finalretract(process, beam_id, verbose=False):
     `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
 
     """
+    assembly_method = process.assembly.get_assembly_method(beam_id)
+
+    # * Skip MANUAL_ASSEMBLY
+    if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+        if verbose:
+            print("Skipping compute_beam_finalretract for MANUAL_ASSEMBLY")
+        return ComputationalResult.ValidCanContinue
+
     # Check for Assembly Type
-    if process.assembly.get_assembly_method(beam_id=beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         return ComputationalResult.ValidCanContinue
 
     # Check to ensure prerequisite
@@ -289,6 +304,14 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
     `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
 
     """
+    assembly_method = process.assembly.get_assembly_method(beam_id)
+
+    # * Skip MANUAL_ASSEMBLY
+    if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+        if verbose:
+            print("Skipping compute_beam_pickupretract for MANUAL_ASSEMBLY")
+        return ComputationalResult.ValidCanContinue
+
     # Check to ensure prerequisite
     if process.pickup_station is None:
         print("pickup_station is not set")
@@ -311,7 +334,7 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
     vprint("process.assembly.set_beam_attribute(%s, 'assembly_wcf_pickupretract', %s)" % (beam_id, assembly_wcf_pickupretract))
 
     # Check if beam is of type SCREWED, otherwise stop here
-    if process.assembly.get_beam_attribute(beam_id, 'assembly_method') not in BeamAssemblyMethod.screw_methods:
+    if assembly_method not in BeamAssemblyMethod.screw_methods:
         vprint("return ComputationalResult.ValidCanContinue")
 
     # * Compute assembly_wcf_screwdriver_attachment_pose
@@ -406,7 +429,7 @@ def _compute_gripper_approach_vector_wcf_final(process, beam_id, verbose=False):
     return approach_vector_wcf_final
 
 
-def compute_storeage_frame(process, beam_id, verbose = False):
+def compute_storeage_frame(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
     """Compute the storage frame of a beam in the stack.
 

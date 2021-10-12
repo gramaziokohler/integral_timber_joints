@@ -221,7 +221,6 @@ class LoadBeamAction(OperatorAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None):
         # type: (int, int, str) -> None
         super(LoadBeamAction, self).__init__()
-        # OperatorAction.__init__(self)
         self.seq_n = seq_n
         self.act_n = act_n
         self.beam_id = beam_id
@@ -250,6 +249,43 @@ class LoadBeamAction(OperatorAction):
             beam_id=self.beam_id,
             grasp_face=grasp_face,
             target_frame=beam_pickup_frame_wcf
+        ))
+
+        # Assign Unique Movement IDs to all movements
+        self.assign_movement_ids()
+
+
+class ManaulAssemblyAction(OperatorAction):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None):
+        # type: (int, int, str) -> None
+        super(LoadBeamAction, self).__init__()
+        self.seq_n = seq_n
+        self.act_n = act_n
+        self.beam_id = beam_id
+
+    @property
+    def data(self):
+        data = super(ManaulAssemblyAction, self).data
+        data['beam_id'] = self.beam_id
+        return data
+
+    @data.setter
+    def data(self, data):
+        super(ManaulAssemblyAction, type(self)).data.fset(self, data)
+        self.beam_id = data['beam_id']
+
+    def __str__(self):
+        return "Operator manually assemble Beam ('%s')" % (self.beam_id)
+
+    def create_movements(self, process):
+        # type: (RobotClampAssemblyProcess) -> None
+        self.movements = []
+        beam_final_frame_wcf = process.assembly.beam(self.beam_id).frame
+
+        self.movements.append(OperatorLoadBeamMovement(
+            beam_id=self.beam_id,
+            target_frame=beam_final_frame_wcf,
+            tag="Opeartor manually assemble Beam (%s) to final location." % self.beam_id,
         ))
 
         # Assign Unique Movement IDs to all movements
@@ -1204,7 +1240,6 @@ class GenericGripperApproachBeamPickupAction(RobotAction):
         self.assign_movement_ids()
 
 
-
 class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None):
         # type: (int, int, str, Tuple[str, str], str) -> None
@@ -1259,12 +1294,11 @@ class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
             t_flange_from_attached_objects=[
                 toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
-                ],
+            ],
             speed_type='speed.transfer.rapid',
             tag="Linear Move to lift up Beam ('%s')" % (self.beam_id),
             allowed_collision_matrix=acm,
         ))
-
 
         # * Free Move to go to screwdriver attachment pose
         f_beam_at_position_in_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_screwdriver_attachment_pose')
@@ -1281,14 +1315,13 @@ class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
             t_flange_from_attached_objects=[
                 toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
-                ],
+            ],
             speed_type='speed.transfer.rapid',
             tag="Free Move to reorient Beam ('%s')" % (self.beam_id)
         ))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
-
 
 
 class GenericFreeMoveBeamWithGripperAction(RobotAction):
@@ -1347,7 +1380,7 @@ class GenericFreeMoveBeamWithGripperAction(RobotAction):
             t_flange_from_attached_objects=[
                 toolchanger.t_t0cf_from_tcf,
                 toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
-                ],
+            ],
             speed_type='speed.transit.rapid',
             tag="Free Move to reorient Beam ('%s')" % (self.beam_id)
         ))  # Tool Approach Frame where tool is at structure

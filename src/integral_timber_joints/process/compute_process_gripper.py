@@ -46,9 +46,16 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
     beam_length = process.assembly.beam(beam_id).length
     chosen_gripper_type = None
     chosen_gripper_ideal = None
+    assembly_method = process.assembly.get_assembly_method(beam_id)
+
+    # * Skip MANUAL_ASSEMBLY
+    if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+        if verbose:
+            print("Skipping assign_gripper_to_beam for MANUAL_ASSEMBLY")
+        return ComputationalResult.ValidCanContinue
 
     # * Handle the copy and paste for SCREWED_WITHOUT_GRIPPER
-    if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         grasping_joint_id = process.assembly.get_grasping_joint_id(beam_id)
         tool_type = process.assembly.get_joint_attribute(grasping_joint_id, "tool_type")
         tool_id = process.assembly.get_joint_attribute(grasping_joint_id, "tool_id")
@@ -69,9 +76,9 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
                 print("assign_gripper_to_beam: gripper_id set")
 
             # Check that the gripper_id is sensible
-            if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
                 if verbose:
-                    print("assign_gripper_to_beam: assembly method = %s " % process.assembly.get_assembly_method(beam_id))
+                    print("assign_gripper_to_beam: assembly method = %s " % assembly_method)
 
                 if gripper_id in [tool.name for tool in process.screwdrivers]:
                     if verbose:
@@ -89,7 +96,7 @@ def assign_gripper_to_beam(process, beam_id, verbose=False):
                   (beam_id, gripper_type))
         return ComputationalResult.ValidNoChange
 
-    if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         joint_ids = process.assembly.get_joint_ids_with_tools_for_beam(beam_id)
         first_screwdriver = process.get_tool_of_joint(joint_ids[0])
         chosen_gripper_type = first_screwdriver.type_name
@@ -159,13 +166,21 @@ def compute_gripper_grasp_pose(process, beam_id, verbose=False):
     `ComputationalResult.ValidCanContinue` otherwise (this function should not fail)
 
     """
+    assembly_method = process.assembly.get_assembly_method(beam_id)
+
+    # * Skip MANUAL_ASSEMBLY
+    if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+        if verbose:
+            print("Skipping compute_gripper_grasp_pose for MANUAL_ASSEMBLY")
+        return ComputationalResult.ValidCanContinue
+
     # Check to ensure prerequisite
     if process.assembly.get_beam_attribute(beam_id, 'gripper_type') is None:
         return ComputationalResult.ValidCannotContinue
 
     beam = process.assembly.beam(beam_id)
 
-    if process.assembly.get_assembly_method(beam_id) == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         # Retrive which joint is the gripper screwdriver and the tool_orientation_frame index
         joint_id = process.assembly.get_grasping_joint_id(beam_id)  # grasping_joint_id
         tool_orientation_frame_index = process.assembly.get_joint_attribute(joint_id, 'tool_orientation_frame_index')

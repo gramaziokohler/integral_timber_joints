@@ -43,6 +43,8 @@ def create_actions_from_sequence(process, beam_id, verbose=False):
         result = _create_actions_for_clamped(process, beam_id, verbose)
     elif assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER or assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
         result = _create_actions_for_screwed(process, beam_id, verbose)
+    elif assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+        result = _create_actions_for_manual_assembly(process, beam_id, verbose)
 
     # * Assign Actions Numbers
     if result in ComputationalResult.ValidResults:
@@ -85,6 +87,33 @@ def _create_actions_for_no_tools(process, beam_id, verbose=False):
 
     # * Return gripper
     act = PlaceGripperToStorageAction(seq_n, 0, gripper_type, gripper_id)
+    actions.append(act)
+
+    # Print out newly added actions and return
+    if verbose:
+        for act in actions:
+            print('|- ' + act.__str__())
+
+    process.assembly.set_beam_attribute(beam_id, 'actions', actions)
+    return ComputationalResult.ValidCanContinue
+
+
+def _create_actions_for_manual_assembly(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
+    """ Creating Action objects (process.actions)
+    for beams that are manually assembled.
+
+    """
+
+    assembly = process.assembly  # type: Assembly
+    actions = []  # type: List[Action]
+    seq_n = assembly.sequence.index(beam_id)
+
+    if verbose:
+        print("Beam %s" % beam_id)
+
+    # * Operator manually assemble Beam
+    act = ManaulAssemblyAction(seq_n, 0, beam_id)
     actions.append(act)
 
     # Print out newly added actions and return
