@@ -322,16 +322,6 @@ class JointPolylineLap(Joint):
             poly_line_mid = self._polyline_at_mid(i+3, tol)[::-1] + self._extline_at_mid(i+3, tol)
             shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_mid, sidecut_extrusion_vector))
 
-        # hf = self.height_fraction_at_mid + tol
-            # if self.is_joint_on_top:
-            #     poly_line_mid = self._polyline_at_mid(i+3, tol)[::-1] + self._extline_at_mid(i+3, tol)
-            #     poly_line_btm = self._polyline_at_btm(i+3)[::-1] + self._extline_at_btm(i+3)
-            #     shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_btm + poly_line_mid))
-            # else:
-            #     poly_line_mid = self._polyline_at_mid(i+3, tol)[::-1] + self._extline_at_mid(i+3, tol)
-            #     poly_line_top = self._polyline_at_top(i+3)[::-1] + self._extline_at_top(i+3)
-            #     shapes.append(polyhedron_extrude_from_concave_vertices(poly_line_mid + poly_line_top))
-
         return shapes
 
     def get_clamp_frames(self, beam):

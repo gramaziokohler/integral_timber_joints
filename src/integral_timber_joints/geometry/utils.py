@@ -80,11 +80,17 @@ def convex_triangulation(pts, normal):
 
     # Top and bottom caps - triangles
 
-    # Btm and top cap
+    # * Simple triangulation algorithm works only with convex polygon with no co-linear points.
     for i in range(len(pts) - 2):
         faces.append([0, i+1, i+2])
 
-    return pts, faces
+    # * Aligh face cycles witht given normal
+    mesh = Mesh.from_vertices_and_faces(pts, faces)
+    if normal.dot(mesh.face_normal(0)) < 0:
+        mesh.flip_cycles()
+    v, f = mesh.to_vertices_and_faces()
+
+    return v, f
 
 
 def polyhedron_extrude_from_concave_vertices(cap_vertices, extrude_direction):
@@ -109,7 +115,7 @@ def polyhedron_extrude_from_concave_vertices(cap_vertices, extrude_direction):
         v_btm, f = conforming_delaunay_triangulation(cap_vertices, extrude_direction)
 
     mesh_btm = Mesh.from_vertices_and_faces(v_btm, f)
-    mesh_btm.flip_cycles()
+    mesh_btm.flip_cycles() # Bottom cap faces should be facing the reverse of the extrusion vector
 
     # * Create top cap
     move = Translation.from_vector(extrude_direction)
