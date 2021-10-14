@@ -81,7 +81,7 @@ def _create_actions_for_no_tools(process, beam_id, verbose=False):
     act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id)
     actions.append(act)
 
-    # * Syncronized clamp and move beam action
+    # * Place beam action without clamps
     act = BeamPlacementWithoutClampsAction(seq_n, 0, beam_id, gripper_id)
     actions.append(act)
 
