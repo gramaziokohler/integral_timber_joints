@@ -1,6 +1,9 @@
 (define (domain itj_clamp_only)
   (:requirements :strips :equality)
   (:predicates
+    ; switch for including move action or not
+    (ConsiderTransition)
+
     ; * Static predicates (predicates that do not change over time)
     (Element ?element)
     (Joint ?element1 ?element2)
@@ -81,8 +84,7 @@
     :parameters (?element ?conf1 ?conf2 ?traj ?tool)
     :precondition (and
                     ; ! state precondition
-                    ;; (not (CanFreeMove))
-                    ;; (RobotAtConf ?conf1)
+                    (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf1)))
                     (IsGripper ?tool)
                     (Attached ?tool)
                     (RobotGripperEmpty)
@@ -107,8 +109,7 @@
     :parameters (?element ?conf1 ?conf2 ?traj ?tool)
     :precondition (and
                     ; ! robot state precondition
-                    ;; (not (CanFreeMove))
-                    ;; (RobotAtConf ?conf1)
+                    (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf1)))
                     (IsGripper ?tool)
                     (Attached ?tool)
                     (Attached ?element)
@@ -135,8 +136,7 @@
     :parameters (?tool ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! state precondition
-                    ;; (not (CanFreeMove))
-                    ;; (RobotAtConf ?conf1)
+                    (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf1)))
                     (RobotToolChangerEmpty)
                     (IsGripper ?tool)
                     (AtRack ?tool)
@@ -160,8 +160,7 @@
     :parameters (?tool ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! state precondition
-                    ;; (not (CanFreeMove))
-                    ;; (RobotAtConf ?conf1)
+                    (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf1)))
                     (RobotToolChangerEmpty)
                     (IsClamp ?tool)
                     (AtRack ?tool)
@@ -183,8 +182,7 @@
     :parameters (?tool ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! robot state precondition
-                    ;; (not (CanFreeMove))
-                    ;; (RobotAtConf ?conf1)
+                    (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf1)))
                     (Attached ?tool)
                     (IsTool ?tool)
                     (imply (IsGripper ?tool) (RobotGripperEmpty))
@@ -208,8 +206,7 @@
     :parameters (?tool ?element1 ?element2 ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! state precondition
-                    ;; (not (CanFreeMove))
-                    ;; (RobotAtConf ?conf1)
+                    (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf1)))
                     (RobotToolChangerEmpty)
                     (IsClamp ?tool)
                     (ToolAtJoint ?tool ?element1 ?element2)
@@ -236,8 +233,7 @@
     :parameters (?tool ?element1 ?element2 ?conf1 ?conf2 ?traj)
     :precondition (and
                     ; ! robot state precondition
-                    ;; (not (CanFreeMove))
-                    ;; (RobotAtConf ?conf1)
+                    (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf1)))
                     (Attached ?tool)
                     (IsClamp ?tool)
                     (Joint ?element1 ?element2)
