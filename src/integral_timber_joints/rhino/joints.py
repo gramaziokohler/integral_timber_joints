@@ -36,7 +36,7 @@ guid = uuid.UUID
 # ######################################################
 
 
-def draw_selectable_joint(process, joint_id, redraw=True, color=None):
+def draw_selectable_joint(process, joint_id, redraw=False, color=None):
     # type: (RobotClampAssemblyProcess, tuple[str,str], bool, Tuple) -> None
     """Draw joint feature of a specific joint.
 
@@ -80,7 +80,10 @@ def draw_selectable_joint(process, joint_id, redraw=True, color=None):
     # ! First attempt at boolean all objects together
     success = [brep.MergeCoplanarFaces(sc.doc.ModelAbsoluteTolerance) for brep in breps]
     # print("MergeCoplanarFaces success : %s" % success)
-    boolean_result = rg.Brep.CreateBooleanUnion(breps, sc.doc.ModelAbsoluteTolerance)
+    if len(breps) > 1:
+        boolean_result = rg.Brep.CreateBooleanUnion(breps, sc.doc.ModelAbsoluteTolerance)
+    else:
+        boolean_result = breps
     # print (boolean_result)
 
     # ! Second attempt at boolean objects iteratively together
@@ -137,7 +140,7 @@ def draw_all_selectable_joints(process, redraw=True):
         rs.EnableRedraw(True)
 
 
-def delete_selectable_joint(process, joint_id, redraw=True):
+def delete_selectable_joint(process, joint_id, redraw=False):
     # type: (RobotClampAssemblyProcess, tuple[str,str], bool) -> None
     artist = get_process_artist()
     rs.EnableRedraw(False)
@@ -195,6 +198,22 @@ def _get_filter_of_selectable_joints(process, joint_types=[], forward_joint=True
     return joint_feature_filter
 
 
+def show_selectable_joints_by_id(process, joint_ids=[], redraw=False):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str,str]], bool) -> None
+    artist = get_process_artist()
+    rs.EnableRedraw(False)
+
+    # * Hide joints that are not the right type:
+    for joint_id in process.assembly.joint_ids():
+        if joint_id in joint_ids:
+            rs.ShowObjects(artist._joint_features[joint_id])
+        else:
+            rs.HideObjects(artist._joint_features[joint_id])
+
+    if redraw:
+        rs.EnableRedraw(True)
+
+
 def show_selectable_joints_by_types(process, joint_types=[], forward_joint=True, backward_joint=True, redraw=False):
     # type: (RobotClampAssemblyProcess, list[type], bool, bool, bool) -> None
     artist = get_process_artist()
@@ -233,6 +252,11 @@ def _joint_id_from_rhino_guids(guids):
 
 def users_select_feature(process, joint_types=None, forward_joint=True, backward_joint=True, prompt='Select joints:'):
     # type: (RobotClampAssemblyProcess, list[type], bool, bool, str) -> list[Tuple[str, str]]
+    """Returns a list of selected joints.
+    Multi select is possible as an option but by default can only be belonging to one type.
+
+    If user presses Cancel, return None.
+    """
     artist = get_process_artist()
 
     # * Menu for user
@@ -247,10 +271,34 @@ def users_select_feature(process, joint_types=None, forward_joint=True, backward
         return rhino_object.Attributes.ObjectId in selectable_joint_guids
     go.SetCustomGeometryFilter(joint_feature_filter)
 
-    result = go.GetMultiple(0, 0)
+    # * First Selection is single select and return
+    go.AddOption("MultiSelect")
+    result = go.Get()
+
+    # * If user opted for muiltiselect, another selection is prompted
+    if result == Rhino.Input.GetResult.Option and go.Option().EnglishName == "MultiSelect":
+        go.ClearCommandOptions()
+        first_result = go.Get()
+        if first_result is None or first_result == Rhino.Input.GetResult.Cancel:
+            return None
+
+        # Hide joints of different types from the first selection
+        first_result_joint_id = _joint_id_from_rhino_guids([obj.ObjectId for obj in go.Objects()])[0]
+        first_result_type = process.assembly.joint(first_result_joint_id).__class__
+        show_selectable_joints_by_types(process, [first_result_type], backward_joint=False, redraw=True)
+
+        # Prompt user for further selection, without removing the first selection.
+        go.SetCommandPrompt(prompt + " (MultiSelect)")
+        go.EnableClearObjectsOnEntry(False)
+        go.DeselectAllBeforePostSelect = False
+        result = go.GetMultiple(0, 0)
 
     if result is None or result == Rhino.Input.GetResult.Cancel:
         return None
+
+    if isinstance(result, str):
+        if result.startswith("Cancel"):
+            return None
 
     # Retrive joint_ids from object name
     joint_ids = _joint_id_from_rhino_guids([obj.ObjectId for obj in go.Objects()])
@@ -279,116 +327,120 @@ def cull_double_selected_joint_ids(process, joint_ids):
 # ##############################
 
 
-def change_joint_type(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def change_joint_type(process, joint_ids):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
     artist = get_process_artist()
     assembly = process.assembly
-    result = rs.GetString("Change to HalfLap or PolylineLap :", strings=['JointHalfLap', 'JointPolylineLap'])
-    show_selectable_joints_by_types(process, joint_types=[JointHalfLap], backward_joint=False, redraw=True)
-    # show_selectable_joints_by_types(process, joint_types=[JointPolylineLap], backward_joint=False, redraw=True)
 
-    joint_ids = users_select_feature(process, joint_types=[JointHalfLap])
-    if joint_ids is None or len(joint_ids) == 0:
-        show_all_selectable_joints(process, redraw=True)
-        return None
+    current_joint_type = process.assembly.joint(joint_ids[0]).__class__
+    if current_joint_type == JointPolylineLap:
+        options = ['JointHalfLap', 'Cancel']
+    elif current_joint_type == JointHalfLap:
+        options = ['JointPolylineLap', 'Cancel']
+
+    result = rs.GetString("Change to HalfLap or PolylineLap :", strings=options)
+    if result == 'Cancel':
+        return ([], [])
+    if result not in ['JointHalfLap', 'JointPolylineLap']:
+        return ([], [])
 
     sequence = assembly.sequence
-    affected_beam_ids = []
-    affected_joint_ids = []
+    affected_beams = set()
+    affected_joints = set()
     for joint_id in joint_ids:
         beam_s_id, beam_m_id = joint_id
         if sequence.index(beam_s_id) < sequence.index(beam_m_id):
             beam_s_id, beam_m_id = beam_m_id, beam_s_id
         beam_stay = assembly.beam(beam_s_id)
         beam_move = assembly.beam(beam_m_id)
-        current_face_id = assembly.joint((beam_m_id, beam_s_id)).face_id
-        j_s, j_m, screw_line = JointPolylineLap.from_beam_beam_intersection(beam_stay, beam_move, joint_face_id_move=current_face_id)
+        joint_id_s_m = (beam_s_id, beam_m_id)
+        joint_id_m_s = (beam_m_id, beam_s_id)
+
+        joint_face_id_move = assembly.joint(joint_id_m_s).face_id
+        joint_face_id_stay = assembly.joint(joint_id_s_m).face_id
+
+        if result == 'JointPolylineLap':
+            j_s, j_m, screw_line = JointPolylineLap.from_beam_beam_intersection(beam_stay, beam_move, joint_face_id_move=joint_face_id_move)
+        if result == 'JointHalfLap':
+            j_s, j_m, screw_line = JointHalfLap.from_beam_beam_intersection(beam_stay, beam_move, joint_face_id_move=joint_face_id_move)
 
         if j_m is not None and j_s is not None:
             print('- Joint (%s-%s) chagned to %s' % (beam_s_id, beam_m_id, j_m.__class__.__name__))
             assembly.add_joint_pair(j_s, j_m, beam_s_id, beam_m_id)
-            affected_beam_ids.append(beam_s_id)
-            affected_beam_ids.append(beam_m_id)
+            affected_beams.add(beam_s_id)
+            affected_beams.add(beam_m_id)
 
-            # Redraw new selectable joint feature
-            delete_selectable_joint(process, (beam_s_id, beam_m_id))
-            delete_selectable_joint(process, (beam_m_id, beam_s_id))
-            draw_selectable_joint(process, (beam_s_id, beam_m_id))
-            draw_selectable_joint(process, (beam_m_id, beam_s_id))
+            for joint_id in [joint_id_s_m, joint_id_m_s]:
+                affected_joints.add(joint_id)
+                # Redraw new selectable joint feature
+                delete_selectable_joint(process, joint_id)
+                draw_selectable_joint(process, joint_id)
 
-    for beam_id in affected_beam_ids:
+    for beam_id in affected_beams:
         artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
         process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
-    show_all_selectable_joints(process, redraw=True)
-    return
+
+    return (affected_beams, affected_joints)
 
 
-def change_joint_half_lap_parameters(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def _joint_half_lap_change_thickness(process, joint_ids):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
     artist = get_process_artist()
 
-    while True:
-        # * Hide joints that are not the right type:
-        show_selectable_joints_by_types(process, joint_types=[JointHalfLap], redraw=True)
+    # Flip selected joint_ids because it is more intuitive to select the positive
+    joint_ids = [(i, j) for (j, i) in joint_ids]
 
-        # Ask user to pick joints
-        joint_ids = users_select_feature(process, joint_types=[JointHalfLap])
-        if joint_ids is None or len(joint_ids) == 0:
-            show_all_selectable_joints(process, redraw=True)
-            return None
-        joint_ids = cull_double_selected_joint_ids(process, joint_ids)
+    # * Print out current joint parameters
+    existing_thickness = set()
+    for joint_id in joint_ids:
+        joint = process.assembly.joint(joint_id)
+        current_thickness = joint.thickness
+        existing_thickness.add(current_thickness)
+        print("Joint (%s-%s) thickness = %s" % (joint_id[0], joint_id[1], current_thickness))
 
-        # Flip selected joint_ids because it is more intuitive to select the positive
-        joint_ids = [(i, j) for (j, i) in joint_ids]
+    # * Ask user for new paramter value
+    new_thickness = rs.GetReal("New thickness of the lap joint: (Existing Thickness are: %s" % existing_thickness)
+    if new_thickness is None:
+        show_all_selectable_joints(process, redraw=True)
+        return None
 
-        # * Print out current joint parameters
-        existing_thickness = set()
-        for joint_id in joint_ids:
-            joint = process.assembly.joint(joint_id)
-            current_thickness = joint.thickness
-            existing_thickness.add(current_thickness)
-            print("Joint (%s-%s) thickness = %s" % (joint_id[0], joint_id[1], current_thickness))
+    # * Make changes to selected joints
+    affected_beams = set()
+    affected_joints = set()
+    for joint_id in joint_ids:
+        # Update this joint and its neighbour
+        beam_id1, beam_id2 = joint_id
+        joint_id_nbr = (beam_id2, beam_id1)
+        joint = process.assembly.joint(joint_id)
+        joint_nbr = process.assembly.joint(joint_id_nbr)
 
-        # * Ask user for new paramter value
-        new_thickness = rs.GetReal("New thickness of the lap joint: (Existing Thickness are: %s" % existing_thickness)
-        if new_thickness is None:
-            show_all_selectable_joints(process, redraw=True)
-            return None
+        # Skip if there are no change
+        current_thickness = joint.thickness
+        if new_thickness == current_thickness:
+            continue
+        difference = new_thickness - current_thickness
 
-        # * Make changes to selected joints
-        affected_beams = set()
-        for joint_id in joint_ids:
-            # Update this joint and its neighbour
-            beam_id1, beam_id2 = joint_id
-            joint_id_nbr = (beam_id2, beam_id1)
-            joint = process.assembly.joint(joint_id)
-            joint_nbr = process.assembly.joint(joint_id_nbr)
+        # * Logic to update this joint and its neighbour
+        joint.set_parameter('thickness', new_thickness)
+        joint_nbr.set_parameter('thickness', joint_nbr.get_parameter('thickness')-difference)
+        print("Thickness of joint pair changed to %s and %s." % (joint.thickness, joint_nbr.thickness))
 
-            # Skip if there are no change
-            current_thickness = joint.thickness
-            if new_thickness == current_thickness:
-                continue
-            difference = new_thickness - current_thickness
+        affected_beams.add(beam_id1)
+        affected_beams.add(beam_id2)
+        affected_joints.add(joint_id)
+        affected_joints.add(joint_id_nbr)
 
-            # * Logic to update this joint and its neighbour
-            joint.set_parameter('thickness', new_thickness)
-            joint_nbr.set_parameter('thickness', joint_nbr.get_parameter('thickness')-difference)
-            print("Thickness of joint pair changed to %s and %s." % (joint.thickness, joint_nbr.thickness))
+        # Redraw new selectable joint feature
+        delete_selectable_joint(process, joint_id)
+        delete_selectable_joint(process, joint_id_nbr)
+        draw_selectable_joint(process, joint_id)
+        draw_selectable_joint(process, joint_id_nbr)
 
-            affected_beams.add(beam_id1)
-            affected_beams.add(beam_id2)
-            # Redraw new selectable joint feature
-            delete_selectable_joint(process, joint_id)
-            delete_selectable_joint(process, joint_id_nbr)
-            draw_selectable_joint(process, joint_id)
-            draw_selectable_joint(process, joint_id_nbr)
+    # Redraw affected beams with new joints
+    for beam_id in affected_beams:
+        artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
 
-        # Redraw affected beams with new joints
-        for beam_id in affected_beams:
-            artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
-
-    # * Show all joints agains on exit of this function
-    show_all_selectable_joints(process, redraw=True)
+    return (affected_beams, affected_joints)
 
 
 def _change_joint_non_planar_lap_thickness(process, joint_ids):
@@ -398,6 +450,13 @@ def _change_joint_non_planar_lap_thickness(process, joint_ids):
 
     If user pressed cancel in the data entering process, return None
     """
+
+    # * Flip joint id to the joint on earlier beam.
+    for i in range(len(joint_ids)):
+        p, q = joint_ids[i]
+        if process.assembly.sequence.index(p) > process.assembly.sequence.index(q):
+            joint_ids[i] = q, p
+
     # * Print out current joint parameters
     existing_thickness = set()
     for joint_id in joint_ids:
@@ -448,32 +507,35 @@ def _change_joint_non_planar_lap_thickness(process, joint_ids):
 
 def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
     """
+    joint_ids are joint_on_stay_id = (beam_id_stay, beam_id_move)
+
+
     Returns (affected_beams, affected_joints)
 
     If user pressed cancel in the data entering process, return None
     """
     # * Print out current joint parameters
     existing_face_id = set()
-    for joint_id in joint_ids:
-        joint_on_move = process.assembly.joint(joint_id)  # type: (JointNonPlanarLap)
+    for joint_on_stay_id in joint_ids:
+        joint_on_move = process.assembly.joint(joint_on_stay_id)  # type: (JointNonPlanarLap)
         current_face_id = joint_on_move.beam_stay_face_id
         existing_face_id.add(current_face_id)
-        print("Joint (%s-%s) beam_stay_face_id = %s" % (joint_id[0], joint_id[1], current_face_id))
+        print("Joint (%s-%s) beam_stay_face_id = %s" % (joint_on_stay_id[0], joint_on_stay_id[1], current_face_id))
 
     # * Ask user for new paramter value
-    new_face_id = rs.GetReal("New face_id on Staying Beam: (Existing face_id are: %s" % existing_face_id)
+    new_face_id = rs.GetInteger("New face_id on Staying Beam: (Existing face_id are: %s" % existing_face_id)
     if new_face_id is None:
         return None
 
     # * Make changes to selected joints
     affected_beams = set()
     affected_joints = set()
-    for joint_id in joint_ids:
+    for joint_on_stay_id in joint_ids:
         # Update this joint and its neighbour
-        beam_id_move, beam_id_stay = joint_id
-        joint_id_nbr = (beam_id_stay, beam_id_move)
-        joint_on_move = process.assembly.joint(joint_id)  # type:(JointNonPlanarLap)
-        joint_on_stay = process.assembly.joint(joint_id_nbr)  # type:(JointNonPlanarLap)
+        beam_id_stay, beam_id_move = joint_on_stay_id
+        joint_on_move_id = (beam_id_move, beam_id_stay)
+        joint_on_move = process.assembly.joint(joint_on_move_id)  # type:(JointNonPlanarLap)
+        joint_on_stay = process.assembly.joint(joint_on_stay_id)  # type:(JointNonPlanarLap)
 
         # Skip if there are no change
         current_face_id = joint_on_move.beam_stay_face_id
@@ -490,6 +552,10 @@ def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
             joint_face_id_move=joint_on_move.beam_move_face_id,
             joint_face_id_stay=new_face_id,
         )
+        if new_joint_on_stay is None or new_joint_on_move is None:
+            print ("No joint returned from JointNonPlanarLap.from_beam_beam_intersection() ")
+            return ([],[])
+
         process.assembly.add_joint_pair(new_joint_on_stay, new_joint_on_move, beam_id_stay, beam_id_move)
         for key, value in joint_on_stay.get_parameters_dict().items():
             new_joint_on_stay.set_parameter(key, value)
@@ -500,8 +566,8 @@ def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
         print("beam_stay_face_id of joint pair (%s) changed to %s." % (joint_on_move.beam_stay_face_id, new_joint_on_move.beam_stay_face_id))
         affected_beams.add(beam_id_move)
         affected_beams.add(beam_id_stay)
-        affected_joints.add(joint_id)
-        affected_joints.add(joint_id_nbr)
+        affected_joints.add(joint_on_stay_id)
+        affected_joints.add(joint_on_move_id)
 
     [process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints) for beam_id in affected_beams]
     return (affected_beams, affected_joints)
@@ -644,7 +710,7 @@ def change_joint_non_planar_lap_parameters(process):
             artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
 
 
-def _change_joint_thickness(process, joint_ids):
+def _joint_polyine_lap_change_thickness(process, joint_ids):
     # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> Tuple[list[str], list[str, str]]
     """
     Returns (affected_beams, affected_joints)
@@ -653,7 +719,8 @@ def _change_joint_thickness(process, joint_ids):
     """
     # * Print out current joint parameters
     existing_thickness = set()
-    for joint_id in joint_ids:
+    for beam_id1, beam_id2 in joint_ids:
+        joint_id = (beam_id2, beam_id1)
         joint = process.assembly.joint(joint_id)
         current_thickness = joint.get_parameter('thickness')
         existing_thickness.add(current_thickness)
@@ -667,10 +734,10 @@ def _change_joint_thickness(process, joint_ids):
     # * Make changes to selected joints
     affected_beams = set()
     affected_joints = set()
-    for joint_id in joint_ids:
+    for beam_id1, beam_id2 in joint_ids:
         # Update this joint and its neighbour
-        beam_id1, beam_id2 = joint_id
-        joint_id_nbr = (beam_id2, beam_id1)
+        joint_id = (beam_id2, beam_id1)
+        joint_id_nbr = (beam_id1, beam_id2)
         joint = process.assembly.joint(joint_id)  # type:(JointNonPlanarLap)
         joint_nbr = process.assembly.joint(joint_id_nbr)  # type:(JointNonPlanarLap)
 
@@ -873,81 +940,67 @@ def _joint_polyline_lap_mirror_v(process, joint_ids):
     return _joint_polyline_lap_mirror(process, joint_ids, direction_u=False)
 
 
-def change_joint_polyline_lap_parameters(process, joint_type=JointPolylineLap):
-    # type: (RobotClampAssemblyProcess, type) -> None
+# ############################
+# Main menu / Top level menu
+# ############################
+
+def select_joint_parameter_to_change(process, joint_ids):
+    # type: (RobotClampAssemblyProcess, list[Tuple[str, str]]) -> None
     artist = get_process_artist()
-    selected_parameter = ""
+    assert len(set(process.assembly.joint(joint_id).__class__.__name__ for joint_id in joint_ids)) == 1
+
+    all_options = {
+        "JointHalfLap": {
+            "Thickness": _joint_half_lap_change_thickness,
+            "ChangeType": change_joint_type
+        },
+        "JointNonPlanarLap":
+        {
+            "Thickness": _change_joint_non_planar_lap_thickness,
+            "MoveFaceID": _change_joint_non_planar_lap_beam_move_face_id,
+            "StayFaceID": _change_joint_non_planar_lap_beam_stay_face_id,
+            "ChangeType": change_joint_type
+        },
+        "JointPolylineLap":
+        {
+            "Polyline": _joint_polyline_lap_change_polyline_string,
+            "MirrorU": _joint_polyline_lap_mirror_u,
+            "MirrorV": _joint_polyline_lap_mirror_v,
+            "RotateCW": _joint_polyline_lap_rotate_cw,
+            "RotateCCW": _joint_polyline_lap_rotate_ccw,
+            "Thickness": _joint_polyine_lap_change_thickness,
+            "ChangeType": change_joint_type
+        },
+    }
+
     while True:
-        # * Hide joints that are not the right type:
-        show_selectable_joints_by_types(process, joint_types=[joint_type], backward_joint=False, redraw=True)
+        joint_type = process.assembly.joint(joint_ids[0]).__class__
+        options = list(all_options[joint_type.__name__].keys())
+        print("Selected %i joints: %s" % (len(joint_ids), str(joint_ids)))
+        result = rs.GetString("Options for %s(s) (ESC to return):" % (joint_type.__name__), strings=options)
 
-        # * Option Menu for user
-        para_change_function = {
-            "mirror_u": _joint_polyline_lap_mirror_u,
-            "mirror_v": _joint_polyline_lap_mirror_v,
-            "rotate_cw": _joint_polyline_lap_rotate_cw,
-            "rotate_ccw": _joint_polyline_lap_rotate_ccw,
-            "encoded_polyline": _joint_polyline_lap_change_polyline_string,
-            "thickness": _change_joint_thickness,
-        }
-        selected_parameter = list(para_change_function.keys())[0]
-
-        # * Ask user to pick joints
-        go = Rhino.Input.Custom.GetObject()
-        go.EnablePreSelect(False, True)
-        go.SetCommandPrompt("Select Joints to change (%s). ENTER when done:" % (selected_parameter))
-        [go.AddOption(key) for key in para_change_function.keys()]
-        joint_feature_filter = _get_filter_of_selectable_joints(process, joint_types=[joint_type], backward_joint=False)
-        go.SetCustomGeometryFilter(joint_feature_filter)
-        para_change_result = go.GetMultiple(0, 0)
-
-        # * If user press ESC, exit function.
-        if para_change_result is None or para_change_result == Rhino.Input.GetResult.Cancel:
-            show_all_selectable_joints(process, redraw=True)
+        if result is None:
+            return None
+        if result == "Cancel":
             return None
 
-        # * If user pressed an Option, it changes the selected_parameter
-        joint_ids = _joint_id_from_rhino_guids([obj.ObjectId for obj in go.Objects()])
-        if para_change_result == Rhino.Input.GetResult.Option:
-            selected_parameter = go.Option().EnglishName
-            print("joint_ids: ", len(joint_ids))
-            # print ("go.Objects():", len(list(go.Objects())))
+        if result in all_options[joint_type.__name__]:
+            function = all_options[joint_type.__name__][result]
+            result = function(process, joint_ids)
 
-            # * If user pressed an Option while there are selected joints, activate the _change function.
-            if len(joint_ids) > 0:
-                pass
-                # joint_ids = _joint_id_from_rhino_guids([obj.ObjectId for obj in go.Objects()])
-            else:
-                # * If user pressed an Option but no objects are selected, restart the selection process
-                continue
+            # Result is None if user pressed Escape or Cancel
+            if result is not None:
+                affected_beams, affected_joints = result
+                # * Redraw new selectable joint feature and affected beams with new joints
+                for joint_id in affected_joints:
+                    delete_selectable_joint(process, joint_id, redraw=False)
+                    draw_selectable_joint(process, joint_id, redraw=False)
 
-        elif para_change_result == Rhino.Input.GetResult.Object:
-            if len(joint_ids) > 0:  # * If user pressed Enter with selected joints, activate the _change function.
-                # joint_ids = _joint_id_from_rhino_guids([obj.ObjectId for obj in go.Objects()])
-                pass
-            else:  # * If user pressed Enter with no selected joints, exit function
-                show_all_selectable_joints(process, redraw=True)
-                return None
+                for beam_id in affected_beams:
+                    artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
 
-        # Flip selected joint_ids because it is more intuitive to select the positive
-        if joint_ids is None or len(joint_ids) == 0:
-            show_all_selectable_joints(process, redraw=True)
-            return
-        joint_ids = [(i, j) for (j, i) in joint_ids]
-
-        # * Activate sub function to deal with changing a specific type of joint and parameter
-        para_change_result = para_change_function[selected_parameter](process, joint_ids)
-        if para_change_result is None:
-            show_all_selectable_joints(process, redraw=True)
-            return
-        affected_beams, affected_joints = para_change_result
-
-        # * Redraw new selectable joint feature and affected beams with new joints
-        for joint_id in affected_joints:
-            delete_selectable_joint(process, joint_id, redraw=False)
-            draw_selectable_joint(process, joint_id, redraw=False)
-        for beam_id in affected_beams:
-            artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
+            show_selectable_joints_by_id(process, joint_ids, True)
+            print("Function Complete, Anything else?")
 
 
 def show_menu(process):
@@ -974,61 +1027,21 @@ def show_menu(process):
         print('Exit Function')
         return Rhino.Commands.Result.Cancel
 
-    command_to_run = None
-
-    def construct_menu():
-        # Menu for user
-        menu = {
-            'message': "Choose Options",
-            'options': [
-                {'name': 'Finish', 'action': 'Exit'
-                 },
-                {'name': 'ChangeJointType', 'action': change_joint_type
-                 },
-                {'name': 'LapJointParameters', 'action': change_joint_half_lap_parameters
-                 },
-                {'name': 'PolylineLapJointParameters', 'action': change_joint_polyline_lap_parameters
-                 },
-                {'name': 'NonPlanarLapJointParameters', 'action': change_joint_non_planar_lap_parameters
-                 },
-            ]
-        }
-        # Add the repeat options when command_to_run is available
-        if command_to_run is not None:
-            menu['options'].insert(0, {'name': 'Repeat', 'action': 'Repeat'})
-
-        return menu
-
-    command_to_run = None
     while (True):
 
         # Create Menu
-        result = CommandMenu(construct_menu()).select_action()
+        # result = CommandMenu(construct_menu()).select_action()
+        show_all_selectable_joints(process, redraw=True)
+        selected_joint_ids = users_select_feature(process, [JointPolylineLap, JointHalfLap, JointNonPlanarLap], backward_joint=False, prompt="Select a Joint to Edit")
 
         # User cancel command by Escape
-        if result is None:
+        if selected_joint_ids is None:
             return on_exit_ui()
 
-        # Shortcut to allow user to type in state directly
-        if isinstance(result, str):
-            if result.isnumeric():
-                pass
-                continue
-            elif result.startswith("Cancel"):
-                return on_exit_ui()
-            else:
-                continue  # Catch other unknown input that are not numbers.
-
-        # User click Exit Button
-        if result['action'] == 'Exit':
+        if len(selected_joint_ids) == 0:
             return on_exit_ui()
-
-        # Set command-to-run according to selection, else repeat previous command.
-        if result['action'] != 'Repeat':
-            command_to_run = result['action']
-
-        # Run the selected command
-        command_to_run(process)
+        show_selectable_joints_by_id(process, selected_joint_ids, redraw=True)
+        select_joint_parameter_to_change(process, selected_joint_ids)
 
 
 ######################

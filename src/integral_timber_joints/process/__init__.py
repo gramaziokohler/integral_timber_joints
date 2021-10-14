@@ -15,6 +15,7 @@ from .action import (
     GenericFreeMoveBeamWithGripperAction,
     GenericGripperApproachBeamPickupAction,
     LoadBeamAction,
+    ManaulAssemblyAction,
     OperatorAction,
     OperatorAttachScrewdriverAction,
     OperatorAttachToolMovement,

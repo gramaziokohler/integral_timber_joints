@@ -269,8 +269,8 @@ class JointHalfLap(Joint):
         return clamps
 
     @classmethod
-    def from_beam_beam_intersection(cls, beam_stay, beam_move, face_choice=0, dist_tol=1e-5, coplanar_tol=5e-3):
-        # type: (Beam, Beam, int, float, float) -> Tuple[JointHalfLap, JointHalfLap, Line]
+    def from_beam_beam_intersection(cls, beam_stay, beam_move, face_choice=0, joint_face_id_move = None, dist_tol=1e-5, coplanar_tol=5e-3):
+        # type: (Beam, Beam, int, int, float, float) -> Tuple[JointHalfLap, JointHalfLap, Line]
         ''' Compute the intersection between two beams.
 
         `beam_stay` must be the earlier beam in assembly sequence
@@ -280,6 +280,9 @@ class JointHalfLap(Joint):
 
         The function will check for beam center-line intersections.
 
+        `face_choice` will take one of the two possible joint faces.
+        if `joint_face_id_move` is given, it will take precedence if the move_face_id is available.
+
         If no intersection can be found or the two beam are not coplanar,
         Returns a tuple of (None, None, None)
         '''
@@ -288,7 +291,14 @@ class JointHalfLap(Joint):
         face_pairs = beam_move.get_beam_beam_coplanar_face_ids(beam_stay, coplanar_tol)
         if len(face_pairs) == 0:
             return (None, None, None)
-        beam_m_face_id, beam_s_face_id = face_pairs[face_choice]
+
+        # * Choosing which beam face to put joint on. Taking a optional guide parameter
+        beam_m_face_id, beam_s_face_id = face_pairs[face_choice] # Default
+        if joint_face_id_move is not None:
+            for id_m, id_s in face_pairs:
+                if id_m == joint_face_id_move:
+                    beam_m_face_id, beam_s_face_id = id_m, id_s
+            # beam_s_face_id = (beam_s_face_id + 1) % 4 + 1  # Flip joint face on staying beam to opposite side
 
         # Find front and back edges
         beam1_frnt_edge = beam_move.reference_edge_wcf(beam_m_face_id)

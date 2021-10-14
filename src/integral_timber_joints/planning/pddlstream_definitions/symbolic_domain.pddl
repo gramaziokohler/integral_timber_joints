@@ -21,8 +21,10 @@
     (RobotConf ?conf)
     ;; (ToolConf ?tool ?conf)
 
+    ; * generic pick and place actions for both grippers and clamps for now
     (PlaceToolAction ?object ?conf1 ?conf2 ?traj)
     (PickToolAction ?object ?conf1 ?conf2 ?traj)
+
     (PlaceElementAction ?object ?conf1 ?conf2 ?traj)
     (PickElementAction ?object ?conf1 ?conf2 ?traj)
     (MoveAction ?conf1 ?conf2 ?traj)

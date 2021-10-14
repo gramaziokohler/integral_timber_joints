@@ -871,7 +871,13 @@ class Assembly(Network):
         """Returning a list of joint_ids on the given beam that require assembly tool.
         Format is: (neighbour_id, beam_id)
         """
-        if self.get_assembly_method(beam_id) <= BeamAssemblyMethod.GROUND_CONTACT:
+        no_tools_assemble_methods = [
+            BeamAssemblyMethod.GROUND_CONTACT,
+            BeamAssemblyMethod.MANUAL_ASSEMBLY,
+            BeamAssemblyMethod.UNDEFINED
+        ]
+
+        if self.get_assembly_method(beam_id) in no_tools_assemble_methods:
             return []
 
         return [(neighbour_id, beam_id) for neighbour_id in self.get_already_built_neighbors(beam_id)]

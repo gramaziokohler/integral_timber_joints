@@ -4,12 +4,12 @@ import scriptcontext
 import re
 from collections import Counter
 
-from compas.geometry import Frame, Vector, Point, bounding_box, dot_vectors, cross_vectors, length_vector, subtract_vectors, close
+from compas.geometry import Frame, Vector, Point, Line, bounding_box, dot_vectors, cross_vectors, length_vector, subtract_vectors, close
 from compas.geometry import Transformation
 from compas_rhino.geometry import RhinoCurve, RhinoSurface
 from compas_rhino.ui import CommandMenu
-# from compas_rhino.utilities import delete_objects
 from compas_rhino.utilities.objects import get_object_name, get_object_names
+import compas_rhino
 
 from integral_timber_joints.assembly import Assembly, BeamAssemblyMethod
 from integral_timber_joints.geometry.beam import Beam
@@ -64,8 +64,8 @@ def _create_joints_for_new_beam(process, new_beam):
     return new_joints, affected_neighbours
 
 
-def _add_beams_to_assembly(process, beams):
-    # type: (RobotClampAssemblyProcess, list[Beam]) -> None
+def _add_beams_to_assembly(process, beams, auto_joints=True):
+    # type: (RobotClampAssemblyProcess, list[Beam], bool) -> None
     """Shared function to add newly created Beams to Assembly
 
     - Auto assign Assembly Method
@@ -89,11 +89,15 @@ def _add_beams_to_assembly(process, beams):
         assembly.add_beam(beam)
 
         # * Check for joints (Joint_Halflap and JointNonPlanarLap)
-        new_joints, affected_neighbours = _create_joints_for_new_beam(process, beam)
-        affected_neighbours.extend(affected_neighbours)
+        if auto_joints:
+            new_joints, affected_neighbours = _create_joints_for_new_beam(process, beam)
+            affected_neighbours.extend(affected_neighbours)
 
         # * Automatically assign Assembly Method
-        if len(new_joints) == 0:
+        if not auto_joints:
+            assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.MANUAL_ASSEMBLY)
+            print("- Automatically assigned Assembly method: MANUAL_ASSEMBLY")
+        elif len(new_joints) == 0:
             assembly.set_beam_attribute(beam_id, 'assembly_method', BeamAssemblyMethod.GROUND_CONTACT)
             print("- Automatically assigned Assembly method: GROUND_CONTACT")
         elif any([isinstance(joint, JointNonPlanarLap) for joint in new_joints]):
@@ -105,9 +109,10 @@ def _add_beams_to_assembly(process, beams):
 
         # * Initial state changed since we add a new beam
         process.dependency.add_beam(beam_id)
-        recompute_initial_state(process)
+
 
     # *Recompute dependent solutions for new beams and affected neighbours
+    recompute_initial_state(process)
     for beam_id in set(affected_neighbours + new_beam_ids):
         recompute_dependent_solutions(process, beam_id)
 
@@ -169,6 +174,9 @@ def ui_add_beam_from_lines(process):
     # guids = select_lines("Select Lines (no curve or polyline)")
     guids = rs.GetObjects("Select Lines (not curve or polyline)", filter=rs.filter.curve)
 
+    if guids is None:
+        return
+
     print(guids)
     width = 100
     height = 100
@@ -176,17 +184,25 @@ def ui_add_beam_from_lines(process):
     # Create Beams form lines
     assembly = process.assembly  # type: Assembly
     new_beams = []
-    for rhino_select_order, guid in enumerate(guids):
-        rhinoline = RhinoCurve.from_guid(guid)  # RhinoLine is not implemented sigh... RhinoCurve is used.
-        centerline = rhinoline.to_compas()
-        centerline_vector = Vector.from_start_end(centerline.start, centerline.end)
-        # Compute guide vector: For vertical lines, guide vector points to world X
-        # Otherwise, guide vector points to Z,
 
-        if centerline_vector.angle(Vector(0, 0, 1)) < 0.001:
-            guide_vector = Vector(1, 0, 0)
-        else:
-            guide_vector = Vector(0, 0, 1)
+    # * Ask user for guide vector
+    guide_vector_rhino = rs.GetLine(mode=1, message1="Pick beam Y Direction Pt 1 (ESC to auto detect)", message2="Pick beam Y Direction (ESC to auto detect)")
+    if guide_vector_rhino is not None:
+        guide_vector = Vector.from_start_end(guide_vector_rhino[0], guide_vector_rhino[1])
+
+    for rhino_select_order, guid in enumerate(guids):
+        rhinocurve = compas_rhino.find_object(guid)
+        centerline = Line(rhinocurve.Geometry.PointAtStart, rhinocurve.Geometry.PointAtEnd)
+
+        if guide_vector_rhino is None:
+            # * Auto detect guide vector: For vertical lines, guide vector points to world X
+            # * Otherwise, guide vector points to Z,
+            centerline_vector = Vector.from_start_end(centerline.start, centerline.end)
+            dot_result = centerline_vector.unitized().dot(Vector(0, 0, 1))
+            if 1 - abs(dot_result) < 1e-5:
+                guide_vector = Vector(1, 0, 0)
+            else:
+                guide_vector = Vector(0, 0, 1)
 
         # Create Beam object
         beam = Beam.from_centerline(centerline, guide_vector, width, height)
@@ -250,8 +266,8 @@ def beam_frame_from_points_and_vectors(points, edge_vectors, face_normals):
     return frame
 
 
-def ui_add_beam_from_brep_box(process):
-    # type: (RobotClampAssemblyProcess) -> None
+def ui_add_beam_from_brep_box(process, auto_joints=True):
+    # type: (RobotClampAssemblyProcess, bool) -> None
     ''' Ask user for line(s) to create new beams.
     '''
     assembly = process.assembly  # type: Assembly
@@ -297,7 +313,12 @@ def ui_add_beam_from_brep_box(process):
     # Sorting by human sorting natural keys
     new_beams.sort(cmp=_beam_order_comparator)
     # Add to assembly
-    _add_beams_to_assembly(process, new_beams)
+    _add_beams_to_assembly(process, new_beams, auto_joints=auto_joints)
+
+def ui_add_scaffold(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Currently this is implemented as a beam with no joints."""
+    return ui_add_beam_from_brep_box(process, auto_joints=False)
 
 
 def ui_delete_beams(process):
@@ -393,6 +414,7 @@ def show_assembly_method_color(process):
     print("- Green:     Clamped")
     print("- LightBlue: ScrewedWithGripper")
     print("- DarkBlue:  ScrewedWithoutGripper")
+    print("- Orange:  ManaulAssembly")
     for beam_id in process.assembly.sequence:
         assembly_method = process.assembly.get_assembly_method(beam_id)
         if assembly_method == BeamAssemblyMethod.GROUND_CONTACT:
@@ -403,6 +425,8 @@ def show_assembly_method_color(process):
             artist.change_interactive_beam_colour(beam_id, 'assembly_method_screwed_w_gripper')
         elif assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
             artist.change_interactive_beam_colour(beam_id, 'assembly_method_screwed_wo_gripper')
+        elif assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+            artist.change_interactive_beam_colour(beam_id, 'assembly_method_manual_assembly')
         else:
             artist.change_interactive_beam_colour(beam_id, 'assembly_method_undefined')
     rs.EnableRedraw(True)
@@ -633,6 +657,7 @@ def show_menu(process):
                     {'name': 'FromLines', 'action': ui_add_beam_from_lines},
                     {'name': 'FromBrepBox', 'action': ui_add_beam_from_brep_box},
                 ]},
+                {'name': 'AddScaffold', 'action': ui_add_scaffold},
                 {'name': 'DeleteBeam', 'action': ui_delete_beams},
                 {'name': 'MoveAssembly', 'action': ui_orient_assembly},
                 {'name': 'FlipBeamAssemblyDirection', 'action': ui_flip_beams},

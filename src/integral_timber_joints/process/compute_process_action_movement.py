@@ -37,7 +37,9 @@ def create_actions_from_sequence(process, beam_id, verbose=False):
     """
     # * Dispatching which sub functions gets to do the action creation
     assembly_method = process.assembly.get_assembly_method(beam_id)
-    if len(process.assembly.get_joint_ids_with_tools_for_beam(beam_id)) == 0:
+    if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+        result = _create_actions_for_manual_assembly(process, beam_id, verbose)
+    elif len(process.assembly.get_joint_ids_with_tools_for_beam(beam_id)) == 0:
         result = _create_actions_for_no_tools(process, beam_id, verbose)
     elif assembly_method == BeamAssemblyMethod.CLAMPED:
         result = _create_actions_for_clamped(process, beam_id, verbose)
@@ -79,12 +81,39 @@ def _create_actions_for_no_tools(process, beam_id, verbose=False):
     act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id)
     actions.append(act)
 
-    # * Syncronized clamp and move beam action
+    # * Place beam action without clamps
     act = BeamPlacementWithoutClampsAction(seq_n, 0, beam_id, gripper_id)
     actions.append(act)
 
     # * Return gripper
     act = PlaceGripperToStorageAction(seq_n, 0, gripper_type, gripper_id)
+    actions.append(act)
+
+    # Print out newly added actions and return
+    if verbose:
+        for act in actions:
+            print('|- ' + act.__str__())
+
+    process.assembly.set_beam_attribute(beam_id, 'actions', actions)
+    return ComputationalResult.ValidCanContinue
+
+
+def _create_actions_for_manual_assembly(process, beam_id, verbose=False):
+    # type: (RobotClampAssemblyProcess, str, Optional[bool]) -> None
+    """ Creating Action objects (process.actions)
+    for beams that are manually assembled.
+
+    """
+
+    assembly = process.assembly  # type: Assembly
+    actions = []  # type: List[Action]
+    seq_n = assembly.sequence.index(beam_id)
+
+    if verbose:
+        print("Beam %s" % beam_id)
+
+    # * Operator manually assemble Beam
+    act = ManaulAssemblyAction(seq_n, 0, beam_id)
     actions.append(act)
 
     # Print out newly added actions and return

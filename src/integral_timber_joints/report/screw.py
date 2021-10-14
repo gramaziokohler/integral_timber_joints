@@ -12,6 +12,7 @@ def screw_report(process, file_path=None):
     report = BeamReport("Screw Report")
     screw_counter = Counter()
     beam_with_screw_counter = Counter()
+    screw_thickness_counter = Counter()
     for beam_id in process.assembly.sequence:
         beam = assembly.beam(beam_id)
 
@@ -24,12 +25,16 @@ def screw_report(process, file_path=None):
         else:
             beam_with_screw_counter['beam_with_screws'] += 1
 
+        # * Looping over joints from the MovingSide to the StayingSide
         joint_ids = assembly.get_joints_of_beam_connected_to_already_built(beam_id)
         for joint_id in joint_ids:
             tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
             tool_id = assembly.get_joint_attribute(joint_id, 'tool_id')
             screw = assembly.get_screw_of_joint(joint_id)
-            report.add_info(beam_id, 'Joint (%s) uses Screw: %s' % (joint_id, screw.name))
+            joint = assembly.joint(joint_id)
+            moving_side_thickness = joint.thickness
+            screw_thickness_counter[screw.name + ' ms_thickness ' + '%2.1fmm' % moving_side_thickness ] += 1
+            report.add_info(beam_id, 'Joint (%s) uses Screw: %s MovingSideThickness: %2.1fmm' % (joint_id, screw.name, moving_side_thickness))
 
             # * Check inconsistancy
             if screw is None:
@@ -44,6 +49,7 @@ def screw_report(process, file_path=None):
     # Screw counting
     report.attributes['screw_counter'] = screw_counter
     report.attributes['beam_with_screw_counter'] = beam_with_screw_counter
+    report.attributes['screw_thickness_counter'] = screw_thickness_counter
 
     # * Boiler plate functions to save report and print summary
     if file_path is None:

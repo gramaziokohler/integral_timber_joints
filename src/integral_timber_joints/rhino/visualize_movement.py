@@ -247,7 +247,7 @@ def ui_save_ik(process):
     if movement_id in process.temp_ik and process.temp_ik[movement_id] is not None:
         process.set_movement_end_robot_config(prev_movement, process.temp_ik[movement_id])
         print("IK Saved at end of %s : %s" % (prev_movement.__class__.__name__, prev_movement.tag))
-
+        del process.temp_ik[movement_id]
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -370,6 +370,14 @@ def show_menu(process):
         # Redraw State after running commands
         redraw_state(process)
 
+        # ! Draw Robot Config for temp IK
+        state_id = artist.selected_state_id
+        movement_id = state_id - 1
+        # if ('robot', 'c') in scene and scene[('robot', 'c')] is not None:
+        if movement_id in process.temp_ik and process.temp_ik[movement_id] is not None:
+            print("Temp IK Exist")
+            artist = get_process_artist()
+            artist.draw_robot(process.temp_ik[movement_id], True, False, True)
 
 ######################
 # Rhino Entry Point
