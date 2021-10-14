@@ -1,7 +1,7 @@
 from termcolor import cprint
 from copy import copy
 from compas.geometry import Transformation, Frame
-from compas.robots.model import tool
+from compas.robots.model import joint, tool
 
 from integral_timber_joints.process.state import ObjectState, SceneState, copy_state_dict
 from integral_timber_joints.planning.visualization import color_from_object_id
@@ -24,12 +24,28 @@ def actions_from_pddlstream_plan(process, plan, verbose=False):
         if action.name == 'pick_element_from_rack':
             # TODO screwdriver needs special care here
             beam_id = action.args[0]
+            gripper_id = action.args[-1]
+            gripper = process.gripper(gripper_id)
+            # * double-check tool type consistency
+            gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
+            # assert gt_gripper_type == gripper.type_name, '{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name)
+
+            if gt_gripper_type == gripper.type_name:
+                '{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name)
+
             acts.append(LoadBeamAction(seq_n, 0, beam_id))
             acts.append(PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id))
 
         elif action.name == 'place_element_on_structure':
             beam_id = action.args[0]
-            tool_id = action.args[-1]
+            gripper_id = action.args[-1]
+            gripper = process.gripper(gripper_id)
+            # * double-check tool type consistency
+            gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
+            assert gt_gripper_type == gripper.type_name, '{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name)
+            # if gt_gripper_type != gripper.type_name:
+            #     print('{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name))
+
             joint_id_of_clamps = list(process.assembly.get_joint_ids_with_tools_for_beam(beam_id))
             clamp_ids = [process.assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_id_of_clamps]
             if len(clamp_ids) == 0:
@@ -54,51 +70,56 @@ def actions_from_pddlstream_plan(process, plan, verbose=False):
 
         elif action.name == 'pick_gripper_from_rack':
             gripper_id = action.args[0]
-            gripper_type = process.gripper(gripper_id)
-            acts.append(PickGripperFromStorageAction(seq_n, 0, gripper_type, gripper_id))
+            gripper = process.gripper(gripper_id)
+            acts.append(PickGripperFromStorageAction(seq_n, 0, gripper.type_name, gripper_id))
 
         elif action.name == 'pick_clamp_from_rack':
-            tool_id = action.args[0]
-            tool_type = process.clamp(tool_id)
-            acts.append(PickClampFromStorageAction(seq_n, 0, tool_type, tool_id))
+            clamp_id = action.args[0]
+            clamp = process.clamp(clamp_id)
+            acts.append(PickClampFromStorageAction(seq_n, 0, clamp.type_name, clamp_id))
 
         elif action.name == 'place_tool_at_rack':
             tool_id = action.args[0]
             if tool_id.startswith('g'):
-                tool_type = process.gripper(tool_id)
-                act = PlaceGripperToStorageAction(seq_n, 0, tool_type, tool_id)
+                gripper = process.gripper(tool_id)
+                act = PlaceGripperToStorageAction(seq_n, 0, gripper.type_name, tool_id)
             elif tool_id.startswith('c'):
-                tool_type = process.clamp(tool_id)
-                act = PlaceClampToStorageAction(tool_type=tool_type, tool_id=tool_id)
+                clamp = process.clamp(tool_id)
+                act = PlaceClampToStorageAction(tool_type=clamp.type_name, tool_id=tool_id)
             else:
                 raise ValueError('Weird tool id {}'.format(tool_id))
             acts.append(act)
 
         elif action.name == 'pick_clamp_from_joint':
-            tool_id = action.args[0]
-            tool_type = process.clamp(tool_id)
+            clamp_id = action.args[0]
+            clamp = process.clamp(clamp_id)
             joint_id = (action.args[1], action.args[2])
             # ! convention: sequence id smaller first
             if process.assembly.sequence.index(joint_id[0]) > process.assembly.sequence.index(joint_id[1]):
                 joint_id = joint_id[::-1]
-            acts.append(PickClampFromStructureAction(joint_id=joint_id, tool_type=tool_type, tool_id=tool_id))
+            acts.append(PickClampFromStructureAction(joint_id=joint_id, tool_type=clamp.type_name, tool_id=clamp_id))
 
         elif action.name == 'place_clamp_at_joint':
-            tool_id = action.args[0]
-            tool_type = process.clamp(tool_id)
+            clamp_id = action.args[0]
+            clamp = process.clamp(clamp_id)
             joint_id = (action.args[1], action.args[2])
             # ! convention: sequence id smaller first
             if process.assembly.sequence.index(joint_id[0]) > process.assembly.sequence.index(joint_id[1]):
                 joint_id = joint_id[::-1]
+            # * double-check clamp type consistency
+            gt_clamp_type = process.assembly.get_joint_attribute(joint_id, 'tool_type')
+            assert gt_clamp_type == clamp.type_name, 'Joint {} should use clamp with type {} but {} with type {} assigned.'.format(joint_id, gt_clamp_type, clamp.name, clamp.type_name)
+            # if gt_clamp_type != clamp.type_name:
+            #     print('Joint {} should use clamp with type {} but {} with type {} assigned.'.format(joint_id, gt_clamp_type, clamp.name, clamp.type_name))
+
             # * clamp assignment to beam
-            process.assembly.set_joint_attribute(joint_id, 'tool_id', tool_id)
-            acts.append(PlaceClampToStructureAction(seq_n, 0, joint_id, tool_type, tool_id))
+            process.assembly.set_joint_attribute(joint_id, 'tool_id', clamp_id)
+            acts.append(PlaceClampToStructureAction(seq_n, 0, joint_id, clamp.type_name, clamp_id))
 
         elif action.name == 'move':
             pass
 
     # * last beam and tool collection
-
     assert beam_id == beam_sequence[-1] and len(acts) > 0
     if verbose:
         print('='*10)

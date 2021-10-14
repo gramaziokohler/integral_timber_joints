@@ -79,7 +79,13 @@ def get_pddlstream_problem(process, use_partial_order=True, debug=False, reset_t
         ])
     # * tool type
     for j in process.assembly.joint_ids():
-        pass
+        joint_clamp_type = process.assembly.get_joint_attribute(j, 'tool_type')
+        for c in process.clamps:
+            if c.type_name == joint_clamp_type:
+                init.extend([
+                    ('JointToolTypeMatch', j[0], j[1], c.name),
+                    ('JointToolTypeMatch', j[1], j[0], c.name),
+                ])
 
     for g in process.grippers:
         init.extend([
@@ -89,8 +95,11 @@ def get_pddlstream_problem(process, use_partial_order=True, debug=False, reset_t
             ('AtRack', g.name),
         ])
     # * gripper type
-    for e in beam_seq:
-        pass
+    for beam_id in beam_seq:
+        beam_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
+        for g in process.grippers:
+            if g.type_name == beam_gripper_type:
+                init.append(('GripperToolTypeMatch', beam_id, g.name))
 
     if debug:
         stream_map = DEBUG

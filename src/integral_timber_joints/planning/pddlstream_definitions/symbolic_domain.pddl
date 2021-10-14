@@ -9,7 +9,8 @@
     (Joint ?element1 ?element2)
     (IsElement ?element)
     (Grounded ?element)
-    ; (JointToolType ?element1 ?element2 ?tool)
+    (JointToolTypeMatch ?element1 ?element2 ?tool)
+    (GripperToolTypeMatch ?element ?tool)
 
     (Gripper ?g)
     (Clamp ?c)
@@ -86,6 +87,7 @@
                     ; ! state precondition
                     (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf1)))
                     (IsGripper ?tool)
+                    (GripperToolTypeMatch ?element ?tool)
                     (Attached ?tool)
                     (RobotGripperEmpty)
                     ; ! sampled
@@ -238,6 +240,7 @@
                     (IsClamp ?tool)
                     (Joint ?element1 ?element2)
                     (ToolNotOccupiedOnJoint ?tool)
+                    (JointToolTypeMatch ?element1 ?element2 ?tool)
                     (or (Assembled ?element1) (Assembled ?element2))
                     (NoToolAtJoint ?element1 ?element2)
                     ; ! assembly state precondition
