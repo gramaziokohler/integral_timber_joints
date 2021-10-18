@@ -168,6 +168,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 # * compute for movement_id movement
                 cprint('Computing only for {}'.format(args.movement_id), 'yellow')
                 options['movement_id_filter'] = [args.movement_id]
+                # ! allow for both integer-based index and string names
                 if args.movement_id.startswith('A'):
                     chosen_m = process.get_movement_by_movement_id(args.movement_id)
                 else:
