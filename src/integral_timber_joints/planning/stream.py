@@ -527,21 +527,12 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         # ik_info = IKInfo(sample_ik_fn, tool_link_name, ik_joint_names, gantry_joint_names) # 'base_link_name',
         # options['customized_ikinfo'] = ik_info
 
-    current_mid = process.movements.index(movement)
-    if current_mid-1 < 0 or not any([isinstance(process.movements[current_mid-1], m_type) \
-            for m_type in [RoboticLinearMovement, RoboticClampSyncLinearMovement]]):
-        # no retraction needed
-        start_retraction_vector = None
-    else:
-        prev_movement = process.movements[current_mid-1]
-        prev_start_state = process.get_movement_start_scene(prev_movement)
-        prev_end_state = process.get_movement_end_scene(prev_movement)
-        # convert to meter
-        # ? attach -> retreat, vector = retreat(end) - attach(start)
-        start_retraction_vector = get_unit_vector(list(prev_end_state[('robot', 'f')].point - prev_start_state[('robot', 'f')].point))
+    # * local vectors for retraction motions, default to not using it
+    tmp_xyz = options.get('retraction_vectors', [[0,0,0]])
+    # list(np.vstack([np.eye(3), -np.eye(3)]))
+    retraction_distances = options.get('max_free_retraction_distances', [0.0])
+    # np.linspace(0, 0.1, 3)
 
-    # * local vectors for retraction motions
-    tmp_xyz = list(np.vstack([np.eye(3), -np.eye(3)]))
     start_retraction_vectors = tmp_xyz
     end_retraction_vectors = tmp_xyz
 
@@ -555,20 +546,20 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                 client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
                 wait_if_gui('Retract pose drawn at {} (bigger=1st). start vec: {}, dist {:.4f}'.format(msg, retract_v, dist))
 
-    retraction_distances = options.get('max_free_retraction_distance', np.linspace(0, 0.1, 3))
-    # retraction_distances = [0.0] if start_retraction_vector is None and end_retraction_vector is None else retraction_candidates
     traj = None
     start_cart_traj = None
     end_cart_traj = None
     free_traj = None
+    start_retract_msg = end_retract_msg = ''
     # ! retraction vector to determine the start retraction pose
     for start_v in start_retraction_vectors:
         # ! retraction vector magnitude to determine the start retraction pose
         for start_dist in retraction_distances:
             start_cart_traj = None
-            if verbose:
-                print('Free motion | START linear buffer: trying retraction dist {:.4f} in {}'.format(start_dist, start_v))
             if abs(start_dist) > 1e-6:
+                start_retract_msg = '{:.4f} | {}'.format(start_dist, start_v)
+                if verbose:
+                    print('Free motion | START linear buffer: trying retraction dist {}'.format(start_retract_msg))
                 start_v /= np.linalg.norm(start_v)
                 retract_start_pose = multiply(pp.Pose(start_dist*pp.Point(*start_v)), start_pose)
                 if debug:
@@ -583,7 +574,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                 else:
                     if verbose: cprint('Start cart traj found.', 'green')
             else:
-                cprint('Start 0.0 retraction dist along {}'.format(start_v), 'green')
+                start_retract_msg = 'No retraction motion specified.'
+                cprint('ST: '+start_retract_msg, 'green')
 
             end_cart_traj = None
             # ! retraction vector to determine the end retraction pose
@@ -591,9 +583,10 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                 # ! retraction magnitude to determine the end retraction pose
                 for end_dist in retraction_distances:
                     end_cart_traj = None
-                    if verbose:
-                        print('- Free motion | END linear buffer: trying retraction dist {:.4f} in {}'.format(end_dist, end_v))
                     if abs(end_dist) > 1e-6:
+                        end_retract_msg = '{:.4f} | {}'.format(end_dist, end_v)
+                        if verbose:
+                            print('- Free motion | END linear buffer: trying retraction dist {}'.format(end_retract_msg))
                         end_v /= np.linalg.norm(end_v)
                         retract_end_pose = multiply(pp.Pose(end_dist*pp.Point(*end_v)), end_pose)
                         if debug:
@@ -609,7 +602,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                             if verbose: cprint('End cart traj found.', 'green')
                             end_cart_traj = reverse_trajectory(end_cart_traj)
                     else:
-                        cprint('End 0.0 retraction dist along {}'.format(end_v), 'green')
+                        end_retract_msg = 'No retraction motion specified.'
+                        cprint('END: '+end_retract_msg, 'green')
 
                     new_start_conf = start_conf if start_cart_traj is None else start_cart_traj.points[-1]
                     new_end_conf = end_conf if end_cart_traj is None else end_cart_traj.points[0]
@@ -630,7 +624,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         free_traj = client.plan_motion(robot, goal_constraints, start_configuration=new_start_conf,
                             group=GANTRY_ARM_GROUP, options=d_options)
 
-                    retraction_msg = "(st {}|{:.4f} ; end {}|{:.4f})".format(start_v, start_dist, end_v, end_dist)
+                    retraction_msg = "(ST {} ; END {})".format(start_retract_msg, end_retract_msg)
                     if free_traj is not None:
                         # ! concatenate three trajectories
                         full_trajs = []
@@ -645,7 +639,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                             cprint('Free movement found for {} under current retraction {}!'.format(movement.short_summary, retraction_msg), 'green')
                         return traj
                     else:
-                        cprint('No free motion found under current retraction {}.'.format(retraction_msg), 'red')
+                        cprint('No free motion found under current retraction: {}.'.format(retraction_msg), 'red')
+                        print('='*10)
 
     if traj is None and diagnosis:
         client._print_object_summary()

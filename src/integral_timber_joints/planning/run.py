@@ -275,7 +275,7 @@ def main():
     parser.add_argument('--solve_timeout', default=600.0, type=float, help='For automatic planning retry, number of seconds before giving up. Defaults to 600.')
     parser.add_argument('--mp_algorithm', default='birrt', type=str, choices=MOTION_PLANNING_ALGORITHMS, help='Motion planning algorithms.')
     parser.add_argument('--rrt_iterations', default=400, type=int, help='Number of iterations within one rrt session. Defaults to 400.')
-    parser.add_argument('--birrt_enforce_alternate', action='store_true', help='Enfroce tree exploration alternation in birrt.')
+    parser.add_argument('--buffers_for_free_motions', action='store_true', help='Turn on buffering linear motions for free movements, used for narrow passage scenarios. Defaults to False.')
     parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
 
     args = parser.parse_args()
@@ -328,18 +328,21 @@ def main():
         'rrt_iterations': args.rrt_iterations,
         'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,
         'mp_algorithm' : args.mp_algorithm,
-        'birrt_enforce_alternate' : args.birrt_enforce_alternate,
     }
     if len(args.reachable_range) == 2:
         options.update({
         'reachable_range': (args.reachable_range[0], args.reachable_range[1]),
         })
     if args.smooth:
-        options.update(
-            {'smooth_iterations' : 150,
-             'max_smooth_time' : 60,
-             }
-        )
+        options.update({
+            'smooth_iterations' : 150,
+            'max_smooth_time' : 60,
+             })
+    if args.buffers_for_free_motions:
+        options.update({
+            'retraction_vectors' : list(np.vstack([np.eye(3), -np.eye(3)])),
+            'max_free_retraction_distances' : np.linspace(0, 0.1, 3),
+        })
 
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)
 
