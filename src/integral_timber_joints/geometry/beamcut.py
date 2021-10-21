@@ -7,8 +7,10 @@
 from compas.datastructures import Mesh
 from compas.geometry import Cylinder, Polyhedron, Shape, Transformation
 
-from integral_timber_joints.geometry.beam import Beam
-
+try:
+    from integral_timber_joints.geometry.beam import Beam
+except:
+    pass
 
 class Beamcut(object):
 

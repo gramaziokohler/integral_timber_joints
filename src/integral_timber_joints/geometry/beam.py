@@ -579,6 +579,7 @@ class Beam(Network):
         ''' Get an ObjectState object representing the Beam.
         Only current_frame is set.
         '''
+        from integral_timber_joints.process.state import ObjectState
         state = ObjectState()
         state.current_frame = self.current_frame.copy()
         return state

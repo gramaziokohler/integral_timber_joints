@@ -16,11 +16,11 @@ from compas import is_rhino
 from compas.rpc import Proxy
 
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
-from integral_timber_joints.geometry import Beamcut, Joint, JointNonPlanarLap
-from integral_timber_joints.geometry.beam import Beam
-from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
 
 try:
+    from integral_timber_joints.geometry.beam import Beam
+    from integral_timber_joints.geometry import Joint
+    from integral_timber_joints.geometry import Beamcut
     from integral_timber_joints.geometry.screw import Screw_SL
 except:
     pass
@@ -427,6 +427,7 @@ class Assembly(Network):
 
         Return all beam_ids in which their sequence number is changed
         """
+        from integral_timber_joints.geometry import JointNonPlanarLap
         if shift_amount == 0:
             return []
 
@@ -503,6 +504,7 @@ class Assembly(Network):
 
         Note: beam(beam_id).cached_mesh will be reset to None
         """
+        from integral_timber_joints.geometry.beamcut_plane import Beamcut_plane
         beam = self.beam(beam_id)
         beam_from_world = Transformation.from_frame(beam.frame).inverse()
 
