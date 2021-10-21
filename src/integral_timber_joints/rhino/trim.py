@@ -6,7 +6,7 @@ from compas_rhino.ui import CommandMenu
 from compas_rhino.utilities.objects import get_object_name, get_object_names
 
 from integral_timber_joints.assembly import Assembly
-from integral_timber_joints.geometry import Beam, BeamcutFourCorners
+from integral_timber_joints.geometry import BeamcutFourCorners, BeamcutPlateSlot
 from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
@@ -169,6 +169,89 @@ def ui_untrim_beams(process):
     # anything?
 
 
+def ui_add_plate_slot(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    '''Ask User to select beams for adding BeamcutPlateSlot for metal plate
+
+    User can choose:
+    - one of the four faces to add.
+    - length of the slot (How deep the metal plate)
+    - width of the slot (Thickness of metal plate)
+
+    This functions repeats until users press Enter or Esc without selecting beam.
+    '''
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+
+    while(True):
+        # Ask user for input
+        guids = rs.GetObjects('Select beam(s) to add plate slot:', custom_filter=get_existing_beams_filter(process))
+        if not guids:
+            # Quit when user press Enter without selection
+            return
+        beam_ids = get_object_names(guids)
+
+        # * Ask user for input
+        options = ["Start_1_3", "Start_2_4", "End_1_3", "End_2_4"]
+        print ("Start_1_3 is the end of the beam with the sequence_tag. Slotting through the face with the text.")
+        option = rs.GetString("Which End / Direction:", options[0], options)
+
+        if option == "Start_2_4":
+            on_beam_start, face_id = True, 2
+        elif option == "Start_1_3":
+            on_beam_start, face_id = True, 1
+        elif option == "End_2_4":
+            on_beam_start, face_id = False, 2
+        elif option == "End_1_3":
+            on_beam_start, face_id = False, 1
+        else:
+            print("Input not valid: %s" % option)
+            return
+
+        length = rs.GetReal("Length of the slot, aka how long is the metal plate:?", 150, minimum = 1)
+        if length is None:
+            return
+
+        width = rs.GetReal("Width of the slot, aka how thick is the metal plate:?", 12, minimum = 1)
+        if width is None:
+            return
+
+        # * Remove the end cuts
+        for beam_id in beam_ids:
+            beam_cut = BeamcutPlateSlot(on_beam_start=on_beam_start, face_id=face_id, length=length, width=width)
+            assembly.add_beam_cut(beam_id, beam_cut)
+
+            print('Plate Slot added. Beam (%s) now contain %i BeamCuts.' % (beam_id, len(assembly.beam_cuts(beam_id))))
+
+            # Update drownstream computation
+            artist.redraw_interactive_beam(beam_id, redraw=False)
+
+        rs.EnableRedraw(True)
+
+def ui_remove_plate_slot(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    '''Removes all the Beamcut objects.
+    '''
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+
+    # * Ask user for input
+    guids = rs.GetObjects('Select beam(s) to untrim. (All End trims will be removed):', custom_filter=get_existing_beams_filter(process))
+    if not guids:
+        # Quit when user press Enter without selection
+        return
+    beam_ids = get_object_names(guids)
+
+    # * Remove the end cuts
+    for beam_id in beam_ids:
+        beam_cuts_to_delete = [beam_cut for beam_cut in assembly.beam_cuts(beam_id) if type(beam_cut) == BeamcutPlateSlot]
+        print('%i BeamcutPlateSlot removed. Beam (%s) now contain %i BeamCuts.' % (len(beam_cuts_to_delete), beam_id, len(assembly.beam_cuts(beam_id))))
+        for beam_cut in beam_cuts_to_delete:
+            assembly.beam_cuts(beam_id).remove(beam_cut)
+
+        artist.redraw_interactive_beam(beam_id, redraw=False)
+
+
 def show_assembly_beams(process):
     # type: (RobotClampAssemblyProcess) -> None
     artist = get_process_artist()
@@ -193,6 +276,8 @@ def show_menu(process):
                 {'name': 'UnTrimBeam', 'action': ui_untrim_beams},
                 {'name': 'TrimFourCorners', 'action': ui_trim_four_corners},
                 {'name': 'AdjustFourCorners', 'action': ui_adjust_four_corners},
+                {'name': 'EndPlateSlot', 'action': ui_add_plate_slot},
+                {'name': 'RemoveEndPlateSlot', 'action': ui_remove_plate_slot},
             ]
 
         }
