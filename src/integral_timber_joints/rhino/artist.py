@@ -1,6 +1,6 @@
 from compas.datastructures import Mesh
-from compas.geometry import Point
-from compas_rhino.utilities.drawing import draw_breps
+from compas.geometry import Point, Shape, Cylinder, Polyhedron
+from compas_rhino.utilities.drawing import draw_breps, draw_cylinders
 
 
 def mesh_to_brep(mesh):
@@ -35,3 +35,31 @@ def vertices_and_faces_to_brep_struct(vertices_and_faces):
         f['points'].append(f['points'][0])
         breps.append(f)
     return breps
+
+def draw_shapes_as_brep_get_guids(shapes, verbose=False):
+    # type: (list[Shape], bool) -> list[guid]
+    """Drawing list of shapes in Rhino as Breps and returning the resulting guids"""
+    def vprint(str):
+        if verbose:
+            print(str)
+
+    brep_guids = []
+    for shape in shapes:
+        if isinstance(shape, Polyhedron):
+            polyhedron = shape
+            vertices_and_faces = polyhedron.to_vertices_and_faces()
+            struct = vertices_and_faces_to_brep_struct(vertices_and_faces)
+            vprint("Polyhedron : %s" % struct)
+            guids = draw_breps(struct, join=True, redraw=False)
+            brep_guids.extend(guids)
+
+        elif isinstance(shape, Cylinder):
+            cylinder = shape
+            start = cylinder.center + cylinder.normal.scaled(cylinder.height / 2)
+            end = cylinder.center - cylinder.normal.scaled(cylinder.height / 2)
+            struct = {'start': list(start), 'end': list(end), 'radius': cylinder.circle.radius}
+            vprint("Cylinder : %s" % struct)
+            guids = draw_cylinders([struct], cap=True, redraw=False)
+            brep_guids.extend(guids)
+
+    return brep_guids

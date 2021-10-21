@@ -11,7 +11,7 @@ from Rhino.DocObjects.ObjectColorSource import ColorFromObject  # type: ignore
 from System.Drawing import Color  # type: ignore
 
 from integral_timber_joints.assembly import Assembly
-from integral_timber_joints.rhino.artist import mesh_to_brep, vertices_and_faces_to_brep_struct
+from integral_timber_joints.rhino.artist import mesh_to_brep, vertices_and_faces_to_brep_struct, draw_shapes_as_brep_get_guids
 from integral_timber_joints.rhino.utility import purge_objects
 
 add_brep = sc.doc.Objects.AddBrep
@@ -131,24 +131,8 @@ class AssemblyNurbsArtist(object):
 
             guids = []  # Hold the guids of the final boolean result
             if len(negative_shapes) > 0:
-                negative_brep_guids = []
                 # Get the negative meshes from the features and convert them to nurbs
-                for negative_shape in negative_shapes:
-                    vprint(negative_shape.__class__)
-                    if isinstance(negative_shape, Polyhedron):
-                        vertices_and_faces = negative_shape.to_vertices_and_faces()
-                        struct = vertices_and_faces_to_brep_struct(vertices_and_faces)
-                        vprint("Polyhedron : %s" % struct)
-                        negative_guids = draw_breps(struct, join=True, redraw=False)
-                        negative_brep_guids.extend(negative_guids)
-                    elif isinstance(negative_shape, Cylinder):
-                        cylinder = negative_shape
-                        start = cylinder.center + cylinder.normal.scaled(cylinder.height / 2)
-                        end = cylinder.center - cylinder.normal.scaled(cylinder.height / 2)
-                        struct = {'start': list(start), 'end': list(end), 'radius': cylinder.circle.radius}
-                        vprint("Cylinder : %s" % struct)
-                        negative_guids = draw_cylinders([struct], cap=True, redraw=False)
-                        negative_brep_guids.extend(negative_guids)
+                negative_brep_guids = draw_shapes_as_brep_get_guids(negative_shapes)
 
                 # Perform Boolean Difference
                 positive_breps = [rs.coercebrep(guid) for guid in positive_brep_guids]
