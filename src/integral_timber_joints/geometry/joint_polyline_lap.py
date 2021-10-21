@@ -8,7 +8,7 @@ import compas
 from compas.datastructures import Mesh
 from compas.geometry import Box, Frame, Point, Line, Transformation, Vector
 from compas.geometry import Projection, Translation, transformations
-from compas.geometry import distance_point_point, intersection_line_line, intersection_segment_segment, dot_vectors, transform_points
+from compas.geometry import distance_point_point, intersection_segment_segment, dot_vectors, transform_points, angle_vectors
 
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
@@ -394,6 +394,49 @@ class JointPolylineLap(Joint):
                 clamps.append('CL3M')
         return clamps
 
+
+    def get_polyline_interior_angles(self):
+        # type: () -> list[list[float]]
+        """Get a 4 lists of interior corner angles for the four polylines.
+        A Polyline with 3 points will have one angle returned.
+        A polyline with only 2 points, will have no angles returned.
+
+        Angles in Degrees
+        It is only necessary to check one of the two joint pairs because they have the same polylines.
+
+        """
+        results = []
+        for line_index in range(4):
+            polyline = self._polyline_at_mid(line_index)
+
+            if len(polyline) <= 2:
+                results.append([])
+                continue
+
+            angles = []
+            for i in range(len(polyline)- 2):
+                u = Vector.from_start_end(polyline[i+1], polyline[i])
+                v = Vector.from_start_end(polyline[i+1], polyline[i+2])
+                angle = math.degrees(angle_vectors(u,v))
+                angles.append(angle)
+            results.append(angles)
+        return results
+
+    def check_polyline_interior_angle(self):
+        # type: () -> list[list[float]]
+        """ Check to ensure all interior angles of the polyline is >= 90 degrees.
+        Return true if all angle passes.
+
+        It is only necessary to check one of the two joint pairs because they have the same polylines.
+        """
+        angle_threshold = 90.0
+        all_angles = self.get_polyline_interior_angles()
+        for angles in all_angles:
+            for angle in angles:
+                if angle < angle_threshold:
+                    return False
+        return True
+
     @classmethod
     def from_beam_beam_intersection(cls, beam_stay, beam_move, dist_tol=1e-5, coplanar_tol=5e-3, joint_face_id_move=None):
         # type: (Beam, Beam, int, float, float) -> Tuple[JointPolylineLap, JointPolylineLap, Line]
@@ -502,25 +545,4 @@ class JointPolylineLap(Joint):
 if __name__ == "__main__":
     import os
     import tempfile
-
     import compas
-
-    # #Test to create Joint_90lap object. Serialize and deserialize.
-    # #j.data and q.data should have the same value
-    # #Create Joint object
-    # from compas.geometry import Frame
-    # joint = Joint_90lap(180,1,50,100,100)
-    # print (joint.data)
-    # #Save Joint to Json
-    # joint.to_json(os.path.join(tempfile.gettempdir(), "joint.json"),pretty=True)
-    # #Load saved Joint Object
-    # loaded_joint = Joint_90lap.from_json(os.path.join(tempfile.gettempdir(), "joint.json"))
-    # #Assert that the two Joint objects are different objects
-    # assert (joint is not loaded_joint)
-    # print("Test 1: Comparing two beam data dictionary:")
-    # assert (joint.data == loaded_joint.data)
-    # if (joint.data == loaded_joint.data):
-    #     print("Correct")
-    # else:
-    #     print("Incorrect")
-    # print (joint.data)

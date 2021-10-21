@@ -12,12 +12,13 @@ from math import ceil
 
 def beam_report(process, file_path=None):
     # type: (RobotClampAssemblyProcess, str) -> BeamReport
+    from integral_timber_joints.geometry import Joint, JointPolylineLap
+
     assembly = process.assembly
 
     report = BeamReport("Gripper Report")
     beam_size_counter = Counter()
     assembly_type_counter = Counter()
-
     for beam_id in process.assembly.sequence:
         beam = assembly.beam(beam_id)
 
@@ -40,6 +41,15 @@ def beam_report(process, file_path=None):
         joints = assembly.get_joint_ids_of_beam(beam_id)
         joints_with_already_built_neighbours = assembly.get_joints_of_beam_connected_to_already_built(beam_id)
         report.add_info(beam_id, 'Number of Joints (# to previous elements) = %i (%i)' % (len(joints), len(joints_with_already_built_neighbours)))
+
+        for joint_id in joints_with_already_built_neighbours:
+            joint = assembly.joint(joint_id)
+            if type(joint) == JointPolylineLap:
+                if joint.check_polyline_interior_angle() == False:
+                    polyline_interior_angles = joint.get_polyline_interior_angles()
+                    polyline_interior_angles = [angle for angles in polyline_interior_angles for angle in angles]
+                    message = "WARNING : JointPolylineLap (%s-%s) interior angle < 90degs, min = %f" % (joint_id[0], joint_id[1], min(polyline_interior_angles))
+                    report.add_error(beam_id, message)
 
         beam_size_counter[size_str] += 1
         assembly_type_counter[assembly_method_str] += 1

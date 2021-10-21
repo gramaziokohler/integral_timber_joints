@@ -16,6 +16,7 @@ from integral_timber_joints.process import RobotClampAssemblyProcess
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
+from integral_timber_joints.report.beam import beam_report
 from integral_timber_joints.report.gripper import gripper_report
 from integral_timber_joints.report.screw import screw_report
 
@@ -28,21 +29,13 @@ def print_sequence(process):
         message += "%i, %s\n" % (i + 1, beam_id)
     rs.EditBox(message, "Sequence (starts from 1), Beam ID", "Sequence")
 
-def print_tools(process):
-    # type: (RobotClampAssemblyProcess) -> None
-    message = ""
-    for i, beam_id in enumerate(process.assembly.sequence):
-        message += "#%i Beam(%s)\n" % (i + 1, beam_id)
-        for joint_id in process.assembly.get_joint_ids_with_tools_for_beam(beam_id):
-            message += "Joint(%s)" % (joint_id)
-
-    rs.EditBox(message, "Tools at Joint", "Sequence")
-
 
 def ui_preproduction_report(process):
     # type: (RobotClampAssemblyProcess) -> None
+    beam_report(process)
     gripper_report(process)
     screw_report(process)
+
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -58,8 +51,6 @@ def show_menu(process):
             {'name': 'PrintSequence', 'action': print_sequence
              },
             {'name': 'PreProductionReport', 'action': ui_preproduction_report
-             },
-            {'name': 'PrintTools', 'action': print_tools
              },
         ]
 

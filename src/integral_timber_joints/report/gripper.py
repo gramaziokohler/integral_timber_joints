@@ -8,6 +8,7 @@ from integral_timber_joints.tools import Gripper
 
 def gripper_report(process, file_path=None):
     # type: (RobotClampAssemblyProcess, str) -> BeamReport
+    from integral_timber_joints.assembly import BeamAssemblyMethod
     assembly = process.assembly
 
     report = BeamReport("Gripper Report")
@@ -16,6 +17,12 @@ def gripper_report(process, file_path=None):
 
     for beam_id in process.assembly.sequence:
         beam = assembly.beam(beam_id)
+
+        # Check and skip BeamAssemblyMethod.MANUAL_ASSEMBLY
+        assembly_method = assembly.get_assembly_method(beam_id)
+        if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+            report.add_info(beam_id, 'MANUAL_ASSEMBLY, no gripper used.')
+            continue
 
         # * Information
         gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")

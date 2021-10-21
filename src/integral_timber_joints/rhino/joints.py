@@ -553,8 +553,8 @@ def _change_joint_non_planar_lap_beam_stay_face_id(process, joint_ids):
             joint_face_id_stay=new_face_id,
         )
         if new_joint_on_stay is None or new_joint_on_move is None:
-            print ("No joint returned from JointNonPlanarLap.from_beam_beam_intersection() ")
-            return ([],[])
+            print("No joint returned from JointNonPlanarLap.from_beam_beam_intersection() ")
+            return ([], [])
 
         process.assembly.add_joint_pair(new_joint_on_stay, new_joint_on_move, beam_id_stay, beam_id_move)
         for key, value in joint_on_stay.get_parameters_dict().items():
@@ -788,12 +788,22 @@ def _joint_polyline_lap_change_polyline_string(process, joint_ids):
     # * Make changes to selected joints
     affected_beams = set()
     affected_joints = set()
+    angle_warning_messages = []
     for joint_id in joint_ids:
         # Update this joint and its neighbour
         beam_id1, beam_id2 = joint_id
         joint_id_nbr = (beam_id2, beam_id1)
         joint = process.assembly.joint(joint_id)  # type:(JointNonPlanarLap)
         joint_nbr = process.assembly.joint(joint_id_nbr)  # type:(JointNonPlanarLap)
+
+        # Warn if interior joint angles are < 90
+        if joint.check_polyline_interior_angle() == False:
+            polyline_interior_angles = joint.get_polyline_interior_angles()
+            polyline_interior_angles = [angle for angles in polyline_interior_angles for angle in angles]
+            print("WARNING WARNING WARNING")
+            message = "WARNING : Polyline joint (%s-%s) min interior angle < 90degs : %f" % (beam_id1, beam_id2, min(polyline_interior_angles))
+            print(message)
+            angle_warning_messages.append(message)
 
         # Skip if there are no change
         current_string = joint.param_string
@@ -817,7 +827,11 @@ def _joint_polyline_lap_change_polyline_string(process, joint_ids):
             joint.set_parameter('param_string', current_string)
             joint_nbr.set_parameter('param_string', current_string)
             print("Error changing string for Joint (%s-%s), change reverted." % (joint_id))
-
+    # Warning message box
+    if len(angle_warning_messages) > 0:
+        angle_warning_messages.append("- - - - -")
+        angle_warning_messages.append("You will need to fix these angles by giving a different polyline.")
+        rs.MessageBox("\n".join(angle_warning_messages))
     return (affected_beams, affected_joints)
 
 
