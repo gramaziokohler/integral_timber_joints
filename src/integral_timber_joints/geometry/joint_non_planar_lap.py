@@ -7,7 +7,7 @@ from copy import deepcopy
 import compas
 from compas.datastructures import Mesh
 from compas.geometry import intersection_line_line, intersection_line_plane, intersection_segment_segment, subtract_vectors, norm_vector, project_point_plane
-from compas.geometry import is_point_infront_plane, distance_point_point, dot_vectors, distance_point_plane
+from compas.geometry import is_point_infront_plane, distance_point_point, dot_vectors, distance_point_plane, add_vectors
 from compas.geometry import Frame, Line, Plane, Point, Vector
 from compas.geometry import Box, Polyhedron
 from compas.geometry import Projection, Translation, Transformation, transform_points
@@ -201,23 +201,24 @@ class JointNonPlanarLap(Joint):
         """
         OVERSIZE = max(50.0, self.thickness)
 
+        # Joint corners alias
+        pt_c = self.pt_jc
+
         # Project Point [4 to 7] on cheek plane (pt_p)
         center_plane = Plane.from_frame(self.center_frame)
         P = Projection.from_plane(center_plane)
-        pt_p = [Point(* self.pt_jc[i+4]).transformed(P) for i in range(4)]
+        pt_p = [Point(* pt_c[i+4]).transformed(P) for i in range(4)]
 
         # Intersect Points (pt_x)
-        corner_lines = [Line(self.pt_jc[i], self.pt_jc[i+4]) for i in range(4)]
+        corner_lines = [Line(pt_c[i], pt_c[i+4]) for i in range(4)]
         pt_x = [intersection_line_plane(line, center_plane) for line in corner_lines]
 
-        # Joint corners alias
-        pt_c = self.pt_jc
 
         # Create solid negative geometry
         if self.is_joint_on_beam_move:
             # Only one feature mesh
             vertices = []
-            if self.axial_dot_product > 0:
+            if self.axial_dot_product < 0:
                 vertices.append(pt_x[0])
                 vertices.append(pt_x[1])
                 vertices.append(pt_p[2])
@@ -236,6 +237,7 @@ class JointNonPlanarLap(Joint):
             return [shape]
 
         else:
+            # Joint for beam_stay
             vertices = []
             # Degenerate case where angle is very close to zero.
             # Boolean geometry is just a simple box
@@ -259,7 +261,7 @@ class JointNonPlanarLap(Joint):
             # In the past this was done as two simplier geometry
             # but cgal just cannot boolean when meshes are coplanar
 
-            if self.axial_dot_product > 0:
+            if self.axial_dot_product < 0:
                 vertices.append(pt_p[2])
                 vertices.append(pt_c[6])
                 vertices.append(pt_c[2])
@@ -302,8 +304,39 @@ class JointNonPlanarLap(Joint):
             move_vertex_from_neighbor(vertices, [2, 7], [3, 8], OVERSIZE)
             move_vertex_from_neighbor(vertices, [2, 7, 3, 8], [1, 6, 4, 9], OVERSIZE)
             move_vertex_from_neighbor(vertices, [3, 8, 4, 9], [2, 7, 0, 5], OVERSIZE)
-            shape = polyhedron_box_from_vertices(vertices)
-            return [shape]
+            shape1 = polyhedron_box_from_vertices(vertices)
+
+            # Second geometry for correcting a small triangle that is < 90deg
+            vertices = []
+            if self.axial_dot_product < 0:
+                vertices.append(pt_c[6])
+                vertices.append(pt_p[2])
+                vertices.append(pt_p[3])
+                vertices.append(pt_c[7])
+            else:
+                vertices.append(pt_c[4])
+                vertices.append(pt_p[0])
+                vertices.append(pt_p[1])
+                vertices.append(pt_c[5])
+
+            v_hori = Vector.from_start_end(vertices[1], vertices[2])
+            v_vert = Vector.from_start_end(vertices[0], vertices[1])
+            normal = v_hori.cross(v_vert).unitized().scaled(100)
+
+            move_vertex_from_neighbor(vertices, [0,1,2,3], [1,0,3,2], 100)
+            vertices.append(add_vectors(vertices[0], normal))
+            vertices.append(add_vectors(vertices[1], normal))
+            vertices.append(add_vectors(vertices[2], normal))
+            vertices.append(add_vectors(vertices[3], normal))
+
+            shape2 = polyhedron_box_from_vertices(vertices)
+
+            # Output
+            no_hook = abs(Vector.from_start_end(pt_c[3], pt_c[7]).unitized().dot(self.center_frame.zaxis) - 1) < 1e-6
+            if no_hook:
+                return [shape1]
+            else:
+                return [shape1, shape2]
 
     def get_clamp_frames(self, beam):
         # type: (Beam) -> list[Frame]
@@ -485,7 +518,7 @@ class JointNonPlanarLap(Joint):
         joint_center_frame = Frame(Point(* cp_m_projected).transformed(T), ref_side_m.xaxis, ref_side_m.yaxis)
 
         # Precompute this dot product for deciding the hook triangle direction
-        axial_dot_product = dot_vectors(ref_side_s.zaxis, ref_side_m.xaxis)
+        axial_dot_product = dot_vectors(ref_side_m.zaxis, ref_side_s.yaxis)
 
         # Construct joint objects
         joint_m = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_move, joint_face_id_stay, axial_dot_product, lpx_pts,
