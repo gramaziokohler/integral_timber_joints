@@ -519,6 +519,8 @@ class JointNonPlanarLap(Joint):
 
         # Precompute this dot product for deciding the hook triangle direction
         axial_dot_product = dot_vectors(ref_side_m.zaxis, ref_side_s.yaxis)
+        if dot_vectors(ref_side_s.yaxis, ref_side_m.xaxis) > 0.0:
+            axial_dot_product = -axial_dot_product
 
         # Construct joint objects
         joint_m = JointNonPlanarLap(joint_center_frame, thickness, joint_face_id_move, joint_face_id_stay, axial_dot_product, lpx_pts,

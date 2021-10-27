@@ -22,7 +22,13 @@ if __name__ == '__main__':
     process = get_process()
     assembly = process.assembly
     artist = get_process_artist()
-    beam_id = 'b0'
+    beam_id = 'b15'
     shapes = assembly.get_beam_negative_shapes(beam_id)
 
+    # draw_shapes_as_brep_get_guids(shapes)
+
+    beam_stay = assembly.beam('b15')
+    beam_move = assembly.beam('b21')
+    j1, j2, line = JointNonPlanarLap.from_beam_beam_intersection(beam_stay, beam_move, joint_face_id_stay=1, joint_face_id_move=1)
+    shapes = j1.get_feature_shapes(None)
     draw_shapes_as_brep_get_guids(shapes)
