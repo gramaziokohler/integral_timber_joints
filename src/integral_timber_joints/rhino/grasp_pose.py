@@ -166,11 +166,13 @@ def show_normal_color_and_unhide(process):
     assembly = process.assembly  # type: Assembly
     rs.EnableRedraw(False)
     for beam_id in assembly.sequence:
-        artist.change_interactive_beam_colour(beam_id, 'normal')
         artist.hide_beam_all_positions(beam_id)
         artist.hide_gripper_all_positions(beam_id)
         artist.hide_asstool_all_positions(beam_id)
 
+        # Redraw Interactive beam if needed
+        artist.redraw_interactive_beam(beam_id, force_update=False, redraw=False)
+        artist.change_interactive_beam_colour(beam_id, 'normal')
         artist.show_interactive_beam(beam_id)
     rs.EnableRedraw(True)
 
@@ -323,6 +325,7 @@ def gripper_move_pos():
     process.adjust_gripper_pos(beam_id, +30)
     process.dependency.compute_all(beam_id)
     artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.delete_interactive_beam_visualization(beam_id=beam_id, redraw=False)
 
 
 def gripper_move_neg():
@@ -334,6 +337,7 @@ def gripper_move_neg():
     process.adjust_gripper_pos(beam_id, -30)
     process.dependency.compute_all(beam_id)
     artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.delete_interactive_beam_visualization(beam_id=beam_id, redraw=False)
 
 
 def gripper_follow_ass_dir():

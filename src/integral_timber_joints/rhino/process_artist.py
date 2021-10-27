@@ -771,6 +771,7 @@ class ProcessArtist(object):
                 if len(self.interactive_guids_at_layer(beam_id, layer)) > 0:
                     purge_objects(self.interactive_guids_at_layer(beam_id, layer), redraw=False)
                     del self.interactive_guids_at_layer(beam_id, layer)[:]
+            del self.assembly_artist.beam_guids(beam_id)[:]
         if redraw:
             rs.EnableRedraw(True)
 
