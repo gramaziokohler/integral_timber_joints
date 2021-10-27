@@ -1,9 +1,9 @@
-import uuid
+import uuid, math
 
 from compas.datastructures.mesh import Mesh, mesh_weld, meshes_join
 from compas.geometry import Frame, Point, Vector
 from compas.geometry import Box, Polyhedron, Line, Transformation, Translation
-from compas.geometry import is_polygon_convex, transform_points
+from compas.geometry import is_polygon_convex, transform_points, dot_vectors, angle_vectors
 
 
 def create_id():
@@ -198,6 +198,26 @@ def mesh_move_vertex_from_neighbor(mesh, vertices_ids, nbr_vertices_id, distance
         v.scale(distance)
         new_values = [a+b for a, b in zip(vertex_coordinates, v)]
         mesh.vertex_attributes(id, 'xyz', new_values)
+
+def mesh_acute_convex_face_pairs(mesh, threshold = math.pi / 2):
+    face_adjacency = mesh.face_adjacency()
+    pairs, angles = [], []
+    for p in face_adjacency:
+        for q in face_adjacency[p]:
+            if p < q:
+                continue
+            p_center = mesh.face_center(p)
+            q_center = mesh.face_center(q)
+            p_normal = mesh.face_normal(p)
+            q_normal = mesh.face_normal(q)
+            dot_product = dot_vectors(p_normal, Vector.from_start_end(p_center, q_center).unitized())
+            is_concave = dot_product > 1e-6
+            if is_concave:
+                angle = math.pi - angle_vectors(p_normal, q_normal)
+                if angle < threshold:
+                    pairs.append((p,q))
+                    angles.append(angle)
+    return (pairs, angles)
 
 
 if __name__ == "__main__":
