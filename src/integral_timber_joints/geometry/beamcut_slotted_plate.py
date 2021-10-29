@@ -10,10 +10,9 @@ import math
 
 import compas
 from compas.datastructures import Mesh
-from compas.geometry import Box, Polyhedron, Transformation, Shape
+from compas.geometry import Box, Polyhedron, Transformation, Shape, Cylinder
 from compas.geometry.intersections import intersection_line_plane
 from compas.geometry import Line, Point, Vector, Frame, Plane, transform_points
-
 
 
 from integral_timber_joints.geometry.beamcut import Beamcut
@@ -24,14 +23,17 @@ try:
 except:
     pass
 
+
 class BeamcutPlateSlot(Beamcut):
 
-    def __init__(self, on_beam_start=True, face_id=1, length=200, width=12):
-        # type: (bool, float, float, float) -> None
+    def __init__(self, on_beam_start=True, face_id=1, length=180, width=8, dowel_diameter=14, dowel_dist_from_top=60):
+        # type: (bool, float, float, float, float, float) -> None
         self.on_beam_start = on_beam_start
         self.face_id = face_id
         self.length = length
         self.width = width
+        self.dowel_diameter = dowel_diameter
+        self.dowel_dist_from_top = dowel_dist_from_top
 
     @property
     def data(self):
@@ -40,25 +42,28 @@ class BeamcutPlateSlot(Beamcut):
             'face_id': self.face_id,
             'length': self.length,
             'width': self.width,
+            'dowel_diameter': self.dowel_diameter,
+            'dowel_dist_from_top': self.dowel_dist_from_top,
         }
         return data
 
     @data.setter
     def data(self, data):
         self.on_beam_start = data['on_beam_start']
-        self.face_id = data['face_id']
-        self.length = data['length']
-        self.width = data['width']
+        self.face_id = data.get('face_id', 1)
+        self.length = data.get('length', 180)
+        self.width = data.get('width', 8)
+        self.dowel_diameter = data.get('dowel_diameter', 14)
+        self.dowel_dist_from_top = data.get('dowel_dist_from_top', 60)
 
     def is_start(self):
         return self.on_beam_start
 
-    def _construct_slot_shape(self, beam):
-        # type: (Beam) -> Polyhedron
+    def _construct_slot_and_one_dowel(self, beam):
+        # type: (Beam) -> list[Shape]
         """Helper to construct one tetrahedral polyhedron at a corner.
         Returns the polyhedron on the reference_side_frame coordinates in WCF
         """
-
 
         OVERSIZE = 10.0
         vertices = []
@@ -82,9 +87,17 @@ class BeamcutPlateSlot(Beamcut):
 
         T = Transformation.from_frame(face_frame)
         vertices = transform_points(vertices, T)
-        shape = polyhedron_box_from_vertices(vertices)
+        slot_box = polyhedron_box_from_vertices(vertices)
 
-        return shape
+        # Cylinder
+        start_pt = Point(self.length - self.dowel_dist_from_top, OVERSIZE, -face_height / 2,)
+        end_pt = Point(self.length - self.dowel_dist_from_top, face_width + OVERSIZE, -face_height / 2,)
+
+        line = Line(start_pt, end_pt)
+        cylinder = Cylinder.from_line_radius(line, self.dowel_diameter/2.0)
+        cylinder.transform(T)
+
+        return [slot_box, cylinder]
 
     # ###########################
     # Transformation of Extrinsic
@@ -105,8 +118,7 @@ class BeamcutPlateSlot(Beamcut):
         """Compute the negative mesh volume of the joint.
         """
         # Construct boolean geometry
-        shapes = []
-        shapes.append(self._construct_slot_shape(beam))
+        shapes = self._construct_slot_and_one_dowel(beam)
         return shapes
 
 
