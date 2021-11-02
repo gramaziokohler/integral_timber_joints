@@ -112,7 +112,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
         # * Environment meshes
         if initialize and include_env:
             for name, _mesh in process.environment_models.items():
-                # if name == 'e27':
                 mesh = _mesh.copy()
                 mesh_quads_to_triangles(mesh)
                 cm = CollisionMesh(mesh, name)

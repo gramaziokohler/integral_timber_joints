@@ -1382,6 +1382,30 @@ class RobotClampAssemblyProcess(Data):
             print("RobotModel submodule does not exist in: %s" % submodule_path)
             self._robot_model_load_success = False
 
+    def to_symbolic_problem_data(self):
+        """Return a dict that contains only the data used for symbolic planning.
+        Used for easier data communication without installing ITJ.
+        """
+        data = {'assembly' : {}}
+        data['assembly']['sequence'] = []
+        for b in self.assembly.sequence:
+            beam_gripper_type = self.assembly.get_beam_attribute(b, "gripper_type")
+            b_data = {'beam_id' : b, 'beam_gripper_type' : beam_gripper_type}
+            b_data['grounded'] = False
+            if self.assembly.get_assembly_method(b) == BeamAssemblyMethod.GROUND_CONTACT:
+                b_data['grounded'] = True
+            data['assembly']['sequence'].append(b_data)
+        data['assembly']['joints'] = []
+        for j in self.assembly.joint_ids():
+            data['assembly']['joints'].append({'joint_id' : j, 'tool_type' : self.assembly.get_joint_attribute(j, 'tool_type')})
+        data['clamps'] = {}
+        for c in self.clamps:
+            data['clamps'][c.name] = {'type_name' : c.type_name}
+        data['grippers'] = {}
+        for g in self.grippers:
+            data['grippers'][g.name] = {'type_name' : g.type_name}
+        return data
+
 
 def _colored_is_none(value):
     try:
