@@ -24,9 +24,14 @@ class EmptyConfiguration(object):
     def __repr__(self):
         return 'Conf-{}'.format(self.tag)
 
-def get_pddlstream_problem(process, use_partial_order=True, debug=False, reset_to_home=False, consider_transition=False):
-    domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic_domain.pddl'))
-    stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic_stream.pddl'))
+def get_pddlstream_problem(process, use_partial_order=True,
+    debug=False, reset_to_home=False, consider_transition=False, symbolic_only=False):
+    if symbolic_only:
+        domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'domain.pddl'))
+        stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'stream.pddl'))
+    else:
+        domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'domain.pddl'))
+        stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'stream.pddl'))
 
     init = []
 
