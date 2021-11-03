@@ -51,10 +51,21 @@ def get_pddlstream_problem(process, use_partial_order=True,
 
     beam_seq = process.assembly.sequence
     for e in beam_seq:
+        f_world_from_beam_pickup = process.assembly.get_beam_attribute(e, 'assembly_wcf_pickup')
+        f_world_from_beam_final = process.assembly.get_beam_attribute(e, 'assembly_wcf_final')
+        # assembly_wcf_pickup = process.get_gripper_t0cp_for_beam_at(e, 'assembly_wcf_pickup')
+        # assembly_wcf_final = process.get_gripper_t0cp_for_beam_at(e, 'assembly_wcf_final')
+        beam_grasp = f_world_from_beam_pickup # TODO change
         init.extend([
             ('Element', e),
-            ('AtRack', e),
-            ('IsElement', e)
+            ('IsElement', e),
+            # ('AtRack', e),
+            ('RackPose', e, f_world_from_beam_pickup),
+            ('Pose', e, f_world_from_beam_pickup),
+            ('AtPose', e, f_world_from_beam_pickup),
+            ('ElementGoalPose', e, f_world_from_beam_final),
+            ('Pose', e, f_world_from_beam_final),
+            ('Grasp', e, beam_grasp),
         ])
         if process.assembly.get_assembly_method(e) == BeamAssemblyMethod.GROUND_CONTACT:
             init.extend([
@@ -63,24 +74,34 @@ def get_pddlstream_problem(process, use_partial_order=True,
                 ])
 
     for j in process.assembly.joint_ids():
-        init.extend([
-            ('Joint', j[0], j[1]),
-            ('Joint', j[1], j[0]),
-            ('NoToolAtJoint', j[0], j[1]),
-            ('NoToolAtJoint', j[1], j[0]),
-        ])
+        try:
+            clamp_wcf_final = process.get_tool_t0cf_at(j, 'clamp_wcf_final')
+        except:
+            clamp_wcf_final = process.get_tool_t0cf_at(j[::-1], 'clamp_wcf_final')
+        for k0, k1 in [(0,1), (1,0)]:
+            init.extend([
+                ('Joint', j[k0], j[k1]),
+                ('NoToolAtJoint', j[k0], j[k1]),
+                ('JointClampPose', j[k0], j[k1], clamp_wcf_final),
+            ])
 
     if use_partial_order:
         for e1, e2 in zip(beam_seq[:-1], beam_seq[1:]):
             init.append(('Order', e1, e2))
 
     for c in process.clamps:
+        tool_storage_frame = c.tool_storage_frame
+        clamp_grasp = c.tool_storage_frame # TODO change
         init.extend([
             ('Clamp', c.name),
             ('IsClamp', c.name),
             ('IsTool', c.name),
-            ('AtRack', c.name),
+            # ('AtRack', c.name),
+            ('RackPose', c.name, tool_storage_frame),
+            ('Pose', c.name, tool_storage_frame),
+            ('AtPose', c.name, tool_storage_frame),
             ('ToolNotOccupiedOnJoint', c.name),
+            ('Grasp', c.name, clamp_grasp),
         ])
     # * tool type
     for j in process.assembly.joint_ids():
@@ -93,11 +114,17 @@ def get_pddlstream_problem(process, use_partial_order=True,
                 ])
 
     for g in process.grippers:
+        tool_storage_frame = g.tool_storage_frame
+        gripper_grasp = g.tool_storage_frame # TODO change
         init.extend([
             ('Gripper', g.name),
             ('IsGripper', g.name),
             ('IsTool', g.name),
-            ('AtRack', g.name),
+            # ('AtRack', g.name),
+            ('RackPose', g.name, tool_storage_frame),
+            ('Pose', g.name, tool_storage_frame),
+            ('AtPose', g.name, tool_storage_frame),
+            ('Grasp', g.name, gripper_grasp),
         ])
     # * gripper type
     for beam_id in beam_seq:
