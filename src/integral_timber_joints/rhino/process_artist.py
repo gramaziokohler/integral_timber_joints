@@ -612,7 +612,9 @@ class ProcessArtist(object):
         Redraws interactive beam mesh and sequence tag
         '''
         rs.EnableRedraw(False)
-        self.delete_interactive_beam_visualization(beam_id, redraw=False)
+        if force_update:
+            self.delete_interactive_beam_visualization(beam_id, redraw=False)
+
         if draw_mesh:
             self.draw_beam_mesh(beam_id, update_cache=force_update, redraw=False)
         if draw_nurbs:

@@ -279,6 +279,7 @@ def _gripper_as_gripper_changetype(process, beam_id):
         print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
         process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
         process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
+        get_process_artist().delete_interactive_beam_visualization(beam_id=beam_id, redraw=False)
 
 
 def _screwdriver_as_gripper_changetype(process, beam_id):
@@ -312,6 +313,7 @@ def _screwdriver_as_gripper_changetype(process, beam_id):
         print("Gripper type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
         process.assembly.set_beam_attribute(beam_id, 'gripper_id', gripper_ids[type_names.index(selected_type_name)])
         process.assembly.set_beam_attribute(beam_id, 'gripper_type', selected_type_name)
+        get_process_artist().delete_interactive_beam_visualization(beam_id=beam_id, redraw=False)
 
     process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
 
@@ -353,6 +355,7 @@ def gripper_follow_ass_dir():
     # Redraw Visualization
     artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
     artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+    get_process_artist().delete_interactive_beam_visualization(beam_id=beam_id, redraw=False)
 
 
 def grasp_face():
@@ -399,6 +402,7 @@ def grasp_face():
             # Redraw Visualization
             artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
             artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
+            artist.delete_interactive_beam_visualization(beam_id=beam_id, redraw=False)
             show_sequence_color(process)
             compute_collision_show_color(process)
 
@@ -426,6 +430,7 @@ def flip_clamp():
     artist.draw_beam_all_positions(beam_id, delete_old=True, redraw=False)
     artist.draw_gripper_all_positions(beam_id, delete_old=True, redraw=False)
     artist.draw_asstool_all_positions(beam_id, delete_old=True)
+    artist.delete_interactive_beam_visualization(beam_id=beam_id, redraw=False)
     show_sequence_color(process)
 
 
@@ -507,6 +512,60 @@ def _assembly_tools_selectable_guids(beam_id):
         guids = artist.asstool_guids_at_position(joint_id, tool_position)
         selectable_guids.extend(guids)
     return selectable_guids
+
+
+def change_clamp_type():
+    process = get_process()
+    artist = get_process_artist()
+    beam_id = artist.selected_beam_id
+
+    # * Ask user to Pick in Rhino UI the screwdriver to flip
+    go = Rhino.Input.Custom.GetObject()
+
+    def joint_feature_filter(rhino_object, geometry, component_index):
+        return rhino_object.Attributes.ObjectId in _assembly_tools_selectable_guids(beam_id)
+    go.SetCustomGeometryFilter(joint_feature_filter)
+    go.SetCommandPrompt("Select tool to change type:")
+    go.EnablePreSelect(False, True)
+    result = go.Get()
+    if result is None or result == Rhino.Input.GetResult.Cancel:
+        print("Cancel")
+        return
+    guid = go.Object(0).ObjectId
+    selected_joint_id = _assembly_tools_guid_to_joint_id(beam_id, guid)
+    selected_joint = process.assembly.joint(joint_id=selected_joint_id)
+
+    # Sort out available clamp types
+    current_type = process.assembly.get_joint_attribute(selected_joint_id, 'tool_type')
+    type_names = []
+
+    for clamp in process.clamps:
+        print("- %s : %s" % (clamp.name, clamp.type_name))
+        if clamp.type_name in selected_joint.assembly_tool_types(process.assembly.get_assembly_method(beam_id)):
+            if clamp.type_name not in type_names:
+                type_names.append(clamp.type_name)
+
+    # Ask user which gripper to delete
+    prompt = "Which screwdriver to use for Joint(%s)? Current gripper type is: %s" % (selected_joint_id, current_type)
+    selected_type_name = rs.GetString(prompt, current_type, type_names)
+    # Dont change anything if the selection is the same
+    if selected_type_name == current_type:
+        print("Screwdriver type unchanged")
+        return
+    if selected_type_name in type_names:
+        print("Screwdriver type changed to %s. Recomputing frames and visualization..." % (selected_type_name))
+        process.assembly.set_joint_attribute(selected_joint_id, 'tool_type_preference', selected_type_name)
+
+    current_index = process.assembly.get_joint_attribute(selected_joint_id, 'tool_orientation_frame_index')
+    if current_index == 0:
+        process.assembly.set_joint_attribute(selected_joint_id, 'tool_orientation_frame_index', 1)
+    else:
+        process.assembly.set_joint_attribute(selected_joint_id, 'tool_orientation_frame_index', 0)
+
+    process.dependency.invalidate(beam_id, process.assign_tool_type_to_joints)
+    process.dependency.compute_all(beam_id, attempt_all_parents_even_failure=False, verbose=True)
+    artist.draw_asstool_all_positions(beam_id, delete_old=True, redraw=False)
+    artist.redraw_interactive_beam(beam_id, force_update=True, redraw=False)
 
 
 def change_screwdriver_orientation():
@@ -652,6 +711,8 @@ def show_menu(process):
 
             if assembly_method == BeamAssemblyMethod.CLAMPED:
                 go.AddOption("FlipClampAttachPosition")
+                go.AddOption("ChangeClampType")
+
             go.AddOption("ExitKeepGeo")
 
     name_to_function_dict = {
@@ -669,6 +730,7 @@ def show_menu(process):
         'ChangeGraspingJoint': change_grasping_joint,
         'ChangeToolOrientation': change_screwdriver_orientation,
         'ChangeScrewdriverType': change_screwdriver_type,
+        'ChangeClampType': change_clamp_type,
 
     }
 
