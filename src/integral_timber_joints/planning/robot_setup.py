@@ -3,7 +3,7 @@ from termcolor import cprint
 import numpy as np
 
 from compas_fab_pychoreo.client import PyChoreoClient
-from pybullet_planning import draw_pose, set_camera_pose, unit_pose, LockRenderer
+from pybullet_planning import draw_pose, set_camera_pose, unit_pose, LockRenderer, set_camera
 
 from integral_timber_joints.planning.utils import convert_rfl_robot_conf_unit
 from integral_timber_joints.planning.visualization import rfl_camera
@@ -122,7 +122,8 @@ def load_RFL_world(viewer=True, verbose=False):
 
     # * draw base frame and locate camera in pybullet
     draw_pose(unit_pose(), length=1.)
-    cam = rfl_camera()
-    set_camera_pose(cam['target'], cam['location'])
+    # cam_info = pp.get_camera()
+    cam_info = rfl_camera()
+    set_camera(cam_info.yaw, cam_info.pitch, cam_info.dist, cam_info.target)
 
     return client, robot, robot_uid

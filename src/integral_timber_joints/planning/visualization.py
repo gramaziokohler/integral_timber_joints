@@ -2,7 +2,7 @@ import numpy as np
 from termcolor import cprint
 
 import pybullet_planning as pp
-from pybullet_planning import GREY, BLUE, YELLOW, GREEN, draw_pose, has_gui, wait_if_gui, wait_for_duration, LockRenderer
+from pybullet_planning import GREY, BLUE, YELLOW, GREEN, draw_pose, has_gui, wait_if_gui, wait_for_duration, LockRenderer, CameraInfo
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement
 
 ################################################
@@ -34,16 +34,18 @@ def sample_colors(num, lower=0.0, upper=1.0):
 
 ################################################
 
-def rfl_camera(scale=1e-3):
+def rfl_camera():
     """Set the camera of the pybullet simulator to a particular pose.
     """
-    camera = {
-        'location': np.array([14830.746366, 17616.580504, 9461.594828])*scale,
-        'target' : np.array([24470.185559, 7976.896428, 2694.413294])*scale,
-        'lens' : 50.0*scale,
-        'up_direction':np.array([0.314401,-0.314409,0.895712])*scale,
-    }
-    return camera
+    # scale=1e-3
+    # camera = {
+    #     'location': np.array([14830.746366, 17616.580504, 9461.594828])*scale,
+    #     'target' : np.array([24470.185559, 7976.896428, 2694.413294])*scale,
+    #     'lens' : 50.0*scale,
+    #     'up_direction':np.array([0.314401,-0.314409,0.895712])*scale,
+    # }
+    cam_info = CameraInfo(width=875, height=802, viewMatrix=(0.7501025199890137, 0.09660778194665909, -0.6542271375656128, 0.0, -0.6613215804100037, 0.10957715660333633, -0.7420556545257568, 0.0, 0.0, 0.9892723560333252, 0.14608290791511536, 0.0, -11.155038833618164, -4.927146911621094, 13.52570629119873, 1.0), projectionMatrix=(0.9165713787078857, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0000200271606445, -1.0, 0.0, 0.0, -0.02000020071864128, 0.0), cameraUp=(0.0, 0.0, 1.0), cameraForward=(0.6542271375656128, 0.7420556545257568, -0.14608290791511536), horizontal=(16367.5732421875, -14430.3349609375, 0.0), vertical=(1932.15576171875, 2191.543212890625, 19785.447265625), yaw=-41.40074920654297, pitch=-8.399992942810059, dist=7.179621696472168, target=(22.38941192626953, 8.52734088897705, 1.8495957851409912))
+    return cam_info
 
 ################################################
 
