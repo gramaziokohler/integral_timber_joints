@@ -1,7 +1,7 @@
 import Rhino  # type: ignore
+import Rhino.Geometry as rg
 import rhinoscriptsyntax as rs
-from compas.geometry.primitives.frame import Frame
-from compas.geometry.primitives.plane import Plane
+from compas.geometry import Frame, Plane, project_point_line, distance_point_point
 from compas_rhino.ui import CommandMenu
 from compas_rhino.utilities.objects import get_object_name, get_object_names
 
@@ -183,6 +183,7 @@ def ui_add_plate_slot(process):
     assembly = process.assembly  # type: Assembly
     artist = get_process_artist()
 
+
     while(True):
         # Ask user for input
         guids = rs.GetObjects('Select beam(s) to add plate slot:', custom_filter=get_existing_beams_filter(process))
@@ -191,28 +192,34 @@ def ui_add_plate_slot(process):
             return
         beam_ids = get_object_names(guids)
 
-        # * Ask user for input
-        options = ["Start_1_3", "Start_2_4", "End_1_3", "End_2_4"]
-        print ("Start_1_3 is the end of the beam with the sequence_tag. Slotting through the face with the text.")
-        option = rs.GetString("Which End / Direction:", options[0], options)
+        # * Ask user to select a point
+        beam = assembly.beam(beam_ids[0])
+        center_line = beam.get_center_line()
 
-        if option == "Start_2_4":
-            on_beam_start, face_id = True, 2
-        elif option == "Start_1_3":
-            on_beam_start, face_id = True, 1
-        elif option == "End_2_4":
-            on_beam_start, face_id = False, 2
-        elif option == "End_1_3":
-            on_beam_start, face_id = False, 1
+        center_line_r = rs.AddLine(rg.Point3d(* list(center_line.start)), rg.Point3d(* list(center_line.end)))
+        pt_r = rs.GetPointOnCurve(center_line_r, "Select Height of the plate")
+        rs.DeleteObject(center_line_r)
+        projected_point = project_point_line([pt_r.X, pt_r.Y, pt_r.Z], center_line)
+        length_from_start = distance_point_point(projected_point, center_line.start)
+        length_from_end = distance_point_point(projected_point, center_line.end)
+
+        # * Ask user for input
+        options = ["SlotThroughTag", "SlotParallelToTag"]
+        option = rs.GetString("Which Direction to slot:", options[0], options)
+
+        on_beam_start = length_from_start < length_from_end
+
+        if option == "SlotThroughTag":
+            face_id = 1
+        elif option == "SlotParallelToTag":
+            face_id = 2
         else:
             print("Input not valid: %s" % option)
             return
 
-        length = rs.GetReal("Length of the slot, aka how long is the metal plate:?", 150, minimum = 1)
-        if length is None:
-            return
+        length = min(length_from_start, length_from_end)
 
-        width = rs.GetReal("Width of the slot, aka how thick is the metal plate:?", 12, minimum = 1)
+        width = rs.GetReal("Width of the slot, aka how thick is the metal plate:?", 8, minimum = 1)
         if width is None:
             return
 
@@ -249,7 +256,34 @@ def ui_remove_plate_slot(process):
         for beam_cut in beam_cuts_to_delete:
             assembly.beam_cuts(beam_id).remove(beam_cut)
 
-        artist.redraw_interactive_beam(beam_id, redraw=False)
+        artist.redraw_interactive_beam(beam_id, redraw=True)
+
+def ui_rotate_plate_slot(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    '''Rotate all the Beamcut objects.
+    Toggle between face 1 or 2
+    '''
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+
+    # * Ask user for input
+    guids = rs.GetObjects('Select beam(s) to untrim. (All End trims will be removed):', custom_filter=get_existing_beams_filter(process))
+    if not guids:
+        # Quit when user press Enter without selection
+        return
+    beam_ids = get_object_names(guids)
+
+    # * Remove the end cuts
+    for beam_id in beam_ids:
+        beam_cuts = [beam_cut for beam_cut in assembly.beam_cuts(beam_id) if type(beam_cut) == BeamcutPlateSlot]
+        print('%i BeamcutPlateSlot Rotated for beam %s.' % (len(beam_cuts), beam_id))
+        for beam_cut in beam_cuts:
+            if beam_cut.face_id == 1:
+                beam_cut.face_id = 2
+            else:
+                beam_cut.face_id = 1
+
+        artist.redraw_interactive_beam(beam_id, redraw=True)
 
 
 def show_assembly_beams(process):
@@ -277,7 +311,8 @@ def show_menu(process):
                 {'name': 'TrimFourCorners', 'action': ui_trim_four_corners},
                 {'name': 'AdjustFourCorners', 'action': ui_adjust_four_corners},
                 {'name': 'EndPlateSlot', 'action': ui_add_plate_slot},
-                {'name': 'RemoveEndPlateSlot', 'action': ui_remove_plate_slot},
+                {'name': 'RotateEPSlot', 'action': ui_rotate_plate_slot},
+                {'name': 'RemoveEPSlot', 'action': ui_remove_plate_slot},
             ]
 
         }
