@@ -20,7 +20,8 @@
 
     ; pose tags
     (RackPose ?tool ?pose)
-    (JointPose ?clamp ?pose)
+    (ClampPose ?clamp ?pose)
+    (JointPose ?e1 ?e2 ?pose)
     (ElementGoalPose ?element ?pose)
 
     ; * static predicates but will be produced by stream functions
@@ -130,7 +131,7 @@
                     (IKSolution ?element ?e_pose ?e_grasp ?conf)
                     )
     :effect (and
-                ;;  (Assembled ?element)
+                 (Assembled ?element)
                  (AtPose ?element ?e_pose)
                  (not (Attached ?element ?e_grasp))
                  (RobotGripperEmpty)
@@ -139,14 +140,13 @@
                  )
   )
 
-  ;; TODO try (when A B) for effects
-  (:action pick_gripper_from_rack
+  (:action pick_tool_from_rack
     :parameters (?tool ?pose ?grasp ?conf)
     :precondition (and
                     ; ! state precondition
                     (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf)))
                     (RobotToolChangerEmpty)
-                    (IsGripper ?tool)
+                    ;; (IsGripper ?tool)
                     (RackPose ?tool ?pose)
                     (AtPose ?tool ?pose)
                     ; ! sampled
@@ -157,28 +157,8 @@
                  (not (RobotToolChangerEmpty))
                  ; ! tool status
                  (not (AtPose ?tool ?pose))
-                 ; ! the only difference to `pick_clamp_from_rack`
-                 (RobotGripperEmpty)
-                 ; ! switch for move
-                 (CanFreeMove)
-            )
-  )
-
-  (:action pick_clamp_from_rack
-    :parameters (?tool ?pose ?grasp ?conf)
-    :precondition (and
-                    ; ! state precondition
-                    (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf)))
-                    (RobotToolChangerEmpty)
-                    (IsClamp ?tool)
-                    (RackPose ?tool ?pose)
-                    (AtPose ?tool ?pose)
-                    ; ! sampled
-                    (IKSolution ?tool ?pose ?grasp ?conf)
-                    ;; (PickToolAction ?tool ?conf1 ?conf2 ?traj)
-                  )
-    :effect (and (Attached ?tool ?grasp)
-                 (not (RobotToolChangerEmpty))
+                 ; ! for gripper
+                 (when (IsGripper ?tool) (RobotGripperEmpty))
                  ; ! switch for move
                  (CanFreeMove)
             )
@@ -215,7 +195,8 @@
                     (RobotToolChangerEmpty)
                     (IsClamp ?clamp)
                     (ToolAtJoint ?clamp ?element1 ?element2)
-                    (JointPose ?clamp ?pose)
+                    (ClampPose ?clamp ?pose)
+                    (JointPose ?element1 ?element2 ?pose)
                     (AtPose ?clamp ?pose)
                     ; ! sampled
                     ;; (PickToolAction ?clamp ?conf1 ?conf2 ?traj)
@@ -241,12 +222,15 @@
                     (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf)))
                     (Attached ?clamp ?grasp)
                     (IsClamp ?clamp)
-                    (JointPose ?clamp ?pose)
+                    ; ! pose specific to the clamp and joint
+                    (ClampPose ?clamp ?pose)
+                    (JointPose ?element1 ?element2 ?pose)
+                    ; ! tool status
                     (ToolNotOccupiedOnJoint ?clamp)
                     (NoToolAtJoint ?element1 ?element2)
                     (JointToolTypeMatch ?element1 ?element2 ?clamp)
-                    (or (Assembled ?element1) (Assembled ?element2))
                     ; ! assembly state precondition
+                    (or (Assembled ?element1) (Assembled ?element2))
                     ; ! sampled
                     (IKSolution ?clamp ?pose ?grasp ?conf)
                     ;; (PlaceToolAction ?tool ?conf1 ?conf2 ?traj)
@@ -276,8 +260,8 @@
   )
 
   (:derived (AllToolAtJoints ?element)
-   (forall (?ei) (imply (Joint ?ei ?element)
-                        (exists (?tool) (ToolAtJoint ?tool ?ei ?element))
+   (forall (?ei) (imply (Joint ?element ?ei)
+                        (exists (?tool) (ToolAtJoint ?tool ?element ?ei))
                  )
    )
   )
@@ -287,11 +271,11 @@
 ;;                          (AtPose ?b ?p))
 ;;                       )
 ;;   )
-  (:derived (Assembled ?element)
-    (exists (?pose) (and (Element ?element)
-                      (ElementGoalPose ?element ?pose)
-                      (AtPose ?element ?pose))
-                      )
-  )
+;;   (:derived (Assembled ?element)
+;;     (exists (?pose) (and (Element ?element)
+;;                       (ElementGoalPose ?element ?pose)
+;;                       (AtPose ?element ?pose))
+;;                       )
+;;   )
 
 )

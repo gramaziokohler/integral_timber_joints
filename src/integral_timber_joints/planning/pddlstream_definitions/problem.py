@@ -108,7 +108,9 @@ def get_pddlstream_problem(process, use_partial_order=True,
                     ('JointToolTypeMatch', j[0], j[1], c.name),
                     ('JointToolTypeMatch', j[1], j[0], c.name),
                     ('Pose', c.name, clamp_wcf_final),
-                    ('JointPose', c.name, clamp_wcf_final),
+                    ('ClampPose', c.name, clamp_wcf_final),
+                    ('JointPose', j[0], j[1], clamp_wcf_final),
+                    ('JointPose', j[1], j[0], clamp_wcf_final),
                 ])
 
     for g in process.grippers:

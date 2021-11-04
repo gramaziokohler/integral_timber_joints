@@ -68,15 +68,17 @@ def actions_from_pddlstream_plan(process, plan, verbose=False):
                 seq_n += 1
                 acts = []
 
-        elif action.name == 'pick_gripper_from_rack':
-            gripper_id = action.args[0]
-            gripper = process.gripper(gripper_id)
-            acts.append(PickGripperFromStorageAction(seq_n, 0, gripper.type_name, gripper_id))
-
-        elif action.name == 'pick_clamp_from_rack':
-            clamp_id = action.args[0]
-            clamp = process.clamp(clamp_id)
-            acts.append(PickClampFromStorageAction(seq_n, 0, clamp.type_name, clamp_id))
+        elif action.name == 'pick_tool_from_rack':
+            tool_id = action.args[0]
+            if tool_id.startswith('g'):
+                gripper = process.gripper(tool_id)
+                act = PickGripperFromStorageAction(seq_n, 0, gripper.type_name, tool_id)
+            elif tool_id.startswith('c'):
+                clamp = process.clamp(tool_id)
+                acts = PickClampFromStorageAction(seq_n, 0, clamp.type_name, tool_id)
+            else:
+                raise ValueError('Weird tool id {}'.format(tool_id))
+            acts.append(act)
 
         elif action.name == 'place_tool_at_rack':
             tool_id = action.args[0]
