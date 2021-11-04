@@ -18,12 +18,14 @@
     (IsClamp ?tool)
     (IsTool ?tool)
 
+    ; pose tags
     (RackPose ?tool ?pose)
+    (JointPose ?clamp ?pose)
     (ElementGoalPose ?element ?pose)
-    (JointClampPose ?element1 ?element2 ?pose)
 
     ; * static predicates but will be produced by stream functions
     (Pose ?object ?pose)
+
     (Traj ?traj)
     (Grasp ?object ?grasp_pose) ; gripper_from_object
 
@@ -110,18 +112,18 @@
   ; an element can only be placed if all the clamps are (attached) to the corresponding joints
   ; we can query a partial structure and a new element's connection joints using fluent
   (:action place_element_on_structure
-    :parameters (?element ?e_pose ?e_grasp ?tool ?conf) ; ?tool_grasp
+    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp ?conf)
     :precondition (and
                     ; ! robot state precondition
                     (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf)))
                     (IsGripper ?tool)
-                    ;; (Attached ?tool ?tool_grasp)
-                    ;; (Attached ?element ?e_grasp)
+                    (Attached ?tool ?tool_grasp)
+                    (Attached ?element ?e_grasp)
                     (ElementGoalPose ?element ?e_pose)
                     ; ! assembly state precondition
                     (Connected ?element)
                     ; ! tool state precondition
-                    ;; (imply (not (Grounded ?element)) (AllToolAtJoints ?element))
+                    (imply (not (Grounded ?element)) (AllToolAtJoints ?element))
                     ; ! e2 must be assembled before e encoded in the given partial ordering
                     (forall (?ei) (imply (Order ?ei ?element) (Assembled ?ei)))
                     ; ! sampled
@@ -171,8 +173,8 @@
                     (IsClamp ?tool)
                     (RackPose ?tool ?pose)
                     (AtPose ?tool ?pose)
-                    (IKSolution ?tool ?pose ?grasp ?conf)
                     ; ! sampled
+                    (IKSolution ?tool ?pose ?grasp ?conf)
                     ;; (PickToolAction ?tool ?conf1 ?conf2 ?traj)
                   )
     :effect (and (Attached ?tool ?grasp)
@@ -213,7 +215,7 @@
                     (RobotToolChangerEmpty)
                     (IsClamp ?clamp)
                     (ToolAtJoint ?clamp ?element1 ?element2)
-                    (JointClampPose ?element1 ?element2 ?pose)
+                    (JointPose ?clamp ?pose)
                     (AtPose ?clamp ?pose)
                     ; ! sampled
                     ;; (PickToolAction ?clamp ?conf1 ?conf2 ?traj)
@@ -239,7 +241,7 @@
                     (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf)))
                     (Attached ?clamp ?grasp)
                     (IsClamp ?clamp)
-                    (JointClampPose ?element1 ?element2 ?pose)
+                    (JointPose ?clamp ?pose)
                     (ToolNotOccupiedOnJoint ?clamp)
                     (NoToolAtJoint ?element1 ?element2)
                     (JointToolTypeMatch ?element1 ?element2 ?clamp)

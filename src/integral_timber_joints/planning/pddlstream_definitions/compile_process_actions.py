@@ -24,7 +24,7 @@ def actions_from_pddlstream_plan(process, plan, verbose=False):
         if action.name == 'pick_element_from_rack':
             # TODO screwdriver needs special care here
             beam_id = action.args[0]
-            gripper_id = action.args[-1]
+            gripper_id = action.args[3]
             gripper = process.gripper(gripper_id)
             # * double-check tool type consistency
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
@@ -38,7 +38,7 @@ def actions_from_pddlstream_plan(process, plan, verbose=False):
 
         elif action.name == 'place_element_on_structure':
             beam_id = action.args[0]
-            gripper_id = action.args[-1]
+            gripper_id = action.args[-3]
             gripper = process.gripper(gripper_id)
             # * double-check tool type consistency
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
@@ -93,7 +93,7 @@ def actions_from_pddlstream_plan(process, plan, verbose=False):
         elif action.name == 'pick_clamp_from_joint':
             clamp_id = action.args[0]
             clamp = process.clamp(clamp_id)
-            joint_id = (action.args[1], action.args[2])
+            joint_id = (action.args[-3], action.args[-2])
             # ! convention: sequence id smaller first
             if process.assembly.sequence.index(joint_id[0]) > process.assembly.sequence.index(joint_id[1]):
                 joint_id = joint_id[::-1]
@@ -102,7 +102,7 @@ def actions_from_pddlstream_plan(process, plan, verbose=False):
         elif action.name == 'place_clamp_at_joint':
             clamp_id = action.args[0]
             clamp = process.clamp(clamp_id)
-            joint_id = (action.args[1], action.args[2])
+            joint_id = (action.args[-3], action.args[-2])
             # ! convention: sequence id smaller first
             if process.assembly.sequence.index(joint_id[0]) > process.assembly.sequence.index(joint_id[1]):
                 joint_id = joint_id[::-1]

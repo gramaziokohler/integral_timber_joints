@@ -74,15 +74,10 @@ def get_pddlstream_problem(process, use_partial_order=True,
                 ])
 
     for j in process.assembly.joint_ids():
-        try:
-            clamp_wcf_final = process.get_tool_t0cf_at(j, 'clamp_wcf_final')
-        except:
-            clamp_wcf_final = process.get_tool_t0cf_at(j[::-1], 'clamp_wcf_final')
         for k0, k1 in [(0,1), (1,0)]:
             init.extend([
                 ('Joint', j[k0], j[k1]),
                 ('NoToolAtJoint', j[k0], j[k1]),
-                ('JointClampPose', j[k0], j[k1], clamp_wcf_final),
             ])
 
     if use_partial_order:
@@ -106,11 +101,14 @@ def get_pddlstream_problem(process, use_partial_order=True,
     # * tool type
     for j in process.assembly.joint_ids():
         joint_clamp_type = process.assembly.get_joint_attribute(j, 'tool_type')
+        clamp_wcf_final = process.get_tool_t0cf_at(j, 'clamp_wcf_final')
         for c in process.clamps:
             if c.type_name == joint_clamp_type:
                 init.extend([
                     ('JointToolTypeMatch', j[0], j[1], c.name),
                     ('JointToolTypeMatch', j[1], j[0], c.name),
+                    ('Pose', c.name, clamp_wcf_final),
+                    ('JointPose', c.name, clamp_wcf_final),
                 ])
 
     for g in process.grippers:
