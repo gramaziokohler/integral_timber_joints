@@ -8,7 +8,7 @@ import compas
 from compas.datastructures import Mesh
 from compas.geometry import Box, Frame, Point, Line, Transformation, Vector
 from compas.geometry import Projection, Translation, transformations
-from compas.geometry import distance_point_point, intersection_segment_segment, dot_vectors, transform_points, angle_vectors
+from compas.geometry import distance_point_point, intersection_segment_segment, dot_vectors, transform_points, angle_vectors, centroid_points
 
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
@@ -117,6 +117,9 @@ class JointPolylineLap(Joint):
     def distance_at_center(self):
         return self.center_distance
 
+    @property
+    def centroid(self):
+        return centroid_points(self.corner_pts)
     # ###########################
     # Transformation of Extrinsic
     # ###########################
