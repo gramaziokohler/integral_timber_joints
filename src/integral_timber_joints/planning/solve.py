@@ -1,4 +1,5 @@
 import time
+import logging
 from enum import Enum, unique
 from copy import deepcopy
 from collections import defaultdict
@@ -276,6 +277,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 else:
                     # TODO backtracking
                     cprint('No plan found for {} after {} attempts! {}'.format(m.movement_id, m_attempts, m.short_summary), 'red')
+                    logging.info('No plan found for {} after {} attempts. {}'.format(m.movement_id, m_attempts, m.short_summary))
                     # continue
                     # break
                     return False, []

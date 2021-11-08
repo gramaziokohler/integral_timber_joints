@@ -81,6 +81,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     #     print_title('0) Before planning')
     #     process.get_movement_summary_by_beam_id(beam_id)
         # wait_for_user()
+    seq_n = process.assembly.sequence.index(beam_id)
     all_movements = process.get_movements_by_beam_id(beam_id)
     options['samplig_order_counter'] = 0
     options['enforce_continuous'] = True
@@ -98,7 +99,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
-                    logging.info('A plan NOT found using nonlinear planning at stage 1 for beam {}!'.format(beam_id))
+                    logging.info('A plan NOT found using nonlinear planning at stage 1 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -109,7 +110,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
-                    logging.info('A plan NOT found using nonlinear planning at stage 2 for beam {}!'.format(beam_id))
+                    logging.info('A plan NOT found using nonlinear planning at stage 2 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -123,7 +124,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
-                    logging.info('A plan NOT found using nonlinear planning at stage 3 for beam {}!'.format(beam_id))
+                    logging.info('A plan NOT found using nonlinear planning at stage 3 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -135,7 +136,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     [MovementStatus.both_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
-                    logging.info('A plan NOT found using nonlinear planning at stage 4 for beam {}!'.format(beam_id))
+                    logging.info('A plan NOT found using nonlinear planning at stage 4 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     print('No success for nonlinear planning.')
                     return False
                 else:
@@ -150,7 +151,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     check_type_only=True)
                 if not success:
                     print('No success for linear (chained) planning.')
-                    logging.info('A plan NOT found using linear (chained) planning {}!'.format(beam_id))
+                    logging.info('A plan NOT found using linear (chained) planning for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     return False
                 altered_movements.extend(altered_ms)
 
@@ -160,7 +161,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     options=options, diagnosis=args.diagnosis)
                 if not success:
                     print('No success for free motions')
-                    logging.info('A plan NOT found for free motion in beam id {}!'.format(beam_id))
+                    logging.info('A plan NOT found for free motion for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     return False
                 altered_movements.extend(altered_ms)
 
@@ -233,10 +234,11 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         for m_id in sorted(viz_movements.keys()):
             visualize_movement_trajectory(client, robot, process, viz_movements[m_id], step_sim=args.step_sim)
 
-    if args.verbose:
-        notify('A plan has been found for beam id {}!'.format(beam_id))
 
-    logging.info('A plan has been found for beam id {}!'.format(beam_id))
+    if args.verbose:
+        notify('A plan has been found for (seq_n={}) beam id {}!'.format(seq_n, beam_id))
+
+    logging.info('A plan has been found for (seq_n={}) beam id {}!'.format(seq_n, beam_id))
     return success
 
 #################################
@@ -283,7 +285,9 @@ def main():
 
     log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir='results'))
     log_path = os.path.join(log_folder, 'run.log')
-    logging.basicConfig(filename=log_path, format='%(asctime)s | %(levelname)s | %(message)s', level=logging.DEBUG)
+
+    logging_level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(filename=log_path, format='%(asctime)s | %(levelname)s | %(message)s', level=logging_level)
     logging.info("planning.run.py started with args: %s" % args)
 
     print('='*10)
