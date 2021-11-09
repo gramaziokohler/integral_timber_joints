@@ -64,6 +64,7 @@
     (Assembled ?element)
     (Connected ?element)
     (AllToolAtJoints ?element)
+    (EitherAssembled ?element1 ?element2)
   )
 
   ; ? with or without attached objects share the same `move` action?
@@ -230,7 +231,8 @@
                     (NoToolAtJoint ?element1 ?element2)
                     (JointToolTypeMatch ?element1 ?element2 ?clamp)
                     ; ! assembly state precondition
-                    (or (Assembled ?element1) (Assembled ?element2))
+                    ;; (or (Assembled ?element1) (Assembled ?element2))
+                    (EitherAssembled ?element1 ?element2)
                     ; ! sampled
                     (IKSolution ?clamp ?pose ?grasp ?conf)
                     ;; (PlaceToolAction ?tool ?conf1 ?conf2 ?traj)
@@ -264,6 +266,13 @@
                         (exists (?tool) (ToolAtJoint ?tool ?element ?ei))
                  )
    )
+  )
+
+  ; ! workaround for a bug in the adaptive algorithm
+  (:derived (EitherAssembled ?e1 ?e2)
+      (and (Joint ?e1 ?e2)
+        (or (Assembled ?e1) (Assembled ?e2))
+      )
   )
 
 ;;   (:derived (AtRack ?object)

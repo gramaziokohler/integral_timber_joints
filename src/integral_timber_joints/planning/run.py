@@ -204,7 +204,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             include_traj_in_process=False)
 
     # * smoothing
-    if args.smooth:
+    if not args.nosmooth:
         print('Smoothing trajectory...')
         smoothed_movements = []
         with pp.LockRenderer(): # not args.debug):
@@ -254,7 +254,7 @@ def main():
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
-    parser.add_argument('--smooth', action='store_false', help='Apply smoothing.')
+    parser.add_argument('--nosmooth', action='store_true', help='Disable smoothing.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
@@ -333,7 +333,7 @@ def main():
         options.update({
         'reachable_range': (args.reachable_range[0], args.reachable_range[1]),
         })
-    if args.smooth:
+    if not args.nosmooth:
         options.update({
             'smooth_iterations' : 150,
             'max_smooth_time' : 60,
