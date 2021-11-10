@@ -53,7 +53,7 @@ def beam_report(process, file_path=None):
             joint_type_counter[joint.__class__.__name__] += 1
             # * Check validity of Polyline Lap
             if type(joint) == JointPolylineLap:
-                if joint.check_polyline_interior_angle() == False:
+                if joint.check_polyline_interior_angle(89.999999) == False:
                     polyline_interior_angles = joint.get_polyline_interior_angles()
                     polyline_interior_angles = [angle for angles in polyline_interior_angles for angle in angles]
                     message = "WARNING : JointPolylineLap (%s-%s) interior angle < 90degs, min = %f" % (joint_id[0], joint_id[1], min(polyline_interior_angles))
