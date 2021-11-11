@@ -55,7 +55,7 @@ class EmptyConfiguration(object):
 
 ######################################
 
-def get_itj_pddl_problem_from_json(json_file_name, use_partial_order=True, debug=False, reset_to_home=False, consider_transition=False):
+def get_itj_pddl_problem_from_json(json_file_name, use_partial_order=True, debug=False, reset_to_home=True, consider_transition=False):
     json_file_path = os.path.join(HERE, json_file_name)
     with open(json_file_path, 'r') as f:
         process = json.load(f)
@@ -106,6 +106,7 @@ def get_itj_pddl_problem_from_json(json_file_name, use_partial_order=True, debug
 
     if use_partial_order:
         beam_seq_list = beam_seq
+        cprint('Using beam sequence ordering: {}'.format(beam_seq), 'yellow')
         for e1, e2 in zip(beam_seq_list[:-1], beam_seq_list[1:]):
             init.append(('Order', e1, e2))
 
@@ -159,7 +160,7 @@ def get_itj_pddl_problem_from_json(json_file_name, use_partial_order=True, debug
     goal_literals = []
     goal_literals.extend(('Assembled', e) for e in beam_seq)
     if reset_to_home:
-        goal_literals.extend(('AtRack', t.name) for t in list(process.clamps) + list(process.grippers))
+        goal_literals.extend(('AtRack', t_name) for t_name in list(process['clamps']) + list(process['grippers']))
         if consider_transition:
             goal_literals.append(('RobotAtConf', home_conf))
     goal = And(*goal_literals)
@@ -172,11 +173,12 @@ def get_itj_pddl_problem_from_json(json_file_name, use_partial_order=True, debug
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--algorithm', default='incremental', help='PDDLSteam planning algorithm.')
+    parser.add_argument('--reset_to_home', action='store_true', help='Require all tools to be back on rack as goals.')
     args = parser.parse_args()
     print('Arguments:', args)
 
     debug_problem_name = "nine_pieces_process_symbolic.json"
-    debug_pddl_problem = get_itj_pddl_problem_from_json(debug_problem_name, use_partial_order=True, debug=True)
+    debug_pddl_problem = get_itj_pddl_problem_from_json(debug_problem_name, use_partial_order=True, debug=True, reset_to_home=args.reset_to_home)
 
     print()
     print('Goal:', debug_pddl_problem.goal)

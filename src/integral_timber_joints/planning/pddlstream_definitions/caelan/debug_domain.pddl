@@ -21,9 +21,11 @@
     ; * static predicates but will be produced by stream functions
     (Pose ?pose)
     (Traj ?traj)
+    (PlaceTraj ?traj)
 
     (RobotConf ?conf)
-    ;; (ToolConf ?tool ?conf)
+    (PlaceStartRobotConf ?conf)
+    (PlaceEndRobotConf ?conf)
 
     ; * generic pick and place actions for both grippers and clamps for now
     (PlaceToolAction ?object ?conf1 ?conf2 ?traj)
