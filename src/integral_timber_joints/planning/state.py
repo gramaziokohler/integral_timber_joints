@@ -6,7 +6,7 @@ from termcolor import cprint
 from copy import copy, deepcopy
 from itertools import product, chain
 
-from compas.geometry import distance_point_point, Transformation
+from compas.geometry import distance_point_point, Transformation, allclose
 from compas.geometry.primitives.frame import Frame
 from compas.datastructures.mesh.triangulation import mesh_quads_to_triangles
 from compas_fab.robots import AttachedCollisionMesh, Configuration, CollisionMesh, Robot
@@ -62,7 +62,8 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
         yield gantry_base_conf
 
 
-def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, scene: SceneState, initialize=False, scale=1e-3, options=None):
+def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, scene: SceneState,
+    initialize=False, scale=1e-3, options=None):
     """Set the pybullet client to a given scene state
     """
     options = options or {}
@@ -121,7 +122,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
         # * Beams
         for beam_id in process.assembly.beam_ids():
             if initialize:
-                color = GREY
                 # ! notice that the notch geometry will be convexified in pybullet
                 mesh = process.assembly.get_beam_mesh_in_ocf(beam_id).copy()
                 mesh_quads_to_triangles(mesh)
@@ -156,7 +156,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 # * set pose according to state
                 client.set_object_frame('^{}$'.format(tool_id), current_frame, options={'color': color_from_object_id(tool_id)})
 
-            if tool_id != 'tool_changer':
+            if tool_id != 'tool_changer' and scene[tool_id, 'c']:
                 # * Setting Kinematics
                 # this might be in millimeter, but that's not related to pybullet's business (if we use static meshes)
                 tool._set_kinematic_state(scene[tool_id, 'c'])
@@ -176,20 +176,31 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     client.detach_attached_collision_mesh(object_id, {'wildcard': wildcard})
             elif scene[(object_id, 'a')] == True:
                 # ! these are attached objects
-                # * promote to attached_collision_object if needed
-                wildcard = '^{}$'.format(object_id)
-                assert initialize or ('robot', 'f') in scene
-                # object_from_flange = get_object_from_flange(scene, object_id)
-                flange_frame = scene[('robot', 'f')].copy()
-                object_frame = scene[(object_id, 'f')].copy()
-                # convert to meter
-                flange_frame.point *= scale
-                object_frame.point *= scale
+                if status == 'not_exist':
+                    assert False, 'Object set object id ({}) | body names: {} as attached in scene but object not added to the scene!'.format(object_id, object_names)
+                if scene[(object_id, 'g')] is None:
+                    # * derive grasp transformation from FK and object frame
+                    assert initialize or ('robot', 'f') in scene
+                    # object_from_flange = get_object_from_flange(scene, object_id)
+                    flange_frame = scene[('robot', 'f')].copy()
+                    object_frame = scene[(object_id, 'f')].copy()
+                    # convert to meter
+                    flange_frame.point *= scale
+                    object_frame.point *= scale
 
-                # * Derive transformation robot_flange_from_tool for attachment
-                t_world_object = Transformation.from_frame(object_frame)
-                t_world_robot = Transformation.from_frame(flange_frame)
-                robot_flange_from_tool = t_world_robot.inverse() * t_world_object
+                    # * Derive transformation robot_flange_from_tool for attachment
+                    t_world_object = Transformation.from_frame(object_frame)
+                    t_world_robot = Transformation.from_frame(flange_frame)
+                    robot_flange_from_attached_obj = t_world_robot.inverse() * t_world_object
+                else:
+                    # ! used only in pddlstream
+                    robot_flange_from_attached_obj = scene[(object_id, 'g')].copy()
+                    for k in range(3):
+                        robot_flange_from_attached_obj[k,3] = robot_flange_from_attached_obj[k,3]*1e-3
+
+                    # mat1, mat2 = robot_flange_from_tool.to_data()["matrix"], scene[(object_id, 'g')].to_data()["matrix"]
+                    # for m1, m2 in zip(mat1, mat2):
+                    #     assert allclose(m1, m2, tol=1e-5)
 
                 # touched_links is only for the adjacent Robot links
                 touched_robot_links = []
@@ -214,7 +225,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                                               flange_link_name, touch_links=touched_robot_links),
                         options={'robot': robot,
                                  'attached_child_link_name': attached_object_base_link_name,
-                                 'parent_link_from_child_link_transformation' : robot_flange_from_tool,
+                                 'parent_link_from_child_link_transformation' : robot_flange_from_attached_obj,
                                  })
 
                 # ! update extra allowed collision regardless of status
@@ -243,9 +254,6 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                         client.extra_disabled_collision_links[name].add(
                             ((parent_body, None), (child_body, None))
                         )
-            else:
-                # * status == 'not_exist'
-                assert False, 'Object set as attached in scene but object not added to the scene!'
 
 #################################
 

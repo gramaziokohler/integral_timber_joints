@@ -3,6 +3,7 @@ import random
 from integral_timber_joints.planning.pddlstream_definitions import ITJ_PDDLSTREAM_DEF_DIR
 from integral_timber_joints.planning import load_pddlstream
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
+from integral_timber_joints.planning.pddlstream_definitions.stream import get_ik_fn
 
 from pddlstream.utils import read
 from pddlstream.language.stream import StreamInfo, PartialInputs, WildOutput, DEBUG
@@ -24,8 +25,8 @@ class EmptyConfiguration(object):
     def __repr__(self):
         return 'Conf-{}'.format(self.tag)
 
-def get_pddlstream_problem(process, use_partial_order=True,
-    debug=False, reset_to_home=False, consider_transition=False, symbolic_only=False):
+def get_pddlstream_problem(client, process, robot, use_partial_order=True,
+    debug=False, reset_to_home=False, consider_transition=False, symbolic_only=False, **kwargs):
     if symbolic_only:
         domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'domain.pddl'))
         stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'stream.pddl'))
@@ -49,28 +50,33 @@ def get_pddlstream_problem(process, use_partial_order=True,
         ('CanFreeMove',),
         ])
 
+    # * Elements
+    toolchanger = process.robot_toolchanger
+    flange_from_toolchanger_base = toolchanger.t_t0cf_from_tcf
     beam_seq = process.assembly.sequence
     for e in beam_seq:
         f_world_from_beam_pickup = process.assembly.get_beam_attribute(e, 'assembly_wcf_pickup')
         f_world_from_beam_final = process.assembly.get_beam_attribute(e, 'assembly_wcf_final')
-        # assembly_wcf_pickup = process.get_gripper_t0cp_for_beam_at(e, 'assembly_wcf_pickup')
-        # assembly_wcf_final = process.get_gripper_t0cp_for_beam_at(e, 'assembly_wcf_final')
-        beam_grasp = f_world_from_beam_pickup # TODO change
+
+        # * get beam grasp
+        # ? different gripper might have different grasp for a beam?
+        t_gripper_tcf_from_beam = process.assembly.get_t_gripper_tcf_from_beam(e)
+        beam_gripper_id = process.assembly.get_beam_attribute(e, "gripper_id")
+        beam_gripper = process.tool(beam_gripper_id)
+        flange_from_beam = flange_from_toolchanger_base * beam_gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+
         init.extend([
             ('Element', e),
             ('IsElement', e),
-            # ('AtRack', e),
             ('RackPose', e, f_world_from_beam_pickup),
             ('Pose', e, f_world_from_beam_pickup),
-            ('AtPose', e, f_world_from_beam_pickup),
             ('ElementGoalPose', e, f_world_from_beam_final),
             ('Pose', e, f_world_from_beam_final),
-            ('Grasp', e, beam_grasp),
+            ('Grasp', e, flange_from_beam),
         ])
         if process.assembly.get_assembly_method(e) == BeamAssemblyMethod.GROUND_CONTACT:
             init.extend([
                 ('Grounded', e),
-                # ('Joint', e, 'alum_foundation'),
                 ])
 
     for j in process.assembly.joint_ids():
@@ -84,21 +90,21 @@ def get_pddlstream_problem(process, use_partial_order=True,
         for e1, e2 in zip(beam_seq[:-1], beam_seq[1:]):
             init.append(('Order', e1, e2))
 
+    # * Clamps
     for c in process.clamps:
         tool_storage_frame = c.tool_storage_frame
-        clamp_grasp = c.tool_storage_frame # TODO change
+        clamp_grasp = toolchanger.t_t0cf_from_tcf
         init.extend([
             ('Clamp', c.name),
             ('IsClamp', c.name),
             ('IsTool', c.name),
-            # ('AtRack', c.name),
             ('RackPose', c.name, tool_storage_frame),
             ('Pose', c.name, tool_storage_frame),
             ('AtPose', c.name, tool_storage_frame),
             ('ToolNotOccupiedOnJoint', c.name),
             ('Grasp', c.name, clamp_grasp),
         ])
-    # * tool type
+    # ! assign tool type to joints
     for j in process.assembly.joint_ids():
         joint_clamp_type = process.assembly.get_joint_attribute(j, 'tool_type')
         clamp_wcf_final = process.get_tool_t0cf_at(j, 'clamp_wcf_final')
@@ -113,14 +119,14 @@ def get_pddlstream_problem(process, use_partial_order=True,
                     ('JointPose', j[1], j[0], clamp_wcf_final),
                 ])
 
+    # * Grippers
     for g in process.grippers:
         tool_storage_frame = g.tool_storage_frame
-        gripper_grasp = g.tool_storage_frame # TODO change
+        gripper_grasp = toolchanger.t_t0cf_from_tcf
         init.extend([
             ('Gripper', g.name),
             ('IsGripper', g.name),
             ('IsTool', g.name),
-            # ('AtRack', g.name),
             ('RackPose', g.name, tool_storage_frame),
             ('Pose', g.name, tool_storage_frame),
             ('AtPose', g.name, tool_storage_frame),
@@ -137,12 +143,12 @@ def get_pddlstream_problem(process, use_partial_order=True,
         stream_map = DEBUG
     else:
         stream_map = {
-            'sample-move': from_fn(lambda conf1, conf2: (EmptyTrajectory(),)),
-            'sample-pick-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
-            'sample-place-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
-            'sample-pick-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
-            'sample-place-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
-            # 'inverse-kinematics':  from_fn(lambda p: (p + GRASP,)),
+            'inverse-kinematics':  from_fn(get_ik_fn(client, process, robot, **kwargs)),
+            # 'sample-move': from_fn(lambda conf1, conf2: (EmptyTrajectory(),)),
+            # 'sample-pick-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
+            # 'sample-place-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
+            # 'sample-pick-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
+            # 'sample-place-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
             # 'test-cfree': from_test(lambda *args: not collision_test(*args)),
         }
 

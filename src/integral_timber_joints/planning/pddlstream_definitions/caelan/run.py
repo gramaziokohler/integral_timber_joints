@@ -55,14 +55,18 @@ class EmptyConfiguration(object):
 
 ######################################
 
-def get_itj_pddl_problem_from_json(json_file_name, use_partial_order=True, debug=False, reset_to_home=True, consider_transition=False):
+def get_itj_pddl_problem_from_json(json_file_name, use_partial_order=True, debug=False,
+        reset_to_home=True, consider_transition=False, use_fluents=False):
     json_file_path = os.path.join(HERE, json_file_name)
     with open(json_file_path, 'r') as f:
         process = json.load(f)
     cprint('Symbolic process json parsed from {}'.format(json_file_path), 'green')
 
     domain_pddl = read(os.path.join(HERE, 'debug_domain.pddl'))
-    stream_pddl = read(os.path.join(HERE, 'debug_stream.pddl'))
+    if not use_fluents:
+        stream_pddl = read(os.path.join(HERE, 'debug_stream.pddl'))
+    else:
+        stream_pddl = read(os.path.join(HERE, 'debug_stream_fluents.pddl'))
 
     init = []
 
@@ -174,11 +178,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--algorithm', default='incremental', help='PDDLSteam planning algorithm.')
     parser.add_argument('--reset_to_home', action='store_true', help='Require all tools to be back on rack as goals.')
+    parser.add_argument('--use_fluents', action='store_true', help='Use fluent facts in stream definitions.')
     args = parser.parse_args()
     print('Arguments:', args)
 
     debug_problem_name = "nine_pieces_process_symbolic.json"
-    debug_pddl_problem = get_itj_pddl_problem_from_json(debug_problem_name, use_partial_order=True, debug=True, reset_to_home=args.reset_to_home)
+    debug_pddl_problem = get_itj_pddl_problem_from_json(debug_problem_name, use_partial_order=True, debug=True, reset_to_home=args.reset_to_home,
+        use_fluents=args.use_fluents)
 
     print()
     print('Goal:', debug_pddl_problem.goal)

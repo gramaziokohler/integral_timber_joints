@@ -15,7 +15,7 @@
   (:stream inverse-kinematics
     :inputs (?object ?pose ?grasp)
     :domain (and (Pose ?object ?pose) (Grasp ?object ?grasp))
-    ;; :fluents (Assembled)
+    :fluents (AtPose Attached)
     :outputs (?conf)
     :certified (and (RobotConf ?conf)
                     (IKSolution ?object ?pose ?grasp ?conf)

@@ -19,7 +19,7 @@
     (IsTool ?tool)
 
     ; pose tags
-    (RackPose ?tool ?pose)
+    (RackPose ?object ?pose)
     (ClampPose ?clamp ?pose)
     (JointPose ?e1 ?e2 ?pose)
     (ElementGoalPose ?element ?pose)
@@ -59,12 +59,14 @@
     (NoToolAtJoint ?element1 ?element2)
     ;; (ToolAtConf ?tool ?conf)
 
+    (ElementRackOccupied)
+
     ;; * derived
     (AtRack ?object) ; object can be either element or tool
     (Assembled ?element)
     (Connected ?element)
     (AllToolAtJoints ?element)
-    (EitherAssembled ?element1 ?element2)
+    ;; (EitherAssembled ?element1 ?element2)
   )
 
   ; ? with or without attached objects share the same `move` action?
@@ -88,8 +90,21 @@
 ;;             )
 ;;   )
 
+  (:action operator_load_element_on_rack
+    :parameters (?element ?e_pose)
+    :precondition (and
+                    (IsElement ?element)
+                    (RackPose ?element ?e_pose)
+                    (not (ElementRackOccupied))
+                  )
+    :effect (and
+                 (AtPose ?element ?e_pose)
+                 (ElementRackOccupied)
+            )
+  )
+
   (:action pick_element_from_rack
-    :parameters (?element ?e_grasp ?e_pose ?tool ?tool_grasp ?conf)
+    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp ?conf)
     :precondition (and
                     ; ! state precondition
                     (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf)))
@@ -97,6 +112,7 @@
                     (GripperToolTypeMatch ?element ?tool)
                     (Attached ?tool ?tool_grasp)
                     (RobotGripperEmpty)
+                    (IsElement ?element)
                     (AtPose ?element ?e_pose)
                     (RackPose ?element ?e_pose)
                     ; ! sampled
@@ -106,6 +122,7 @@
                  (not (AtPose ?element ?e_pose))
                  (Attached ?element ?e_grasp)
                  (not (RobotGripperEmpty))
+                 (not (ElementRackOccupied))
                  ; ! switch for move
                  (CanFreeMove)
             )
@@ -121,11 +138,12 @@
                     (IsGripper ?tool)
                     (Attached ?tool ?tool_grasp)
                     (Attached ?element ?e_grasp)
+                    (IsElement ?element)
                     (ElementGoalPose ?element ?e_pose)
                     ; ! assembly state precondition
                     (Connected ?element)
                     ; ! tool state precondition
-                    (imply (not (Grounded ?element)) (AllToolAtJoints ?element))
+                    ;; (imply (not (Grounded ?element)) (AllToolAtJoints ?element))
                     ; ! e2 must be assembled before e encoded in the given partial ordering
                     (forall (?ei) (imply (Order ?ei ?element) (Assembled ?ei)))
                     ; ! sampled
@@ -205,6 +223,7 @@
                   )
     :effect (and (Attached ?clamp ?grasp)
                  (not (RobotToolChangerEmpty))
+                 (not (AtPose ?clamp ?pose))
                  ; ! tool status
                  (ToolNotOccupiedOnJoint ?clamp)
                  (not (ToolAtJoint ?clamp ?element1 ?element2))
@@ -231,8 +250,8 @@
                     (NoToolAtJoint ?element1 ?element2)
                     (JointToolTypeMatch ?element1 ?element2 ?clamp)
                     ; ! assembly state precondition
-                    ;; (or (Assembled ?element1) (Assembled ?element2))
-                    (EitherAssembled ?element1 ?element2)
+                    (or (Assembled ?element1) (Assembled ?element2))
+                    ;; (EitherAssembled ?element1 ?element2)
                     ; ! sampled
                     (IKSolution ?clamp ?pose ?grasp ?conf)
                     ;; (PlaceToolAction ?tool ?conf1 ?conf2 ?traj)
@@ -269,17 +288,19 @@
   )
 
   ; ! workaround for a bug in the adaptive algorithm
-  (:derived (EitherAssembled ?e1 ?e2)
-      (and (Joint ?e1 ?e2)
-        (or (Assembled ?e1) (Assembled ?e2))
-      )
+;;   (:derived (EitherAssembled ?e1 ?e2)
+;;       (and (Joint ?e1 ?e2)
+;;         (or (Assembled ?e1) (Assembled ?e2))
+;;       )
+;;   )
+
+  (:derived (AtRack ?object)
+    (exists (?pose) (and (RackPose ?object ?pose)
+                         (AtPose ?object ?pose))
+                      )
   )
 
-;;   (:derived (AtRack ?object)
-;;     (exists (?pose) (and (RackPose ?object ?pose)
-;;                          (AtPose ?b ?p))
-;;                       )
-;;   )
+  ; ! pyplanner doesn't like derived predicates in the goal literals
 ;;   (:derived (Assembled ?element)
 ;;     (exists (?pose) (and (Element ?element)
 ;;                       (ElementGoalPose ?element ?pose)
