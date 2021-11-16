@@ -27,19 +27,23 @@
     ; * static predicates but will be produced by stream functions
     (Pose ?object ?pose)
 
-    (Traj ?traj)
     (Grasp ?object ?grasp_pose) ; gripper_from_object
 
     (RobotConf ?conf)
+    (PickElementRobotConf ?conf)
+
+    (Traj ?traj)
+    (PickElementTraj ?traj)
+
     ;; (ToolConf ?tool ?conf)
 
     ; * generic pick and place actions for both grippers and clamps for now
+    (PickElementMovement ?object ?tool ?traj)
     (IKSolution ?object ?pose ?grasp ?conf)
 
     ;; (PlaceToolAction ?object ?conf1 ?conf2 ?traj)
     ;; (PickToolAction ?object ?conf1 ?conf2 ?traj)
     ;; (PlaceElementAction ?object ?conf1 ?conf2 ?traj)
-    ;; (PickElementAction ?object ?conf1 ?conf2 ?traj)
     ;; (MoveAction ?conf1 ?conf2 ?traj)
 
     ; * optional
@@ -104,10 +108,10 @@
   )
 
   (:action pick_element_from_rack
-    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp ?conf)
+    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp ?traj)
     :precondition (and
                     ; ! state precondition
-                    (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf)))
+                    ;; (imply (ConsiderTransition) (and (not (CanFreeMove)) (RobotAtConf ?conf)))
                     (IsGripper ?tool)
                     (GripperToolTypeMatch ?element ?tool)
                     (Attached ?tool ?tool_grasp)
@@ -115,8 +119,10 @@
                     (IsElement ?element)
                     (AtPose ?element ?e_pose)
                     (RackPose ?element ?e_pose)
+                    (Grasp ?element ?e_grasp)
                     ; ! sampled
-                    (IKSolution ?element ?e_pose ?e_grasp ?conf)
+                    (PickElementMovement ?element ?tool ?traj)
+                    ;; (IKSolution ?element ?e_pose ?e_grasp ?conf)
                   )
     :effect (and
                  (not (AtPose ?element ?e_pose))

@@ -3,6 +3,7 @@ from termcolor import cprint, colored
 from copy import copy
 
 from compas.geometry import Transformation, Frame
+from compas_fab.robots import Trajectory
 from compas.robots.configuration import Configuration
 
 from integral_timber_joints.process.state import ObjectState, SceneState, copy_state_dict
@@ -12,6 +13,7 @@ from integral_timber_joints.process.action import LoadBeamAction, PickGripperFro
     PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.dependency import ComputationalResult
+from integral_timber_joints.planning.pddlstream_definitions.stream import MovementCommand
 
 ##############################################
 
@@ -26,7 +28,27 @@ def assign_ik_conf_to_action(process, action, conf):
         #     print("Processing Seq %i Action %i Movement %i: %s" % (action.seq_n, action.act_n, mov_n, movement.tag))
         if (isinstance(movement, RoboticLinearMovement) and 'Advance' in movement.tag) or \
             isinstance(movement, RoboticClampSyncLinearMovement):
-            process.set_movement_end_robot_config(movement, conf)
+            if isinstance(conf, Configuration):
+                process.set_movement_end_robot_config(movement, conf)
+    return action
+
+def assign_trajs_to_action(process, action, command):
+    # * trigger movement computation
+    action.create_movements(process)
+    action.assign_movement_ids()
+    for movement in action.movements:
+        movement.create_state_diff(process)
+    assert len(action.movements) == len(command.state_diffs)
+    assert len(action.movements) == len(command.trajs)
+    for mov_n, (movement, state_diff, traj) in enumerate(zip(action.movements, command.state_diffs, command.trajs)):
+        if mov_n == 0:
+            for key in command.start_state.object_keys:
+                if command.start_state[key] is not None:
+                    action.movements[0].state_diff[key] = command.start_state[key]
+        movement.state_diff.update(state_diff)
+        if isinstance(movement, RoboticMovement) and traj is not None:
+            movement.trajectory = traj
+            process.set_movement_end_robot_config(movement, traj.points[-1])
     return action
 
 def actions_from_pddlstream_plan(process, plan, verbose=False):
@@ -61,8 +83,10 @@ def actions_from_pddlstream_plan(process, plan, verbose=False):
             if gt_gripper_type == gripper.type_name:
                 '{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name)
 
-            conf = pddl_action.args[-1]
+            command = pddl_action.args[-1]
             itj_act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id)
+
+            itj_act = assign_trajs_to_action(process, itj_act, command)
 
         elif pddl_action.name == 'place_element_on_structure':
             beam_id = pddl_action.args[0]
@@ -142,7 +166,8 @@ def actions_from_pddlstream_plan(process, plan, verbose=False):
 
         assert itj_act is not None
         # * compute diff_state and assign conf
-        itj_act = assign_ik_conf_to_action(process, itj_act, conf)
+        if pddl_action.name != 'pick_element_from_rack':
+            itj_act = assign_ik_conf_to_action(process, itj_act, conf)
         acts.append(itj_act)
 
         if pddl_action.name == 'place_element_on_structure':
@@ -189,6 +214,8 @@ def colored_str_from_object(obj, show_details=False):
             return '(tf)'
         elif isinstance(obj, Configuration):
             return colored('(conf)', 'yellow')
+        elif isinstance(obj, MovementCommand):
+            return colored('(command)', 'yellow')
 
     str_rep = str_from_object(obj)
     if contains_number(str_rep):

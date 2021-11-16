@@ -49,7 +49,7 @@ def rfl_camera():
 
 ################################################
 
-def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step_duration=0.1, draw_polylines=False, line_color=GREEN):
+def visualize_movement_trajectory(client, robot, process, movement, step_sim=True, step_duration=0.1, draw_polylines=False, line_color=GREEN, given_state_pair=None):
     """[summary]
 
     Parameters
@@ -67,19 +67,21 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step
     from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
     if not has_gui():
         return
-    start_scene = process.get_movement_start_scene(m)
+    start_scene = process.get_movement_start_scene(movement) if given_state_pair is None else given_state_pair[0]
     with LockRenderer():
         set_state(client, robot, process, start_scene)
+    if step_sim:
+        wait_if_gui('Start scene.')
     robot_uid = client.get_robot_pybullet_uid(robot)
     flange_link_name = robot.get_end_effector_link_name(group=GANTRY_ARM_GROUP)
     tool_link = pp.link_from_name(robot_uid, flange_link_name)
     last_point = None
-    if isinstance(m, RoboticMovement):
+    if isinstance(movement, RoboticMovement):
         print('===')
         cprint('Viz:')
-        if m.trajectory is not None:
-            cprint(m.short_summary, 'green')
-            for jt_traj_pt in m.trajectory.points:
+        if movement.trajectory is not None:
+            cprint(movement.short_summary, 'green')
+            for jt_traj_pt in movement.trajectory.points:
                 client.set_robot_configuration(robot, jt_traj_pt)
                 if draw_polylines:
                     tool_pose = pp.get_link_pose(robot_uid, tool_link)
@@ -92,12 +94,12 @@ def visualize_movement_trajectory(client, robot, process, m, step_sim=True, step
                 else:
                     wait_for_duration(step_duration)
         else:
-            has_start_conf = process.movement_has_start_robot_config(m)
-            has_end_conf = process.movement_has_end_robot_config(m)
-            cprint('No traj found for {}\n -- has_start_conf {}, has_end_conf {}'.format(m.short_summary,
+            has_start_conf = process.movement_has_start_robot_config(movement)
+            has_end_conf = process.movement_has_end_robot_config(movement)
+            cprint('No traj found for {}\n -- has_start_conf {}, has_end_conf {}'.format(movement.short_summary,
                 has_start_conf, has_end_conf), 'yellow')
             wait_if_gui()
-    end_scene = process.get_movement_end_scene(m)
+    end_scene = process.get_movement_end_scene(movement) if given_state_pair is None else given_state_pair[1]
     with LockRenderer():
         set_state(client, robot, process, end_scene)
     if step_sim:

@@ -84,8 +84,8 @@ def get_movement_status(process, m, movement_types, verbose=True, check_type_onl
 
 ###########################################
 
-def compute_movement(client, robot, process, movement, options=None, diagnosis=False):
-    # type: (PyBulletClient, Robot, RobotClampAssemblyProcess, Movement, Dict, Dict) -> bool
+def compute_movement(client, robot, process, movement, options=None, diagnosis=False, **kwargs):
+    # type: (PyBulletClient, Robot, RobotClampAssemblyProcess, Movement, Dict, Dict, Dict) -> bool
     if not isinstance(movement, RoboticMovement):
         return None
     options = options or {}
@@ -127,7 +127,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
             # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
-        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
+        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis, **kwargs)
     elif isinstance(movement, RoboticClampSyncLinearMovement) or \
          isinstance(movement, RobotScrewdriverSyncLinearMovement):
         #  'reorient' in movement.short_summary:
@@ -147,7 +147,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
             # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
-        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
+        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis, **kwargs)
     elif isinstance(movement, RoboticFreeMovement):
         resolution_ratio = 10.0 if low_res else 1.0
         fm_options = {
@@ -163,15 +163,16 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'reachable_range' : (0.2, 3.0), # circle radius for sampling gantry base when computing IK
             }
         fm_options.update(options)
-        traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis)
+        traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis, **kwargs)
     else:
         raise ValueError()
 
     if traj is not None:
         # update start/end states
         movement.trajectory = traj
-        process.set_movement_start_robot_config(movement, traj.points[0])
         process.set_movement_end_robot_config(movement, traj.points[-1])
+        if movement in process.movements:
+            process.set_movement_start_robot_config(movement, traj.points[0])
         # # ! update attached objecs' current frame at the end state
         # client.set_robot_configuration(robot, end_state[process.robot_config_key])
         # for object_id, object_state in end_state.items():

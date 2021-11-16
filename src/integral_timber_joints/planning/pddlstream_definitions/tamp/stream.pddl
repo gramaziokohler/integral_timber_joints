@@ -22,18 +22,22 @@
                 )
   )
 
-;;   (:stream sample-pick-element
-;;     :inputs (?element)
-;;     :domain (IsElement ?element)
-;;     ;; :fluents (Assembled)
-;;     :outputs (?conf1 ?conf2 ?traj)
-;;     :certified (and
-;;                     (PickElementAction ?element ?conf1 ?conf2 ?traj)
-;;                     (RobotConf ?conf1)
-;;                     (RobotConf ?conf2)
-;;                     (Traj ?traj)
-;;                 )
-;;   )
+  (:stream sample-pick-element
+    :inputs (?object ?tool)
+    :domain (and
+            (IsElement ?object)
+            (IsGripper ?tool)
+            (GripperToolTypeMatch ?object ?tool)
+            )
+    :fluents (AtPose Attached)
+    :outputs (?traj) ; ?conf1 ?conf2
+    :certified (and
+                    (PickElementTraj ?traj)
+                    (PickElementMovement ?object ?tool ?traj)
+                    ;; (PickElementRobotConf ?conf1)
+                    ;; (PickElementRobotConf ?conf2)
+                )
+  )
 
 ;;   (:stream sample-place-element
 ;;     :inputs (?element)

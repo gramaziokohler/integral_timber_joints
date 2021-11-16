@@ -3,30 +3,15 @@ import random
 from integral_timber_joints.planning.pddlstream_definitions import ITJ_PDDLSTREAM_DEF_DIR
 from integral_timber_joints.planning import load_pddlstream
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
-from integral_timber_joints.planning.pddlstream_definitions.stream import get_ik_fn
+from integral_timber_joints.planning.pddlstream_definitions.stream import get_ik_fn, get_sample_pick_element_fn
 
 from pddlstream.utils import read
 from pddlstream.language.stream import StreamInfo, PartialInputs, WildOutput, DEBUG
 from pddlstream.language.constants import And, PDDLProblem, Equal, print_plan
 from pddlstream.language.generator import from_gen_fn, from_fn, from_test
 
-from compas.robots import Configuration
-from compas_fab.robots import Trajectory
-
-class EmptyTrajectory(object):
-    def __init__(self, tag=''):
-        self.tag = tag
-    def __repr__(self):
-        return 'Traj-{}'.format(self.tag)
-
-class EmptyConfiguration(object):
-    def __init__(self, tag=''):
-        self.tag = tag
-    def __repr__(self):
-        return 'Conf-{}'.format(self.tag)
-
 def get_pddlstream_problem(client, process, robot, use_partial_order=True,
-    debug=False, reset_to_home=False, consider_transition=False, symbolic_only=False, **kwargs):
+    debug=False, reset_to_home=False, consider_transition=False, symbolic_only=False, options=None):
     if symbolic_only:
         domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'domain.pddl'))
         stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'stream.pddl'))
@@ -36,7 +21,7 @@ def get_pddlstream_problem(client, process, robot, use_partial_order=True,
 
     init = []
 
-    home_conf = EmptyConfiguration('Home')
+    home_conf = process.robot_initial_config
     constant_map = {}
 
     init.extend([
@@ -143,11 +128,11 @@ def get_pddlstream_problem(client, process, robot, use_partial_order=True,
         stream_map = DEBUG
     else:
         stream_map = {
-            'inverse-kinematics':  from_fn(get_ik_fn(client, process, robot, **kwargs)),
+            'inverse-kinematics':  from_fn(get_ik_fn(client, process, robot, options=options)),
+            'sample-pick-element': from_fn(get_sample_pick_element_fn(client, process, robot, options=options)),
             # 'sample-move': from_fn(lambda conf1, conf2: (EmptyTrajectory(),)),
             # 'sample-pick-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
             # 'sample-place-tool': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
-            # 'sample-pick-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
             # 'sample-place-element': from_fn(lambda obj: (EmptyConfiguration(), EmptyConfiguration(), EmptyTrajectory())),
             # 'test-cfree': from_test(lambda *args: not collision_test(*args)),
         }

@@ -7,6 +7,7 @@ from compas.geometry import Frame, distance_point_point, Transformation
 from compas_fab.robots import Configuration, Robot
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement, RobotScrewdriverSyncLinearMovement
+from integral_timber_joints.process.state import SceneState
 
 import pybullet_planning as pp
 from pybullet_planning import GREY
@@ -130,7 +131,7 @@ def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', co
 
 ##############################
 
-def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
+def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False, given_state_pair=None):
     # assert isinstance(movement, RoboticLinearMovement) or \
     #     isinstance(movement, RoboticClampSyncLinearMovement) or \
     #     isinstance(movement, RobotScrewdriverSyncLinearMovement)
@@ -143,7 +144,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     cartesian_attempts = options.get('cartesian_attempts') or 2
     reachable_range = options.get('reachable_range') or (0.2, 2.8) # (0.68, 2.83)
     # in meter
-    frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL*1e3)
+    frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL) # in meter
 
     cartesian_move_group = options.get('cartesian_move_group') or GANTRY_ARM_GROUP
     # gantry_group = GANTRY_GROUP
@@ -182,18 +183,26 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
         # client.planner.inverse_kinematics = ik_solver.inverse_kinematics_function()
         pass
 
-    # * get target T0CF pose
-    start_scene = process.get_movement_start_scene(movement)
-    end_scene = process.get_movement_end_scene(movement)
-    start_conf = process.get_movement_start_robot_config(movement)
-    end_conf = process.get_movement_end_robot_config(movement)
-
-    # * set start state
+    if given_state_pair is None:
+        # * deduce state from process
+        start_scene = process.get_movement_start_scene(movement)
+        end_scene = process.get_movement_end_scene(movement)
+        start_conf = process.get_movement_start_robot_config(movement)
+        end_conf = process.get_movement_end_robot_config(movement)
+    else:
+        # * movement context-indepedent input states
+        assert isinstance(given_state_pair[0], SceneState)
+        assert isinstance(given_state_pair[1], SceneState)
+        start_scene = given_state_pair[0]
+        start_conf = start_scene[process.robot_config_key]
+        end_scene = given_state_pair[1]
+        end_conf = end_scene[process.robot_config_key]
     try:
         set_state(client, robot, process, start_scene)
     except RuntimeError:
         return None
 
+    # * get target T0CF pose
     # convert to meter
     start_t0cf_frame = start_scene[('robot', 'f')].copy()
     start_t0cf_frame.point *= 1e-3
@@ -216,19 +225,15 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     # * verify FK consistency if start_conf is given
     with WorldSaver():
         if start_conf is not None:
-            # if not start_conf.joint_names:
-            #     start_conf.joint_names = gantry_arm_joint_names
             client.set_robot_configuration(robot, start_conf)
             start_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             start_t0cf_frame_temp = frame_from_pose(start_tool_pose, scale=1)
             # in meter
             if not start_t0cf_frame_temp.__eq__(start_t0cf_frame, tol=frame_jump_tolerance):
                 if verbose:
-                    cprint('FreeMotion : start conf FK inconsistent ({:.5f} m) with given current frame in start state.'.format(
+                    cprint('LinearMotion : start conf FK inconsistent ({:.5f} m) with given current frame in start state.'.format(
                         distance_point_point(start_t0cf_frame_temp.point, start_t0cf_frame.point)), 'yellow')
         if end_conf is not None:
-            if not end_conf.joint_names:
-                end_conf.joint_names = gantry_arm_joint_names
             client.set_robot_configuration(robot, end_conf)
             end_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             end_t0cf_frame_temp = frame_from_pose(end_tool_pose, scale=1)
@@ -238,10 +243,11 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 # draw_pose(pose_from_frame(end_t0cf_frame))
                 # wait_for_user('Pose from encoded frame')
                 if verbose:
-                    cprint('FreeMotion : end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
+                    cprint('LinearMotion : end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
                         distance_point_point(end_t0cf_frame_temp.point, end_t0cf_frame.point)), 'yellow')
 
     interp_frames = [start_t0cf_frame, end_t0cf_frame]
+
     solution_found = False
     samples_cnt = ik_failures = path_failures = 0
     planner_id = options.get('planner_id', 'IterativeIK')
