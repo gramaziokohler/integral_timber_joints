@@ -6,7 +6,9 @@ import logging
 import os
 
 logger = logging.getLogger('customize_polyline_lap')
-joints_string_folder = "C:\\Users\\leungp\\Documents\\GitHub\\integral_timber_joints\\external\\itj_design_study\\211010_CantiBox\\joints\\left\\"
+# joints_string_folder = "C:\\Users\\leungp\\Documents\\GitHub\\integral_timber_joints\\external\\itj_design_study\\211010_CantiBox\\joints\\left\\"
+joints_string_folder = "C:\\Users\\leungp\\Documents\\GitHub\\integral_timber_joints\\external\\itj_design_study\\211010_CantiBox\\joints\\mid\\"
+# joints_string_folder = "C:\\Users\\leungp\\Documents\\GitHub\\integral_timber_joints\\external\\itj_design_study\\211010_CantiBox\\joints\\right\\"
 
 logging_level = logging.DEBUG
 log_path = os.path.join(joints_string_folder, 'run.log')
@@ -139,8 +141,8 @@ for i in range (36):
 # files = files[18:24]
 # files = files[24:30]
 # files = files[30:36]
-
-files = [files[3]]
+# del files[5]
+# files = [files[7]]
 
 for file_name in files:
     file_path = joints_string_folder + file_name
