@@ -35,7 +35,7 @@ def read_structural_model_transformation():
     T = Transformation.from_frame(model_frame)
     return T
 
-def find_joint_by_centroid(assembly, centroid_pt, distance_threshold = 50):
+def find_joint_by_centroid(assembly, centroid_pt, distance_threshold = 50, verbose = True):
 
     for joint_id in assembly.joint_ids():
         joint = assembly.joint(joint_id)
@@ -43,10 +43,10 @@ def find_joint_by_centroid(assembly, centroid_pt, distance_threshold = 50):
             continue
         distance = distance_point_point(joint.centroid, centroid_pt)
         if distance < distance_threshold:
-            print("Joint Found: %s, %s" % (joint_id, distance))
+            if verbose: print("Joint Found: %s, %s" % (joint_id, distance))
             logger.info("Joint Found: %s, %s" % (joint_id, distance))
             return joint_id
-    print("Joint Not Found")
+    if verbose: print("Joint Not Found")
     logger.warning("Joint Not Found")
     return None
 
@@ -138,9 +138,9 @@ for i in range (36):
 # files = files[12:18]
 # files = files[18:24]
 # files = files[24:30]
-files = files[30:36]
+# files = files[30:36]
 
-# files = [files[23]]
+files = [files[3]]
 
 for file_name in files:
     file_path = joints_string_folder + file_name
