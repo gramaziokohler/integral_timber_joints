@@ -21,9 +21,11 @@
     ; * static predicates but will be produced by stream functions
     (Pose ?pose)
     (Traj ?traj)
+    (PlaceTraj ?traj)
 
     (RobotConf ?conf)
-    ;; (ToolConf ?tool ?conf)
+    (PlaceStartRobotConf ?conf)
+    (PlaceEndRobotConf ?conf)
 
     ; * generic pick and place actions for both grippers and clamps for now
     (PlaceToolAction ?object ?conf1 ?conf2 ?traj)
@@ -58,6 +60,8 @@
     ;; * derived
     (Connected ?element)
     (AllToolAtJoints ?element)
+    ;; (ExistNoToolAtJoints ?element)
+    (EitherGroundedAllToolAtJoints ?element)
   )
 
   ; ? with or without attached objects share the same `move` action?
@@ -118,7 +122,8 @@
                     ; ! assembly state precondition
                     (Connected ?element)
                     ; ! tool state precondition
-                    (imply (not (Grounded ?element)) (AllToolAtJoints ?element))
+                    ;; (or (Grounded ?element) (AllToolAtJoints ?element))
+                    (EitherGroundedAllToolAtJoints ?element)
                     ; ! e2 must be assembled before e encoded in the given partial ordering
                     (forall (?ei) (imply (Order ?ei ?element) (Assembled ?ei)))
                     ; ! sampled
@@ -273,11 +278,30 @@
    )
   )
 
+;;   (:derived (ExistNoToolAtJoints ?element)
+;;        (exists (?ei) (and (Joint ?ei ?element)
+;;                           (NoToolAtJoint ?ei ?element)
+;;                      )
+;;        )
+;;   )
+
   (:derived (AllToolAtJoints ?element)
    (forall (?ei) (imply (Joint ?ei ?element)
-                        (exists (?tool) (ToolAtJoint ?tool ?ei ?element))
+                        (not (NoToolAtJoint ?ei ?element))
+                        ;; (exists (?tool)
+                        ;;     (and (IsClamp ?tool) (Joint ?ei ?element)
+                        ;;          (ToolAtJoint ?tool ?ei ?element)
+                        ;;          )
+                        ;; )
                  )
    )
+  )
+
+  (:derived (EitherGroundedAllToolAtJoints ?element)
+    (and
+        (or (Grounded ?element) (AllToolAtJoints ?element))
+        ;; (or (Grounded ?element) (not (ExistNoToolAtJoints ?element)))
+    )
   )
 
 )

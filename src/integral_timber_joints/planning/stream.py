@@ -393,6 +393,8 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 conf1_tag='given end conf', conf2_tag='traj[-1]', options=options, verbose=verbose)
         if not is_continuous and enforce_continuous:
             return None
+        # if verbose:
+        # cprint('Linear movement found for {}.'.format(movement.short_summary), 'green')
     else:
         if verbose:
             cprint('No linear movement found for {}.'.format(movement.short_summary), 'red')

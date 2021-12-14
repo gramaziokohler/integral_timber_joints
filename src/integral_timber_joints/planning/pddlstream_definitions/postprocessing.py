@@ -10,7 +10,8 @@ from integral_timber_joints.process.state import ObjectState, SceneState, copy_s
 from integral_timber_joints.planning.visualization import color_from_object_id
 from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, \
     PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, \
-    PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction
+    PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, \
+    Action
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.dependency import ComputationalResult
 from integral_timber_joints.planning.pddlstream_definitions.stream import MovementCommand
@@ -214,8 +215,8 @@ def colored_str_from_object(obj, show_details=False):
             return '(tf)'
         elif isinstance(obj, Configuration):
             return colored('(conf)', 'yellow')
-        elif isinstance(obj, MovementCommand):
-            return colored('(command)', 'yellow')
+        elif isinstance(obj, Action):
+            return colored(obj, 'yellow')
 
     str_rep = str_from_object(obj)
     if contains_number(str_rep):

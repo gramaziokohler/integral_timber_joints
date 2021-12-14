@@ -1401,6 +1401,9 @@ class RobotClampAssemblyProcess(Data):
         data['clamps'] = {}
         for c in self.clamps:
             data['clamps'][c.name] = {'type_name' : c.type_name}
+        data['screwdrivers'] = {}
+        for sd in self.screwdrivers:
+            data['screwdrivers'][sd.name] = {'type_name' : sd.type_name}
         data['grippers'] = {}
         for g in self.grippers:
             data['grippers'][g.name] = {'type_name' : g.type_name}

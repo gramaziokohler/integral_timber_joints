@@ -307,11 +307,12 @@
   )
 
   ; ! pyplanner doesn't like derived predicates in the goal literals
-;;   (:derived (Assembled ?element)
-;;     (exists (?pose) (and (Element ?element)
-;;                       (ElementGoalPose ?element ?pose)
-;;                       (AtPose ?element ?pose))
-;;                       )
-;;   )
+  (:derived (Assembled ?element)
+    (exists (?pose) (and
+                    ;; (Element ?element) TODO try eliminating this, might help
+                      (ElementGoalPose ?element ?pose)
+                      (AtPose ?element ?pose))
+                      )
+  )
 
 )

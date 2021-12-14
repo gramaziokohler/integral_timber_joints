@@ -22,6 +22,10 @@
                 )
   )
 
+
+    ; sampled an object called `Action1`
+    ; (PickElementMovement 'b0' 'g1' Action1)
+    ; Action1 = PickBeamWithGripperAction (itj class instance)
   (:stream sample-pick-element
     :inputs (?object ?tool)
     :domain (and
@@ -30,10 +34,10 @@
             (GripperToolTypeMatch ?object ?tool)
             )
     :fluents (AtPose Attached)
-    :outputs (?traj) ; ?conf1 ?conf2
+    :outputs (?action) ; can be any python object
     :certified (and
-                    (PickElementTraj ?traj)
-                    (PickElementMovement ?object ?tool ?traj)
+                    (PickElementMovement ?object ?tool ?action) ; saying that this is a `traj` to pick up `object` with `tool`
+                    ;; (PickElementTraj ?traj)
                     ;; (PickElementRobotConf ?conf1)
                     ;; (PickElementRobotConf ?conf2)
                 )

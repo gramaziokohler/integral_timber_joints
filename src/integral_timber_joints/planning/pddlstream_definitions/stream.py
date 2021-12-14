@@ -41,12 +41,14 @@ def assign_fluent_state(client, robot, process, fluents):
         state[(oid, 'a')] = False
     for fluent in fluents:
         name, args = fluent[0], fluent[1:]
+        # print(fluent)
         if name == 'atpose':
+            # (AtPose ?object ?pose)
             object_name, frame = args
             state[(object_name, 'f')] = frame
         elif name == 'attached':
+            # (Attached ?object ?grasp)
             object_name, grasp_transform = args
-            # print('Attached: ', object_name)
             state[(object_name, 'a')] = True
             state[(object_name, 'g')] = grasp_transform
         else:
@@ -64,13 +66,14 @@ def get_ik_fn(client, process, robot, options=None):
     ik_gantry_attempts = options.get('ik_gantry_attempts', 10)
 
     def ik_fn(object_name, object_pose, grasp, fluents=[]):
-        # return (EmptyConfiguration(),)
 
         # * set state
-        # pp.wait_if_gui('Before assign fluent state')
+        # pp.wait_if_gui('IK: Before assign fluent state')
         assign_fluent_state(client, robot, process, fluents)
         # print(client._print_object_summary())
-        # pp.wait_if_gui('After assign fluent state')
+        # pp.wait_if_gui('IK: After assign fluent state')
+
+        return (EmptyConfiguration(),)
 
         state = SceneState(process)
         object_frame = object_pose.copy()
@@ -163,6 +166,8 @@ from integral_timber_joints.process.movement import RoboticMovement, RoboticFree
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
 MovementCommand = namedtuple('MovementCommand', ['start_state', 'state_diffs', 'trajs'])
+# state_diff : a list of Trajectory
+# trajs : a list of Trajectory
 
 def apply_movement_state_diff(scene, movements, debug=False):
     for key in scene.object_keys:
@@ -180,7 +185,13 @@ def get_sample_pick_element_fn(client, process, robot, options=None):
     def sample_fn(obj_name, tool_name, fluents=[]):
         # ! :inputs (?object ?tool)
         # ! :outputs (?conf1 ?conf2 ?traj)
+        # * assign `AtPose` and `Attached` predicates to state
+        # start_state of the action
+        # pp.wait_if_gui('PickBeam: Before assign fluent state')
         _action_scene = assign_fluent_state(client, robot, process, fluents)
+        # print(client._print_object_summary())
+        # pp.wait_if_gui('PickBeam: After assign fluent state')
+
         itj_action = PickBeamWithGripperAction(seq_n=0, act_n=0, beam_id=obj_name, gripper_id=tool_name)
         itj_action.create_movements(process)
         end_scene = _action_scene.copy()
@@ -222,8 +233,11 @@ def get_sample_pick_element_fn(client, process, robot, options=None):
                         visualize_movement_trajectory(client, robot, process, movement, step_sim=False,
                             given_state_pair=(start_scene, end_scene), draw_polylines=True)
             else:
+                cprint('sample pick element fails for {}.'.format(movement.short_summary), 'red')
                 return None
-        return (MovementCommand(_action_scene, [m.state_diff for m in itj_action.movements],
-            [m.trajectory if isinstance(m, RoboticMovement) else None for m in itj_action.movements]),)
+        cprint('sample pick element succeeds for {}|{}.'.format(obj_name, tool_name), 'green')
+        return (itj_action,)
+        # (MovementCommand(_action_scene, [m.state_diff for m in itj_action.movements],
+        # [m.trajectory if isinstance(m, RoboticMovement) else None for m in itj_action.movements]),)
         # return (EmptyTrajectory(),)
     return sample_fn
