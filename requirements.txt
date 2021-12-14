@@ -1,5 +1,6 @@
 compas>=1.5.0,<2.0
-compas_triangle>=1.0,<2.0
+# compas_triangle>=1.0,<2.0
+compas_triangle==1.0.2
 # compas_fab>=0.18, <0.19
 compas_fab>=0.19
 compas_fab_pychoreo>=0.3.0

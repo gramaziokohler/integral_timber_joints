@@ -94,6 +94,8 @@ pip install -r requirements-dev.txt
 invoke add-to-rhino
 ```
 
+⚠ when used in rhino, please start the RPC proxy beforehand by: `compas_rpc start`
+
 #### Python dependencies, explained
 
 The following python dependency are installed in the above process. See [requirements.txt](https://github.com/gramaziokohler/integral_timber_joints/blob/master/requirements.txt) for more info on the specific versions pinned.
