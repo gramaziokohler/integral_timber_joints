@@ -13,6 +13,3 @@
 [submodule "external/compas_fab"]
 	path = external/compas_fab
 	url = https://github.com/yck011522/compas_fab
-[submodule "external/pyplanners"]
-	path = external/pyplanners
-	url = https://github.com/caelan/pyplanners.git
