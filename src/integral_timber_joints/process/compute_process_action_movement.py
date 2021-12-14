@@ -168,6 +168,8 @@ def _create_actions_for_clamped(process, beam_id, verbose=False):
     # * Add temporary scaffolding
     next_beam_seq_n = seq_n + 1
     while(True):
+        if next_beam_seq_n >= len(assembly.sequence):
+            break
         next_beam_id = assembly.sequence[next_beam_seq_n]
         if assembly.get_assembly_method(next_beam_id) == BeamAssemblyMethod.MANUAL_ASSEMBLY:
             # * Operator manually assemble Beam
