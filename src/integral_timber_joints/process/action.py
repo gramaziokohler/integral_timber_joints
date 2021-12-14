@@ -1519,6 +1519,10 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
 
 
 class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
+    """Action for a robot, to transfer a beam with a gripper to clamps.
+    Then assemble the beam together with the clamp(s).
+    Does not include gripper retract.
+    """
     def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, clamp_ids=None):
         # type: (int, int, str, list[tuple[str, str]], str, str) -> None
         RobotAction.__init__(self)
@@ -1620,23 +1624,6 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
             speed_type='speed.assembly.clamping',
             tag="Robot and Clamps (%s) syncronously move to clamp Beam ('%s')" % (self.clamp_ids, self.beam_id),
             allowed_collision_matrix=acm
-        ))
-
-        # Open gripper and retract
-        self.movements.append(RoboticDigitalOutput(
-            digital_output=DigitalOutput.OpenGripper,
-            tool_id=self.gripper_id,
-            attached_objects=[self.beam_id],
-            operator_stop_before="Confirm Beam Is Stable",
-            operator_stop_after="Confirm Gripper Cleared Beam",
-            tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)
-        ))
-        self.movements.append(RoboticLinearMovement(
-            target_frame=assembly_wcf_finalretract,
-            attached_objects=[self.gripper_id],
-            t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.gripper.retract',
-            tag="Linear retract after placing Beam ('%s')" % self.beam_id,
         ))
 
         # Assign Unique Movement IDs to all movements
@@ -1810,7 +1797,7 @@ class RetractGripperFromBeamAction(RobotAction, DetachBeamAction):
             digital_output=DigitalOutput.OpenGripper,
             tool_id=self.gripper_id,
             attached_objects=[self.beam_id] + self.additional_attached_objects,
-            operator_stop_before="Confirm Beam Temporary Support In Place",
+            operator_stop_before="Confirm Beam is Stable",
             operator_stop_after="Confirm Gripper Cleared Beam",
             tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)
         ))

@@ -284,6 +284,10 @@ def add_env_model(process):
     # trigger artist to draw that mesh in correct layer
     artist.draw_all_env_mesh(delete_old=True)
 
+    for beam_id in process.assembly.sequence:
+        process.dependency.invalidate(beam_id, process.create_actions_from_sequence)
+
+
 
 def delete_all_env_model(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -300,7 +304,8 @@ def delete_all_env_model(process):
         artist.delete_all_env_mesh()
         process.environment_models = {}
 
-        # todo trigger artist to remove that mesh
+        for beam_id in process.assembly.sequence:
+            process.dependency.invalidate(beam_id, process.create_actions_from_sequence)
         print("All EnvMeshes are removed")
 
 

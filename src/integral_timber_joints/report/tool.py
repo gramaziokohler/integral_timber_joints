@@ -6,7 +6,7 @@ from integral_timber_joints.rhino.load import get_activedoc_path_no_ext, get_pro
 from integral_timber_joints.tools import Gripper
 
 
-def gripper_report(process, file_path=None):
+def tool_report(process, file_path=None):
     # type: (RobotClampAssemblyProcess, str) -> BeamReport
     from integral_timber_joints.assembly import BeamAssemblyMethod
     assembly = process.assembly
@@ -14,6 +14,8 @@ def gripper_report(process, file_path=None):
     report = BeamReport("Gripper Report")
     gripper_id_counter = Counter()
     gripper_type_counter = Counter()
+    tool_id_counter = Counter()
+    tool_type_counter = Counter()
 
     for beam_id in process.assembly.sequence:
         beam = assembly.beam(beam_id)
@@ -24,12 +26,24 @@ def gripper_report(process, file_path=None):
             report.add_info(beam_id, 'MANUAL_ASSEMBLY, no gripper used.')
             continue
 
-        # * Information
+        # * Gripper Information
         gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
         gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
         report.add_info(beam_id, 'Gripper Type (id): %s (%s)' % (gripper_type, gripper_id))
         gripper_id_counter[gripper_id] += 1
         gripper_type_counter[gripper_type] += 1
+
+        if assembly_method in [BeamAssemblyMethod.CLAMPED] + BeamAssemblyMethod.screw_methods :
+            tools_str = " "
+            for joint_id in assembly.get_joint_ids_with_tools_for_beam(beam_id):
+                tool_id = assembly.get_joint_attribute(joint_id, "tool_id")
+                tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
+                tool_id_counter[tool_id] += 1
+                tool_type_counter[tool_type] += 1
+                tools_str += tool_type + " (" + tool_id + ")"
+            report.add_info(beam_id, 'Assembly Tool used:' + tools_str)
+            continue
+
 
         # * Check inconsistancy
         if gripper_type is None:
@@ -49,10 +63,12 @@ def gripper_report(process, file_path=None):
 
     report.attributes['gripper_id_num_of_times_used'] = gripper_id_counter
     report.attributes['gripper_type_num_of_times_used'] = gripper_type_counter
+    report.attributes['assembly_tool_id_num_of_times_used'] = tool_id_counter
+    report.attributes['assembly_tool_type_num_of_times_used'] = tool_type_counter
 
     # * Boiler plate functions to save report and print summary
     if file_path is None:
-        file_path = get_activedoc_path_no_ext() + "_report_gripper.log"
+        file_path = get_activedoc_path_no_ext() + "_report_tool.log"
 
     print("Gripper Report Saved to: %s" % file_path)
     beams_with_warn_or_error = report.beams_with_warn_or_error()
@@ -69,6 +85,6 @@ if __name__ == '__main__':
     if process_is_none(process):
         print("Load json first")
     else:
-        report = gripper_report(process)
+        report = tool_report(process)
         for line in report.to_plain_text(process):
             print(line)

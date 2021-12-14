@@ -10,7 +10,7 @@
 try:
     from typing import Dict, List, Optional, Tuple
 
-    from integral_timber_joints.process.state import ObjectState
+
 except:
     pass
 
@@ -30,6 +30,11 @@ if compas.IPY:
         from compas_ghpython.artists import MeshArtist
     except:
         pass
+else:
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from integral_timber_joints.process.state import ObjectState
+
 
 
 from copy import deepcopy

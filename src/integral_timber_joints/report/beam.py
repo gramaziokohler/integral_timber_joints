@@ -17,8 +17,12 @@ def beam_report(process, file_path=None):
     assembly = process.assembly
 
     report = BeamReport("Gripper Report")
+    estimated_density = 5e-7  # 500kg/m3
+
     beam_size_counter = Counter()
     assembly_type_counter = Counter()
+    joint_type_counter = Counter()
+    total_weight = 0
     for beam_id in process.assembly.sequence:
         beam = assembly.beam(beam_id)
 
@@ -30,9 +34,10 @@ def beam_report(process, file_path=None):
         size_str = "%i x %i" % (width, height)
         report.add_info(beam_id, 'Size = %s, Length = %s' % (size_str, length))
 
-        estimated_density = 5e-7  # 500kg/m3
+
         estimated_weight = round(estimated_density * volume)
         report.add_info(beam_id, 'Estimated Weight = %skg' % (estimated_weight))
+        total_weight += estimated_weight
 
         assembly_method = assembly.get_assembly_method(beam_id)
         assembly_method_str = BeamAssemblyMethod.value_to_names_dict[assembly_method]
@@ -44,8 +49,11 @@ def beam_report(process, file_path=None):
 
         for joint_id in joints_with_already_built_neighbours:
             joint = assembly.joint(joint_id)
+            # * Count Joint Type
+            joint_type_counter[joint.__class__.__name__] += 1
+            # * Check validity of Polyline Lap
             if type(joint) == JointPolylineLap:
-                if joint.check_polyline_interior_angle() == False:
+                if joint.check_polyline_interior_angle(89.999999) == False:
                     polyline_interior_angles = joint.get_polyline_interior_angles()
                     polyline_interior_angles = [angle for angles in polyline_interior_angles for angle in angles]
                     message = "WARNING : JointPolylineLap (%s-%s) interior angle < 90degs, min = %f" % (joint_id[0], joint_id[1], min(polyline_interior_angles))
@@ -54,8 +62,12 @@ def beam_report(process, file_path=None):
         beam_size_counter[size_str] += 1
         assembly_type_counter[assembly_method_str] += 1
 
+    report.attributes['total_beam_number'] = len(process.assembly.sequence)
     report.attributes['beam_size_counter'] = beam_size_counter
     report.attributes['assembly_type_counter'] = assembly_type_counter
+    report.attributes['estimated_density_kg_per_m3'] = "%.1f"% (estimated_density * 1e9)
+    report.attributes['estimated_total_weight_kg'] = total_weight
+    report.attributes['joint_type_counter_pairs'] = joint_type_counter
 
     # * Boiler plate functions to save report and print summary
     if file_path is None:

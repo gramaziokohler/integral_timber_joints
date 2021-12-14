@@ -8,7 +8,7 @@ import compas
 from compas.datastructures import Mesh
 from compas.geometry import Box, Frame, Point, Line, Transformation, Vector
 from compas.geometry import Projection, Translation, transformations
-from compas.geometry import distance_point_point, intersection_segment_segment, dot_vectors, transform_points, angle_vectors
+from compas.geometry import distance_point_point, intersection_segment_segment, dot_vectors, transform_points, angle_vectors, centroid_points
 
 from integral_timber_joints.geometry.beam import Beam
 from integral_timber_joints.geometry.joint import Joint
@@ -98,13 +98,13 @@ class JointPolylineLap(Joint):
     def angle(self):
         v1 = Vector.from_start_end(self.corner_pts[0], self.corner_pts[3])
         v2 = Vector.from_start_end(self.corner_pts[2], self.corner_pts[3])
-        if self.is_joint_on_top :
-            if  self.is_joint_on_beam_move:
+        if self.is_joint_on_top:
+            if self.is_joint_on_beam_move:
                 return math.degrees(v1.angle(v2))
             else:
                 return math.degrees(v1.angle(v2.scaled(-1)))
         else:
-            if  self.is_joint_on_beam_move:
+            if self.is_joint_on_beam_move:
                 return math.degrees(v1.angle(v2.scaled(-1)))
             else:
                 return math.degrees(v1.angle(v2))
@@ -117,6 +117,9 @@ class JointPolylineLap(Joint):
     def distance_at_center(self):
         return self.center_distance
 
+    @property
+    def centroid(self):
+        return centroid_points(self.corner_pts)
     # ###########################
     # Transformation of Extrinsic
     # ###########################
@@ -309,10 +312,10 @@ class JointPolylineLap(Joint):
         # Adding the two side cuts (if they have > 2 points)
         if self.is_joint_on_top:
             tol = 1e-3
-            sidecut_extrusion_vector = vector_to_bottom # = Vector.from_start_end(self.corner_pts[4], self.corner_pts[0]).unitized().scaled(self._total_thickness - self.top_side_thickness).scaled(1.1)
+            sidecut_extrusion_vector = vector_to_bottom  # = Vector.from_start_end(self.corner_pts[4], self.corner_pts[0]).unitized().scaled(self._total_thickness - self.top_side_thickness).scaled(1.1)
         else:
             tol = -1e-3
-            sidecut_extrusion_vector = vector_to_top # = Vector.from_start_end(self.corner_pts[0], self.corner_pts[4]).unitized().scaled(self.top_side_thickness).scaled(1.1)
+            sidecut_extrusion_vector = vector_to_top  # = Vector.from_start_end(self.corner_pts[0], self.corner_pts[4]).unitized().scaled(self.top_side_thickness).scaled(1.1)
 
         if len(self.polylines[i+1]) > 2:
             poly_line_mid = self._polyline_at_mid(i+1, tol)[::-1] + self._extline_at_mid(i+1, tol)
@@ -394,6 +397,63 @@ class JointPolylineLap(Joint):
                 clamps.append('CL3M')
         return clamps
 
+    # * Polyline functions
+
+    def polyline_rotate_cw(self):
+        """Rotate polyline clockwise.
+        e.g. Polyline 1 will now become Polyline 2
+
+        Return true if the new polyine values are different from the past.
+        """
+        current_polylines = self.polylines
+        new_polylines = current_polylines[-1:] + current_polylines[:-1]
+        self.polylines = new_polylines
+        return new_polylines == current_polylines
+
+    def polyline_rotate_ccw(self):
+        """Rotate polyline counter clockwise.
+        e.g. Polyline 2 will now become Polyline 1
+
+        Return true if the new polyine values are different from the past.
+        """
+        current_polylines = self.polylines
+        new_polylines = current_polylines[1:] + current_polylines[:1]
+        self.polylines = new_polylines
+        return new_polylines == current_polylines
+
+    def polyline_flip_1_3(self):
+        """Flip polyline 1 and 3.
+        Similar to a mirror operation.
+
+        Return true if the new polyine values are different from the past.
+        """
+
+        current_polylines = self.polylines
+        new_polylines = [current_polylines[i] for i in [2, 1, 0, 3]]
+
+        # Reverse order of each line
+        for i in range(4):
+            new_polylines[i] = [[1-u, v] for u, v in new_polylines[i]][::-1]
+
+        self.polylines = new_polylines
+        return new_polylines == current_polylines
+
+    def polyline_flip_2_4(self):
+        """Flip polyline 2 and 4.
+        Similar to a mirror operation.
+
+        Return true if the new polyine values are different from the past.
+        """
+
+        current_polylines = self.polylines
+        new_polylines = [current_polylines[i] for i in [0, 3, 2, 1]]
+
+        # Reverse order of each line
+        for i in range(4):
+            new_polylines[i] = [[1-u, v] for u, v in new_polylines[i]][::-1]
+
+        self.polylines = new_polylines
+        return new_polylines == current_polylines
 
     def get_polyline_interior_angles(self):
         # type: () -> list[list[float]]
@@ -414,22 +474,21 @@ class JointPolylineLap(Joint):
                 continue
 
             angles = []
-            for i in range(len(polyline)- 2):
+            for i in range(len(polyline) - 2):
                 u = Vector.from_start_end(polyline[i+1], polyline[i])
                 v = Vector.from_start_end(polyline[i+1], polyline[i+2])
-                angle = math.degrees(angle_vectors(u,v))
+                angle = math.degrees(angle_vectors(u, v))
                 angles.append(angle)
             results.append(angles)
         return results
 
-    def check_polyline_interior_angle(self):
-        # type: () -> list[list[float]]
+    def check_polyline_interior_angle(self, angle_threshold = 89.999999):
+        # type: (float) -> list[list[float]]
         """ Check to ensure all interior angles of the polyline is >= 90 degrees.
         Return true if all angle passes.
 
         It is only necessary to check one of the two joint pairs because they have the same polylines.
         """
-        angle_threshold = 90.0
         all_angles = self.get_polyline_interior_angles()
         for angles in all_angles:
             for angle in angles:
