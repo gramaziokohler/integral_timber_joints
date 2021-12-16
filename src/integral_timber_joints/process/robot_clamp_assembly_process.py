@@ -1393,22 +1393,37 @@ class RobotClampAssemblyProcess(Data):
             print("RobotModel submodule does not exist in: %s" % submodule_path)
             self._robot_model_load_success = False
 
-    def to_symbolic_problem_data(self):
+    def to_symbolic_problem_data(self, metadata=None):
         """Return a dict that contains only the data used for symbolic planning.
         Used for easier data communication without installing ITJ.
         """
+        metadata = metadata or {}
         data = {'assembly' : {}}
         data['assembly']['sequence'] = []
-        for b in self.assembly.sequence:
+        for seq_n, b in enumerate(self.assembly.sequence):
             beam_gripper_type = self.assembly.get_beam_attribute(b, "gripper_type")
             b_data = {'beam_id' : b, 'beam_gripper_type' : beam_gripper_type}
-            b_data['grounded'] = False
-            if self.assembly.get_assembly_method(b) == BeamAssemblyMethod.GROUND_CONTACT:
-                b_data['grounded'] = True
+            b_data['assembly_method'] = BeamAssemblyMethod.value_to_names_dict[self.assembly.get_assembly_method(b)]
+            associated_scaffolds = []
+            if self.assembly.get_assembly_method(b) != BeamAssemblyMethod.MANUAL_ASSEMBLY:
+                next_beam_seq_n = seq_n + 1
+                while(True):
+                    if next_beam_seq_n >= len(self.assembly.sequence):
+                        break
+                    next_beam_id = self.assembly.sequence[next_beam_seq_n]
+                    if self.assembly.get_assembly_method(next_beam_id) == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+                        # * Operator manually assemble Beam
+                        associated_scaffolds.append(next_beam_id)
+                        next_beam_seq_n += 1
+                    else:
+                        break
+            b_data['associated_scaffolds'] = associated_scaffolds
             data['assembly']['sequence'].append(b_data)
+
         data['assembly']['joints'] = []
         for j in self.assembly.joint_ids():
-            data['assembly']['joints'].append({'joint_id' : j, 'tool_type' : self.assembly.get_joint_attribute(j, 'tool_type')})
+            data['assembly']['joints'].append({'joint_id' : j,
+                                               'tool_type' : self.assembly.get_joint_attribute(j, 'tool_type')})
         data['clamps'] = {}
         for c in self.clamps:
             data['clamps'][c.name] = {'type_name' : c.type_name}
@@ -1418,6 +1433,7 @@ class RobotClampAssemblyProcess(Data):
         data['grippers'] = {}
         for g in self.grippers:
             data['grippers'][g.name] = {'type_name' : g.type_name}
+        data['metadata'] = metadata
         return data
 
 

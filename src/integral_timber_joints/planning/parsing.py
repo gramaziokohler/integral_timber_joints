@@ -94,14 +94,19 @@ def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyPro
             assert process.dependency.beam_all_valid(beam_id)
     return process
 
-def save_process(_process, save_path, include_traj_in_process=False, indent=None):
-    process = deepcopy(_process)
+def save_process(_process, save_path, include_traj_in_process=False, indent=None, deepcopy=True):
+    if deepcopy:
+        process = deepcopy(_process)
+    else:
+        process = _process
     if not include_traj_in_process:
         for m in process.movements:
             if isinstance(m, RoboticMovement):
                 m.trajectory = None
     with open(save_path, 'w') as f:
         json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
+    print('---')
+    cprint('Process written to {}'.format(save_path), 'green')
 
 def save_process_and_movements(design_dir, process_name, _process, _movements,
     overwrite=False, include_traj_in_process=False, indent=None, movement_subdir='movements'):
