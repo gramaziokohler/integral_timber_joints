@@ -14,7 +14,7 @@ from integral_timber_joints.process.action import LoadBeamAction, PickGripperFro
     Action
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.dependency import ComputationalResult
-from integral_timber_joints.planning.pddlstream_definitions.stream import MovementCommand
+from integral_timber_joints.planning.pddlstream_planning.stream import MovementCommand
 
 ##############################################
 
