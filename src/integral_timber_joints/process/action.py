@@ -1871,7 +1871,8 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
             target_frame=screwdriver_assembled_retracted,
             attached_objects=[self.gripper_id],
             t_flange_from_attached_objects=[process.robot_toolchanger.t_t0cf_from_tcf],
-            screw_positions=[-1.0 * sync_linear_move_amount],
+            # screw_positions=[-1.0 * sync_linear_move_amount],
+            screw_positions=[0], # Zero is the absolute starting point of the screwdriver
             screwdriver_ids=[self.gripper_id],
             planning_priority=1,
             speed_type='speed.assembly.screwing',
