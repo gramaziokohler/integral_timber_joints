@@ -23,6 +23,8 @@ from pddlstream.language.generator import from_gen_fn, from_fn, from_test
 def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyProcess, robot,
         debug=False, reset_to_home=True, seq_n=None,
         use_fluents=True, symbolic_only=False, options=None):
+    """Convert a Process instance into a PDDLStream formulation
+    """
     if symbolic_only:
         raise DeprecationWarning()
         domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'domain.pddl'))
