@@ -20,7 +20,8 @@ from pddlstream.language.generator import from_gen_fn, from_fn, from_test
 
 #################################################
 
-def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyProcess, robot,
+# : PyChoreoClient
+def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
         debug=False, reset_to_home=True, seq_n=None,
         use_fluents=True, symbolic_only=False, options=None):
     """Convert a Process instance into a PDDLStream formulation
@@ -45,7 +46,7 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
         Equal((TOTAL_COST,), 0)
     ]
 
-    home_conf = process.robot_initial_config
+    # home_conf = process.robot_initial_config
     constant_map = {}
 
     init.extend([
@@ -53,7 +54,7 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
     ])
 
     # * Beams
-    beam_seq = beam_ids_from_argparse_seq_n([bd['beam_id'] for bd in process_symdata['assembly']['sequence']], seq_n)
+    beam_seq = beam_ids_from_argparse_seq_n(process, seq_n)
     for i, e in enumerate(beam_seq):
         e_data = process_symdata['assembly']['sequence'][i]
         assert e_data['beam_id'] == e
@@ -154,4 +155,4 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
     goal = And(*goal_literals)
 
     pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)
-    return pddlstream_problem
+    return pddlstream_problem,
