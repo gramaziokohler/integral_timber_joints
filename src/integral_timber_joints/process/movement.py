@@ -575,7 +575,7 @@ class RobotScrewdriverSyncLinearMovement(RoboticMovement):
         """ Sub class specific data added to the dictionary of the parent class
         """
         data = super(RobotScrewdriverSyncLinearMovement, self).data
-        data['screw_position'] = self.screw_positions
+        data['screw_positions'] = self.screw_positions
         data['screwdriver_ids'] = self.screwdriver_ids
         return data
 

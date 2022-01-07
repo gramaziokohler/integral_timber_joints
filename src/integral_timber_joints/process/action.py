@@ -350,14 +350,17 @@ class OperatorAttachScrewdriverAction(OperatorAction):
         t_world_from_beam_at_position = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, self.beam_position))
         t_world_from_screwdriver_base_at_position = t_world_from_beam_at_position * t_beam_from_tool_tcp * t_tool_tcp_from_tool_base
 
-        self.movements.append(OperatorAttachToolMovement(
+        movement = OperatorAttachToolMovement(
             beam_id=self.beam_id,
             joint_id=self.joint_id,
             tool_type=self.tool_type,
             tool_id=self.tool_id,
             target_frame=Frame.from_transformation(t_world_from_screwdriver_base_at_position),
             tag="Opeartor Attach %s to %s." % (self._tool_string, self._joint_string),
-        ))
+        )
+        movement.operator_stop_before = movement.tag
+        self.movements.append(movement)
+
         self.assign_movement_ids()
 
 ##############################
@@ -1995,9 +1998,10 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
             tag="Free Move to reach %s on %s " % (self._tool_string, self._beam_string)
         ))
 
-        # Use vision to aqurire docking offset and apply it to robot controller.
+        # Use vision to aqurire docking offset from perspective of the tool_changer
         self.movements.append(AcquireDockingOffset(
             target_frame=Frame.from_transformation(t_world_from_robot_at_approach),
+            tool_id=toolchanger.name,
             tag="Visually acquire offset to Toolchanger of %s and move to alignment." % (self._tool_string)
         ))
 
