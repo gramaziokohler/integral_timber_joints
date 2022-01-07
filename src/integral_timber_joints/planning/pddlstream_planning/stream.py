@@ -19,20 +19,6 @@ from compas_fab.robots import Trajectory
 
 ######################################
 
-class EmptyTrajectory(object):
-    def __init__(self, tag=''):
-        self.tag = tag
-    def __repr__(self):
-        return 'Traj-{}'.format(self.tag)
-
-class EmptyConfiguration(object):
-    def __init__(self, tag=''):
-        self.tag = tag
-    def __repr__(self):
-        return 'Conf-{}'.format(self.tag)
-
-######################################
-
 def assign_fluent_state(client, robot, process, fluents):
     # * manually create a state according to the fluent facts and set_state
     state = SceneState(process)
@@ -58,7 +44,7 @@ def assign_fluent_state(client, robot, process, fluents):
 
 ######################################
 
-def get_ik_fn(client, process, robot, options=None):
+def _archived_get_action_ik_fn(client, process, robot, options=None):
     options = options or {}
     debug = options.get('debug', False)
     verbose = options.get('verbose', False)
@@ -72,8 +58,6 @@ def get_ik_fn(client, process, robot, options=None):
         assign_fluent_state(client, robot, process, fluents)
         # print(client._print_object_summary())
         # pp.wait_if_gui('IK: After assign fluent state')
-
-        return (EmptyConfiguration(),)
 
         state = SceneState(process)
         object_frame = object_pose.copy()
@@ -165,10 +149,6 @@ from integral_timber_joints.process.action import PickBeamWithGripperAction
 from integral_timber_joints.process.movement import RoboticMovement, RoboticFreeMovement
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
-MovementCommand = namedtuple('MovementCommand', ['start_state', 'state_diffs', 'trajs'])
-# state_diff : a list of Trajectory
-# trajs : a list of Trajectory
-
 def apply_movement_state_diff(scene, movements, debug=False):
     for key in scene.object_keys:
         for m in movements[::-1]:
@@ -179,7 +159,7 @@ def apply_movement_state_diff(scene, movements, debug=False):
                 break # ! break movement loop
     return scene
 
-def get_sample_pick_element_fn(client, process, robot, options=None):
+def get_action_ik_fn(client, process, robot, action_name, options=None):
     debug = options.get('debug', False)
     verbose = options.get('verbose', False)
     def sample_fn(obj_name, tool_name, fluents=[]):
@@ -192,7 +172,9 @@ def get_sample_pick_element_fn(client, process, robot, options=None):
         # print(client._print_object_summary())
         # pp.wait_if_gui('PickBeam: After assign fluent state')
 
+        # if pddl_action.name == 'pick_beam_with_gripper':
         itj_action = PickBeamWithGripperAction(seq_n=0, act_n=0, beam_id=obj_name, gripper_id=tool_name)
+
         itj_action.create_movements(process)
         end_scene = _action_scene.copy()
         for i, movement in enumerate(itj_action.movements):
@@ -237,7 +219,4 @@ def get_sample_pick_element_fn(client, process, robot, options=None):
                 return None
         cprint('sample pick element succeeds for {}|{}.'.format(obj_name, tool_name), 'green')
         return (itj_action,)
-        # (MovementCommand(_action_scene, [m.state_diff for m in itj_action.movements],
-        # [m.trajectory if isinstance(m, RoboticMovement) else None for m in itj_action.movements]),)
-        # return (EmptyTrajectory(),)
     return sample_fn
