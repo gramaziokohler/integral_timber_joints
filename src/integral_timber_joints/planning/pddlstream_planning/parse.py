@@ -5,7 +5,7 @@ from collections import defaultdict
 
 import integral_timber_joints.planning.pddlstream_planning.load_pddlstream
 from integral_timber_joints.planning.pddlstream_planning import ITJ_PDDLSTREAM_DEF_DIR
-from integral_timber_joints.planning.pddlstream_planning.stream import get_action_ik_fn, get_sample_pick_element_fn
+from integral_timber_joints.planning.pddlstream_planning.stream import get_action_ik_fn
 from integral_timber_joints.planning.utils import beam_ids_from_argparse_seq_n
 
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod

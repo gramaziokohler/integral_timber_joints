@@ -139,3 +139,4 @@ src/integral_timber_joints/planning/data/
 # pddlstream
 examples/notebooks/temp/*
 examples/notebooks/statistics/*
+temp

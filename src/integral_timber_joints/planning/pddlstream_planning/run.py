@@ -97,7 +97,7 @@ def main():
     print('Plan length: ', len(plan))
 
     if plan_success and args.write:
-        save_pddlstream_plan_to_itj_process(process, plan, verbose=0, save_subdir=args.save_dir)
+        save_pddlstream_plan_to_itj_process(process, plan, args.design_dir, args.problem, verbose=0, save_subdir=args.save_dir)
 
 if __name__ == '__main__':
     main()

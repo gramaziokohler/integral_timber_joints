@@ -36,7 +36,7 @@ def assign_fluent_state(client, robot, process, fluents):
             # (Attached ?object ?grasp)
             object_name, grasp_transform = args
             state[(object_name, 'a')] = True
-            state[(object_name, 'g')] = grasp_transform
+            # state[(object_name, 'g')] = grasp_transform
         else:
             raise ValueError(name)
     set_state(client, robot, process, state)
@@ -68,7 +68,7 @@ def _archived_get_action_ik_fn(client, process, robot, options=None):
         robot_flange_from_attached_obj = pose_from_transformation(grasp, scale=1e-3)
         flange_frame = frame_from_pose(pp.multiply(world_from_object, pp.invert(robot_flange_from_attached_obj)))
 
-        # TODO use trac-ik  here
+        # TODO use trac-ik here
         sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
         gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
         gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
