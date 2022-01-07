@@ -59,11 +59,13 @@ def action_compute_movements(process, action):
 
 ##############################################
 
-def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name, save_subdir='results', verbose=False):
+def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name, symbolic=False, save_subdir='results', verbose=False):
     """
         design_dir = '211010_CantiBox'
         problem_name = 'CantiBoxLeft_process.json'
     """
+    # TODO if symbolic create action here otherwise just parse action from plan action arguments
+
     beam_id = last_beam_id = ''
     seq_n = 0
     acts = []
@@ -89,15 +91,16 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
             assert gt_gripper_type == gripper.type_name, '{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name)
 
-            # ! these should be updated by previous place clamp actions already
-            joint_id_of_clamps = list(process.assembly.get_joint_ids_with_tools_for_beam(beam_id))
-            joint_tool_ids = [process.assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_id_of_clamps]
+            involved_joint_ids = list(process.assembly.get_joint_ids_with_tools_for_beam(beam_id))
+            # ! these assigned tools should have been updated by previous place clamp actions already
+            joint_tool_ids = [process.assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in involved_joint_ids]
+
             if pddl_action.name == 'beam_placement_without_clamp':
                 itj_act = BeamPlacementWithoutClampsAction(seq_n, 0, beam_id, gripper_id)
             elif pddl_action.name == 'beam_placement_with_clamps':
-                itj_act = BeamPlacementWithClampsAction(seq_n, 0, beam_id, joint_id_of_clamps, gripper_id, joint_tool_ids)
+                itj_act = BeamPlacementWithClampsAction(seq_n, 0, beam_id, involved_joint_ids, gripper_id, joint_tool_ids)
             elif pddl_action.name == 'assemble_beam_with_screwdrivers':
-                itj_act = AssembleBeamWithScrewdriversAction(seq_n, 0, beam_id, joint_id_of_clamps, gripper_id, screwdriver_ids=joint_tool_ids)
+                itj_act = AssembleBeamWithScrewdriversAction(seq_n, 0, beam_id, involved_joint_ids, gripper_id, screwdriver_ids=joint_tool_ids)
 
         elif pddl_action.name == 'retract_gripper_from_beam':
             beam_id = pddl_action.args[0]

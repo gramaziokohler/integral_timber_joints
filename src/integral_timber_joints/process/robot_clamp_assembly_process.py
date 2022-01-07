@@ -314,7 +314,7 @@ class RobotClampAssemblyProcess(Data):
         return self.attributes['screwdrivers'][screwdriver_id]
 
     def gripper(self, gripper_id):
-        # type: (str) -> Clamp
+        # type: (str) -> Gripper
         return self.attributes['grippers'][gripper_id]
 
     @property

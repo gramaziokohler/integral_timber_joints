@@ -37,7 +37,6 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
         else:
             stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'stream_fluents.pddl'))
 
-
     process_symdata = process.to_symbolic_problem_data()
 
     manipulate_cost = 0.0
@@ -55,14 +54,34 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
 
     # * Beams
     beam_seq = beam_ids_from_argparse_seq_n(process, seq_n)
+    toolchanger = process.robot_toolchanger
+    flange_from_toolchanger_base = toolchanger.t_t0cf_from_tcf
     for i, e in enumerate(beam_seq):
         e_data = process_symdata['assembly']['sequence'][i]
         assert e_data['beam_id'] == e
         assert e_data['assembly_method'] != 'UNDEFINED'
+
+        f_world_from_beam_pickup = process.assembly.get_beam_attribute(e, 'assembly_wcf_pickup')
+        f_world_from_beam_final = process.assembly.get_beam_attribute(e, 'assembly_wcf_final')
+        # * get beam grasp
+        # ? different gripper might have different grasp for a beam?
+        t_gripper_tcf_from_beam = process.assembly.get_t_gripper_tcf_from_beam(e)
+        beam_gripper_id = process.assembly.get_beam_attribute(e, "gripper_id")
+        beam_gripper = process.tool(beam_gripper_id)
+        flange_from_beam = flange_from_toolchanger_base * beam_gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+
         if e_data['assembly_method'] == 'ManualAssembly':
             init.append(('Scaffold', e))
         else:
-            init.append(('Element', e))
+            init.extend([
+                ('Element', e),
+                #
+                ('RackPose', e, f_world_from_beam_pickup),
+                ('Pose', e, f_world_from_beam_pickup),
+                ('ElementGoalPose', e, f_world_from_beam_final),
+                ('Pose', e, f_world_from_beam_final),
+                ('Grasp', e, flange_from_beam),
+                ])
             init.append((e_data['assembly_method']+'Element', e))
             for sf in e_data['associated_scaffolds']:
                 init.append(('AssociatedScaffold', e, sf))
@@ -82,11 +101,19 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
 
     # * Clamps
     for c_name in process_symdata['clamps']:
+        c = process.clamp(c_name)
+        tool_storage_frame = c.tool_storage_frame
+        clamp_grasp = toolchanger.t_t0cf_from_tcf
         init.extend([
             ('Clamp', c_name),
             ('Tool', c_name),
             ('AtRack', c_name),
             ('ToolNotOccupiedOnJoint', c_name),
+            #
+            ('RackPose', c_name, tool_storage_frame),
+            ('Pose', c_name, tool_storage_frame),
+            ('AtPose', c_name, tool_storage_frame),
+            ('Grasp', c_name, clamp_grasp),
         ])
 
     # * Screw Drivers
@@ -107,8 +134,13 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
         joint_clamp_type = j_data['tool_type']
         for c_name, c in process_symdata['clamps'].items():
             if c['type_name'] == joint_clamp_type:
+                clamp_wcf_final = process.get_tool_t0cf_at(j, 'clamp_wcf_final')
                 init.extend([
                     ('JointToolTypeMatch', j[0], j[1], c_name),
+                    #
+                    ('Pose', c_name, clamp_wcf_final),
+                    ('ClampPose', c_name, clamp_wcf_final),
+                    # ('JointPose', j[0], j[1], clamp_wcf_final),
                 ])
                 clamp_from_joint[j[0]+','+j[1]].add(c_name)
         if 'screwdrivers' in process_symdata:
@@ -116,15 +148,26 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                 if sd['type_name'] == joint_clamp_type:
                     init.extend([
                         ('JointToolTypeMatch', j[0], j[1], sd_name),
+                        # #
+                        # ('Pose', c_name, clamp_wcf_final),
+                        # ('ClampPose', c_name, clamp_wcf_final),
                     ])
                     screwdriver_from_joint[j[0]+','+j[1]].add(sd_name)
 
     # * Grippers
     for g_name in process_symdata['grippers']:
+        g = process.gripper(g_name)
+        tool_storage_frame = g.tool_storage_frame
+        gripper_grasp = toolchanger.t_t0cf_from_tcf
         init.extend([
             ('Gripper', g_name),
             ('Tool', g_name),
             ('AtRack', g_name),
+            #
+            ('RackPose', g_name, tool_storage_frame),
+            ('Pose', g_name, tool_storage_frame),
+            ('AtPose', g_name, tool_storage_frame),
+            ('Grasp', g_name, gripper_grasp),
         ])
     # * gripper type
     gripper_from_beam = defaultdict(set)
