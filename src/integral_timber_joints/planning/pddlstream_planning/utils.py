@@ -1,10 +1,16 @@
+from functools import partial
 from termcolor import cprint, colored
 
 from compas.geometry import Transformation, Frame
 from compas_fab.robots import Trajectory
 from compas.robots.configuration import Configuration
+
 from pddlstream.utils import str_from_object
+from pddlstream.language.conversion import obj_from_pddl
 from pddlstream.language.constants import is_plan, DurativeAction, Action, StreamAction, FunctionAction
+#
+from pddlstream.algorithms.algorithm import parse_problem
+from pddlstream.algorithms.downward import get_problem, task_from_domain_problem
 
 from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, AssembleBeamWithScrewdriversAction,  RetractGripperFromBeamAction, PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, ManaulAssemblyAction, OperatorAttachScrewdriverAction, DockWithScrewdriverAction, RetractScrewdriverFromBeamAction
 
@@ -44,6 +50,20 @@ ITJ_ACTION_CLASS_FROM_PDDL_ACTION_NAME  = {
     'operator_attach_screwdriver' : OperatorAttachScrewdriverAction,
     # (beam_id, joint_id, screwdriver.type_name, tool_id, 'assembly_wcf_screwdriver_attachment_pose')
 }
+
+##########################################
+
+def print_pddl_task_object_names(pddl_problem):
+    evaluations, goal_exp, domain, externals = parse_problem(
+        pddl_problem, unit_costs=True)
+    problem = get_problem(evaluations, goal_exp, domain, unit_costs=True)
+    task = task_from_domain_problem(domain, problem)
+    print('='*10)
+    for task_obj, pddl_object in sorted(
+            zip(task.objects, map(lambda x: obj_from_pddl(x.name), task.objects)),
+            key=lambda x: int(x[0].name.split('v')[1])):
+        print('{} : {}'.format(task_obj.name, colored_str_from_object(pddl_object.value)))
+    print('='*10)
 
 ##########################################
 

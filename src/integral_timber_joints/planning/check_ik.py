@@ -16,9 +16,9 @@ from compas.rpc import Proxy
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--design_dir', default='210605_ScrewdriverTestProcess',
+    parser.add_argument('--design_dir', default='210916_SymbolicPlanning',
                         help='problem json\'s containing folder\'s name.')
-    parser.add_argument('--problem', default='nine_pieces_process.json',  # pavilion_process.json
+    parser.add_argument('--problem', default='CantiBoxLeft_10pcs_process.json',  # pavilion_process.json
                         help='The name of the problem to solve')
     parser.add_argument('--problem_subdir', default='.',  # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `YJ_tmp`, `<time stamp>`')

@@ -1,12 +1,13 @@
 (define (stream itj_clamp_only)
 
-  (:stream sample-place-element
-    :inputs (?element)
-    :domain (Element ?element)
-    :outputs (?traj)
+  (:stream sample-pick_beam_with_gripper
+    ; beam_id, gripper_id
+    :inputs (?element ?gripper)
+    :domain (and (Element ?element) (Gripper ?gripper))
+    :outputs (?action)
     :certified (and
-                    (PlaceElementAction ?element ?traj)
-                    (Traj ?traj)
-                )
+                 (PickBeamWithGripperAction ?element ?gripper ?action)
+               )
   )
+
 )

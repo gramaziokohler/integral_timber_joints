@@ -5,9 +5,11 @@ from termcolor import cprint
 import integral_timber_joints.planning.pddlstream_planning.load_pddlstream
 from integral_timber_joints.planning.pddlstream_planning.parse import get_pddlstream_problem
 from integral_timber_joints.planning.pddlstream_planning.postprocessing import save_pddlstream_plan_to_itj_process
+from integral_timber_joints.planning.pddlstream_planning.utils import print_itj_pddl_plan
 
 from integral_timber_joints.planning.parsing import parse_process
 from integral_timber_joints.planning.state import set_state, set_initial_state
+from integral_timber_joints.planning.pddlstream_planning.utils import print_pddl_task_object_names
 
 from pddlstream.algorithms.downward import set_cost_scale, parse_action, get_cost_scale
 from pddlstream.algorithms.meta import solve
@@ -22,16 +24,18 @@ def main():
     # * Problem info
     parser.add_argument('--design_dir', default='210916_SymbolicPlanning', # 211010_CantiBox, 210128_RemodelFredPavilion
                         help='problem json\'s containing folder\'s name.')
-    parser.add_argument('--problem', default='nine_pieces_process.json', # CantiBoxLeft_process.json, pavilion_process.json
+    parser.add_argument('--problem', default='nine_pieces_process.json', # CantiBoxLeft_10pcs_process.json, CantiBoxLeft_process.json, pavilion_process.json
                         help='The name of the problem to solve (json file\'s name, e.g. "nine_pieces_process.json")')
     parser.add_argument('--problem_subdir', default='.',
                         help='subdir of the process file, default to `.`. Popular use: `results`')
     # * PDDLStream configs
     parser.add_argument('--nofluents', action='store_true', help='Not use fluent facts in stream definitions.')
     parser.add_argument('--algorithm', default='incremental', help='PDDLSteam planning algorithm.')
+    # ! pyplanner config
+    parser.add_argument('--pp_h', default='ff', help='pyplanner heuristic configuration.')
     parser.add_argument('--pp_search', default='eager', help='pyplanner search configuration.')
     parser.add_argument('--pp_evaluator', default='greedy', help='pyplanner evaluator configuration.')
-    parser.add_argument('--pp_h', default='ff', help='pyplanner heuristic configuration.')
+    # ! downward config
     parser.add_argument('--fd_search', default='ff-eager', help='downward search configuration.')
     # * Planning for sub-assembly
     parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
@@ -62,6 +66,9 @@ def main():
     pddlstream_problem = get_pddlstream_problem(client, process, robot,
         debug=True, reset_to_home=True, use_fluents=not args.nofluents, seq_n=args.seq_n)[0]
 
+    if args.debug:
+        print_pddl_task_object_names(pddlstream_problem)
+
     additional_config = {}
     if not args.nofluents:
         additional_config['planner'] = {
@@ -75,14 +82,15 @@ def main():
         additional_config['planner'] = args.fd_search
         # 'dijkstra' # 'max-astar' # 'lmcut-astar' # 'dijkstra' # 'ff-eager' # | 'add-random-lazy'
 
-    effort_weight = 1. / get_cost_scale()
+    set_cost_scale(1)
+    # effort_weight = 1. / get_cost_scale()
     with Profiler(num=25):
         solution = solve(pddlstream_problem, algorithm=args.algorithm,
                          max_time=INF,
                          unit_costs=True,
                          success_cost=INF,
-                         unit_efforts=True,
-                         effort_weight=effort_weight,
+                        #  unit_efforts=True,
+                        #  effort_weight=effort_weight,
                          max_planner_time=INF,
                          debug=args.debug, verbose=1, **additional_config)
 
@@ -92,7 +100,7 @@ def main():
     #########
     # * PDDLStream problem conversion and planning
     print('-'*10)
-    print_plan(plan)
+    print_itj_pddl_plan(plan)
     cprint('Planning {}'.format('succeeds' if plan_success else 'fails'), 'green' if plan_success else 'red')
     print('Plan length: ', len(plan))
 

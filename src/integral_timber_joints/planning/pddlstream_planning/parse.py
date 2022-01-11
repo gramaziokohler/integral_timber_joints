@@ -60,26 +60,29 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
         e_data = process_symdata['assembly']['sequence'][i]
         assert e_data['beam_id'] == e
         assert e_data['assembly_method'] != 'UNDEFINED'
-
-        f_world_from_beam_pickup = process.assembly.get_beam_attribute(e, 'assembly_wcf_pickup')
         f_world_from_beam_final = process.assembly.get_beam_attribute(e, 'assembly_wcf_final')
-        # * get beam grasp
-        # ? different gripper might have different grasp for a beam?
-        t_gripper_tcf_from_beam = process.assembly.get_t_gripper_tcf_from_beam(e)
-        beam_gripper_id = process.assembly.get_beam_attribute(e, "gripper_id")
-        beam_gripper = process.tool(beam_gripper_id)
-        flange_from_beam = flange_from_toolchanger_base * beam_gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
 
         if e_data['assembly_method'] == 'ManualAssembly':
-            init.append(('Scaffold', e))
+            init.extend([
+                ('Scaffold', e),
+                ('ElementGoalPose', e, f_world_from_beam_final),
+                ])
         else:
+            f_world_from_beam_pickup = process.assembly.get_beam_attribute(e, 'assembly_wcf_pickup')
+            # * get beam grasp
+            # ? different gripper might have different grasp for a beam?
+            t_gripper_tcf_from_beam = process.assembly.get_t_gripper_tcf_from_beam(e)
+            beam_gripper_id = process.assembly.get_beam_attribute(e, "gripper_id")
+            beam_gripper = process.tool(beam_gripper_id)
+            flange_from_beam = flange_from_toolchanger_base * beam_gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+
             init.extend([
                 ('Element', e),
                 #
                 ('RackPose', e, f_world_from_beam_pickup),
-                ('Pose', e, f_world_from_beam_pickup),
+                # ('Pose', e, f_world_from_beam_pickup),
                 ('ElementGoalPose', e, f_world_from_beam_final),
-                ('Pose', e, f_world_from_beam_final),
+                # ('Pose', e, f_world_from_beam_final),
                 ('Grasp', e, flange_from_beam),
                 ])
             init.append((e_data['assembly_method']+'Element', e))
@@ -111,7 +114,7 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
             ('ToolNotOccupiedOnJoint', c_name),
             #
             ('RackPose', c_name, tool_storage_frame),
-            ('Pose', c_name, tool_storage_frame),
+            # ('Pose', c_name, tool_storage_frame),
             ('AtPose', c_name, tool_storage_frame),
             ('Grasp', c_name, clamp_grasp),
         ])
@@ -119,11 +122,19 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
     # * Screw Drivers
     if 'screwdrivers' in process_symdata:
         for sd_name in process_symdata['screwdrivers']:
+            sd = process.screwdriver(sd_name)
+            tool_storage_frame = c.tool_storage_frame
+            sd_grasp = toolchanger.t_t0cf_from_tcf
             init.extend([
                 ('ScrewDriver', sd_name),
                 ('Tool', sd_name),
                 ('AtRack', sd_name),
                 ('ToolNotOccupiedOnJoint', sd_name),
+                #
+                ('RackPose', sd_name, tool_storage_frame),
+                # ('Pose', sd_name, tool_storage_frame),
+                ('AtPose', sd_name, tool_storage_frame),
+                ('Grasp', sd_name, sd_grasp),
             ])
 
     # * joint to clamp/scewdriver tool type assignment
@@ -138,7 +149,7 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                 init.extend([
                     ('JointToolTypeMatch', j[0], j[1], c_name),
                     #
-                    ('Pose', c_name, clamp_wcf_final),
+                    # ('Pose', c_name, clamp_wcf_final),
                     ('ClampPose', c_name, clamp_wcf_final),
                     # ('JointPose', j[0], j[1], clamp_wcf_final),
                 ])
@@ -150,7 +161,7 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                         ('JointToolTypeMatch', j[0], j[1], sd_name),
                         # #
                         # ('Pose', c_name, clamp_wcf_final),
-                        # ('ClampPose', c_name, clamp_wcf_final),
+                        # ('ScrewDriverPose', c_name, clamp_wcf_final),
                     ])
                     screwdriver_from_joint[j[0]+','+j[1]].add(sd_name)
 
@@ -165,7 +176,7 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
             ('AtRack', g_name),
             #
             ('RackPose', g_name, tool_storage_frame),
-            ('Pose', g_name, tool_storage_frame),
+            # ('Pose', g_name, tool_storage_frame),
             ('AtPose', g_name, tool_storage_frame),
             ('Grasp', g_name, gripper_grasp),
         ])

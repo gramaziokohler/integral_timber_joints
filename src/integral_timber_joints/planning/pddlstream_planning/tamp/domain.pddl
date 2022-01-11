@@ -21,7 +21,7 @@
     (Tool ?tool)
 
     ; * pose and tags
-    (Pose ?object ?pose)
+    ;; (Pose ?object ?pose)
     (Grasp ?object ?grasp_pose) ; gripper_from_object
 
     (RackPose ?object ?pose)
@@ -86,7 +86,7 @@
                     ; ! tool state precondition, might help pruning
                     ;; (not (ExistNoClampAtOneAssembledJoints ?element))
                     ; ! sampled
-                    (PickBeamWithGripperAction ?element ?gripper ?action)
+                    (PickBeamWithGripperAction ?element ?tool ?action)
                   )
     :effect (and (not (AtRack ?element))
                  (Attached ?element ?e_grasp)
@@ -101,6 +101,8 @@
     :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp) ; ?action)
     :precondition (and
                     (Gripper ?tool)
+                    ;; (Grasp ?tool ?tool_grasp)
+                    ;; (Grasp ?element ?e_grasp)
                     (Attached ?tool ?tool_grasp)
                     (Attached ?element ?e_grasp)
                     (ClampedElement ?element)
@@ -123,6 +125,8 @@
     :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp)
     :precondition (and
                     (Gripper ?tool)
+                    ;; (Grasp ?tool ?tool_grasp)
+                    ;; (Grasp ?element ?e_grasp)
                     (Attached ?tool ?tool_grasp)
                     (Attached ?element ?e_grasp)
                     (GroundContactElement ?element)
@@ -139,11 +143,11 @@
 
   ; TODO haven't model screwdrivers that act like grippers yet!
   (:action assemble_beam_with_screwdrivers
-    :parameters (?element ?tool)
+    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp)
     :precondition (and
                     (Gripper ?tool)
-                    (Attached ?tool)
-                    (Attached ?element)
+                    (Attached ?tool ?tool_grasp)
+                    (Attached ?element ?e_grasp)
                     (ScrewedWithGripperElement ?element)
                     (ElementGoalPose ?element ?e_pose)
                     ; ! tool state
@@ -154,7 +158,9 @@
                     )
     :effect (and (Assembled ?element)
                  (NeedGripperRetraction)
-                 )
+                 (AtPose ?element ?e_pose)
+                 ; TODO attached screwdrivers at pose?
+            )
   )
 
   (:action retract_gripper_from_beam
@@ -189,70 +195,80 @@
   )
 
   (:action manaul_assemble_scaffold
-    :parameters (?element)
+    :parameters (?element ?e_pose)
     :precondition (and
                     (Scaffold ?element)
+                    (ElementGoalPose ?element ?e_pose)
                     ; ! e2 must be assembled before e encoded in the given partial ordering
                     (forall (?ei) (imply (Order ?ei ?element) (Assembled ?ei)))
-                    )
+                  )
     :effect (and (Assembled ?element)
-                 )
+                 (AtPose ?element ?e_pose)
+            )
   )
 
   ; TODO haven't model screwdrivers that act like grippers yet!
   (:action operator_attach_screwdriver
-    :parameters (?tool ?element1 ?element2)
+    :parameters (?tool ?tool_pose ?element1 ?element2 ?e_grasp)
     :precondition (and
-                    (Attached ?element2)
+                    (Attached ?element2 ?e_grasp)
                     (Assembled ?element1)
                     (ScrewDriver ?tool)
                     (AtRack ?tool)
+                    (RackPose ?tool ?tool_pose)
+                    (AtPose ?tool ?tool_pose)
                     (JointToolTypeMatch ?element1 ?element2 ?tool)
                     (ToolNotOccupiedOnJoint ?tool)
                     (not (JointOccupiedByTool ?element1 ?element2 ?element2))
                     ; ! switch for cutting down meaningless clamp placements
                     (not (JointMade ?element1 ?element2))
-                    ; ! assembly state precondition
                     ; ! sampled
-                    )
+                  )
     :effect (and
                  ; ! tool status
                  (ToolAtJoint ?tool ?element1 ?element2 ?element2)
                  (JointOccupiedByTool ?element1 ?element2 ?element2)
                  (not (ToolNotOccupiedOnJoint ?tool))
                  (not (AtRack ?tool))
-                 (ToolAssignedToJoint ?element1 ?element2 ?tool)
+                 (not (AtPose ?tool ?tool_pose))
+                ;; TODO screwdriver attached to robot?
+                ;; (Attached ?tool ?tool_grasp)
+                ;;  (ToolAssignedToJoint ?element1 ?element2 ?tool)
             )
   )
 
   (:action pick_tool_from_rack
-    :parameters (?tool)
+    :parameters (?tool ?pose ?grasp)
     :precondition (and
                     (RobotToolChangerEmpty)
                     (Tool ?tool)
                     (AtRack ?tool)
+                    (AtPose ?tool ?pose)
+                    (Grasp ?tool ?grasp)
                     ; ! sampled
                   )
-    :effect (and (Attached ?tool)
+    :effect (and (Attached ?tool ?grasp)
                  (not (RobotToolChangerEmpty))
+                 (when (Gripper ?tool) (RobotGripperEmpty))
                  ; ! tool status
                  (not (AtRack ?tool))
-                 (when (Gripper ?tool) (RobotGripperEmpty))
+                 (not (AtPose ?tool ?pose))
             )
   )
 
   (:action place_tool_at_rack
-    :parameters (?tool)
+    :parameters (?tool ?pose ?grasp)
     :precondition (and
-                    (Attached ?tool)
+                    (Attached ?tool ?grasp)
                     (Tool ?tool)
+                    (RackPose ?tool ?pose)
                     (imply (Gripper ?tool) (RobotGripperEmpty))
                     ; ! sampled
                   )
-    :effect (and (not (Attached ?tool))
+    :effect (and (not (Attached ?tool ?grasp))
                  (RobotToolChangerEmpty)
                  (AtRack ?tool)
-                ;;  (when (Clamp ?tool) (increase (total-cost) (Cost)))
+                 (AtPose ?tool ?pose)
                  (increase (total-cost) (Cost))
             )
   )
@@ -260,10 +276,11 @@
   ;; tool is attached to the robot
   ;; a tool (gripper, clamp) can be placed if the goal place is clear of collision
   (:action place_clamp_to_structure
-    :parameters (?tool ?element1 ?element2)
+    :parameters (?tool ?pose ?grasp ?element1 ?element2)
     :precondition (and
-                    (Attached ?tool)
                     (Clamp ?tool)
+                    (Attached ?tool ?grasp)
+                    (ClampPose ?tool ?pose)
                     (Joint ?element1 ?element2)
                     (ToolNotOccupiedOnJoint ?tool)
                     (JointToolTypeMatch ?element1 ?element2 ?tool)
@@ -276,28 +293,34 @@
                     ; ! assembly state precondition
                     ; ! sampled
                     )
-    :effect (and (not (Attached ?tool))
+    :effect (and (not (Attached ?tool ?grasp))
+                 (AtPose ?tool ?pose)
                  (RobotToolChangerEmpty)
+                ;;  (JointMade ?element1 ?element2)
                  ; ! tool status
                  (ToolAtJoint ?tool ?element1 ?element2 ?element1)
                  (JointOccupiedByTool ?element1 ?element2 ?element1)
                  (not (ToolNotOccupiedOnJoint ?tool))
-                 (ToolAssignedToJoint ?element1 ?element2 ?tool)
+                ;;  (ToolAssignedToJoint ?element1 ?element2 ?tool)
                  )
   )
 
   (:action pick_clamp_from_structure
-    :parameters (?tool ?element1 ?element2)
+    :parameters (?tool ?pose ?grasp ?element1 ?element2)
     :precondition (and
                     (AllScrewDriversNotOccupied)
                     (RobotToolChangerEmpty)
                     (Clamp ?tool)
+                    (ClampPose ?tool ?pose)
+                    (AtPose ?tool ?pose)
+                    (Grasp ?tool ?grasp)
                     (ToolAtJoint ?tool ?element1 ?element2 ?element1)
                     (JointOccupiedByTool ?element1 ?element2 ?element1)
                     (JointMade ?element1 ?element2)
                     ; ! sampled
                   )
-    :effect (and (Attached ?tool)
+    :effect (and (Attached ?tool ?grasp)
+                 (not (AtPose ?tool ?pose))
                  (not (RobotToolChangerEmpty))
                  ; ! tool status
                  (ToolNotOccupiedOnJoint ?tool)
@@ -323,10 +346,13 @@
   )
 
   (:action retract_screwdriver_from_beam
-    :parameters (?tool ?element1 ?element2)
+    :parameters (?tool ?grasp ?element1 ?element2)
     :precondition (and
                     (NeedScrewDriverRetraction)
                     (ScrewDriver ?tool)
+                    ;; (ScrewDriverPose ?tool ?pose)
+                    ;; (AtPose ?tool ?pose)
+                    (Grasp ?tool ?grasp)
                     (ToolAtJoint ?tool ?element1 ?element2 ?element2)
                     (JointOccupiedByTool ?element1 ?element2 ?element2)
                     (JointMade ?element1 ?element2)
@@ -334,7 +360,8 @@
                   )
     :effect (and
                  (not (NeedScrewDriverRetraction))
-                 (Attached ?tool)
+                 (Attached ?tool ?grasp)
+                 ;; (not (AtPose ?tool ?pose))
                  ; ! tool status
                  (ToolNotOccupiedOnJoint ?tool)
                  (not (ToolAtJoint ?tool ?element1 ?element2 ?element2))
@@ -342,24 +369,11 @@
             )
   )
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;   (:derived (Connected ?element)
-;;    (or (GroundContactElement ?element)
-;;        (exists (?ei) (and
-;;                           (Element ?ei)
-;;                           (Joint ?ei ?element)
-;;                           (Assembled ?ei)
-;;                           (Connected ?ei)
-;;                      )
-;;        )
-;;    )
-;;   )
 
   (:derived (JointMade ?e1 ?e2)
-    (imply (Joint ?e1 ?e2)
-           (and (Assembled ?e1) (Assembled ?e2))
-    )
+        (and (Joint ?e1 ?e2) (Assembled ?e1) (Assembled ?e2))
   )
 
   (:derived (AllScrewDriversNotOccupied)
@@ -389,7 +403,8 @@
        )
     )
   )
-)
+
+) ; end domain
 
 
   ; ! workaround for a bug in the adaptive algorithm
@@ -397,3 +412,14 @@
   ;;     (or (Clamp ?tool) (ScrewDriver ?tool))
   ;; )
 
+;;   (:derived (Connected ?element)
+;;    (or (GroundContactElement ?element)
+;;        (exists (?ei) (and
+;;                           (Element ?ei)
+;;                           (Joint ?ei ?element)
+;;                           (Assembled ?ei)
+;;                           (Connected ?ei)
+;;                      )
+;;        )
+;;    )
+;;   )

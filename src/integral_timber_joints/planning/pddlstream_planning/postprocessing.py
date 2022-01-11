@@ -1,4 +1,3 @@
-from functools import partial
 from termcolor import cprint, colored
 from copy import copy
 
@@ -73,7 +72,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
         itj_act = None
         if pddl_action.name == 'pick_beam_with_gripper':
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[1]
+            gripper_id = pddl_action.args[2]
             gripper = process.gripper(gripper_id)
             # * double-check tool type consistency
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
@@ -85,7 +84,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
             pddl_action.name == 'beam_placement_without_clamp' or \
             pddl_action.name == 'assemble_beam_with_screwdrivers':
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[2]
+            gripper_id = pddl_action.args[3]
             gripper = process.gripper(gripper_id)
             # * double-check tool type consistency
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
@@ -104,7 +103,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
 
         elif pddl_action.name == 'retract_gripper_from_beam':
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[1]
+            gripper_id = pddl_action.args[2]
             itj_act = RetractGripperFromBeamAction(beam_id=beam_id, gripper_id=gripper_id)
 
         elif pddl_action.name == 'operator_load_beam':
@@ -117,7 +116,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
 
         elif pddl_action.name == 'operator_attach_screwdriver':
             tool_id = pddl_action.args[0]
-            joint_id = (pddl_action.args[1], pddl_action.args[2])
+            joint_id = (pddl_action.args[2], pddl_action.args[3])
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             # * double-check tool type consistency
             screwdriver = process.screwdriver(tool_id)
@@ -159,7 +158,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
         elif pddl_action.name == 'place_clamp_to_structure':
             clamp_id = pddl_action.args[0]
             clamp = process.clamp(clamp_id)
-            joint_id = (pddl_action.args[1], pddl_action.args[2])
+            joint_id = (pddl_action.args[-2], pddl_action.args[-1])
             # ! convention: sequence id smaller first
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             # * double-check clamp type consistency
@@ -173,7 +172,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
         elif pddl_action.name == 'pick_clamp_from_structure':
             clamp_id = pddl_action.args[0]
             clamp = process.clamp(clamp_id)
-            joint_id = (pddl_action.args[1], pddl_action.args[2])
+            joint_id = (pddl_action.args[-2], pddl_action.args[-1])
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             itj_act = PickClampFromStructureAction(joint_id=joint_id, tool_type=clamp.type_name, tool_id=clamp_id)
 
@@ -187,7 +186,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
         elif pddl_action.name == 'retract_screwdriver_from_beam':
             tool_id = pddl_action.args[0]
             screwdriver = process.screwdriver(tool_id)
-            joint_id = (pddl_action.args[1], pddl_action.args[2])
+            joint_id = (pddl_action.args[-2], pddl_action.args[-1])
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             itj_act = RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=joint_id, tool_id=tool_id)
         else:
