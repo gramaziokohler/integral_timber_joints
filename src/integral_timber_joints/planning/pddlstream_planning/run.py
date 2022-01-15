@@ -24,7 +24,7 @@ def main():
     # * Problem info
     parser.add_argument('--design_dir', default='210916_SymbolicPlanning', # 211010_CantiBox, 210128_RemodelFredPavilion
                         help='problem json\'s containing folder\'s name.')
-    parser.add_argument('--problem', default='nine_pieces_process.json', # CantiBoxLeft_10pcs_process.json, CantiBoxLeft_process.json, pavilion_process.json
+    parser.add_argument('--problem', default='CantiBoxLeft_10pcs_process.json', # 'nine_pieces_process.json', # CantiBoxLeft_10pcs_process.json, CantiBoxLeft_process.json, pavilion_process.json
                         help='The name of the problem to solve (json file\'s name, e.g. "nine_pieces_process.json")')
     parser.add_argument('--problem_subdir', default='.',
                         help='subdir of the process file, default to `.`. Popular use: `results`')

@@ -116,7 +116,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
 
         elif pddl_action.name == 'operator_attach_screwdriver':
             tool_id = pddl_action.args[0]
-            joint_id = (pddl_action.args[2], pddl_action.args[3])
+            joint_id = (pddl_action.args[-3], pddl_action.args[-2])
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             # * double-check tool type consistency
             screwdriver = process.screwdriver(tool_id)
@@ -190,7 +190,8 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             itj_act = RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=joint_id, tool_id=tool_id)
         else:
-            raise ValueError(pddl_action.name)
+            # raise ValueError(pddl_action.name)
+            pass
 
         assert itj_act is not None, 'Action creation failed for {}'.format(pddl_action.name)
         itj_act = action_compute_movements(process, itj_act)

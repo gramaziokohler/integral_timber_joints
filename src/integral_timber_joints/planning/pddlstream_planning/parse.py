@@ -11,6 +11,7 @@ from integral_timber_joints.planning.utils import beam_ids_from_argparse_seq_n
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement, RobotScrewdriverSyncLinearMovement
 
+from compas.geometry import Transformation, Frame
 from compas_fab_pychoreo.client import PyChoreoClient
 
 from pddlstream.utils import read
@@ -80,9 +81,7 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                 ('Element', e),
                 #
                 ('RackPose', e, f_world_from_beam_pickup),
-                # ('Pose', e, f_world_from_beam_pickup),
                 ('ElementGoalPose', e, f_world_from_beam_final),
-                # ('Pose', e, f_world_from_beam_final),
                 ('Grasp', e, flange_from_beam),
                 ])
             init.append((e_data['assembly_method']+'Element', e))
@@ -114,7 +113,6 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
             ('ToolNotOccupiedOnJoint', c_name),
             #
             ('RackPose', c_name, tool_storage_frame),
-            # ('Pose', c_name, tool_storage_frame),
             ('AtPose', c_name, tool_storage_frame),
             ('Grasp', c_name, clamp_grasp),
         ])
@@ -132,7 +130,6 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                 ('ToolNotOccupiedOnJoint', sd_name),
                 #
                 ('RackPose', sd_name, tool_storage_frame),
-                # ('Pose', sd_name, tool_storage_frame),
                 ('AtPose', sd_name, tool_storage_frame),
                 ('Grasp', sd_name, sd_grasp),
             ])
@@ -149,19 +146,25 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                 init.extend([
                     ('JointToolTypeMatch', j[0], j[1], c_name),
                     #
-                    # ('Pose', c_name, clamp_wcf_final),
-                    ('ClampPose', c_name, clamp_wcf_final),
-                    # ('JointPose', j[0], j[1], clamp_wcf_final),
+                    ('ClampPose', c_name, j[0], j[1], clamp_wcf_final),
                 ])
                 clamp_from_joint[j[0]+','+j[1]].add(c_name)
         if 'screwdrivers' in process_symdata:
             for sd_name, sd in process_symdata['screwdrivers'].items():
                 if sd['type_name'] == joint_clamp_type:
+                    # trigger gripper frame update
+                    process.get_gripper_t0cp_for_beam_at(j[1], 'assembly_wcf_final')
+                    f_world_screwdriver_base = process.get_tool_t0cf_at(j, 'screwdriver_assembled_attached')
+                    f_world_gripper_base = process.get_gripper_of_beam(j[1], 'assembly_wcf_final').current_frame
+                    t_gripper_base_from_world = Transformation.from_frame(f_world_gripper_base).inverse()
+                    f_world_screwdriver_base = process.assembly.get_joint_attribute(j, 'screwdriver_assembled_attached')
+                    t_t0cf_from_sd_base = toolchanger.t_t0cf_from_tcf * t_gripper_base_from_world * Transformation.from_frame(f_world_screwdriver_base)
+
                     init.extend([
                         ('JointToolTypeMatch', j[0], j[1], sd_name),
-                        # #
-                        # ('Pose', c_name, clamp_wcf_final),
-                        # ('ScrewDriverPose', c_name, clamp_wcf_final),
+                        #
+                        ('ScrewDriverPose', sd_name, j[0], j[1], f_world_screwdriver_base),
+                        ('GraspViaBeam', sd_name, j[1], t_t0cf_from_sd_base),
                     ])
                     screwdriver_from_joint[j[0]+','+j[1]].add(sd_name)
 

@@ -21,13 +21,12 @@
     (Tool ?tool)
 
     ; * pose and tags
-    ;; (Pose ?object ?pose)
-    (Grasp ?object ?grasp_pose) ; gripper_from_object
+    (Grasp ?object ?grasp_pose) ; toolchanger_from_object
+    (GraspViaBeam ?object ?element ?grasp_pose) ; toolchanger_from_object
 
     (RackPose ?object ?pose)
-    (ClampPose ?clamp ?pose)
-    (ScrewDriverPose ?sd ?pose)
-    ;; (JointPose ?e1 ?e2 ?pose)
+    (ClampPose ?clamp ?e1 ?e2 ?pose) ; mounted on e1, e1 assembled
+    (ScrewDriverPose ?sd ?e1 ?e2 ?pose) ; mounted on e2, e1 assembled
     (ElementGoalPose ?element ?pose)
 
     ; * static predicates but will be sampled by stream functions
@@ -101,8 +100,6 @@
     :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp) ; ?action)
     :precondition (and
                     (Gripper ?tool)
-                    ;; (Grasp ?tool ?tool_grasp)
-                    ;; (Grasp ?element ?e_grasp)
                     (Attached ?tool ?tool_grasp)
                     (Attached ?element ?e_grasp)
                     (ClampedElement ?element)
@@ -157,9 +154,40 @@
                     ; ! sampled
                     )
     :effect (and (Assembled ?element)
-                 (NeedGripperRetraction)
                  (AtPose ?element ?e_pose)
-                 ; TODO attached screwdrivers at pose?
+                 (NeedGripperRetraction)
+                 ;;    (Attached ?sd_tool ?sd_grasp)
+                 (forall (?sd_tool ?sd_pose ?e_prev)
+                    (when (and
+                               (ScrewDriver ?sd_tool)
+                               (ToolAtJoint ?sd_tool ?e_prev ?element ?element)
+                               (ScrewDriverPose ?sd_tool ?e_prev ?element ?sd_pose)
+                          )
+                          (and
+                               (AtPose ?sd_tool ?sd_pose)
+                          )
+                    )
+                 )
+                ;; (GraspViaBeam ?sd_tool ?element ?sd_grasp)
+                ;; (not (Attached ?sd_tool ?sd_grasp))
+                ;; (ToolAtJoint ?sd_tool ?element1 ?element ?element)
+                 ; TODO attached screwdrivers not attached
+            )
+  )
+
+;;   ; helper action that deals with variable-number of screwdrivers to be "AtPose"d and un-"Attached"
+  (:action _screw_driver_placed_with_beam
+    :parameters (?tool ?tool_pose ?tool_grasp ?element1 ?element2)
+    :precondition (and (ScrewDriver ?tool)
+                       (ToolAtJoint ?tool ?element1 ?element2 ?element2)
+                       (Assembled ?element2)
+                       (ScrewDriverPose ?tool ?element1 ?element2 ?tool_pose)
+                       (Attached ?tool ?tool_grasp)
+                       (GraspViaBeam ?tool ?element2 ?tool_grasp)
+                )
+    :effect (and
+                (AtPose ?tool ?tool_pose)
+                (not (Attached ?tool ?tool_grasp))
             )
   )
 
@@ -170,6 +198,7 @@
                     (Attached ?tool ?tool_grasp)
                     (Attached ?element ?e_grasp)
                     (Assembled ?element)
+                    ;; (imply (ScrewedWithGripperElement ?element) (forall (?e) ?element))
                     (NeedGripperRetraction)
                     (forall (?scaffold) (imply (AssociatedScaffold ?element ?scaffold) (Assembled ?scaffold)))
                   )
@@ -209,7 +238,7 @@
 
   ; TODO haven't model screwdrivers that act like grippers yet!
   (:action operator_attach_screwdriver
-    :parameters (?tool ?tool_pose ?element1 ?element2 ?e_grasp)
+    :parameters (?tool ?tool_pose ?tool_grasp ?element1 ?element2 ?e_grasp)
     :precondition (and
                     (Attached ?element2 ?e_grasp)
                     (Assembled ?element1)
@@ -219,6 +248,7 @@
                     (AtPose ?tool ?tool_pose)
                     (JointToolTypeMatch ?element1 ?element2 ?tool)
                     (ToolNotOccupiedOnJoint ?tool)
+                    (GraspViaBeam ?tool ?element2 ?tool_grasp)
                     (not (JointOccupiedByTool ?element1 ?element2 ?element2))
                     ; ! switch for cutting down meaningless clamp placements
                     (not (JointMade ?element1 ?element2))
@@ -227,12 +257,12 @@
     :effect (and
                  ; ! tool status
                  (ToolAtJoint ?tool ?element1 ?element2 ?element2)
+                 (Attached ?tool ?tool_grasp)
                  (JointOccupiedByTool ?element1 ?element2 ?element2)
                  (not (ToolNotOccupiedOnJoint ?tool))
                  (not (AtRack ?tool))
                  (not (AtPose ?tool ?tool_pose))
                 ;; TODO screwdriver attached to robot?
-                ;; (Attached ?tool ?tool_grasp)
                 ;;  (ToolAssignedToJoint ?element1 ?element2 ?tool)
             )
   )
@@ -259,6 +289,7 @@
   (:action place_tool_at_rack
     :parameters (?tool ?pose ?grasp)
     :precondition (and
+                    (Grasp ?tool ?grasp)
                     (Attached ?tool ?grasp)
                     (Tool ?tool)
                     (RackPose ?tool ?pose)
@@ -280,12 +311,10 @@
     :precondition (and
                     (Clamp ?tool)
                     (Attached ?tool ?grasp)
-                    (ClampPose ?tool ?pose)
+                    (ClampPose ?tool ?element1 ?element2 ?pose)
+                    (JointToolTypeMatch ?element1 ?element2 ?tool)
                     (Joint ?element1 ?element2)
                     (ToolNotOccupiedOnJoint ?tool)
-                    (JointToolTypeMatch ?element1 ?element2 ?tool)
-                    ;; ? (or (Assembled ?element1) (Assembled ?element2))
-                    ;; ! (EitherAssembled ?element1 ?element2)
                     (Assembled ?element1)
                     (not (JointOccupiedByTool ?element1 ?element2 ?element1))
                     ; ! switch for cutting down meaningless clamp placements
@@ -296,7 +325,6 @@
     :effect (and (not (Attached ?tool ?grasp))
                  (AtPose ?tool ?pose)
                  (RobotToolChangerEmpty)
-                ;;  (JointMade ?element1 ?element2)
                  ; ! tool status
                  (ToolAtJoint ?tool ?element1 ?element2 ?element1)
                  (JointOccupiedByTool ?element1 ?element2 ?element1)
@@ -311,7 +339,7 @@
                     (AllScrewDriversNotOccupied)
                     (RobotToolChangerEmpty)
                     (Clamp ?tool)
-                    (ClampPose ?tool ?pose)
+                    (ClampPose ?tool ?element1 ?element2 ?pose)
                     (AtPose ?tool ?pose)
                     (Grasp ?tool ?grasp)
                     (ToolAtJoint ?tool ?element1 ?element2 ?element1)
@@ -346,12 +374,12 @@
   )
 
   (:action retract_screwdriver_from_beam
-    :parameters (?tool ?grasp ?element1 ?element2)
+    :parameters (?tool ?pose ?grasp ?element1 ?element2)
     :precondition (and
                     (NeedScrewDriverRetraction)
                     (ScrewDriver ?tool)
-                    ;; (ScrewDriverPose ?tool ?pose)
-                    ;; (AtPose ?tool ?pose)
+                    (ScrewDriverPose ?tool ?element1 ?element2 ?pose)
+                    (AtPose ?tool ?pose)
                     (Grasp ?tool ?grasp)
                     (ToolAtJoint ?tool ?element1 ?element2 ?element2)
                     (JointOccupiedByTool ?element1 ?element2 ?element2)
@@ -361,7 +389,7 @@
     :effect (and
                  (not (NeedScrewDriverRetraction))
                  (Attached ?tool ?grasp)
-                 ;; (not (AtPose ?tool ?pose))
+                 (not (AtPose ?tool ?pose))
                  ; ! tool status
                  (ToolNotOccupiedOnJoint ?tool)
                  (not (ToolAtJoint ?tool ?element1 ?element2 ?element2))
@@ -371,6 +399,14 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;   (:derived (AllScrewDriverDetached)
+;;     (and (ScrewDriver ?tool)
+;;          (ToolAtJoint ?tool ?element1 ?element2 ?element2)
+;;          (Assembled ?element2)
+;;          (ScrewDriverPose ?tool ?element1 ?element2 ?tool_pose)
+;;          (AtPose ?tool ?tool_pose)
+;;     )
+;;   )
 
   (:derived (JointMade ?e1 ?e2)
         (and (Joint ?e1 ?e2) (Assembled ?e1) (Assembled ?e2))
@@ -405,7 +441,6 @@
   )
 
 ) ; end domain
-
 
   ; ! workaround for a bug in the adaptive algorithm
   ;; (:derived (ClampOrScrewDriver ?tool)
