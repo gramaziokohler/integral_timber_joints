@@ -42,6 +42,8 @@
     (RobotGripperEmpty)
     (AtPose ?object ?pose)
 
+    (OnStructure ?screwdriver)
+
     (ElementRackOccupied)
     (NeedGripperRetraction)
     (NeedScrewDriverRetraction)
@@ -58,7 +60,14 @@
 
     ;; * derived
     (JointMade ?e1 ?e2)
-    (AllScrewDriversNotOccupied)
+    ; switch to force all screwdrivers to return to rack right after a ScrewedElement is placed
+    ;; (AllScrewDriversNotOccupied)
+    (ExistScrewDriversOccupied)
+    ;; (AllScrewDriverAtPose ?e)
+    (ExistScrewDriverNotAtPose ?e)
+
+    ; TODO trick to simplify the construction sequence
+    ;; (PreviousElementAssembled ?element)
 
     (ExistNoClampAtOneAssembledJoints ?element)
     (ExistNoScrewDriverAtOneAssembledJoints ?element)
@@ -71,7 +80,7 @@
   (:action pick_beam_with_gripper
     :parameters (?element ?e_grasp ?tool ?tool_grasp ?action)
     :precondition (and
-                    (AllScrewDriversNotOccupied)
+                    (not (ExistScrewDriversOccupied))
                     (ElementRackOccupied)
                     (Gripper ?tool)
                     (GripperToolTypeMatch ?element ?tool)
@@ -147,7 +156,7 @@
                     (Attached ?element ?e_grasp)
                     (ScrewedWithGripperElement ?element)
                     (ElementGoalPose ?element ?e_pose)
-                    ; ! tool state
+                    ; ! tool state, equilavent to AllScrewDriverAtAssembledJoints
                     (not (ExistNoScrewDriverAtOneAssembledJoints ?element))
                     ; ! e2 must be assembled before e encoded in the given partial ordering
                     (forall (?ei) (imply (Order ?ei ?element) (Assembled ?ei)))
@@ -157,25 +166,13 @@
                  (AtPose ?element ?e_pose)
                  (NeedGripperRetraction)
                  ;;    (Attached ?sd_tool ?sd_grasp)
-                 (forall (?sd_tool ?sd_pose ?e_prev)
-                    (when (and
-                               (ScrewDriver ?sd_tool)
-                               (ToolAtJoint ?sd_tool ?e_prev ?element ?element)
-                               (ScrewDriverPose ?sd_tool ?e_prev ?element ?sd_pose)
-                          )
-                          (and
-                               (AtPose ?sd_tool ?sd_pose)
-                          )
-                    )
-                 )
-                ;; (GraspViaBeam ?sd_tool ?element ?sd_grasp)
                 ;; (not (Attached ?sd_tool ?sd_grasp))
                 ;; (ToolAtJoint ?sd_tool ?element1 ?element ?element)
                  ; TODO attached screwdrivers not attached
             )
   )
 
-;;   ; helper action that deals with variable-number of screwdrivers to be "AtPose"d and un-"Attached"
+  ; helper action that deals with variable-number of screwdrivers to be "AtPose"d and un-"Attached"
   (:action _screw_driver_placed_with_beam
     :parameters (?tool ?tool_pose ?tool_grasp ?element1 ?element2)
     :precondition (and (ScrewDriver ?tool)
@@ -184,10 +181,12 @@
                        (ScrewDriverPose ?tool ?element1 ?element2 ?tool_pose)
                        (Attached ?tool ?tool_grasp)
                        (GraspViaBeam ?tool ?element2 ?tool_grasp)
+                       (not (OnStructure ?tool))
                 )
     :effect (and
                 (AtPose ?tool ?tool_pose)
                 (not (Attached ?tool ?tool_grasp))
+                (OnStructure ?tool)
             )
   )
 
@@ -198,7 +197,9 @@
                     (Attached ?tool ?tool_grasp)
                     (Attached ?element ?e_grasp)
                     (Assembled ?element)
-                    ;; (imply (ScrewedWithGripperElement ?element) (forall (?e) ?element))
+                    ; ! enforce all screwdrivers to be 'AtPose'd before doing anything else
+                    ;; (imply (ScrewedWithGripperElement ?element) (AllScrewDriverAtPose ?element))
+                    (imply (ScrewedWithGripperElement ?element) (not (ExistScrewDriverNotAtPose ?element)))
                     (NeedGripperRetraction)
                     (forall (?scaffold) (imply (AssociatedScaffold ?element ?scaffold) (Assembled ?scaffold)))
                   )
@@ -238,9 +239,9 @@
 
   ; TODO haven't model screwdrivers that act like grippers yet!
   (:action operator_attach_screwdriver
-    :parameters (?tool ?tool_pose ?tool_grasp ?element1 ?element2 ?e_grasp)
+    :parameters (?tool ?tool_pose ?tool_grasp ?element1 ?element2 ?e2_grasp)
     :precondition (and
-                    (Attached ?element2 ?e_grasp)
+                    (Attached ?element2 ?e2_grasp)
                     (Assembled ?element1)
                     (ScrewDriver ?tool)
                     (AtRack ?tool)
@@ -262,7 +263,6 @@
                  (not (ToolNotOccupiedOnJoint ?tool))
                  (not (AtRack ?tool))
                  (not (AtPose ?tool ?tool_pose))
-                ;; TODO screwdriver attached to robot?
                 ;;  (ToolAssignedToJoint ?element1 ?element2 ?tool)
             )
   )
@@ -336,7 +336,8 @@
   (:action pick_clamp_from_structure
     :parameters (?tool ?pose ?grasp ?element1 ?element2)
     :precondition (and
-                    (AllScrewDriversNotOccupied)
+                    ;; (AllScrewDriversNotOccupied)
+                    (not (ExistScrewDriversOccupied))
                     (RobotToolChangerEmpty)
                     (Clamp ?tool)
                     (ClampPose ?tool ?element1 ?element2 ?pose)
@@ -390,6 +391,7 @@
                  (not (NeedScrewDriverRetraction))
                  (Attached ?tool ?grasp)
                  (not (AtPose ?tool ?pose))
+                 (not (OnStructure ?tool))
                  ; ! tool status
                  (ToolNotOccupiedOnJoint ?tool)
                  (not (ToolAtJoint ?tool ?element1 ?element2 ?element2))
@@ -399,12 +401,32 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;   (:derived (AllScrewDriverDetached)
-;;     (and (ScrewDriver ?tool)
-;;          (ToolAtJoint ?tool ?element1 ?element2 ?element2)
-;;          (Assembled ?element2)
-;;          (ScrewDriverPose ?tool ?element1 ?element2 ?tool_pose)
-;;          (AtPose ?tool ?tool_pose)
+  (:derived (ExistScrewDriverNotAtPose ?e2)
+    (and
+        (ScrewedWithGripperElement ?e2)
+        (Assembled ?e2)
+        (exists (?sd_tool ?e1)
+           (and
+                (ScrewDriver ?sd_tool)
+                (ToolAtJoint ?sd_tool ?e1 ?e2 ?e2)
+                (not (OnStructure ?sd_tool))
+           )
+        )
+    )
+  )
+
+;;   (:derived (AllScrewDriverAtPose ?e2)
+;;     (and
+;;         (ScrewedWithGripperElement ?e2)
+;;         (Assembled ?e2)
+;;         (forall (?sd_tool ?e1)
+;;            (imply
+;;                 ((ScrewDriver ?sd_tool)
+;;                  (ToolAtJoint ?sd_tool ?e1 ?e2 ?e2)
+;;                 )
+;;                 (OnStructure ?sd_tool)
+;;            )
+;;         )
 ;;     )
 ;;   )
 
@@ -412,12 +434,19 @@
         (and (Joint ?e1 ?e2) (Assembled ?e1) (Assembled ?e2))
   )
 
-  (:derived (AllScrewDriversNotOccupied)
-       (forall (?tool) (imply (ScrewDriver ?tool)
-                              (ToolNotOccupiedOnJoint ?tool)
+  (:derived (ExistScrewDriversOccupied)
+       (exists (?tool) (and (ScrewDriver ?tool)
+                            (not (ToolNotOccupiedOnJoint ?tool))
                        )
        )
   )
+
+;;   (:derived (AllScrewDriversNotOccupied)
+;;        (forall (?tool) (imply (ScrewDriver ?tool)
+;;                          ;;   (ToolNotOccupiedOnJoint ?tool)
+;;                        )
+;;        )
+;;   )
 
   ; * if there is a joint between the current element and an **assembled** element, the clamp must be there
   (:derived (ExistNoClampAtOneAssembledJoints ?element)

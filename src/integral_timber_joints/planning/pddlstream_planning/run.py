@@ -31,6 +31,7 @@ def main():
     # * PDDLStream configs
     parser.add_argument('--nofluents', action='store_true', help='Not use fluent facts in stream definitions.')
     parser.add_argument('--algorithm', default='incremental', help='PDDLSteam planning algorithm.')
+    parser.add_argument('--symbolics', action='store_true', help='Use the symbolic-only PDDL formulation.')
     # ! pyplanner config
     parser.add_argument('--pp_h', default='ff', help='pyplanner heuristic configuration.')
     parser.add_argument('--pp_search', default='eager', help='pyplanner search configuration.')
@@ -64,7 +65,7 @@ def main():
     # * PDDLStream problem conversion and planning
     cprint('Using {} backend.'.format('pyplanner' if not args.nofluents else 'downward'), 'cyan')
     pddlstream_problem = get_pddlstream_problem(client, process, robot,
-        debug=True, reset_to_home=True, use_fluents=not args.nofluents, seq_n=args.seq_n)[0]
+        debug=True, reset_to_home=True, use_fluents=not args.nofluents, seq_n=args.seq_n, symbolic_only=args.symbolics)[0]
 
     if args.debug:
         print_pddl_task_object_names(pddlstream_problem)

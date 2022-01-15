@@ -27,16 +27,16 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
         use_fluents=True, symbolic_only=False, options=None):
     """Convert a Process instance into a PDDLStream formulation
     """
-    if symbolic_only:
-        raise DeprecationWarning()
-        domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'domain.pddl'))
-        stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'stream.pddl'))
+    # if symbolic_only:
+    #     raise DeprecationWarning()
+    #     domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'domain.pddl'))
+    #     stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'stream.pddl'))
+    # else:
+    domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'domain.pddl'))
+    if not use_fluents:
+        stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'stream.pddl'))
     else:
-        domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'domain.pddl'))
-        if not use_fluents:
-            stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'stream.pddl'))
-        else:
-            stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'stream_fluents.pddl'))
+        stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'stream_fluents.pddl'))
 
     process_symdata = process.to_symbolic_problem_data()
 
@@ -61,7 +61,10 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
         e_data = process_symdata['assembly']['sequence'][i]
         assert e_data['beam_id'] == e
         assert e_data['assembly_method'] != 'UNDEFINED'
-        f_world_from_beam_final = process.assembly.get_beam_attribute(e, 'assembly_wcf_final')
+        if symbolic_only:
+            f_world_from_beam_final = None
+        else:
+            f_world_from_beam_final = process.assembly.get_beam_attribute(e, 'assembly_wcf_final')
 
         if e_data['assembly_method'] == 'ManualAssembly':
             init.extend([
@@ -69,13 +72,17 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                 ('ElementGoalPose', e, f_world_from_beam_final),
                 ])
         else:
-            f_world_from_beam_pickup = process.assembly.get_beam_attribute(e, 'assembly_wcf_pickup')
-            # * get beam grasp
-            # ? different gripper might have different grasp for a beam?
-            t_gripper_tcf_from_beam = process.assembly.get_t_gripper_tcf_from_beam(e)
-            beam_gripper_id = process.assembly.get_beam_attribute(e, "gripper_id")
-            beam_gripper = process.tool(beam_gripper_id)
-            flange_from_beam = flange_from_toolchanger_base * beam_gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+            if symbolic_only:
+                f_world_from_beam_pickup = None
+                flange_from_beam = None
+            else:
+                f_world_from_beam_pickup = process.assembly.get_beam_attribute(e, 'assembly_wcf_pickup')
+                # * get beam grasp
+                # ? different gripper might have different grasp for a beam?
+                t_gripper_tcf_from_beam = process.assembly.get_t_gripper_tcf_from_beam(e)
+                beam_gripper_id = process.assembly.get_beam_attribute(e, "gripper_id")
+                beam_gripper = process.tool(beam_gripper_id)
+                flange_from_beam = flange_from_toolchanger_base * beam_gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
 
             init.extend([
                 ('Element', e),
@@ -104,8 +111,12 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
     # * Clamps
     for c_name in process_symdata['clamps']:
         c = process.clamp(c_name)
-        tool_storage_frame = c.tool_storage_frame
-        clamp_grasp = toolchanger.t_t0cf_from_tcf
+        if symbolic_only:
+            tool_storage_frame = None
+            clamp_grasp = None
+        else:
+            tool_storage_frame = c.tool_storage_frame
+            clamp_grasp = toolchanger.t_t0cf_from_tcf
         init.extend([
             ('Clamp', c_name),
             ('Tool', c_name),
@@ -121,8 +132,12 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
     if 'screwdrivers' in process_symdata:
         for sd_name in process_symdata['screwdrivers']:
             sd = process.screwdriver(sd_name)
-            tool_storage_frame = c.tool_storage_frame
-            sd_grasp = toolchanger.t_t0cf_from_tcf
+            if symbolic_only:
+                tool_storage_frame = None
+                sd_grasp = None
+            else:
+                tool_storage_frame = c.tool_storage_frame
+                sd_grasp = toolchanger.t_t0cf_from_tcf
             init.extend([
                 ('ScrewDriver', sd_name),
                 ('Tool', sd_name),
@@ -142,7 +157,10 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
         joint_clamp_type = j_data['tool_type']
         for c_name, c in process_symdata['clamps'].items():
             if c['type_name'] == joint_clamp_type:
-                clamp_wcf_final = process.get_tool_t0cf_at(j, 'clamp_wcf_final')
+                if symbolic_only:
+                    clamp_wcf_final = None
+                else:
+                    clamp_wcf_final = process.get_tool_t0cf_at(j, 'clamp_wcf_final')
                 init.extend([
                     ('JointToolTypeMatch', j[0], j[1], c_name),
                     #
@@ -157,8 +175,13 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                     f_world_screwdriver_base = process.get_tool_t0cf_at(j, 'screwdriver_assembled_attached')
                     f_world_gripper_base = process.get_gripper_of_beam(j[1], 'assembly_wcf_final').current_frame
                     t_gripper_base_from_world = Transformation.from_frame(f_world_gripper_base).inverse()
-                    f_world_screwdriver_base = process.assembly.get_joint_attribute(j, 'screwdriver_assembled_attached')
-                    t_t0cf_from_sd_base = toolchanger.t_t0cf_from_tcf * t_gripper_base_from_world * Transformation.from_frame(f_world_screwdriver_base)
+
+                    if symbolic_only:
+                        f_world_screwdriver_base = None
+                        t_t0cf_from_sd_base = None
+                    else:
+                        f_world_screwdriver_base = process.assembly.get_joint_attribute(j, 'screwdriver_assembled_attached')
+                        t_t0cf_from_sd_base = toolchanger.t_t0cf_from_tcf * t_gripper_base_from_world * Transformation.from_frame(f_world_screwdriver_base)
 
                     init.extend([
                         ('JointToolTypeMatch', j[0], j[1], sd_name),
@@ -171,8 +194,12 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
     # * Grippers
     for g_name in process_symdata['grippers']:
         g = process.gripper(g_name)
-        tool_storage_frame = g.tool_storage_frame
-        gripper_grasp = toolchanger.t_t0cf_from_tcf
+        if symbolic_only:
+            tool_storage_frame = None
+            gripper_grasp = None
+        else:
+            tool_storage_frame = g.tool_storage_frame
+            gripper_grasp = toolchanger.t_t0cf_from_tcf
         init.extend([
             ('Gripper', g_name),
             ('Tool', g_name),
