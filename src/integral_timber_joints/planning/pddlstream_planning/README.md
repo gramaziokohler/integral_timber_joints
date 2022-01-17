@@ -14,6 +14,8 @@
 
 ## Logs
 
+`operator_attach_screwdriver`'s `(Attached ?tool ?tool_grasp)` effect is giving the search a hard time.
+
 ### pyplanners
 
 ## ff-Eager

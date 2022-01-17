@@ -65,7 +65,7 @@ def main():
     # * PDDLStream problem conversion and planning
     cprint('Using {} backend.'.format('pyplanner' if not args.nofluents else 'downward'), 'cyan')
     pddlstream_problem = get_pddlstream_problem(client, process, robot,
-        debug=True, reset_to_home=True, use_fluents=not args.nofluents, seq_n=args.seq_n, symbolic_only=args.symbolics)[0]
+        debug=True, reset_to_home=0, use_fluents=not args.nofluents, seq_n=args.seq_n, symbolic_only=args.symbolics)[0]
 
     if args.debug:
         print_pddl_task_object_names(pddlstream_problem)
@@ -85,7 +85,8 @@ def main():
 
     set_cost_scale(1)
     # effort_weight = 1. / get_cost_scale()
-    with Profiler(num=25):
+    # with Profiler(num=25):
+    if True:
         solution = solve(pddlstream_problem, algorithm=args.algorithm,
                          max_time=INF,
                          unit_costs=True,

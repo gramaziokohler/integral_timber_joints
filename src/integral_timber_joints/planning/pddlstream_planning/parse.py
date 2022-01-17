@@ -95,6 +95,8 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
             for sf in e_data['associated_scaffolds']:
                 init.append(('AssociatedScaffold', e, sf))
 
+    init.append(('FirstElement', beam_seq[0]))
+
     joints_data = [j_data for j_data in process_symdata['assembly']['joints'] if j_data['joint_id'][0] in beam_seq and \
             j_data['joint_id'][1] in beam_seq]
     for j_data in joints_data:
