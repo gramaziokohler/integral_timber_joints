@@ -68,7 +68,7 @@
     ;; (AllScrewDriversNotOccupied)
     (ExistScrewDriversOccupied)
     ;; (AllScrewDriverAtPose ?e)
-    (ExistScrewDriverNotAtPose ?e)
+    ;; (ExistScrewDriverNotAtPose ?e)
     (ExistScaffoldNotAssembled ?element)
     (PrevAssembled ?element)
 
@@ -181,23 +181,23 @@
   )
 
   ; helper action that deals with variable-number of screwdrivers to be "AtPose"d and un-"Attached"
-  (:action _screw_driver_placed_with_beam
-    :parameters (?tool ?tool_pose ?tool_grasp ?element1 ?element2)
-    :precondition (and (ScrewDriver ?tool)
-                       (ToolAtJoint ?tool ?element1 ?element2 ?element2)
-                       (Assembled ?element2)
-                       (ScrewDriverPose ?tool ?element1 ?element2 ?tool_pose)
-                       (Attached ?tool ?tool_grasp)
-                       (GraspViaBeam ?tool ?element2 ?tool_grasp)
-                       (not (OnStructure ?tool))
-                       (CanAtPoseScrewDriver)
-                )
-    :effect (and
-                (AtPose ?tool ?tool_pose)
-                (not (Attached ?tool ?tool_grasp))
-                (OnStructure ?tool)
-            )
-  )
+;;   (:action _screw_driver_placed_with_beam
+;;     :parameters (?tool ?tool_pose ?tool_grasp ?element1 ?element2)
+;;     :precondition (and (ScrewDriver ?tool)
+;;                        (ToolAtJoint ?tool ?element1 ?element2 ?element2)
+;;                        (Assembled ?element2)
+;;                        (ScrewDriverPose ?tool ?element1 ?element2 ?tool_pose)
+;;                        (Attached ?tool ?tool_grasp)
+;;                        (GraspViaBeam ?tool ?element2 ?tool_grasp)
+;;                        (not (OnStructure ?tool))
+;;                        (CanAtPoseScrewDriver)
+;;                 )
+;;     :effect (and
+;;                 (AtPose ?tool ?tool_pose)
+;;                 (not (Attached ?tool ?tool_grasp))
+;;                 (OnStructure ?tool)
+;;             )
+;;   )
 
   (:action retract_gripper_from_beam
     :parameters (?element ?e_grasp) ;?tool ?tool_grasp)
@@ -209,7 +209,7 @@
                     (Attached ?element ?e_grasp)
                     ; ! enforce all screwdrivers to be 'AtPose'd before doing anything else
                     ;; (imply (ScrewedWithGripperElement ?element) (AllScrewDriverAtPose ?element))
-                    (imply (ScrewedWithGripperElement ?element) (not (ExistScrewDriverNotAtPose ?element)))
+                    ;; (imply (ScrewedWithGripperElement ?element) (not (ExistScrewDriverNotAtPose ?element)))
                     ;; (forall (?scaffold) (imply (AssociatedScaffold ?element ?scaffold) (Assembled ?scaffold)))
                     (not (ExistScaffoldNotAssembled ?element))
                   )
@@ -248,8 +248,8 @@
     :precondition (and
                     (Scaffold ?scaffold)
                     (NeedGripperRetraction)
-                    (Element ?element)
                     (Attached ?element ?e_grasp)
+                    (Element ?element)
                     (ElementGoalPose ?scaffold ?s_pose)
                     ; ! e2 must be assembled before e encoded in the given partial ordering
                     ;; (forall (?ei) (imply (Order ?ei ?element) (Assembled ?ei)))
@@ -282,12 +282,11 @@
                   )
     :effect (and
                  (ToolAtJoint ?tool ?element1 ?element2 ?element2)
-                 (Attached ?tool ?tool_grasp)
+                ;;  (Attached ?tool ?tool_grasp)
                  (JointOccupiedByTool ?element1 ?element2 ?element2)
                  (not (ToolNotOccupiedOnJoint ?tool))
                  (not (AtRack ?tool))
                  (not (AtPose ?tool ?tool_pose))
-                 (not (CanBackToRack))
                 ;;  (ToolAssignedToJoint ?element1 ?element2 ?tool)
             )
   )
@@ -439,7 +438,7 @@
                     (ScrewedWithGripperElement ?element2)
                     (Assembled ?element1)
                     (Assembled ?element2)
-                    (OnStructure ?tool)
+                    ;; (OnStructure ?tool)
                     ; ! sampled
                   )
     :effect (and
@@ -448,7 +447,7 @@
                  (Attached ?tool ?grasp)
                 ;;  (not (Attached ?tool ?grasp_via_beam))
                 ;;  (not (AtPose ?tool ?pose))
-                 (not (OnStructure ?tool))
+                ;;  (not (OnStructure ?tool))
                  ; ! tool status
                  (ToolNotOccupiedOnJoint ?tool)
                  (not (ToolAtJoint ?tool ?element1 ?element2 ?element2))
@@ -475,20 +474,20 @@
     )
   )
 
-  (:derived (ExistScrewDriverNotAtPose ?e2)
-    (and
-        (ScrewedWithGripperElement ?e2)
-        ;; (Assembled ?e2)
-        (exists (?sd_tool ?e1)
-           (and
-                (ScrewDriver ?sd_tool)
-                (Assembled ?e1)
-                (ToolAtJoint ?sd_tool ?e1 ?e2 ?e2)
-                (not (OnStructure ?sd_tool))
-           )
-        )
-    )
-  )
+;;   (:derived (ExistScrewDriverNotAtPose ?e2)
+;;     (and
+;;         (ScrewedWithGripperElement ?e2)
+;;         ;; (Assembled ?e2)
+;;         (exists (?sd_tool ?e1)
+;;            (and
+;;                 (ScrewDriver ?sd_tool)
+;;                 (Assembled ?e1)
+;;                 (ToolAtJoint ?sd_tool ?e1 ?e2 ?e2)
+;;                 (not (OnStructure ?sd_tool))
+;;            )
+;;         )
+;;     )
+;;   )
 
   (:derived (ExistScrewDriversOccupied)
        (exists (?tool) (and (ScrewDriver ?tool)
