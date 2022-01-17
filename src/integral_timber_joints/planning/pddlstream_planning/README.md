@@ -14,6 +14,9 @@
 
 ## Logs
 
+When not adding `AtRack` to the goal explicitly, the planner can find a decent plan without returning any clamp to the racks at all.
+Thus, we should just manually concatenate `return_clamp_to_rack` actions in the end, according to the final state.
+
 `operator_attach_screwdriver`'s `(Attached ?tool ?tool_grasp)` effect is giving the search a hard time.
 
 ### pyplanners

@@ -148,7 +148,7 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                 #
                 ('RackPose', sd_name, tool_storage_frame),
                 ('AtPose', sd_name, tool_storage_frame),
-                ('Grasp', sd_name, sd_grasp),
+                # ('Grasp', sd_name, sd_grasp),
             ])
 
     # * joint to clamp/scewdriver tool type assignment
@@ -185,12 +185,12 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                         f_world_screwdriver_base = process.assembly.get_joint_attribute(j, 'screwdriver_assembled_attached')
                         t_t0cf_from_sd_base = toolchanger.t_t0cf_from_tcf * t_gripper_base_from_world * Transformation.from_frame(f_world_screwdriver_base)
 
-                    init.extend([
-                        ('JointToolTypeMatch', j[0], j[1], sd_name),
+                    # init.extend([
+                        # ('JointToolTypeMatch', j[0], j[1], sd_name),
                         #
-                        ('ScrewDriverPose', sd_name, j[0], j[1], f_world_screwdriver_base),
-                        ('GraspViaBeam', sd_name, j[1], t_t0cf_from_sd_base),
-                    ])
+                        # ('ScrewDriverPose', sd_name, j[0], j[1], f_world_screwdriver_base),
+                        # ('GraspViaBeam', sd_name, j[1], t_t0cf_from_sd_base),
+                    # ])
                     screwdriver_from_joint[j[0]+','+j[1]].add(sd_name)
 
     # * Grippers

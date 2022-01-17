@@ -7,13 +7,72 @@ from compas.robots.configuration import Configuration
 
 from integral_timber_joints.process.state import ObjectState, SceneState, copy_state_dict
 from integral_timber_joints.planning.parsing import parse_process, save_process, get_process_path
-from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, AssembleBeamWithScrewdriversAction,  RetractGripperFromBeamAction, PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, ManaulAssemblyAction, OperatorAttachScrewdriverAction, DockWithScrewdriverAction, RetractScrewdriverFromBeamAction
+from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, AssembleBeamWithScrewdriversAction,  RetractGripperFromBeamAction, PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, ManaulAssemblyAction, OperatorAttachScrewdriverAction, DockWithScrewdriverAction, RetractScrewdriverFromBeamAction, PickAndRotateBeamForAttachingScrewdriverAction
+
+from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 
 from integral_timber_joints.process.dependency import ComputationalResult
 
 ##############################################
+
+def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=False):
+    assembly = process.assembly
+    actions = []
+    assembly_method = process.assembly.get_assembly_method(beam_id)
+    seq_n = assembly.sequence.index(beam_id)
+
+    # * Lift Beam and Rotate , Operator Attach Screwdriver
+    gripper = process.gripper(gripper_id)
+    gripper_type = gripper.type_name
+    joint_ids = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
+    tool_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
+
+    act = PickAndRotateBeamForAttachingScrewdriverAction(beam_id=beam_id, gripper_id=gripper_id)
+    actions.append(act)
+
+    for joint_id, tool_id in zip(joint_ids, tool_ids):
+        if tool_id == gripper_id:
+            continue  # Skipping the screwdriver that is acting as gripper
+        tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
+        actions.append(OperatorAttachScrewdriverAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id, 'assembly_wcf_screwdriver_attachment_pose'))
+
+    # * Actions to Assemble
+    if assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
+
+        # * Action to Place Beam and Screw it with Screwdriver, not including retract
+        act = AssembleBeamWithScrewdriversAction(beam_id=beam_id, joint_ids=joint_ids, gripper_id=gripper_id, screwdriver_ids=tool_ids)
+        actions.append(act)
+
+        # * Action to Open Gripper and Retract Gripper
+        act = RetractGripperFromBeamAction(beam_id=beam_id, gripper_id=gripper_id, additional_attached_objects=tool_ids)
+        actions.append(act)
+
+        # * Action to Place Gripper back to Storage
+        act = PlaceGripperToStorageAction(tool_type=gripper_type, tool_id=gripper_id)
+        actions.append(act)
+    else:
+        raise NotImplementedError(assembly_method)
+
+    # * Actions to Detach Remaining Screwdriver from the Structure.
+    for joint_id, tool_id in reversed(list(zip(joint_ids, tool_ids))):
+        tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
+
+        # * Action to Dock with Screwdriver at Storage
+        actions.append(DockWithScrewdriverAction(joint_id=joint_id, tool_position='screwdriver_assembled_attached', tool_type=tool_type, tool_id=tool_id))
+
+        # * Action to retract Screwdriver and place it to storage
+        actions.append(RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=joint_id, tool_id=tool_id))
+
+        actions.append(PlaceScrewdriverToStorageAction(tool_type=tool_type, tool_id=tool_id))
+
+    # Print out newly added actions and return
+    if verbose:
+        for act in actions:
+            print('|- ' + act.__str__())
+
+    return actions
 
 def assign_ik_conf_to_action(process, action, conf):
     # * trigger movement computation
@@ -81,8 +140,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
             itj_act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id)
 
         elif pddl_action.name == 'beam_placement_with_clamps' or \
-            pddl_action.name == 'beam_placement_without_clamp' or \
-            pddl_action.name == 'assemble_beam_with_screwdrivers':
+            pddl_action.name == 'beam_placement_without_clamp':
             beam_id = pddl_action.args[0]
             gripper_id = pddl_action.args[3]
             gripper = process.gripper(gripper_id)
@@ -98,8 +156,11 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
                 itj_act = BeamPlacementWithoutClampsAction(seq_n, 0, beam_id, gripper_id)
             elif pddl_action.name == 'beam_placement_with_clamps':
                 itj_act = BeamPlacementWithClampsAction(seq_n, 0, beam_id, involved_joint_ids, gripper_id, joint_tool_ids)
-            elif pddl_action.name == 'assemble_beam_with_screwdrivers':
-                itj_act = AssembleBeamWithScrewdriversAction(seq_n, 0, beam_id, involved_joint_ids, gripper_id, screwdriver_ids=joint_tool_ids)
+
+        elif pddl_action.name == 'assemble_beam_with_screwdrivers_and_gripper_at_rack':
+            beam_id = pddl_action.args[0]
+            gripper_id = pddl_action.args[-3]
+            itj_act = _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=verbose)
 
         elif pddl_action.name == 'retract_gripper_from_beam':
             beam_id = pddl_action.args[0]
@@ -113,19 +174,6 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
         elif pddl_action.name == 'manaul_assemble_scaffold':
             beam_id = pddl_action.args[0]
             itj_act = ManaulAssemblyAction(seq_n, 0, beam_id)
-
-        elif pddl_action.name == 'operator_attach_screwdriver':
-            tool_id = pddl_action.args[0]
-            joint_id = (pddl_action.args[-3], pddl_action.args[-2])
-            assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
-            # * double-check tool type consistency
-            screwdriver = process.screwdriver(tool_id)
-            gt_sd_type = process.assembly.get_joint_attribute(joint_id, 'tool_type')
-            assert gt_sd_type == screwdriver.type_name, 'Joint {} should use screwdriver with type {} but {} with type {} assigned.'.format(joint_id, gt_sd_type, screwdriver.name, screwdriver.type_name)
-
-            # * screwdriver assignment to beam
-            process.assembly.set_joint_attribute(joint_id, 'tool_id', tool_id)
-            itj_act = OperatorAttachScrewdriverAction(seq_n, 0, beam_id, joint_id, screwdriver.type_name, tool_id, 'assembly_wcf_screwdriver_attachment_pose')
 
         elif pddl_action.name == 'pick_tool_from_rack':
             tool_id = pddl_action.args[0]
@@ -176,26 +224,18 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             itj_act = PickClampFromStructureAction(joint_id=joint_id, tool_type=clamp.type_name, tool_id=clamp_id)
 
-        elif pddl_action.name == 'dock_with_screwdriver':
-            tool_id = pddl_action.args[0]
-            screwdriver = process.screwdriver(tool_id)
-            joint_id = (pddl_action.args[1], pddl_action.args[2])
-            assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
-            itj_act = DockWithScrewdriverAction(joint_id=joint_id, tool_position='screwdriver_assembled_attached', tool_type=screwdriver.type_name, tool_id=tool_id)
-
-        elif pddl_action.name == 'retract_screwdriver_from_beam':
-            tool_id = pddl_action.args[0]
-            screwdriver = process.screwdriver(tool_id)
-            joint_id = (pddl_action.args[-2], pddl_action.args[-1])
-            assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
-            itj_act = RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=joint_id, tool_id=tool_id)
         else:
-            # raise ValueError(pddl_action.name)
-            pass
+            raise ValueError(pddl_action.name)
+            # pass
 
         assert itj_act is not None, 'Action creation failed for {}'.format(pddl_action.name)
-        itj_act = action_compute_movements(process, itj_act)
-        acts.append(itj_act)
+        if isinstance(itj_act, list):
+            for ac in itj_act:
+                ac = action_compute_movements(process, ac)
+                acts.append(ac)
+        else:
+            itj_act = action_compute_movements(process, itj_act)
+            acts.append(itj_act)
 
         if 'beam_placement' in pddl_action.name or 'assemble_beam' in pddl_action.name:
             assert len(acts) > 0
