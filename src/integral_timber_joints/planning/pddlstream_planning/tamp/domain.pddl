@@ -292,23 +292,59 @@
             )
   )
 
+  (:action pick_gripper_from_rack
+    :parameters (?tool ?pose ?grasp)
+    :precondition (and
+                    (RobotToolChangerEmpty)
+                    (Gripper ?tool)
+                    (AtRack ?tool)
+                    (AtPose ?tool ?pose)
+                    (Grasp ?tool ?grasp)
+                  )
+    :effect (and (Attached ?tool ?grasp)
+                 (not (RobotToolChangerEmpty))
+                 (RobotGripperEmpty)
+                 (not (AtRack ?tool))
+                 (not (AtPose ?tool ?pose))
+                 (not (CanBackToRack))
+            )
+  )
+
   (:action pick_tool_from_rack
     :parameters (?tool ?pose ?grasp)
     :precondition (and
                     (RobotToolChangerEmpty)
                     (Tool ?tool)
+                    (not (Gripper ?tool))
                     (AtRack ?tool)
                     (AtPose ?tool ?pose)
                     (Grasp ?tool ?grasp)
-                    (imply (not (Gripper ?tool)) (GroundedAssembled))
+                    (GroundedAssembled)
                     ; ! sampled
                   )
     :effect (and (Attached ?tool ?grasp)
                  (not (RobotToolChangerEmpty))
-                 (when (Gripper ?tool) (RobotGripperEmpty))
                  (not (AtRack ?tool))
                  (not (AtPose ?tool ?pose))
                  (not (CanBackToRack))
+            )
+  )
+
+  (:action place_gripper_at_rack
+    :parameters (?tool ?pose ?grasp)
+    :precondition (and
+                    (CanBackToRack)
+                    (Grasp ?tool ?grasp)
+                    (Attached ?tool ?grasp)
+                    (Gripper ?tool)
+                    (RackPose ?tool ?pose)
+                    (RobotGripperEmpty)
+                  )
+    :effect (and (not (Attached ?tool ?grasp))
+                 (RobotToolChangerEmpty)
+                 (AtRack ?tool)
+                 (AtPose ?tool ?pose)
+                 (increase (total-cost) (Cost))
             )
   )
 
@@ -319,9 +355,8 @@
                     (Grasp ?tool ?grasp)
                     (Attached ?tool ?grasp)
                     (Tool ?tool)
+                    (not (Gripper ?tool))
                     (RackPose ?tool ?pose)
-                    (imply (Gripper ?tool) (RobotGripperEmpty))
-                    ; ! sampled
                   )
     :effect (and (not (Attached ?tool ?grasp))
                  (RobotToolChangerEmpty)
