@@ -33,6 +33,7 @@ def main():
     parser.add_argument('--algorithm', default='incremental', help='PDDLSteam planning algorithm.')
     parser.add_argument('--symbolics', action='store_true', help='Use the symbolic-only PDDL formulation.')
     parser.add_argument('--return_rack', action='store_true', help='Add all-tools-back-to-rack to the goal.')
+    parser.add_argument('--costs', action='store_true', help='Use user-defined costs for actions.')
     # ! pyplanner config
     parser.add_argument('--pp_h', default='ff', help='pyplanner heuristic configuration.')
     parser.add_argument('--pp_search', default='eager', help='pyplanner search configuration.')
@@ -90,7 +91,7 @@ def main():
     if True:
         solution = solve(pddlstream_problem, algorithm=args.algorithm,
                          max_time=INF,
-                         unit_costs=True,
+                         unit_costs=not args.costs,
                          success_cost=INF,
                         #  unit_efforts=True,
                         #  effort_weight=effort_weight,

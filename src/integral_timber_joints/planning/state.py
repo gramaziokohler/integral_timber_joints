@@ -193,7 +193,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     t_world_robot = Transformation.from_frame(flange_frame)
                     robot_flange_from_attached_obj = t_world_robot.inverse() * t_world_object
                 else:
-                    # ! used only in pddlstream
+                    # ! used only in pddlstream, grasp given
                     robot_flange_from_attached_obj = scene[(object_id, 'g')].copy()
                     for k in range(3):
                         robot_flange_from_attached_obj[k,3] = robot_flange_from_attached_obj[k,3]*1e-3

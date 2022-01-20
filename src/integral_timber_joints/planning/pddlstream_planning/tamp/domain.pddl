@@ -108,6 +108,7 @@
                  (Attached ?element ?e_grasp)
                  (not (RobotGripperEmpty))
                  (not (ElementRackOccupied))
+                 (increase (total-cost) 1)
             )
   )
 
@@ -134,6 +135,7 @@
                  (NeedGripperRetraction)
                 ;;  (Assembled ?element)
                 ;;  (AtPose ?element ?e_pose)
+                 (increase (total-cost) 1)
             )
   )
 
@@ -156,6 +158,7 @@
                  (NeedGripperRetraction)
                 ;;  (Assembled ?element)
                 ;;  (AtPose ?element ?e_pose)
+                 (increase (total-cost) 1)
             )
   )
 
@@ -186,6 +189,7 @@
                 (RobotToolChangerEmpty)
                 (AtRack ?tool)
                 (AtPose ?tool ?tool_pose)
+                 (increase (total-cost) 1)
             )
   )
 
@@ -227,6 +231,7 @@
                 (RobotGripperEmpty)
                 ;; (when (GroundContactElement ?element) (GroundedAssembled))
                 ;; (when (ScrewedWithGripperElement ?element) (not (CanAtPoseScrewDriver)))
+                 (increase (total-cost) 1)
             )
   )
 
@@ -246,6 +251,7 @@
     :effect (and (ElementRackOccupied)
                  (AtRack ?element)
                  (AtPose ?element ?e_pose)
+                 (increase (total-cost) 1)
             )
   )
 
@@ -264,6 +270,7 @@
                   )
     :effect (and (Assembled ?scaffold)
                  (AtPose ?scaffold ?s_pose)
+                 (increase (total-cost) 1)
             )
   )
 
@@ -312,6 +319,7 @@
                  (not (AtRack ?tool))
                  (not (AtPose ?tool ?pose))
                  (when (Gripper ?tool) (RobotGripperEmpty))
+                 (increase (total-cost) 1)
             )
   )
 
@@ -359,6 +367,7 @@
                  (JointOccupiedByTool ?element1 ?element2 ?element1)
                  (not (ToolNotOccupiedOnJoint ?tool))
                 ;;  (ToolAssignedToJoint ?element1 ?element2 ?tool)
+                 (increase (total-cost) 1)
                  )
   )
 
@@ -386,6 +395,7 @@
                  (ToolNotOccupiedOnJoint ?tool)
                  (not (ToolAtJoint ?tool ?element1 ?element2 ?element1))
                  (not (JointOccupiedByTool ?element1 ?element2 ?element1))
+                 (increase (total-cost) 1)
             )
   )
 
