@@ -8,16 +8,17 @@ import pybullet_planning as pp
 
 from compas_fab.robots import Configuration
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose, pose_from_transformation
+from compas.robots import Configuration
+from compas_fab.robots import Trajectory
 
 from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
 from integral_timber_joints.process.state import SceneState
 from integral_timber_joints.planning.state import set_state, gantry_base_generator
 from integral_timber_joints.planning.stream import _get_sample_bare_arm_ik_fn
 
-from compas.robots import Configuration
-from compas_fab.robots import Trajectory
-
 ######################################
+
+JOINT_KEY = lambda j: j[0]+','+j[1]
 
 def assign_fluent_state(client, robot, process, fluents):
     # * manually create a state according to the fluent facts and set_state
@@ -25,6 +26,8 @@ def assign_fluent_state(client, robot, process, fluents):
     # by default all the attachment status is None (False)
     for oid in chain(process.assembly.sequence, process.tool_ids):
         state[(oid, 'a')] = False
+
+    assigned_tool_from_joints = {}
     for fluent in fluents:
         name, args = fluent[0], fluent[1:]
         # print(fluent)
@@ -37,10 +40,14 @@ def assign_fluent_state(client, robot, process, fluents):
             object_name, grasp_transform = args
             state[(object_name, 'a')] = True
             state[(object_name, 'g')] = grasp_transform
+        elif name == 'toolassignedtojoint':
+            #  (ToolAssignedToJoint ?element1 ?element2 ?tool)
+            e1, e2, tool = args
+            assigned_tool_from_joints[JOINT_KEY((e1,e2))] = tool
         else:
             raise ValueError(name)
     set_state(client, robot, process, state)
-    return state
+    return state, assigned_tool_from_joints
 
 ###########################################
 
@@ -69,7 +76,9 @@ def get_action_ik_fn(client, process, robot, action_name, options=None):
         # * assign `AtPose` and `Attached` predicates to state
         # start_state of the action
         # pp.wait_if_gui('PickBeam: Before assign fluent state')
-        _action_scene = assign_fluent_state(client, robot, process, fluents)
+
+        _action_scene, assigned_tool_from_joints = assign_fluent_state(client, robot, process, fluents)
+
         # print(client._print_object_summary())
         # pp.wait_if_gui('PickBeam: After assign fluent state')
 

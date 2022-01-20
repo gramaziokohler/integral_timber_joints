@@ -40,7 +40,7 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
 
     process_symdata = process.to_symbolic_problem_data()
 
-    manipulate_cost = 10.0
+    manipulate_cost = 5.0
     init = [
         Equal(('Cost',), manipulate_cost),
         Equal((TOTAL_COST,), 0)
