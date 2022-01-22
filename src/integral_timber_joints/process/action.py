@@ -503,7 +503,7 @@ class PickScrewdriverFromStorageAction(PickToolFromStorageAction):
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.retract.withtool',
-            tag="Linear Retract 1 from Storage Frame of %s, after picking up tool." % self._tool_string,
+            tag="Linear Retract 2 from Storage Frame of %s, after picking up tool." % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
