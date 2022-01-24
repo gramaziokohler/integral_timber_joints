@@ -36,9 +36,12 @@ def load_selected_external_movment_if_exist(process):
     prev_movement = process.movements[state_id - 1]
     if not isinstance(prev_movement, RoboticMovement):
         return
+    result = None
+    use_smoothed_trajectory = True
 
-    external_movement_path = os.path.join(get_activedoc_process_path(), '..\\results')
-    result = process.load_external_movement(external_movement_path, prev_movement, subdir='smoothed_movements', verbose=False)
+    if use_smoothed_trajectory:
+        external_movement_path = os.path.join(get_activedoc_process_path(), '..\\results')
+        result = process.load_external_movement(external_movement_path, prev_movement, subdir='smoothed_movements', verbose=False)
 
     if result is not None:
         print("Smoothed Trajectory Loaded")
