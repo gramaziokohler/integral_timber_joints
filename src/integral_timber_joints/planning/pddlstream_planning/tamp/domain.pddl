@@ -293,9 +293,9 @@
                     (AtRack ?tool)
                     (AtPose ?tool ?pose)
                     ; ! sampled
-                    ;; (when (Gripper ?tool) (PickGripperFromStorageAction ?tool ?action))
-                    ;; (when (Clamp ?tool) (PickClampFromStorageAction ?tool ?action))
-                    ;; (when (ScrewDriver ?tool) (PickScrewdriverFromStorageAction ?tool ?action))
+                    ;; (imply (Gripper ?tool) (PickGripperFromStorageAction ?tool ?action))
+                    ;; (imply (Clamp ?tool) (PickClampFromStorageAction ?tool ?action))
+                    ;; (imply (ScrewDriver ?tool) (PickScrewdriverFromStorageAction ?tool ?action))
                   )
     :effect (and (Attached ?tool ?grasp)
                  (not (RobotToolChangerEmpty))
@@ -315,9 +315,9 @@
                     (imply (Gripper ?tool) (RobotGripperEmpty))
                     (RackPose ?tool ?pose)
                     ; ! sampled
-                    ;; (when (Gripper ?tool) (PlaceGripperToStorageAction ?tool ?action))
-                    ;; (when (Clamp ?tool) (PlaceClampToStorageAction ?tool ?action))
-                    ;; (when (ScrewDriver ?tool) (PlaceScrewdriverToStorageAction ?tool ?action))
+                    ;; (imply (Gripper ?tool) (PlaceGripperToStorageAction ?tool ?action))
+                    ;; (imply (Clamp ?tool) (PlaceClampToStorageAction ?tool ?action))
+                    (imply (ScrewDriver ?tool) (PlaceScrewdriverToStorageAction ?tool ?action))
                   )
     :effect (and (not (Attached ?tool ?grasp))
                  (RobotToolChangerEmpty)
@@ -342,7 +342,7 @@
                     ; ! switch for cutting down meaningless clamp placements
                     (not (Assembled ?element2))
                     ; ! sampled
-                    ;; (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
+                    (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
                     )
     :effect (and (not (Attached ?tool ?grasp))
                  (AtPose ?tool ?pose)
@@ -370,7 +370,7 @@
                     (Assembled ?element1)
                     (Assembled ?element2)
                     ; ! sampled
-                    (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
+                    ;; (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
                   )
     :effect (and (Attached ?tool ?grasp)
                  (not (AtPose ?tool ?pose))
