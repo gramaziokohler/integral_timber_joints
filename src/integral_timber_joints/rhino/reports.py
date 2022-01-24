@@ -17,7 +17,7 @@ from integral_timber_joints.rhino.load import get_process, get_process_artist, p
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
 from integral_timber_joints.report.beam import beam_report
-from integral_timber_joints.report.gripper import gripper_report
+from integral_timber_joints.report.tool import tool_report
 from integral_timber_joints.report.screw import screw_report
 
 
@@ -33,7 +33,7 @@ def print_sequence(process):
 def ui_preproduction_report(process):
     # type: (RobotClampAssemblyProcess) -> None
     beam_report(process)
-    gripper_report(process)
+    tool_report(process)
     screw_report(process)
 
 

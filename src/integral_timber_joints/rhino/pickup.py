@@ -182,8 +182,23 @@ def set_pickup_robot_config(process):
                 assert isinstance(configuration, Configuration)
                 if isinstance(process.pickup_station, GripperAlignedPickupStation):
                     process.pickup_station.robot_config_at_pickup[tool_id] = configuration
+
+                    # Perform FK to set also the tool tip frame
+                    configuration_mm = configuration.scaled(1000)
+                    robot_flange_frame = process.robot_model.forward_kinematics(configuration_mm, process.ROBOT_END_LINK)
+                    toolchanger = process.robot_toolchanger
+                    toolchanger.current_frame = robot_flange_frame
+                    tool = process.tool(tool_id)
+                    tool.current_frame = toolchanger.current_tcf
+                    gripper_tcp_frame_at_pickup = tool.current_tcf
+
+                    process.pickup_station.gripper_tcp_frame_at_pickup[tool_id] = gripper_tcp_frame_at_pickup
+                    print("Tool TCP frame for pickup set at %s" % gripper_tcp_frame_at_pickup)
+
                 else:
                     process.pickup_station.beam_pickup_configuration = configuration
+                    raise RuntimeError("This pickup station is no longer supported.")
+
 
                 print("Pickup station Beam Pickup Configuration is successfully loaded from %s" % path)
         else:

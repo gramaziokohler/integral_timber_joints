@@ -152,22 +152,34 @@ def _create_actions_for_clamped(process, beam_id, verbose=False):
         actions.append(PlaceClampToStructureAction(seq_n, 0, joint_id, tool_type, tool_id))
 
     # * Operator Load Beam
-    act = LoadBeamAction(seq_n, 0, beam_id)
-    actions.append(act)
+    actions.append(LoadBeamAction(seq_n, 0, beam_id))
 
     # * Actions to attach gripper
     gripper_type = assembly.get_beam_attribute(beam_id, "gripper_type")
     gripper_id = assembly.get_beam_attribute(beam_id, "gripper_id")
-    act = PickGripperFromStorageAction(seq_n, 0, gripper_type, gripper_id)
-    actions.append(act)
+    actions.append(PickGripperFromStorageAction(seq_n, 0, gripper_type, gripper_id))
 
     # pick place beam
-    act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id)
-    actions.append(act)
+    actions.append(PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id))
 
     # Syncronized clamp and move beam action
-    act = BeamPlacementWithClampsAction(seq_n, 0, beam_id, joint_id_of_clamps, gripper_id, clamp_ids)
-    actions.append(act)
+    actions.append(BeamPlacementWithClampsAction(seq_n, 0, beam_id, joint_id_of_clamps, gripper_id, clamp_ids))
+
+    # * Add temporary scaffolding
+    next_beam_seq_n = seq_n + 1
+    while(True):
+        if next_beam_seq_n >= len(assembly.sequence):
+            break
+        next_beam_id = assembly.sequence[next_beam_seq_n]
+        if assembly.get_assembly_method(next_beam_id) == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+            # * Operator manually assemble Beam
+            actions.append(ManaulAssemblyAction(seq_n, 0, next_beam_id))
+            next_beam_seq_n += 1
+        else:
+            break
+
+    # Gripper Retract Action
+    actions.append(RetractGripperFromBeamAction(beam_id=beam_id, gripper_id=gripper_id))
 
     # return gripper
     act = PlaceGripperToStorageAction(seq_n, 0, gripper_type, gripper_id)
@@ -246,11 +258,11 @@ def _create_actions_for_screwed(process, beam_id, verbose=False):
         act = AssembleBeamWithScrewdriversAction(beam_id=beam_id, joint_ids=joint_ids, gripper_id=gripper_id, screwdriver_ids=tool_ids)
         actions.append(act)
 
-        # * Action to Open Gripper and Retract Screw while robot-sync backing away
+        # * Action to Open Gripper and Retract Gripper
         act = RetractGripperFromBeamAction(beam_id=beam_id, gripper_id=gripper_id, additional_attached_objects=tool_ids)
         actions.append(act)
 
-        # * Action to Open Gripper and Retract Screw while robot-sync backing away
+        # * Action to Place Gripper back to Storage
         act = PlaceGripperToStorageAction(tool_type=gripper_type, tool_id=gripper_id)
         actions.append(act)
 

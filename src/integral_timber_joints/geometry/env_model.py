@@ -1,11 +1,16 @@
+import compas
 from compas.datastructures import Mesh
 from compas.geometry import Frame, Transformation
 
-try:
-    from typing import List, Dict, Tuple, Optional
-    from integral_timber_joints.process.state import ObjectState
-except:
+
+if compas.IPY:
     pass
+else:
+    # Type Checking imports
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from typing import List, Dict, Tuple, Optional
+        from integral_timber_joints.process.state import ObjectState
 
 class EnvironmentModel(Mesh):
     """Each EnvironmentModel is a Mesh object.
@@ -16,7 +21,7 @@ class EnvironmentModel(Mesh):
     def __init__(self, name = None):
         super(EnvironmentModel, self). __init__()
         self.name = name # type: Frame
-    
+
     @property
     def name(self):
         """str : The name of the EnvironmentModel."""
@@ -27,9 +32,9 @@ class EnvironmentModel(Mesh):
         self.attributes['name'] = value
 
     def draw_state(self, state, robot_world_transform = None):
-        # type: (ObjectState, Optional[Transformation]) -> List[Mesh] 
+        # type: (ObjectState, Optional[Transformation]) -> List[Mesh]
         """Returns the collision meshes of the EnvironmentModel (typically 1) for a given state.
-        
+
         Two transformation is performed:
         - `state.current_frame` if not `None` (typically it is None for EnvironmentMesh)
         - `robot_world_transform` if not `None`
@@ -45,5 +50,5 @@ class EnvironmentModel(Mesh):
         if robot_world_transform is not None:
             assert isinstance(robot_world_transform, Transformation)
             transformed_mesh = transformed_mesh.transform(robot_world_transform)
-        
+
         return [transformed_mesh]

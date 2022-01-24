@@ -16,7 +16,6 @@ from integral_timber_joints.process.action import Action
 from integral_timber_joints.process.dependency import ComputationalDependency, ComputationalResult
 from integral_timber_joints.process.movement import Movement, RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, \
     RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
-from integral_timber_joints.process.state import ObjectState, SceneState, copy_state_dict
 from integral_timber_joints.tools.beam_storage import BeamStorage
 from integral_timber_joints.tools.clamp import Clamp
 from integral_timber_joints.tools.gripper import Gripper
@@ -26,12 +25,16 @@ from integral_timber_joints.tools.robot_wrist import RobotWrist
 from integral_timber_joints.tools.tool import Tool
 from integral_timber_joints.tools.tool_changer import ToolChanger
 
-try:
-    from typing import Dict, List, Optional, Tuple
 
-    from termcolor import colored, cprint
-except:
+if compas.IPY:
     pass
+else:
+    # Type Checking imports
+    from typing import TYPE_CHECKING
+    if TYPE_CHECKING:
+        from typing import List, Dict, Tuple, Optional
+        from termcolor import colored, cprint
+        from integral_timber_joints.process.state import ObjectState, SceneState
 
 
 class RobotClampAssemblyProcess(Data):
@@ -1125,6 +1128,7 @@ class RobotClampAssemblyProcess(Data):
         """
 
         """
+        from integral_timber_joints.process.state import  SceneState
         movements = self.movements
         start_state = self.initial_state
         index = movements.index(movement)
@@ -1297,7 +1301,14 @@ class RobotClampAssemblyProcess(Data):
             if verbose:
                 print("Loading External Movement File: movement_path%s" % movement_path)
             with open(movement_path, 'r') as f:
-                movement.data = json.load(f, cls=DataDecoder).data
+                try:
+                    movement.data = json.load(f, cls=DataDecoder).data
+                except Exception as e:
+                    print('Error loading Movement from: %s' % movement_path)
+                    raise
+                    # import traceback
+                    # tb_str = ''.join(traceback.format_exception(None, e, e.__traceback__))
+                    # print(tb_str)
             return movement
         else:
             return None

@@ -534,8 +534,9 @@ class Assembly(Network):
 
     def joint_ids(self):
         # type: () -> Iterator[Tuple[str, str]]
-        for key in self.edges(data=False):
-            yield key
+        for beam_id in self.sequence:
+            for nbr_id in self.get_unbuilt_neighbors(beam_id):
+                yield (beam_id, nbr_id)
 
     def joints(self):
         # type: () -> Iterator[Joint]

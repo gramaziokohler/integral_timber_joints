@@ -1,4 +1,5 @@
 import time
+import logging
 from enum import Enum, unique
 from copy import deepcopy
 from collections import defaultdict
@@ -28,6 +29,8 @@ except:
     pass
 
 GANTRY_ATTEMPTS = 100
+
+logger = logging.getLogger('solve.py')
 
 ###########################################
 
@@ -276,6 +279,7 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 else:
                     # TODO backtracking
                     cprint('No plan found for {} after {} attempts! {}'.format(m.movement_id, m_attempts, m.short_summary), 'red')
+                    logger.info('No plan found for {} after {} attempts. {}'.format(m.movement_id, m_attempts, m.short_summary))
                     # continue
                     # break
                     return False, []
