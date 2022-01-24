@@ -107,7 +107,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             if initialize:
                 # update tool_changer's current_frame
                 # ! change if tool_changer has a non-trivial grasp pose
-                scene['tool_changer', 'f'] = FK_tool_frame
+                scene[('tool_changer', 'f')] = FK_tool_frame
 
         # * Environment meshes
         if initialize and include_env:
@@ -132,8 +132,8 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 client.add_collision_mesh(cm)
 
             # * Setting Frame
-            if scene[beam_id, 'f'] is not None:
-                current_frame = copy(scene[beam_id, 'f'])
+            if scene[(beam_id, 'f')] is not None:
+                current_frame = copy(scene[(beam_id, 'f')])
                 current_frame.point *= scale
                 # * set pose according to state
                 client.set_object_frame('^{}$'.format(beam_id), current_frame, options={'color': color_from_object_id(beam_id)})
@@ -151,8 +151,8 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 client.collision_objects[tool_id] = [tool_robot]
 
             # * Setting Frame
-            if scene[tool_id, 'f'] is not None:
-                current_frame = copy(scene[tool_id, 'f'])
+            if scene[(tool_id, 'f')] is not None:
+                current_frame = copy(scene[(tool_id, 'f')])
                 current_frame.point *= scale
                 # * set pose according to state
                 client.set_object_frame('^{}$'.format(tool_id), current_frame, options={'color': color_from_object_id(tool_id)})
@@ -160,7 +160,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             if tool_id != 'tool_changer':
                 # * Setting Kinematics
                 # this might be in millimeter, but that's not related to pybullet's business (if we use static meshes)
-                tool._set_kinematic_state(scene[tool_id, 'c'])
+                tool._set_kinematic_state(scene[(tool_id, 'c')])
                 tool_conf = tool.current_configuration.scaled(1e-3)
                 tool_bodies = client._get_bodies('^{}$'.format(tool_id))
                 for b in tool_bodies:
@@ -228,7 +228,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # and disable collisions between them
                     tool_count = 0
                     for tool_id in process.tool_ids:
-                        if scene[tool_id, 'a']:
+                        if scene[(tool_id, 'a')]:
                             extra_disabled_bodies.extend(client._get_bodies('^{}$'.format(tool_id)))
                             tool_count += 1
                     assert tool_count > 0, 'At least one tool should be attached to the robot when the beam is attached.'
