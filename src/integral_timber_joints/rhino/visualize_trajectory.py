@@ -56,8 +56,9 @@ def redraw_state_and_trajectory(artist, process):
     # artist.delete_state(redraw=False)
     artist.delete_sweep_trajectory(redraw=False)
     scene = artist.get_current_selected_scene_state()
+    # artist.scene_override_attached_object_frames_with_fk(scene)
     artist.draw_state(scene=scene, redraw=False)  # Visualize the state
-    artist.draw_sweep_trajectory(redraw=False)
+    artist.draw_sweep_trajectory(scene=scene, redraw=False)
     print_current_state_info(process, print_next=False)
 
 # ##########################

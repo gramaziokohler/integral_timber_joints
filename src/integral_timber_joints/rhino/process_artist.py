@@ -1223,18 +1223,46 @@ class ProcessArtist(object):
     # State
     ######################
 
-    def get_current_selected_scene_state(self):
-        # type: () -> SceneState
+    def get_current_selected_scene_state(self, override_attached_objects_with_fk = True):
+        # type: (bool) -> SceneState
         """
         Return the currently selected SceneState
+
+        if `override_attached_objects_with_fk` is true, and if robot config is defined,
+        the frame of the attached objects will be overridden by the FK result of the robot.
+
         Note state_id = 1 is referring to end of the first (0) movement.
         """
         state_id = self.selected_state_id
+        scene = None
+        # Short circuit for returning the initial state.
+        # No override_attached_objects_with_fk will be performed.
         if state_id == 0:
-            return self.process.initial_state
-        else:
-            movement = self.process.movements[state_id - 1]  # type: RoboticMovement
-            return self.process.get_movement_end_scene(movement)
+            scene =  self.process.initial_state
+            return scene
+
+
+        movement = self.process.movements[state_id - 1]  # type: RoboticMovement
+        scene =  self.process.get_movement_end_scene(movement)
+
+        process = self.process
+        if override_attached_objects_with_fk:
+            if ('robot', 'c') in scene and scene[('robot', 'c')] is not None:
+                from copy import deepcopy
+                scene = deepcopy(scene)
+
+                # * Compute FK
+                configuration = scene[('robot', 'c')]  # type: Configuration
+                fk_flange_frame = process.robot_model.forward_kinematics(configuration.scaled(1000), process.ROBOT_END_LINK)
+                t_world_from_flange = Transformation.from_frame(fk_flange_frame)
+                scene[('tool_changer', 'f')] = fk_flange_frame
+
+                # * Set attached objects, use `t_flange_from_attached_objects` in Movement
+                for object_id, t_flange_from_attached_objects in zip(movement.attached_objects, movement.t_flange_from_attached_objects):
+                    t_world_from_object = t_world_from_flange * t_flange_from_attached_objects
+                    scene[(object_id, 'f')] = Frame.from_transformation(t_world_from_object)
+
+        return scene
 
     def _get_state_attached_objects_meshes(self, scene, attached_objects_only=False, moved_objects_only=False):
         # type: (SceneState, bool, bool) -> Dict[str, Tuple[Frame, List[Mesh]]]
@@ -1311,6 +1339,10 @@ class ProcessArtist(object):
     def draw_state(self, scene=None, redraw=True):
         # type: (SceneState, bool) -> None
         """Draw objects that relates to a specific object state dictionary.
+
+        If robot configuration is defined, the robot model will be drawn. Otherwise, rob_wrist will be displayed.
+
+        This function is used for both Visualize Movement and Visualize Trajectory
 
         You do not have to call delete_state() to erase previous geometry.
         Old geometry that are same as new geometry will not be redrawn
@@ -1417,8 +1449,8 @@ class ProcessArtist(object):
             polyline_dicts.append(polyline_dict)
         return draw_polylines(polyline_dicts, redraw=False)
 
-    def draw_sweep_trajectory(self, redraw=True):
-        # type: (bool) -> None
+    def draw_sweep_trajectory(self, scene, redraw=True):
+        # type: (SceneState, bool) -> None
         from compas.geometry import Transformation, Frame
         assembly = self.process.assembly  # type: Assembly
         rs.EnableRedraw(False)
@@ -1456,7 +1488,6 @@ class ProcessArtist(object):
         # * Draw Attached objects
         # Scene
         guids = {}
-        scene = self.get_current_selected_scene_state()
         meshes_for_objects = self._get_state_attached_objects_meshes(scene, attached_objects_only=True)
         print("Drawing %s Sweep Trajectory with %i meshes and %i trajectory points." % (movement_id, len(meshes_for_objects), len(trajectory_frames)))
         for object_id in meshes_for_objects:
