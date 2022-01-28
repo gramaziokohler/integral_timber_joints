@@ -172,6 +172,11 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
 
     if traj is not None:
         # update start/end states
+        prev_robot_conf = process.get_movement_start_robot_config(movement)
+        if prev_robot_conf is not None and compare_configurations(prev_robot_conf, traj.points[0], {}):
+            cprint('Planned trajectory\'s first conf does not agree with the previous movement\'s end conf! Planning fails.', 'red')
+            return False
+
         movement.trajectory = traj
         process.set_movement_start_robot_config(movement, traj.points[0])
         process.set_movement_end_robot_config(movement, traj.points[-1])
@@ -336,13 +341,13 @@ def propagate_states(process, selected_movements, options=None):
 
             # if back_m.planning_priority == -1:
             if not isinstance(back_m, RoboticMovement):
+                # if verbose:
+                if back_end_conf and compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
+                    cprint('Backward Prop: Start conf not coincided', 'red')
+                        # notify('Warning! Go back to the command line now!')
+                        # wait_for_user()
                 if verbose:
-                    if back_end_conf and compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
-                        cprint('Backward Prop: Start conf not coincided', 'red')
-                            # notify('Warning! Go back to the command line now!')
-                            # wait_for_user()
-                    if verbose:
-                        print('\t- Altered (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
+                    print('\t- Altered (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
                 process.set_movement_end_robot_config(back_m, target_start_conf)
                 altered_movements.append(back_m)
                 back_id -= 1
@@ -356,7 +361,7 @@ def propagate_states(process, selected_movements, options=None):
                 break
             else:
                 break
-        # * forward fill all adjacent (-1) movements
+        # * forward fill all adjacent (+1) movements
         forward_id = m_id+1
         while forward_id < len(all_movements):
             forward_m = all_movements[forward_id]
@@ -366,13 +371,13 @@ def propagate_states(process, selected_movements, options=None):
                 forward_start_conf = process.get_movement_start_robot_config(forward_m)
             # if all_movements[forward_id].planning_priority == -1:
             if not isinstance(forward_m, RoboticMovement):
-                if verbose:
-                    if forward_start_conf and compare_configurations(forward_start_conf, target_end_conf, jump_threshold,
-                        verbose=False):
-                        cprint('Forward Prop: End conf not coincided', 'red')
-                        # notify('Warning! Go back to the command line now!')
-                        # wait_for_user()
-                    print('\t- Altered (forward): ({}) {}'.format(colored(forward_id, 'green'), forward_m.short_summary))
+                # if verbose:
+                if forward_start_conf and compare_configurations(forward_start_conf, target_end_conf, jump_threshold,
+                    verbose=False):
+                    cprint('Forward Prop: End conf not coincided', 'red')
+                    # notify('Warning! Go back to the command line now!')
+                    wait_for_user()
+                print('\t- Altered (forward): ({}) {}'.format(colored(forward_id, 'green'), forward_m.short_summary))
                 process.set_movement_end_robot_config(forward_m, target_end_conf)
                 altered_movements.append(forward_m)
                 forward_id += 1

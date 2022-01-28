@@ -95,7 +95,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         # TODO loop and backtrack
         # TODO have to find a way to recover movements
         altered_movements = []
-        with HideOutput(): #args.verbose
+        with HideOutput(False): #
             if args.solve_mode == 'nonlinear':
                 success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
                     [MovementStatus.neither_done, MovementStatus.one_sided],
@@ -328,6 +328,7 @@ def main():
         'frame_jump_tolerance' : 0.0012, # in meter
         'verbose' : args.verbose,
         'jump_threshold' : joint_jump_threshold,
+        # 'joint_compare_threshold' : 1e-3,
         'max_distance' : args.max_distance,
         'propagate_only' : args.solve_mode == 'propagate_only',
         'solve_timeout': args.solve_timeout,

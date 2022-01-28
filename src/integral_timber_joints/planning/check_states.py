@@ -162,7 +162,7 @@ def main():
         'frame_jump_tolerance' : 0.0012,
         'diagnosis' : True,
         'debug' : args.debug,
-        'verbose' : args.debug,
+        'verbose' : True,
     }
 
     all_movements = process.movements

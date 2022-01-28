@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 import os
 import numpy as np
 from pybullet_planning.interfaces.env_manager.pose_transformation import multiply
@@ -70,11 +71,12 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     verbose = options.get('verbose', True)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
-    frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL*1e3)
+    frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL)
 
     # robot needed for creating attachments
     robot_uid = client.get_robot_pybullet_uid(robot)
-    flange_link_name = robot.get_end_effector_link_name(group=GANTRY_ARM_GROUP)
+    # flange_link_name = robot.get_end_effector_link_name(group=GANTRY_ARM_GROUP)
+    flange_link_name = process.ROBOT_END_LINK
 
     with LockRenderer(not debug):
         # * Robot and Tool Changer
@@ -89,30 +91,22 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             #     options={'link' : flange_link_name})
             # FK_tool_frame.point *= 1/scale
             if scene[('robot', 'f')] is None:
-                scene[('robot', 'f')] = FK_tool_frame
+                raise ValueError('Robot frame is not set in scene!')
             else:
                 # consistency check
                 robot_frame = scene[('robot', 'f')]
                 if not robot_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance*scale):
                     if (1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point) > frame_jump_tolerance):
-                        if verbose:
-                            msg = 'set_state: Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point))
-                            cprint(msg, 'yellow')
-                            cprint('!!! Overwriting the current_frame {} by the given robot conf\'s FK {} | robot conf {}. Please confirm this.'.format(
-                                robot_frame.point, FK_tool_frame.point, robot_config.joint_values
-                            ))
-                            wait_if_gui()
-                    scene[('robot', 'f')] = FK_tool_frame
-
-            if initialize:
-                # update tool_changer's current_frame
-                # ! change if tool_changer has a non-trivial grasp pose
-                scene[('tool_changer', 'f')] = FK_tool_frame
+                        msg = 'set_state: Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(1e-3*distance_point_point(robot_frame.point, FK_tool_frame.point))
+                        cprint(msg, 'yellow')
+                        # cprint('!!! Overwriting the current_frame {} by the given robot conf\'s FK {} | robot conf {}. Please confirm this.'.format(
+                            # robot_frame.point, FK_tool_frame.point, robot_config.joint_values
+                        # ))
+                        wait_for_user()
 
         # * Environment meshes
         if initialize and include_env:
             for name, _mesh in process.environment_models.items():
-                # if name == 'e27':
                 mesh = _mesh.copy()
                 mesh_quads_to_triangles(mesh)
                 cm = CollisionMesh(mesh, name)
@@ -156,6 +150,8 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 current_frame.point *= scale
                 # * set pose according to state
                 client.set_object_frame('^{}$'.format(tool_id), current_frame, options={'color': color_from_object_id(tool_id)})
+            else:
+                raise ValueError("Object {} frame not set!".format(tool_id))
 
             if tool_id != 'tool_changer':
                 # * Setting Kinematics
