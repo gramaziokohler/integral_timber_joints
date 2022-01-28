@@ -1,7 +1,8 @@
-from compas_fab.robots import Configuration
 from termcolor import cprint
 import numpy as np
 
+from compas.robots import Joint
+from compas_fab.robots import Configuration
 from compas_fab_pychoreo.client import PyChoreoClient
 from pybullet_planning import draw_pose, set_camera_pose, unit_pose, LockRenderer
 
@@ -15,18 +16,6 @@ MAIN_ROBOT_ID = 'robot11'
 BARE_ARM_GROUP = 'robot11'
 GANTRY_ARM_GROUP = 'robot11_eaXYZ'
 GANTRY_GROUP = 'robot11_gantry'
-
-# a preset configuration, only used in initializing the state
-# this set the other unused robot to the right configurations
-R11_INTER_CONF_VALS = convert_rfl_robot_conf_unit([21000.0, 0.0, -4900.0,
-    0.0, -22.834741999999999, -30.711554, 0.0, 57.335655000000003, 0.0])
-R12_INTER_CONF_VALS = convert_rfl_robot_conf_unit([-9237, -4000, #-4000.8486330000001,
-    0.0, -80.0, 65.0, 65.0, 20.0, -20.0])
-
-R21_IDLE_CONF_VALS = convert_rfl_robot_conf_unit([38000, 0, -4915,
-    0, 0, 0, 0, 0, 0])
-R22_IDLE_CONF_VALS = convert_rfl_robot_conf_unit([-12237, -4915,
-    0, 0, 0, 0, 0, 0])
 
 ############################################
 
@@ -46,7 +35,7 @@ except ImportError:
     except ImportError as e:
         # TODO: script to compile automatically
         raise ImportError('Please install TRAC-IK or compile IKFast.')
-cprint('Use Track IK: {}'.format(USE_TRACK_IK), 'yellow')
+# cprint('Use Track IK: {}'.format(USE_TRACK_IK), 'yellow')
 
 # https://github.com/yijiangh/coop_assembly/blob/dev/src/coop_assembly/planning/robot_setup.py#L147
 R11_JOINT_WEIGHTS = np.reciprocal([0.1, 0.1, 0.1,
@@ -66,21 +55,6 @@ def rfl_robot_joint_names(robot_id='robot12', include_gantry=False):
         return [bridge_joint_name] + joint_names
     else:
         return joint_names
-
-def to_rlf_robot_full_conf(robot11_confval, robot12_confval):
-    return Configuration(
-        joint_values = (*robot11_confval, *robot12_confval,
-                  *R21_IDLE_CONF_VALS, *R22_IDLE_CONF_VALS),
-        joint_types = (
-            *([2] + RFL_SINGLE_ARM_JOINT_TYPES), *RFL_SINGLE_ARM_JOINT_TYPES,
-            *([2] + RFL_SINGLE_ARM_JOINT_TYPES), *RFL_SINGLE_ARM_JOINT_TYPES,),
-        joint_names = (
-            *rfl_robot_joint_names('robot11', include_gantry=True),
-            *rfl_robot_joint_names('robot12', include_gantry=False),
-            *rfl_robot_joint_names('robot21', include_gantry=True),
-            *rfl_robot_joint_names('robot22', include_gantry=False),
-            )
-        )
 
 ############################################
 # TODO use arm group from SRDF
@@ -106,6 +80,31 @@ def get_gantry_robot_custom_limits(robot_id='robot11'):
         joint_names[7] : (-2.094395, 2.09439),
         joint_names[8] : (-3.159045, 3.15904),
     }
+
+def get_tolerances(robot):
+    # for discussions on tolerance, see: https://github.com/gramaziokohler/integral_timber_joints/issues/145
+    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+    joint_types = robot.get_joint_types_by_names(joint_names)
+    # 0.1 rad = 5.7 deg
+    # * threshold to check joint flipping
+    joint_jump_threshold = {}
+    joint_compare_tolerances = {}
+    for jt_name, jt_type in zip(joint_names, joint_types):
+        if jt_type == Joint.REVOLUTE:
+            joint_jump_threshold[jt_name] = 10.0 * np.pi / 180.0 # rad
+            joint_compare_tolerances[jt_name] = 0.0025 # rad, try tightened to 0.001 if possible
+        elif jt_type == Joint.PRISMATIC:
+            joint_jump_threshold[jt_name] = 0.05 # meter
+            joint_compare_tolerances[jt_name] = 0.0025
+        else:
+            raise ValueError("Strange joint type {} | {}".format(jt_type, jt_name))
+    tolerances = {
+        'joint_jump_threshold' : joint_jump_threshold,
+        'joint_compare_tolerances' : joint_compare_tolerances,
+        'frame_compare_distance_tolerance' : 0.001, # meter
+        'frame_compare_axis_angle_tolerance' : 0.0025, # rad
+    }
+    return tolerances
 
 ########################################
 

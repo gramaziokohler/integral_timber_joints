@@ -9,11 +9,10 @@ from pybullet_planning.motion_planners.utils import elapsed_time
 from termcolor import cprint, colored
 from copy import deepcopy
 
-from compas.robots import Joint
-from pybullet_planning import wait_if_gui, wait_for_user, LockRenderer, WorldSaver, HideOutput
+from pybullet_planning import wait_if_gui, LockRenderer, HideOutput
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
-from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
+from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.utils import notify, print_title, beam_ids_from_argparse_seq_n, color_from_success
 from integral_timber_joints.planning.state import set_state, set_initial_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
@@ -33,7 +32,7 @@ SOLVE_MODE = [
     'propagate_only', # 'Only do state propagation and impacted movement planning.'
 ]
 
-logger = logging.getLogger('run.py')
+logger = logging.getLogger(__name__) # 'run.py'
 
 # * Next steps
 # TODO use linkstatistics joint weight and resolutions
@@ -42,6 +41,11 @@ logger = logging.getLogger('run.py')
 ##############################################
 
 def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=None):
+    """A wrapper function to plan for all the movements of a beam with restart until a plan is found.
+    See `compute_movements_for_beam_id` for detailed planning strategies.
+
+    The client will be recreated at each restart as well.
+    """
     solve_timeout = options.get('solve_timeout', 600)
     solve_iters = options.get('solve_iters', 40)
     return_upon_success = options.get('return_upon_success', True)
@@ -51,18 +55,19 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     start_time = time.time()
     trial_i = 0
     while elapsed_time(start_time) < solve_timeout and trial_i < solve_iters:
-        print('#'*10)
-        print('Beam {} | {} | Inner Trail #{} | time {:.2f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(start_time)))
+        logger.info('#'*10)
+        logger.info('Beam {} | {} | Trail #{} | time {:.2f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(start_time)))
         options['profiles'] = {}
         success = compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options)
         runtime_data[trial_i] = {}
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
-        cprint('Return success: {}'.format(success), 'green' if success else 'red')
+        logger.info(colored('Return success: {}'.format(success), 'green' if success else 'red'))
         if return_upon_success and success:
             break
         trial_i += 1
         copy_st_time = time.time()
+        # * recreate process and client for the next attempt
         process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
         if ignore_taught_confs:
             for m in process.movements:
@@ -72,17 +77,21 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         set_initial_state(client, robot, process, disable_env=False, reinit_tool=False)
         copy_time = elapsed_time(copy_st_time)
         solve_timeout += copy_time
-        print('Restarting client/process takes {} | total timeout {}'.format(copy_time, solve_timeout))
+        logger.debug('Restarting client/process takes {} | total timeout {}'.format(copy_time, solve_timeout))
         # ! process/client reset time shouldn't be counted in
 
     return success, runtime_data
 
 def compute_movements_for_beam_id(client, robot, process, beam_id, args, options=None):
-    # ! Returns a boolean flag for planning success
-    # if args.verbose:
-    #     print_title('0) Before planning')
-    #     process.get_movement_summary_by_beam_id(beam_id)
-        # wait_for_user()
+    """Two types of movement planning strategies are provided:
+        1. 'nonlinear': plan according to movement priorities, filtered by priority score and movement types
+        2. 'linear': plan according to movements' order, taught conf cannot be
+
+    Two additional type of planning mode are provided for plan fine-tuning:
+        1. 'free_motion_only': only plan the free motions in the movements
+        2. 'movement_id': only replan for a specific movement_id, movement_id can be
+            index-based (e.g. 79) or string name (e.g. 'A78_M0')
+    """
     seq_n = process.assembly.sequence.index(beam_id)
     all_movements = process.get_movements_by_beam_id(beam_id)
     options['samplig_order_counter'] = 0
@@ -92,8 +101,6 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
     with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
         options['lockrenderer'] = lockrenderer
-        # TODO loop and backtrack
-        # TODO have to find a way to recover movements
         altered_movements = []
         with HideOutput(False): #
             if args.solve_mode == 'nonlinear':
@@ -208,7 +215,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
     # * smoothing
     if args.smooth:
-        print('Smoothing trajectory...')
+        logger.debug('Smoothing trajectory...')
         smoothed_movements = []
         with pp.LockRenderer(): # not args.debug):
             for altered_m in altered_movements:
@@ -217,7 +224,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, altered_m, options=options)
                 altered_m.trajectory = smoothed_traj
                 smoothed_movements.append(altered_m)
-                cprint('Smooth success: {} | msg: {}'.format(success, msg), color_from_success(success))
+                logger.debug(colored('Smooth success: {} | msg: {}'.format(success, msg), color_from_success(success)))
         if args.write:
             save_process_and_movements(args.design_dir, args.problem, process, smoothed_movements, overwrite=False,
                 include_traj_in_process=False, movement_subdir='smoothed_movements')
@@ -235,10 +242,6 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         set_state(client, robot, process, process.initial_state)
         for m_id in sorted(viz_movements.keys()):
             visualize_movement_trajectory(client, robot, process, viz_movements[m_id], step_sim=args.step_sim)
-
-
-    if args.verbose:
-        notify('A plan has been found for (seq_n={}) beam id {}!'.format(seq_n, beam_id))
 
     logger.info('A plan has been found for (seq_n={}) beam id {}!'.format(seq_n, beam_id))
     return success
@@ -269,13 +272,12 @@ def main():
     #
     parser.add_argument('--debug', action='store_true', help='Debug mode.')
     parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode, show collisions whenever encountered')
-    parser.add_argument('--verbose', action='store_false', help='Print out verbose. Defaults to True.')
+    parser.add_argument('--quiet', action='store_true', help='Disable print out verbose. Defaults to False.')
     parser.add_argument('--draw_mp_exploration', action='store_true', help='Draw motion planning graph exploration. Should be used together with diagnosis')
     #
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     #
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
-    parser.add_argument('--max_distance', default=0.0, type=float, help='Buffering distance for collision checking, larger means safer. Defaults to 0.')
     parser.add_argument('--solve_timeout', default=600.0, type=float, help='For automatic planning retry, number of seconds before giving up. Defaults to 600.')
     parser.add_argument('--mp_algorithm', default='birrt', type=str, choices=MOTION_PLANNING_ALGORITHMS, help='Motion planning algorithms.')
     parser.add_argument('--rrt_iterations', default=400, type=int, help='Number of iterations within one rrt session. Defaults to 400.')
@@ -304,7 +306,9 @@ def main():
     process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
     # * force load external if only planning for the free motions
-    args.load_external_movements = args.load_external_movements or args.solve_mode == 'free_motion_only' or args.solve_mode == 'movement_id'
+    args.load_external_movements = args.load_external_movements or \
+        args.solve_mode == 'free_motion_only' or \
+        args.solve_mode == 'movement_id'
     if args.load_external_movements:
         result_path = get_process_path(args.design_dir, args.problem, subdir='results')
         ext_movement_path = os.path.dirname(result_path)
@@ -312,30 +316,22 @@ def main():
         process.load_external_movements(ext_movement_path)
 
     #########
-
-    # * threshold to check joint flipping
-    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
-    joint_types = robot.get_joint_types_by_names(joint_names)
-    # 0.1 rad = 5.7 deg
-    joint_jump_threshold = {jt_name : np.pi/6 \
-            if jt_type in [Joint.REVOLUTE, Joint.CONTINUOUS] else 0.1 \
-            for jt_name, jt_type in zip(joint_names, joint_types)}
     options = {
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
+        'verbose' : not args.quiet,
         'low_res' : args.low_res,
-        'distance_threshold' : 0.0012, # in meter
         'frame_jump_tolerance' : 0.0012, # in meter
-        'verbose' : args.verbose,
-        'jump_threshold' : joint_jump_threshold,
-        # 'joint_compare_threshold' : 1e-3,
-        'max_distance' : args.max_distance,
+        # the collision is counted when penetration distance is bigger than this value
+        'collision_distance_threshold' : 0.0012, # in meter,
         'propagate_only' : args.solve_mode == 'propagate_only',
         'solve_timeout': args.solve_timeout,
         'rrt_iterations': args.rrt_iterations,
         'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,
         'mp_algorithm' : args.mp_algorithm,
     }
+    # ! frame, conf compare, joint flip tolerances are set here
+    options.update(get_tolerances(robot))
     if len(args.reachable_range) == 2:
         options.update({
         'reachable_range': (args.reachable_range[0], args.reachable_range[1]),
@@ -351,22 +347,12 @@ def main():
             'max_free_retraction_distances' : np.linspace(0, 0.1, 3),
         })
 
+    #########
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)
-
-    # restart attempts for each beam
-    success = False
-    num_trails = 1
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
     for beam_id in beam_ids:
-        print('-'*20)
-        s_i = process.assembly.sequence.index(beam_id)
-        print('({}) Beam#{}'.format(s_i, beam_id))
-        for attempt_i in range(num_trails):
-            print('Beam {} | Outer Trail {} #{}'.format(beam_id, args.solve_mode, attempt_i))
-            process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
-            success, trial_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
-            if success:
-                break
+        logger.info('-'*20)
+        success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
 
     cprint('Planning done.', 'green')
     client.disconnect()

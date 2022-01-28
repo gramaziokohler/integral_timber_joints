@@ -1,11 +1,12 @@
-from multiprocessing.sharedctypes import Value
 import os
+import logging
 import numpy as np
 from pybullet_planning.interfaces.env_manager.pose_transformation import multiply
-from pybullet_planning.interfaces.env_manager.user_io import wait_if_gui
 from termcolor import cprint
-from copy import copy, deepcopy
+from copy import copy
 from itertools import product, chain
+
+LOGGER = logging.getLogger(__name__)
 
 from compas.geometry import distance_point_point, Transformation
 from compas.geometry.primitives.frame import Frame

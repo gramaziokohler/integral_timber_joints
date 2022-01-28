@@ -155,7 +155,7 @@ def main():
 
     options = {
         # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
-        'distance_threshold' : 0.0025,
+        'collision_distance_threshold' : 0.0025,
         # * buffering distance, If the distance between objects exceeds this maximum distance, no points may be returned.
         'max_distance' : 0.0,
         # * If target_configuration is different from the target_frame by more that this amount at flange center, a warning will be raised.
