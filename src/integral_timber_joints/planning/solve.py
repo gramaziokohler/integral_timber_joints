@@ -3,6 +3,8 @@ import logging
 from enum import Enum, unique
 from copy import deepcopy
 from collections import defaultdict
+from turtle import back
+from compas_fab.backends.pybullet.utils import LOG
 from termcolor import cprint, colored
 
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get_random_seed
@@ -14,11 +16,8 @@ from compas_fab_pychoreo.utils import compare_configurations
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process import RobotClampAssemblyProcess, Movement
 from integral_timber_joints.planning.stream import compute_free_movement, compute_linear_movement
-from integral_timber_joints.planning.state import set_state
-from integral_timber_joints.planning.utils import notify, print_title
-from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP, R11_JOINT_RESOLUTIONS, R11_JOINT_WEIGHTS, \
-    MAIN_ROBOT_ID, get_gantry_robot_custom_limits
-from integral_timber_joints.planning.parsing import save_process_and_movements
+from integral_timber_joints.planning.utils import notify, print_title, LOGGER
+from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP, R11_JOINT_RESOLUTIONS, R11_JOINT_WEIGHTS
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
 try:
@@ -27,10 +26,6 @@ try:
     from compas_fab.backends import PyBulletClient
 except:
     pass
-
-GANTRY_ATTEMPTS = 100
-
-logger = logging.getLogger('solve.py')
 
 ###########################################
 
@@ -70,9 +65,8 @@ def get_movement_status(process, m, movement_types, verbose=True, check_type_onl
     # special warning
     if not isinstance(m, RoboticFreeMovement) and \
             has_start_conf and has_end_conf and not has_traj:
-        cprint('{} has both start, end conf specified, but no traj computed. This is BAD!!'.format(m.short_summary), 'yellow')
+        LOGGER.error(colored('{} has both start, end conf specified, but no traj computed. This is BAD!!'.format(m.short_summary), 'yellow'))
         notify('Warning! Go back to the command line now!')
-        # wait_for_user()
     # imply(has_traj, has_start_conf and has_end_conf)
     assert not has_traj or (has_start_conf and has_end_conf)
     if has_traj:
@@ -89,6 +83,8 @@ def get_movement_status(process, m, movement_types, verbose=True, check_type_onl
 
 def compute_movement(client, robot, process, movement, options=None, diagnosis=False):
     # type: (PyBulletClient, Robot, RobotClampAssemblyProcess, Movement, Dict, Dict) -> bool
+    """Compute trajectory for a single movement
+    """
     if not isinstance(movement, RoboticMovement):
         return None
     options = options or {}
@@ -96,7 +92,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     low_res = options.get('low_res', False)
     verbose = options.get('verbose', True)
     if verbose:
-        cprint(movement.short_summary, 'cyan')
+        LOGGER.debug(colored(movement.short_summary, 'cyan'))
 
     # use_stored_seed = options.get('use_stored_seed', False)
     # set seed stored in the movement
@@ -110,15 +106,11 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     # set_numpy_seed(seed)
 
     # * custom limits
-    custom_limits = get_gantry_robot_custom_limits(MAIN_ROBOT_ID)
-    options['custom_limits'] = custom_limits
-
     traj = None
     if isinstance(movement, RoboticLinearMovement):
         lm_options = options.copy()
         lm_options.update({
             'max_step' : 0.01, # interpolation step size, in meter
-            'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
             'cartesian_attempts' : 1, # boosting up cartesian attempt here does not really help
             # -------------------
             'planner_id' : 'IterativeIK',
@@ -136,7 +128,6 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         # * interpolation step size, in meter
         lm_options.update({
             'max_step' : 0.02, # interpolation step size, in meter
-            'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
             'cartesian_attempts' : 1, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
             # -------------------
             'planner_id' : 'IterativeIK',
@@ -150,25 +141,25 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     elif isinstance(movement, RoboticFreeMovement):
         resolution_ratio = 10.0 if low_res else 1.0
         fm_options = options.copy()
-        fm_options = {
+        fm_options.update({
             'rrt_restarts' : 2, #20,
             'rrt_iterations' : 400, # ! value < 100 might not find solutions even if there is one
             'smooth_iterations': None, # ! smoothing will be done in postprocessing
             'joint_resolutions' : R11_JOINT_RESOLUTIONS*resolution_ratio,
             'joint_weights' : R11_JOINT_WEIGHTS,
             # -------------------
-            'gantry_attempts' : GANTRY_ATTEMPTS,  # gantry attempt matters more
             'max_step' : 0.01, # interpolation step size, in meter, used in buffering motion
-            }
+            })
         traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis)
     else:
-        raise ValueError()
+        LOGGER.critical("Unrecognized movement type {}".format(movement))
+        return None
 
     if traj is not None:
         # update start/end states
         prev_robot_conf = process.get_movement_start_robot_config(movement)
         if prev_robot_conf is not None and compare_configurations(prev_robot_conf, traj.points[0], {}):
-            cprint('Planned trajectory\'s first conf does not agree with the previous movement\'s end conf! Planning fails.', 'red')
+            LOGGER.error('Planned trajectory\'s first conf does not agree with the previous movement\'s end conf! Planning fails.', 'red')
             return False
 
         movement.trajectory = traj
@@ -182,9 +173,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         #         object_state.current_frame = list(client.get_object_frame('^{}$'.format(object_id), scale=1e3).values())[0]
         return True
     else:
-        if verbose:
-            notify('Planning fails! Go back to the command line now!')
-            # wait_for_user('Planning fails, press Enter to continue. Try exit and running again - may the Luck be with you next time :)')
+        notify('Planning fails! Go back to the command line now!')
         return False
 
 def compute_selected_movements(client, robot, process, beam_id, priority, movement_types=None, movement_statuses=None, options=None,
@@ -215,7 +204,6 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         step conf-by-conf if viz_upon_found == True, by default False
     """
     verbose = options.get('verbose', False)
-    propagate_only = options.get('propagate_only', False)
     m_attempts = options.get('movement_planning_reattempts', 1)
     movement_id_filter = options.get('movement_id_filter', [])
     movement_types = movement_types or []
@@ -228,65 +216,56 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 chosen_m = process.movements[int(mid)]
             selected_movements.append(chosen_m)
         if verbose:
-            print('='*20)
+            LOGGER.debug('='*20)
             print_title('* compute movement ids: {}'.format(movement_id_filter))
     else:
         selected_movements = process.get_movements_by_planning_priority(beam_id, priority)
         if verbose:
-            print('='*20)
+            LOGGER.debug('='*20)
             print_title('* compute {} (priority {}, status {})'.format([mt.__name__ for mt in movement_types], priority,
                 movement_statuses))
 
     total_altered_movements = []
     for m in selected_movements:
         altered_movements = []
+        # no filter applied if movement_statuses is None
         if movement_statuses is None or \
-            any([get_movement_status(process, m, movement_types, check_type_only=check_type_only).value - m_st.value == 0 for m_st in movement_statuses]):
+            any([get_movement_status(process, m, movement_types, check_type_only=check_type_only).value - m_st.value == 0
+                for m_st in movement_statuses]):
             m_id = process.movements.index(m)
             if verbose:
-                print('-'*10)
-                print('({})'.format(m_id))
+                LOGGER.debug('-'*10)
+                LOGGER.debug('({})'.format(m_id))
 
-            if not propagate_only:
-                options['samplig_order_counter'] += 1
-                archived_start_conf = process.get_movement_start_robot_config(m)
-                archived_end_conf = process.get_movement_end_robot_config(m)
+            options['samplig_order_counter'] += 1
+            archived_start_conf = process.get_movement_start_robot_config(m)
+            archived_end_conf = process.get_movement_end_robot_config(m)
 
-                for attempt in range(m_attempts):
-                    # if verbose:
-                    #     print('Movement planning attempt {}'.format(attempt))
-                    start_time = time.time()
-                    plan_success = compute_movement(client, robot, process, m, options, diagnosis)
-                    plan_time = elapsed_time(start_time)
-                    if 'profiles' in options:
-                        if m_id not in options['profiles']:
-                            options['profiles'][m_id] = defaultdict(list)
-                        options['profiles'][m_id]['movement_id'] = [m.movement_id]
-                        options['profiles'][m_id]['plan_time'].append(plan_time)
-                        options['profiles'][m_id]['plan_success'].append(plan_success)
-                        options['profiles'][m_id]['sample_order'].append(options['samplig_order_counter'])
+            for attempt in range(m_attempts):
+                start_time = time.time()
+                plan_success = compute_movement(client, robot, process, m, options, diagnosis)
+                plan_time = elapsed_time(start_time)
+                # * log planning profile
+                if 'profiles' in options:
+                    if m_id not in options['profiles']:
+                        options['profiles'][m_id] = defaultdict(list)
+                    options['profiles'][m_id]['movement_id'] = [m.movement_id]
+                    options['profiles'][m_id]['plan_time'].append(plan_time)
+                    options['profiles'][m_id]['plan_success'].append(plan_success)
 
-                    if plan_success:
-                        altered_movements.append(m)
-                        if viz_upon_found:
-                            with WorldSaver():
-                                visualize_movement_trajectory(client, robot, process, m, step_sim=True)
-                        break
-                    else:
-                        process.set_movement_start_robot_config(m, archived_start_conf)
-                        process.set_movement_end_robot_config(m, archived_end_conf)
+                if plan_success:
+                    altered_movements.append(m)
+                    if viz_upon_found:
+                        with WorldSaver():
+                            visualize_movement_trajectory(client, robot, process, m, step_sim=True)
+                    break
                 else:
-                    # TODO backtracking
-                    cprint('No plan found for {} after {} attempts! {}'.format(m.movement_id, m_attempts, m.short_summary), 'red')
-                    logger.info('No plan found for {} after {} attempts. {}'.format(m.movement_id, m_attempts, m.short_summary))
-                    # continue
-                    # break
-                    return False, []
+                    process.set_movement_start_robot_config(m, archived_start_conf)
+                    process.set_movement_end_robot_config(m, archived_end_conf)
             else:
-                traj = m.trajectory
-                process.set_movement_start_robot_config(m, traj.points[0])
-                process.set_movement_end_robot_config(m, traj.points[-1])
-                altered_movements.append(m)
+                # TODO backtracking
+                LOGGER.info('No plan found for {} after {} attempts. {}'.format(m.movement_id, m_attempts, m.short_summary))
+                return False, []
         else:
             continue
 
@@ -294,97 +273,84 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         altered_new_movements, impact_movements = propagate_states(process, altered_movements, options=options)
         altered_movements.extend(altered_new_movements)
         total_altered_movements.extend(altered_movements)
-    # if verbose:
-    #     print('\n\n')
-    #     process.get_movement_summary_by_beam_id(beam_id)
+
     return True, total_altered_movements
 
 ###########################################
 
 def propagate_states(process, selected_movements, options=None):
     # type: (RobotClampAssemblyProcess, List[Movement], Dict) -> Tuple[List[Movement], List[Movement]]
+    """Returns two lists of movements:
+        - altered_movements: non-robotic movements with conf updated
+        - impacted_movements: robotic movements with start / end conf updated
+    """
     options = options or {}
     verbose = options.get('verbose', False)
-    jump_threshold = options.get('jump_threshold', {})
-    joint_names = options.get('joint_names', [])
+    joint_compare_tolerances = options.get('joint_compare_tolerances', {})
     altered_movements = []
-    # movements that needs to be recomputed
     impact_movements = []
     all_movements = process.movements
     for target_m in selected_movements:
         if not isinstance(target_m, RoboticMovement) or target_m.trajectory is None:
+            # skip non-robotic movement or robotic movement without a trajectory planned
             continue
         m_id = all_movements.index(target_m)
         target_start_conf = process.get_movement_start_robot_config(target_m)
         target_end_conf = process.get_movement_end_robot_config(target_m)
         if verbose:
-            print('~'*5)
-            print('\tPropagate states for ({}) : {}'.format(colored(m_id, 'cyan'), target_m.short_summary))
+            LOGGER.debug('\tPropagate states for ({}) : {}'.format(colored(m_id, 'cyan'), target_m.short_summary))
+
         # * backward fill all adjacent (-1) movements
         back_id = m_id-1
         while back_id >= 0:
             back_m = all_movements[back_id]
-            if isinstance(back_m, RoboticMovement) and back_m.trajectory:
-                back_end_conf = back_m.trajectory.points[-1]
+            back_end_conf = process.get_movement_end_robot_config(back_m)
+            if isinstance(back_m, RoboticMovement):
+                if back_end_conf is not None:
+                    # double check if configuration agrees
+                    if compare_configurations(back_end_conf, target_start_conf, joint_compare_tolerances, verbose=verbose):
+                        LOGGER.error("Back propagation configruation disagree! {} /\ {}.".format(back_m, target_m))
+                else:
+                    # * write end conf to robot movement with no end conf
+                    m_symbol = '$ Impacted'
+                    m_color = 'yellow'
+                    LOGGER.debug('\t{} (backward): ({}) {}'.format(m_symbol, colored(back_id, m_color), back_m.short_summary))
+                    process.set_movement_end_robot_config(back_m, target_start_conf)
+                    impact_movements.append(back_m)
+                # * break if encountering a robot movement
+                break
             else:
-                back_end_conf = process.get_movement_end_robot_config(back_m)
-            # print('----')
-            # print('Back: {} | back_end_conf {}'.format(back_m.short_summary, back_end_conf))
-            # # print(compare_configurations(back_end_conf, target_start_conf, jump_threshold, fallback_tol=1e-3, verbose=verbose))
-            # print(get_movement_status(process, back_m, [RoboticMovement]))
-
-            # if back_m.planning_priority == -1:
-            if not isinstance(back_m, RoboticMovement):
-                # if verbose:
-                if back_end_conf and compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
-                    cprint('Backward Prop: Start conf not coincided', 'red')
-                        # notify('Warning! Go back to the command line now!')
-                        # wait_for_user()
+                # * propagate to Nonrobotic movement
                 if verbose:
-                    print('\t- Altered (backward): ({}) {}'.format(colored(back_id, 'green'), back_m.short_summary))
+                    m_symbol = '- Altered'
+                    m_color = 'green'
+                    LOGGER.debug('\t{} (backward): ({}) {}'.format(m_symbol, colored(back_id, m_color), back_m.short_summary))
                 process.set_movement_end_robot_config(back_m, target_start_conf)
                 altered_movements.append(back_m)
                 back_id -= 1
-            # get_movement_status(process, back_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
-            elif back_m.trajectory is None or back_end_conf is None or \
-                compare_configurations(back_end_conf, target_start_conf, jump_threshold, verbose=False):
-                process.set_movement_end_robot_config(back_m, target_start_conf)
-                impact_movements.append(back_m)
-                if verbose:
-                    print('\t$ Impacted (backward): ({}) {}'.format(colored(back_id, 'yellow'), back_m.short_summary))
-                break
-            else:
-                break
+
         # * forward fill all adjacent (+1) movements
         forward_id = m_id+1
         while forward_id < len(all_movements):
             forward_m = all_movements[forward_id]
-            if isinstance(forward_m, RoboticMovement) and forward_m.trajectory:
-                forward_start_conf = forward_m.trajectory.points[0]
+            if isinstance(forward_m, RoboticMovement):
+                if forward_m.trajectory is not None:
+                    # double check if configuration agrees
+                    if compare_configurations(target_end_conf, forward_m.trajectory.points[0], joint_compare_tolerances,
+                        verbose=verbose):
+                        LOGGER.error("Forward propagation configruation disagree! {} /\ {}.".format(forward_m, target_m))
+                # * break if encountering a robot movement
+                break
             else:
-                forward_start_conf = process.get_movement_start_robot_config(forward_m)
-            # if all_movements[forward_id].planning_priority == -1:
-            if not isinstance(forward_m, RoboticMovement):
-                # if verbose:
-                if forward_start_conf and compare_configurations(forward_start_conf, target_end_conf, jump_threshold,
-                    verbose=False):
-                    cprint('Forward Prop: End conf not coincided', 'red')
-                    # notify('Warning! Go back to the command line now!')
-                    wait_for_user()
-                print('\t- Altered (forward): ({}) {}'.format(colored(forward_id, 'green'), forward_m.short_summary))
+                # * propagate to Nonrobotic movement
+                if verbose:
+                    m_symbol = '- Altered'
+                    m_color = 'green'
+                    LOGGER.debug('\t{} (forward): ({}) {}'.format(m_symbol, colored(forward_id, m_color), forward_m.short_summary))
+                # for non-robotic movement start_conf = end_conf, so only need to write end conf here
                 process.set_movement_end_robot_config(forward_m, target_end_conf)
                 altered_movements.append(forward_m)
                 forward_id += 1
-            # elif get_movement_status(process, forward_m, [RoboticMovement]) in [MovementStatus.has_traj, MovementStatus.both_done] and \
-            #     compare_configurations(forward_start_conf, target_end_conf, jump_threshold, fallback_tol=1e-3, verbose=False):
-            elif forward_m.trajectory is None or forward_start_conf is None or \
-                compare_configurations(forward_start_conf, target_end_conf, jump_threshold, verbose=False):
-                impact_movements.append(forward_m)
-                if verbose:
-                    print('\t$ Impacted (forward): ({}) {}'.format(colored(forward_id, 'yellow'), forward_m.short_summary))
-                break
-            else:
-                break
     # end loop selected_movements
     return altered_movements, impact_movements
 

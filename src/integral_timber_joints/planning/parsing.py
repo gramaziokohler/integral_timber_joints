@@ -1,7 +1,8 @@
 import os
 import json
 from copy import deepcopy
-from termcolor import cprint
+from compas_fab.backends.pybullet.utils import LOG
+from termcolor import colored
 
 from compas.robots import RobotModel
 from compas_fab.robots import RobotSemantics
@@ -9,6 +10,7 @@ from compas.utilities import DataDecoder, DataEncoder
 
 from pybullet_planning import get_date
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RobotClampAssemblyProcess
+from .utils import LOGGER
 
 HERE = os.path.dirname(__file__)
 EXTERNAL_DIR = os.path.abspath(os.path.join(HERE, '..', '..', '..', 'external'))
@@ -77,7 +79,7 @@ def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyPro
     # * Load process from file
     file_path = get_process_path(design_dir, process_name, subdir)
     if not os.path.exists(file_path):
-        cprint('No temp process file found, using the original one.', 'yellow')
+        LOGGER.warning('No temp process file found, using the original one.', 'yellow')
         file_path = get_process_path(design_dir, process_name, '.')
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)
@@ -85,7 +87,7 @@ def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyPro
     with open(file_path, 'r') as f:
         process = json.load(f, cls=DataDecoder)
         # type: RobotClampAssemblyProcess
-    cprint('Process json parsed from {}'.format(file_path), 'blue')
+    LOGGER.info(colored('Process json parsed from {}'.format(file_path), 'blue'))
 
     # * Double check entire solution is valid
     for beam_id in process.assembly.sequence:
@@ -150,8 +152,8 @@ def save_process_and_movements(design_dir, process_name, _process, _movements,
         m_file_path = os.path.abspath(os.path.join(process_dir, m.get_filepath(movement_subdir)))
         with open(m_file_path, 'w') as f:
             json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)
-    print('---')
-    cprint('#{} movements written to {}'.format(len(_movements), os.path.abspath(movement_dir)), 'green')
+    LOGGER.info('---')
+    LOGGER.info(colored('#{} movements written to {}'.format(len(_movements), os.path.abspath(movement_dir)), 'green'))
 
     process = deepcopy(_process)
     if not include_traj_in_process:
@@ -160,7 +162,7 @@ def save_process_and_movements(design_dir, process_name, _process, _movements,
                 m.trajectory = None
     with open(process_file_path, 'w') as f:
         json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
-    print('---')
-    cprint('Process written to {}'.format(process_file_path), 'green')
+    LOGGER.info('---')
+    LOGGER.info(colored('Process written to {}'.format(process_file_path), 'green'))
 
 ##########################################
