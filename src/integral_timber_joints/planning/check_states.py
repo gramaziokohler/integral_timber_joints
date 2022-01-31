@@ -14,11 +14,11 @@ from pybullet_planning import  link_from_name
 
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
-from compas_fab_pychoreo.utils import compare_configurations
+from compas_fab_pychoreo.utils import is_configurations_close
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 
 from integral_timber_joints.planning.parsing import parse_process, get_process_path
-from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
+from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP, get_tolerances
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.utils import print_title, FRAME_TOL, color_from_success, beam_ids_from_argparse_seq_n
 
@@ -164,6 +164,8 @@ def main():
         'debug' : args.debug,
         'verbose' : True,
     }
+    # ! frame, conf compare, joint flip tolerances are set here
+    options.update(get_tolerances(robot))
 
     all_movements = process.movements
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
@@ -231,7 +233,7 @@ def main():
                                     # * prev-conf~conf polyline collision checking
                                     in_collision |= client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
 
-                                if prev_conf and compare_configurations(jpt, prev_conf, joint_jump_threshold, verbose=True):
+                                if prev_conf and not is_configurations_close(jpt, prev_conf, options=options):
                                     print('\t traj point #{}/{}'.format(conf_id, len(m.trajectory.points)))
                                     print('='*10)
                                     joint_flip |= True
@@ -262,7 +264,7 @@ def main():
                     if args.verify_plan:
                         # check joint conf consistency
                         if start_conf and end_conf:
-                            joint_flip |= compare_configurations(start_conf, end_conf, joint_jump_threshold, verbose=True)
+                            joint_flip |= not is_configurations_close(start_conf, end_conf, options=options)
                             if joint_flip:
                                 cprint('Joint conf not consistent!'.format(m.short_summary), 'red')
                         else:

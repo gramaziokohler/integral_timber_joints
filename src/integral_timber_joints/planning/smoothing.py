@@ -9,7 +9,7 @@ from pybullet_planning import wait_if_gui, wait_for_user
 
 from compas_fab_pychoreo.backend_features.pychoreo_trajectory_smoother import PyChoreoTrajectorySmoother
 
-from compas_fab_pychoreo.utils import compare_configurations
+from compas_fab_pychoreo.utils import is_configurations_close
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 
 from integral_timber_joints.planning.parsing import parse_process, get_process_path, save_process_and_movements

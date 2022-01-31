@@ -18,7 +18,7 @@ from pybullet_planning import INF, invert, get_joint_positions, get_unit_vector,
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 from compas_fab_pychoreo_examples.ik_solver import InverseKinematicsSolver, get_ik_fn_from_ikfast
 from compas_fab_pychoreo.client import PyChoreoClient
-from compas_fab_pychoreo.utils import compare_configurations
+from compas_fab_pychoreo.utils import is_configurations_close, is_frames_close
 
 import ikfast_abb_irb4600_40_255
 
@@ -99,36 +99,6 @@ def get_solve_trac_ik_info(trac_ik_solver, robot_uid):
 
 ##############################
 
-def check_cartesian_conf_agreement(client, robot, conf1, conf2, conf1_tag='', conf2_tag='', options=None, verbose=True):
-    options = options or {}
-    robot_uid = client.get_robot_pybullet_uid(robot)
-    tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
-    ik_tool_link = link_from_name(robot_uid, tool_link_name)
-    # TODO change here
-    # jump_threshold = options.get('jump_threshold', {})
-    jump_threshold = {}
-
-    if compare_configurations(conf1, conf2, jump_threshold, fallback_tol=1e-3, verbose=verbose):
-        with WorldSaver():
-            client.set_robot_configuration(robot, conf1)
-            p1 = get_link_pose(robot_uid, ik_tool_link)
-            client.set_robot_configuration(robot, conf2)
-            p2 = get_link_pose(robot_uid, ik_tool_link)
-            # TODO custom compare pose
-            pose_close = is_pose_close(p1, p2)
-        LOGGER.error('{} not coincided with {} - max diff {:.5f}'.format(
-            conf1_tag, conf2_tag, conf1.max_difference(conf2)), 'red')
-        if not pose_close:
-            LOGGER.error('FK frame close: {} | ({},{}) vs. ({},{})'.format(pose_close,
-                ['{:.3f}'.format(v) for v in p1[0]], ['{:.3f}'.format(v) for v in p1[1]],
-                ['{:.3f}'.format(v) for v in p2[0]], ['{:.3f}'.format(v) for v in p2[1]])
-                )
-        return False
-    else:
-        return True
-
-##############################
-
 def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: Movement, options=None, diagnosis=False):
     # assert isinstance(movement, RoboticLinearMovement) or \
     #     isinstance(movement, RoboticClampSyncLinearMovement) or \
@@ -141,8 +111,6 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     gantry_attempts = options.get('gantry_attempts') or 10
     cartesian_attempts = options.get('cartesian_attempts') or 2
     reachable_range = options.get('reachable_range') or (0.2, 2.8) # (0.68, 2.83)
-    # in meter
-    frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL) # meter
 
     cartesian_move_group = options.get('cartesian_move_group') or GANTRY_ARM_GROUP
     # gantry_group = GANTRY_GROUP
@@ -205,9 +173,9 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             start_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             start_t0cf_frame_temp = frame_from_pose(start_tool_pose, scale=1)
             # in meter
-            if not start_t0cf_frame_temp.__eq__(start_t0cf_frame, tol=frame_jump_tolerance):
+            if not is_frames_close(start_t0cf_frame, start_t0cf_frame_temp, options=options):
                 LOGGER.error('compute_linear_movement : start conf FK inconsistent ({:.5f} m) with given current frame in start state.'.format(
-                        distance_point_point(start_t0cf_frame_temp.point, start_t0cf_frame.point)), 'yellow')
+                        distance_point_point(start_t0cf_frame_temp.point, start_t0cf_frame.point)))
                 return None
         if end_conf is not None:
             if not end_conf.joint_names:
@@ -215,11 +183,12 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             client.set_robot_configuration(robot, end_conf)
             end_tool_pose = get_link_pose(robot_uid, ik_tool_link)
             end_t0cf_frame_temp = frame_from_pose(end_tool_pose, scale=1)
-            if not end_t0cf_frame_temp.__eq__(end_t0cf_frame, tol=frame_jump_tolerance):
+            if not is_frames_close(end_t0cf_frame_temp, end_t0cf_frame, options=options):
                 LOGGER.error('compute_linear_movement : end conf FK inconsistent ({:.5f} m) with given current frame in end state.'.format(
-                        distance_point_point(end_t0cf_frame_temp.point, end_t0cf_frame.point)), 'yellow')
+                        distance_point_point(end_t0cf_frame_temp.point, end_t0cf_frame.point)))
                 return None
 
+    # * ACM setup
     temp_name = '_tmp'
     for o1_name, o2_name in movement.allowed_collision_matrix:
         o1_bodies = client._get_bodies('^{}$'.format(o1_name))
@@ -238,6 +207,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     # TODO custom limits
     # TODO try fixing IK and only use gantry for Cartesian movements
     if start_conf is None and end_conf is None:
+        # * Both stand and end conf are not specified
         # * sample from a ball near the pose
         gantry_base_gen_fn = gantry_base_generator(client, robot, interp_frames[0], reachable_range=reachable_range, scale=1.0)
         for gi, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
@@ -285,10 +255,9 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 LOGGER.debug(colored('Cartesian Path planning failure ({}) after {} attempts | {} due to IK, {} due to Cart.'.format(
                     planner_id, samples_cnt, ik_failures, path_failures), 'yellow'))
     else:
-        # TODO make sure start/end conf coincides if provided
+        # * At least one of start/end conf is specified
         if start_conf is not None and end_conf is not None:
-            if verbose:
-                LOGGER.error('Both start/end confs are pre-specified, problem might be too stiff to be solved.')
+            LOGGER.error('Both start/end confs are pre-specified, problem might be too stiff to be solved.')
         if start_conf:
             if verbose:
                 LOGGER.debug(colored('One-sided Cartesian planning : start conf set, forward mode', 'blue'))
@@ -364,19 +333,15 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
 
     traj = None
     if cart_conf:
-        is_continuous = True
         traj = cart_conf
-        if start_conf is not None and not check_cartesian_conf_agreement(client, robot, start_conf, traj.points[0],
-                conf1_tag='given start conf', conf2_tag='traj[0]', options=options, verbose=verbose):
-            LOGGER.error('compute_linear_motion: start conf disagreement.', 'red')
+        if start_conf is not None and not is_configurations_close(start_conf, traj.points[0], options=options):
+            LOGGER.error('compute_linear_motion: start conf disagreement.')
             return None
-        if end_conf is not None and not check_cartesian_conf_agreement(client, robot, end_conf, traj.points[-1],
-                conf1_tag='given end conf', conf2_tag='traj[-1]', options=options, verbose=verbose):
-            LOGGER.error('compute_linear_motion: end conf disagreement.', 'red')
+        if end_conf is not None and not is_configurations_close(end_conf, traj.points[-1], options=options):
+            LOGGER.error('compute_linear_motion: end conf disagreement.')
             return None
     else:
-        if verbose:
-            LOGGER.error('No linear movement found for {}.'.format(movement.short_summary), 'red')
+        LOGGER.error('No linear movement found for {}.'.format(movement.short_summary))
     return traj
 
 ##############################
@@ -397,8 +362,6 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     orig_start_conf = process.get_movement_start_robot_config(movement)
     orig_end_conf = process.get_movement_end_robot_config(movement)
 
-    # assert orig_end_conf is not None, 'End conf not provided in {}, which should never happen'.format(movement.short_summary)
-
     # * set start state
     try:
         set_state(client, robot, process, start_scene)
@@ -410,10 +373,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
     if orig_start_conf is None:
-        # if verbose:
         LOGGER.info('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary))
-            # notify('Warning! Go back to the command line now!')
-            # wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
         start_t0cf_frame = start_scene[('robot', 'f')].copy()
         start_t0cf_frame.point *= 1e-3
@@ -450,7 +410,6 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
 
     # TODO clean up code and make a function for start/end conf sampling
     if orig_end_conf is None:
-        # if verbose:
         LOGGER.info('FreeMovement: Robot end conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary))
             # notify('Warning! Go back to the command line now!')
             # wait_for_user('Please press Enter to confirm.')
@@ -485,7 +444,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                     movement.short_summary, gantry_attempts), 'red'))
                 return None
         else:
-            LOGGER.error('No robot end frame is specified in {}, Underspecified problem, solve fails.'.format(movement.short_summary), 'red')
+            LOGGER.error('No robot end frame is specified in {}, Underspecified problem, solve fails.'.format(movement.short_summary))
             return None
 
     start_conf = orig_start_conf
@@ -524,15 +483,15 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     start_retraction_vectors = tmp_xyz
     end_retraction_vectors = tmp_xyz
 
-    if debug:
-        def debug_buffer_linear_motion(target_pose, retract_pose, dist, retract_v, msg=''):
-            pp.remove_all_debug()
-            pp.camera_focus_on_point(retract_pose[0])
-            with WorldSaver():
-                draw_pose(target_pose, length=0.1)
-                draw_pose(retract_pose, length=0.05)
-                client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
-                wait_if_gui('Retract pose drawn at {} (bigger=1st). start vec: {}, dist {:.4f}'.format(msg, retract_v, dist))
+    # if debug:
+    #     def debug_buffer_linear_motion(target_pose, retract_pose, dist, retract_v, msg=''):
+    #         pp.remove_all_debug()
+    #         pp.camera_focus_on_point(retract_pose[0])
+    #         with WorldSaver():
+    #             draw_pose(target_pose, length=0.1)
+    #             draw_pose(retract_pose, length=0.05)
+    #             client.set_robot_configuration(robot, process.initial_state[process.robot_config_key])
+    #             wait_if_gui('Retract pose drawn at {} (bigger=1st). start vec: {}, dist {:.4f}'.format(msg, retract_v, dist))
 
     traj = None
     start_cart_traj = None
@@ -550,8 +509,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                     LOGGER.debug('Free motion | START linear buffer: trying retraction dist {}'.format(start_retract_msg))
                 start_v /= np.linalg.norm(start_v)
                 retract_start_pose = multiply(pp.Pose(start_dist*pp.Point(*start_v)), start_pose)
-                if debug:
-                    debug_buffer_linear_motion(start_pose, retract_start_pose, start_dist, start_v, 'start')
+                # if debug:
+                #     debug_buffer_linear_motion(start_pose, retract_start_pose, start_dist, start_v, 'start')
                 # TODO try floating attachment only planning before full cartesian planning.keys())?
                 start_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(start_pose), frame_from_pose(retract_start_pose)], start_configuration=start_conf,
                     group=GANTRY_ARM_GROUP, options=options)
@@ -577,8 +536,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                             LOGGER.debug('- Free motion | END linear buffer: trying retraction dist {}'.format(end_retract_msg))
                         end_v /= np.linalg.norm(end_v)
                         retract_end_pose = multiply(pp.Pose(end_dist*pp.Point(*end_v)), end_pose)
-                        if debug:
-                            debug_buffer_linear_motion(end_pose, retract_end_pose, end_dist, end_v, 'end')
+                        # if debug:
+                        #     debug_buffer_linear_motion(end_pose, retract_end_pose, end_dist, end_v, 'end')
 
                         end_cart_traj = client.plan_cartesian_motion(robot, [frame_from_pose(end_pose), frame_from_pose(retract_end_pose)], start_configuration=end_conf,
                             group=GANTRY_ARM_GROUP, options=options)
@@ -595,14 +554,14 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
 
                     new_start_conf = start_conf if start_cart_traj is None else start_cart_traj.points[-1]
                     new_end_conf = end_conf if end_cart_traj is None else end_cart_traj.points[0]
-                    if debug:
-                        client.set_robot_configuration(robot, new_start_conf)
-                        # print('start conf: ', new_start_conf)
-                        wait_if_gui('Start conf after retraction.')
+                    # if debug:
+                    #     client.set_robot_configuration(robot, new_start_conf)
+                    #     # print('start conf: ', new_start_conf)
+                    #     wait_if_gui('Start conf after retraction.')
 
-                        client.set_robot_configuration(robot, new_end_conf)
-                        # print('end conf: ', new_end_conf)
-                        wait_if_gui('End conf after retraction.')
+                    #     client.set_robot_configuration(robot, new_end_conf)
+                    #     # print('end conf: ', new_end_conf)
+                    #     wait_if_gui('End conf after retraction.')
 
                     with LockRenderer(not diagnosis):
                         goal_constraints = robot.constraints_from_configuration(new_end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
@@ -623,12 +582,10 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                             full_trajs.append(end_cart_traj)
                         traj = merge_trajectories(full_trajs)
 
-                        if not check_cartesian_conf_agreement(client, robot, start_conf, traj.points[0],
-                            conf1_tag='given start conf', conf2_tag='traj[0]', options=options, verbose=verbose):
+                        if not is_configurations_close(start_conf, traj.points[0], options=options):
                             LOGGER.error('compute_free_motion: start conf disagreement | {}.'.format(retraction_msg))
                             return None
-                        if not check_cartesian_conf_agreement(client, robot, end_conf, traj.points[-1],
-                                conf1_tag='given end conf', conf2_tag='traj[-1]', options=options, verbose=verbose):
+                        if not is_configurations_close(end_conf, traj.points[-1], options=options):
                             LOGGER.error('compute_free_motion: end conf disagreement. | {}'.format(retraction_msg))
                             return None
 
@@ -637,8 +594,9 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                             LOGGER.debug(colored('Free movement found for {} under current retraction {}!'.format(movement.short_summary, retraction_msg), 'green'))
                         return traj
                     else:
-                        LOGGER.error('No free motion found under current retraction: {}.'.format(retraction_msg))
-                        LOGGER.debug('='*10)
+                        if verbose:
+                            LOGGER.debug('No free motion found under current retraction: {}.'.format(retraction_msg))
+                            LOGGER.debug('='*10)
 
     if traj is None and diagnosis:
         client._print_object_summary()

@@ -11,7 +11,7 @@ from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get
 from pybullet_planning import wait_if_gui, wait_for_user, WorldSaver
 
 from compas_fab.robots import Robot
-from compas_fab_pychoreo.utils import compare_configurations
+from compas_fab_pychoreo.utils import is_configurations_close
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process import RobotClampAssemblyProcess, Movement
@@ -91,6 +91,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     # * low_res mode is used to quickly get a feeling of the planning problem
     low_res = options.get('low_res', False)
     verbose = options.get('verbose', True)
+    joint_compare_tolerances = options.get('joint_compare_tolerances', {})
     if verbose:
         LOGGER.debug(colored(movement.short_summary, 'cyan'))
 
@@ -158,8 +159,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     if traj is not None:
         # update start/end states
         prev_robot_conf = process.get_movement_start_robot_config(movement)
-        if prev_robot_conf is not None and compare_configurations(prev_robot_conf, traj.points[0], {}):
-            LOGGER.error('Planned trajectory\'s first conf does not agree with the previous movement\'s end conf! Planning fails.', 'red')
+        if prev_robot_conf is not None and not is_configurations_close(prev_robot_conf, traj.points[0], options=options):
+            LOGGER.error('Planned trajectory\'s first conf does not agree with the previous movement\'s end conf! Planning fails.')
             return False
 
         movement.trajectory = traj
@@ -308,7 +309,7 @@ def propagate_states(process, selected_movements, options=None):
             if isinstance(back_m, RoboticMovement):
                 if back_end_conf is not None:
                     # double check if configuration agrees
-                    if compare_configurations(back_end_conf, target_start_conf, joint_compare_tolerances, verbose=verbose):
+                    if not is_configurations_close(back_end_conf, target_start_conf, options=options):
                         LOGGER.error("Back propagation configruation disagree! {} /\ {}.".format(back_m, target_m))
                 else:
                     # * write end conf to robot movement with no end conf
@@ -336,8 +337,7 @@ def propagate_states(process, selected_movements, options=None):
             if isinstance(forward_m, RoboticMovement):
                 if forward_m.trajectory is not None:
                     # double check if configuration agrees
-                    if compare_configurations(target_end_conf, forward_m.trajectory.points[0], joint_compare_tolerances,
-                        verbose=verbose):
+                    if not is_configurations_close(target_end_conf, forward_m.trajectory.points[0], options=options):
                         LOGGER.error("Forward propagation configruation disagree! {} /\ {}.".format(forward_m, target_m))
                 # * break if encountering a robot movement
                 break
