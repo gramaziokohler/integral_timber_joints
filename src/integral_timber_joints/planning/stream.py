@@ -155,9 +155,8 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     end_conf = process.get_movement_end_robot_config(movement)
 
     # * set start state
-    try:
-        set_state(client, robot, process, start_scene)
-    except RuntimeError:
+    if not set_state(client, robot, process, start_scene, options=options):
+        LOGGER.error('Compute linear movement: set start state error.')
         return None
 
     # convert to meter
@@ -363,10 +362,8 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     orig_end_conf = process.get_movement_end_robot_config(movement)
 
     # * set start state
-    try:
-        set_state(client, robot, process, start_scene)
-    except RuntimeError:
-        LOGGER.error('compute_free_movement: Set start state error!')
+    if not set_state(client, robot, process, start_scene, options=options):
+        LOGGER.error('Compute linear movement: set start state error.')
         return None
 
     sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)

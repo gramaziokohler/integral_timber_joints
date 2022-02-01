@@ -46,7 +46,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     """
     solve_timeout = options.get('solve_timeout', 600)
     # TODO change back to 10
-    solve_iters = options.get('solve_iters', 1)
+    solve_iters = options.get('solve_iters', 5)
     return_upon_success = options.get('return_upon_success', True)
     ignore_taught_confs = options.get('ignore_taught_confs', False)
     runtime_data = {}
@@ -233,7 +233,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             viz_movements[index] = am
         print_title('Visualize results')
         wait_if_gui('Start simulating results. Press enter to start.')
-        set_state(client, robot, process, process.initial_state)
+        set_state(client, robot, process, process.initial_state, options=options)
         for m_id in sorted(viz_movements.keys()):
             visualize_movement_trajectory(client, robot, process, viz_movements[m_id], step_sim=args.step_sim)
 
@@ -318,7 +318,6 @@ def main():
         'diagnosis' : args.diagnosis,
         'verbose' : not args.quiet,
         'low_res' : args.low_res,
-        'frame_jump_tolerance' : 0.0012, # in meter
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
         'custom_limits' : get_gantry_robot_custom_limits(MAIN_ROBOT_ID),
         # the collision is counted when penetration distance is bigger than this value

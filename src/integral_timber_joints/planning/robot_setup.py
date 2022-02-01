@@ -87,21 +87,21 @@ def get_tolerances(robot):
     joint_types = robot.get_joint_types_by_names(joint_names)
     # 0.1 rad = 5.7 deg
     # * threshold to check joint flipping
-    joint_jump_threshold = {}
+    joint_jump_tolerances = {}
     joint_compare_tolerances = {}
     for jt_name, jt_type in zip(joint_names, joint_types):
         if jt_type == Joint.REVOLUTE:
-            joint_jump_threshold[jt_name] = 10.0 * np.pi / 180.0 # rad
+            joint_jump_tolerances[jt_name] = 10.0 * np.pi / 180.0 # rad
             joint_compare_tolerances[jt_name] = 0.0025 # rad, try tightened to 0.001 if possible
         elif jt_type == Joint.PRISMATIC:
-            joint_jump_threshold[jt_name] = 0.05 # meter
+            joint_jump_tolerances[jt_name] = 0.05 # meter
             joint_compare_tolerances[jt_name] = 0.0025
         else:
             raise ValueError("Strange joint type {} | {}".format(jt_type, jt_name))
     tolerances = {
-        'joint_jump_threshold' : joint_jump_threshold,
+        'joint_jump_tolerances' : joint_jump_tolerances,
         'joint_compare_tolerances' : joint_compare_tolerances,
-        'frame_compare_distance_tolerance' : 0.001, # meter
+        'frame_compare_distance_tolerance' : 0.0011, # meter
         'frame_compare_axis_angle_tolerance' : 0.0025, # rad
     }
     return tolerances
