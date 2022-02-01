@@ -1387,6 +1387,8 @@ class RobotClampAssemblyProcess(Data):
             robot_model.scale(1000)
             self._robot_model = robot_model  # type: RobotModel
             self._robot_model_load_success = True
+            print("RobotModel loaded from %s" % loader.path)
+
             print("- %s Loaded: %i Links, %i Joints" % (robot_model.name, len(robot_model.links), len(robot_model.joints)))
         else:
             # You should have this repo https://github.com/yijiangh/rfl_description/tree/victor/cables as submodule

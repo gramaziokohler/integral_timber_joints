@@ -1247,20 +1247,21 @@ class ProcessArtist(object):
 
         process = self.process
         if override_attached_objects_with_fk:
-            if ('robot', 'c') in scene and scene[('robot', 'c')] is not None:
-                from copy import deepcopy
-                scene = deepcopy(scene)
+            if isinstance(movement, RoboticMovement):
+                if ('robot', 'c') in scene and scene[('robot', 'c')] is not None:
+                    from copy import deepcopy
+                    scene = deepcopy(scene)
 
-                # * Compute FK
-                configuration = scene[('robot', 'c')]  # type: Configuration
-                fk_flange_frame = process.robot_model.forward_kinematics(configuration.scaled(1000), process.ROBOT_END_LINK)
-                t_world_from_flange = Transformation.from_frame(fk_flange_frame)
-                scene[('tool_changer', 'f')] = fk_flange_frame
+                    # * Compute FK
+                    configuration = scene[('robot', 'c')]  # type: Configuration
+                    fk_flange_frame = process.robot_model.forward_kinematics(configuration.scaled(1000), process.ROBOT_END_LINK)
+                    t_world_from_flange = Transformation.from_frame(fk_flange_frame)
+                    scene[('tool_changer', 'f')] = fk_flange_frame
 
-                # * Set attached objects, use `t_flange_from_attached_objects` in Movement
-                for object_id, t_flange_from_attached_objects in zip(movement.attached_objects, movement.t_flange_from_attached_objects):
-                    t_world_from_object = t_world_from_flange * t_flange_from_attached_objects
-                    scene[(object_id, 'f')] = Frame.from_transformation(t_world_from_object)
+                    # * Set attached objects, use `t_flange_from_attached_objects` in Movement
+                    for object_id, t_flange_from_attached_objects in zip(movement.attached_objects, movement.t_flange_from_attached_objects):
+                        t_world_from_object = t_world_from_flange * t_flange_from_attached_objects
+                        scene[(object_id, 'f')] = Frame.from_transformation(t_world_from_object)
 
         return scene
 
