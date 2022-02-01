@@ -158,7 +158,7 @@ def main():
 
     options = {
         # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
-        'collision_distance_threshold' : 0.0025,
+        'collision_distance_threshold' : 0.0012,
         'diagnosis' : True,
         'debug' : args.debug,
         'verbose' : True,

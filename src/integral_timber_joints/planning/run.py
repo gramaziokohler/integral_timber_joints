@@ -46,7 +46,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     """
     solve_timeout = options.get('solve_timeout', 600)
     # TODO change back to 10
-    solve_iters = options.get('solve_iters', 5)
+    solve_iters = options.get('solve_iters', 40)
     return_upon_success = options.get('return_upon_success', True)
     ignore_taught_confs = options.get('ignore_taught_confs', False)
     runtime_data = {}
