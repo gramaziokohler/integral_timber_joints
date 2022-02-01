@@ -1889,7 +1889,7 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
             t_flange_from_attached_objects=[process.robot_toolchanger.t_t0cf_from_tcf],
             speed_type='speed.gripper.retract',
             tag="Linear retract after picking up Screwdriver ('%s')" % self.gripper_id,
-            allowed_collision_matrix=[(self.gripper_id, self.joint_id[1])],
+            allowed_collision_matrix=[(self.gripper_id, self.joint_id[0]), (self.gripper_id, self.joint_id[1])]
         ))
 
         self.movements.append(CancelRobotOffset(
