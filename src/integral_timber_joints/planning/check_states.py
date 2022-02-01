@@ -1,4 +1,5 @@
 import os, time
+import logging
 import argparse
 from termcolor import cprint, colored
 from itertools import product, combinations
@@ -14,13 +15,13 @@ from pybullet_planning import  link_from_name
 
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
-from compas_fab_pychoreo.utils import is_configurations_close
+from compas_fab_pychoreo.utils import is_configurations_close, is_frames_close
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 
 from integral_timber_joints.planning.parsing import parse_process, get_process_path
 from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP, get_tolerances
 from integral_timber_joints.planning.state import set_state
-from integral_timber_joints.planning.utils import print_title, FRAME_TOL, color_from_success, beam_ids_from_argparse_seq_n
+from integral_timber_joints.planning.utils import print_title, FRAME_TOL, color_from_success, beam_ids_from_argparse_seq_n, LOGGER
 
 from integral_timber_joints.process import RoboticMovement, RobotClampAssemblyProcess
 
@@ -48,7 +49,6 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
     return in_collision
 
 def check_FK_consistency(client, robot, process, scene_state, options=None):
-    frame_jump_tolerance = options.get('frame_jump_tolerance', FRAME_TOL*1e3)
     debug = options.get('debug', False)
 
     robot_uid = client.get_robot_pybullet_uid(robot)
@@ -62,13 +62,11 @@ def check_FK_consistency(client, robot, process, scene_state, options=None):
         if scene_state[('robot', 'f')] is not None:
             given_robot_frame = scene_state[('robot', 'f')].copy()
             given_robot_frame.point *= 1e-3 # in meter
-            if not given_robot_frame.__eq__(FK_tool_frame, tol=frame_jump_tolerance):
+            if not is_frames_close(given_robot_frame, FK_tool_frame, options=options):
                 center_dist = distance_point_point(given_robot_frame.point, FK_tool_frame.point)
-                if center_dist > frame_jump_tolerance:
-                    msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format()
-                    # cprint('!!! Overwriting the current_frame {} by the given robot conf\'s FK {} | robot conf {}. Please confirm this.'.format(given_robot_frame.point, FK_tool_frame.point, robot_config.joint_values))
-                    if debug:
-                        wait_for_user('FK consistency checked: {}'.format(msg))
+                msg = 'Robot FK tool pose and current frame diverge: {:.5f} (m)'.format(center_dist)
+                if debug:
+                    wait_for_user('FK consistency checked: {}'.format(msg))
                 return (False, msg)
         return (True, 'Given robot\'s FK agrees with the given robot_frame.')
     else:
@@ -96,8 +94,19 @@ def main():
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     parser.add_argument('--debug', action='store_true', help='debug mode.')
     args = parser.parse_args()
-    print('Arguments:', args)
-    print('='*10)
+
+    log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir='results'))
+    log_path = os.path.join(log_folder, 'check_state.log')
+
+    logging_level = logging.DEBUG if args.debug else logging.INFO
+    LOGGER.setLevel(logging_level)
+
+    file_handler = logging.FileHandler(filename=log_path, mode='w')
+    formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging_level)
+    LOGGER.addHandler(file_handler)
+    LOGGER.info("planning.run.py started with args: %s" % args)
 
     process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
@@ -105,36 +114,36 @@ def main():
     # * print out a summary of all the movements to check which one hasn't been solved yet
     if args.plan_summary:
         ext_movement_path = os.path.dirname(result_path)
-        cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
+        LOGGER.info('Loading external movements from {}'.format(ext_movement_path))
         unfound_beams = []
         # process.load_external_movements(ext_movement_path)
         for i, beam_id in enumerate(process.assembly.sequence):
-            print('='*10)
-            cprint('({}) Beam #{}:'.format(i, beam_id), 'cyan')
+            LOGGER.info('='*10)
+            LOGGER.info('({}) Beam #{}:'.format(i, beam_id))
             b_movements = process.get_movements_by_beam_id(beam_id)
             all_found = True
             for movement in b_movements:
                 movement_path = os.path.join(ext_movement_path, movement.get_filepath())
                 if not os.path.exists(movement_path):
-                    cprint('{} not found | {}'.format(movement.movement_id, movement.short_summary), 'red')
+                    LOGGER.warning('{} not found | {}'.format(movement.movement_id, movement.short_summary))
                     all_found = False
             if all_found:
                 if len(b_movements) > 0:
-                    cprint('({}) Beam #{} all found!'.format(i, beam_id), 'green')
+                    LOGGER.info('({}) Beam #{} all found!'.format(i, beam_id))
                     movement_path = os.path.join(ext_movement_path, b_movements[-1].get_filepath())
-                    print("   created: %s" % time.ctime(os.path.getctime(movement_path)))
-                    print("   last modified: %s" % time.ctime(os.path.getmtime(movement_path)))
+                    LOGGER.info("\tcreated: %s" % time.ctime(os.path.getctime(movement_path)))
+                    LOGGER.info("\tlast modified: %s" % time.ctime(os.path.getmtime(movement_path)))
                 else:
-                    cprint('({}) Beam #{} empty movement list!'.format(i, beam_id), 'yellowjk')
+                    LOGGER.error('({}) Beam #{} empty movement list!'.format(i, beam_id))
             else:
                 unfound_beams.append((i, beam_id))
-        print('Unfound beams: {}'.format(unfound_beams))
+        LOGGER.warning('Unfound beams: {}'.format(unfound_beams))
         return
 
     # * if verifying existing solved movement, load from external movements
     if args.verify_plan:
         ext_movement_path = os.path.dirname(result_path)
-        cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
+        LOGGER.info('Loading external movements from {}'.format(ext_movement_path), 'cyan')
         process.load_external_movements(ext_movement_path)
 
     # * Connect to path planning backend and initialize robot parameters
@@ -147,19 +156,10 @@ def main():
     if process.robot_initial_config is not None:
         assert not client.check_collisions(robot, process.robot_initial_config, options={'diagnosis':True})
 
-    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
-    joint_types = robot.get_joint_types_by_names(joint_names)
-    joint_jump_threshold = {jt_name : 0.1 \
-            if jt_type in [Joint.REVOLUTE, Joint.CONTINUOUS] else 0.1 \
-            for jt_name, jt_type in zip(joint_names, joint_types)}
-
     options = {
         # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
         'collision_distance_threshold' : 0.0025,
-        # * buffering distance, If the distance between objects exceeds this maximum distance, no points may be returned.
-        'max_distance' : 0.0,
         # * If target_configuration is different from the target_frame by more that this amount at flange center, a warning will be raised.
-        'frame_jump_tolerance' : 0.0012,
         'diagnosis' : True,
         'debug' : args.debug,
         'verbose' : True,
@@ -174,8 +174,8 @@ def main():
     for beam_id in beam_ids:
         seq_i = process.assembly.sequence.index(beam_id)
         if not args.movement_id:
-            print('='*20)
-            cprint('(Seq#{}) Beam {}'.format(seq_i, beam_id), 'yellow')
+            LOGGER.info('='*20)
+            LOGGER.info('(Seq#{}) Beam {}'.format(seq_i, beam_id))
 
         actions = process.assembly.get_beam_attribute(beam_id, 'actions')
         for action in actions:
@@ -196,8 +196,8 @@ def main():
                 no_traj = False
                 fk_disagree = False
                 m_index = process.movements.index(m)
-                print('-'*10)
-                print_title('(MovementIndex={}) (Seq#{}-#{}) {}'.format(m_index, seq_i, i, m.short_summary))
+                LOGGER.info('-'*10)
+                print_title('(MovementIndex={}) (Seq#{}-#{}) {}'.format(m_index, seq_i, i, m.short_summary), log_level='info')
 
                 if isinstance(m, RoboticMovement):
                     # * Movement-specific ACM
@@ -210,14 +210,14 @@ def main():
                                 ((parent_body, None), (child_body, None))
                             )
 
-                    cprint('Start State:', 'blue')
+                    LOGGER.info('Start State:')
                     start_in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
                     in_collision |= start_in_collision
-                    cprint('Start State in collision: {}.'.format(start_in_collision), color_from_success(not start_in_collision))
+                    LOGGER.info(colored('Start State in collision: {}.'.format(start_in_collision), color_from_success(not start_in_collision)))
                     start_fk_agree, msg = check_FK_consistency(client, robot, process, start_state, options)
                     fk_disagree |= not start_fk_agree
-                    cprint('Start State FK consistency: {} | {}'.format(start_fk_agree, msg), color_from_success(start_fk_agree))
-                    print('#'*20)
+                    LOGGER.info(colored('Start State FK consistency: {} | {}'.format(start_fk_agree, msg), color_from_success(start_fk_agree)))
+                    LOGGER.info('#'*20)
 
                     # * verify found trajectory's collisions and joint flips
                     if args.verify_plan:
@@ -234,28 +234,28 @@ def main():
                                     in_collision |= client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
 
                                 if prev_conf and not is_configurations_close(jpt, prev_conf, options=options):
-                                    print('\t traj point #{}/{}'.format(conf_id, len(m.trajectory.points)))
-                                    print('='*10)
+                                    LOGGER.info('\t traj point #{}/{}'.format(conf_id, len(m.trajectory.points)))
+                                    LOGGER.info('='*10)
                                     joint_flip |= True
                                 prev_conf = jpt
-                            cprint('Trajectory in trouble: in_collision {} | joint_flip {}'.format(in_collision, joint_flip), 'red' if in_collision or joint_flip else 'green')
+                            LOGGER.info(colored('Trajectory in trouble: in_collision {} | joint_flip {}'.format(in_collision, joint_flip), 'red' if in_collision or joint_flip else 'green'))
                             if in_collision or joint_flip:
                                 if args.debug:
                                     wait_for_user()
                         else:
                             no_traj = True
-                            cprint('No trajectory found!', 'red')
+                            LOGGER.warning('No trajectory found!', 'red')
                             # wait_for_user()
-                        print('#'*20)
+                        LOGGER.info('#'*20)
 
-                    cprint('End State:', 'blue')
+                    LOGGER.info('End State:')
                     end_in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
                     in_collision |= end_in_collision
-                    cprint('End State in collision: {}.'.format(end_in_collision), color_from_success(not end_in_collision))
+                    LOGGER.info(colored('End State in collision: {}.'.format(end_in_collision), color_from_success(not end_in_collision)))
                     end_fk_agree, msg = check_FK_consistency(client, robot, process, end_state, options)
                     fk_disagree |= not end_fk_agree
-                    cprint('End State FK consistency: {} | {}'.format(end_fk_agree, msg), color_from_success(end_fk_agree))
-                    print('#'*20)
+                    LOGGER.info(colored('End State FK consistency: {} | {}'.format(end_fk_agree, msg), color_from_success(end_fk_agree)))
+                    LOGGER.info('#'*20)
 
                     if temp_name in client.extra_disabled_collision_links:
                         del client.extra_disabled_collision_links[temp_name]
@@ -266,12 +266,12 @@ def main():
                         if start_conf and end_conf:
                             joint_flip |= not is_configurations_close(start_conf, end_conf, options=options)
                             if joint_flip:
-                                cprint('Joint conf not consistent!'.format(m.short_summary), 'red')
+                                LOGGER.info(colored('Joint conf not consistent!'.format(m.short_summary), 'red'))
                         else:
                             no_traj = True
-                            cprint('Start found: {} | End conf found: {}.'.format(start_conf is not None, end_conf is not None), 'yellow')
+                            LOGGER.info(colored('Start found: {} | End conf found: {}.'.format(start_conf is not None, end_conf is not None), 'yellow'))
                     else:
-                        print('Non-robotic movement, nothing to check.')
+                        LOGGER.info('Non-robotic movement, nothing to check.')
 
                 checks = [in_collision, joint_flip, no_traj, fk_disagree]
                 if any(checks):
@@ -279,14 +279,14 @@ def main():
                     report_msg = 'in_collision: {} | joint_flip: {} | no_traj: {} | fk_disagree: {}'.format(*[colored(c, color=color_from_success(not c)) for c in checks])
                     failure_reasons.append(report_msg)
 
-    print('='*20)
+    LOGGER.info('='*20)
     if len(movements_need_fix) == 0:
-        cprint('Congrats, check state done!', 'green')
+        LOGGER.info(colored('Congrats, check state done!', 'green'))
     else:
-        cprint('Movements that requires care and love:', 'yellow')
+        LOGGER.info(colored('Movements that requires care and love:', 'yellow'))
         for fm, reason in zip(movements_need_fix, failure_reasons):
-            cprint('{}: {}'.format(fm.short_summary, reason))
-    print('='*20)
+            LOGGER.info('{}: {}'.format(fm.short_summary, reason))
+    LOGGER.info('='*20)
 
     client.disconnect()
 

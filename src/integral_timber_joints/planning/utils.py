@@ -107,9 +107,12 @@ def notify(msg=''):
         except ImportError:
             pass
 
-def print_title(x):
+def print_title(x, log_level='debug'):
     msg = colored(x, 'blue', 'on_white', attrs=['bold'])
-    LOGGER.debug(msg)
+    if log_level == 'debug':
+        LOGGER.debug(msg)
+    else:
+        LOGGER.info(msg)
 
 def color_from_success(success : bool):
     return 'green' if success else 'red'
