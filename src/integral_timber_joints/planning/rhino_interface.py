@@ -13,7 +13,7 @@ from integral_timber_joints.planning.state import set_state, gantry_base_generat
 from integral_timber_joints.planning.stream import _get_sample_bare_arm_ik_fn
 
 
-def get_ik_solutions(process, movement_index, options={}):
+def get_ik_solutions(process, movement_index, options=None):
     # TODO how to recover the client and robot if one is running already?
     options = options or {}
     movement = process.movements[movement_index]
@@ -42,7 +42,7 @@ def get_ik_solutions(process, movement_index, options={}):
             options={'include_env' : True, 'reinit_tool' : False})
 
     end_scene = process.get_movement_end_scene(movement)
-    set_state(client, robot, process, end_scene)
+    set_state(client, robot, process, end_scene, options=options)
 
     flange_frame = end_scene[('robot', 'f')].copy()
     if flange_frame is None:

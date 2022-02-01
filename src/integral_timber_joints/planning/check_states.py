@@ -15,7 +15,7 @@ from pybullet_planning import  link_from_name
 
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
-from compas_fab_pychoreo.utils import is_configurations_close, is_frames_close
+from compas_fab_pychoreo.utils import is_configurations_close, is_frames_close, does_configurations_jump
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 
 from integral_timber_joints.planning.parsing import parse_process, get_process_path
@@ -143,7 +143,7 @@ def main():
     # * if verifying existing solved movement, load from external movements
     if args.verify_plan:
         ext_movement_path = os.path.dirname(result_path)
-        LOGGER.info('Loading external movements from {}'.format(ext_movement_path), 'cyan')
+        LOGGER.info('Loading external movements from {}'.format(ext_movement_path))
         process.load_external_movements(ext_movement_path)
 
     # * Connect to path planning backend and initialize robot parameters
@@ -159,7 +159,6 @@ def main():
     options = {
         # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
         'collision_distance_threshold' : 0.0025,
-        # * If target_configuration is different from the target_frame by more that this amount at flange center, a warning will be raised.
         'diagnosis' : True,
         'debug' : args.debug,
         'verbose' : True,
@@ -233,7 +232,7 @@ def main():
                                     # * prev-conf~conf polyline collision checking
                                     in_collision |= client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
 
-                                if prev_conf and not is_configurations_close(jpt, prev_conf, options=options):
+                                if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
                                     LOGGER.info('\t traj point #{}/{}'.format(conf_id, len(m.trajectory.points)))
                                     LOGGER.info('='*10)
                                     joint_flip |= True
