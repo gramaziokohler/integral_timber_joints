@@ -391,6 +391,10 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
     t_world_from_beam_at_newpose = t_world_from_beam_at_pickupretract * possible_rotation_vectors[best_rotation_index]
 
     f_world_from_beam_at_newpose = Frame.from_transformation(t_world_from_beam_at_newpose)
+
+    # Add some offset to world up direction
+    f_world_from_beam_at_newpose.point = f_world_from_beam_at_newpose.point.transformed(Translation.from_vector([0,0,50]))
+
     process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_screwdriver_attachment_pose', f_world_from_beam_at_newpose)
     vprint("process.assembly.set_beam_attribute(%s, 'assembly_wcf_screwdriver_attachment_pose', %s)" % (beam_id, f_world_from_beam_at_newpose))
 
