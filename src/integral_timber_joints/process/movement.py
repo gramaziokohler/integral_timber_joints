@@ -296,7 +296,7 @@ class OperatorAttachToolMovement(Movement):
         self.tag = tag or "Opeartor Attach Tool to Beam"
 
     def __str__(self):
-        return "Load Beam ('%s') for pickup at %s (Side %s face up)." % (self.beam_id, self.target_frame, self.grasp_face)
+        return "Load Beam ('%s') for pickup at %s." % (self.beam_id, self.target_frame)
 
     @property
     def data(self):
