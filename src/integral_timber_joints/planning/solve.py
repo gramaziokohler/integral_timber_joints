@@ -5,7 +5,8 @@ from copy import deepcopy
 from collections import defaultdict
 from turtle import back
 from compas_fab.backends.pybullet.utils import LOG
-from termcolor import cprint, colored
+from termcolor import colored
+from tqdm import tqdm
 
 from pybullet_planning import set_random_seed, set_numpy_seed, elapsed_time, get_random_seed
 from pybullet_planning import wait_if_gui, wait_for_user, WorldSaver
@@ -215,54 +216,60 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 movement_statuses))
 
     total_altered_movements = []
-    for m in selected_movements:
-        altered_movements = []
-        # no filter applied if movement_statuses is None
+    # no filter applied if movement_statuses is None
+    filtered_movements = [m for m in selected_movements \
         if movement_statuses is None or \
-            any([get_movement_status(process, m, movement_types, check_type_only=check_type_only).value - m_st.value == 0
-                for m_st in movement_statuses]):
-            m_id = process.movements.index(m)
-            if verbose:
-                LOGGER.debug('-'*10)
-                LOGGER.debug('({})'.format(m_id))
+           any([get_movement_status(process, m, movement_types, check_type_only=check_type_only).value == m_st.value
+                for m_st in movement_statuses])]
 
-            options['samplig_order_counter'] += 1
-            archived_start_conf = process.get_movement_start_robot_config(m)
-            archived_end_conf = process.get_movement_end_robot_config(m)
+    pbar = tqdm(total=len(filtered_movements), desc=f'{beam_id}-priority {priority}')
+    for m in filtered_movements:
+        # TODO move propagate here
+        altered_movements = []
+        m_id = process.movements.index(m)
+        if verbose:
+            LOGGER.debug('-'*10)
+            LOGGER.debug('({})'.format(m_id))
 
-            for attempt in range(m_attempts):
-                start_time = time.time()
-                plan_success = compute_movement(client, robot, process, m, options, diagnosis)
-                plan_time = elapsed_time(start_time)
-                # * log planning profile
-                if 'profiles' in options:
-                    if m_id not in options['profiles']:
-                        options['profiles'][m_id] = defaultdict(list)
-                    options['profiles'][m_id]['movement_id'] = [m.movement_id]
-                    options['profiles'][m_id]['plan_time'].append(plan_time)
-                    options['profiles'][m_id]['plan_success'].append(plan_success)
+        options['samplig_order_counter'] += 1
+        archived_start_conf = process.get_movement_start_robot_config(m)
+        archived_end_conf = process.get_movement_end_robot_config(m)
 
-                if plan_success:
-                    altered_movements.append(m)
-                    if viz_upon_found:
-                        with WorldSaver():
-                            visualize_movement_trajectory(client, robot, process, m, step_sim=True)
-                    break
-                else:
-                    process.set_movement_start_robot_config(m, archived_start_conf)
-                    process.set_movement_end_robot_config(m, archived_end_conf)
+        for attempt in range(m_attempts):
+            start_time = time.time()
+            plan_success = compute_movement(client, robot, process, m, options, diagnosis)
+            plan_time = elapsed_time(start_time)
+            # * log planning profile
+            if 'profiles' in options:
+                if m_id not in options['profiles']:
+                    options['profiles'][m_id] = defaultdict(list)
+                options['profiles'][m_id]['movement_id'] = [m.movement_id]
+                options['profiles'][m_id]['plan_time'].append(plan_time)
+                options['profiles'][m_id]['plan_success'].append(plan_success)
+
+            if plan_success:
+                altered_movements.append(m)
+                if viz_upon_found:
+                    with WorldSaver():
+                        visualize_movement_trajectory(client, robot, process, m, step_sim=True)
+                break
             else:
-                # TODO backtracking
-                LOGGER.info('No plan found for {} after {} attempts. {}'.format(m.movement_id, m_attempts, m.short_summary))
-                return False, []
+                process.set_movement_start_robot_config(m, archived_start_conf)
+                process.set_movement_end_robot_config(m, archived_end_conf)
         else:
-            continue
+            # TODO backtracking
+            pbar.close()
+            LOGGER.info('No plan found for {} after {} attempts. {}'.format(m.movement_id, m_attempts, m.short_summary))
+            return False, []
 
         # * propagate to -1 movements
         altered_new_movements, impact_movements = propagate_states(process, altered_movements, options=options)
         altered_movements.extend(altered_new_movements)
         total_altered_movements.extend(altered_movements)
+        # update progress bar
+        pbar.update(1)
 
+    pbar.close()
     return True, total_altered_movements
 
 ###########################################

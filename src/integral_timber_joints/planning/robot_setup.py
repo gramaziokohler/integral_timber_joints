@@ -76,7 +76,7 @@ def get_tolerances(robot, low_res=False):
     # for discussions on tolerance, see: https://github.com/gramaziokohler/integral_timber_joints/issues/145
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     joint_types = robot.get_joint_types_by_names(joint_names)
-    res_ratio = 0.1 if low_res else 1.0
+    res_ratio = 10 if low_res else 1.0
     # TODO joint resolution and weight from joint name
     # * threshold to check joint flipping
     joint_jump_tolerances = {}

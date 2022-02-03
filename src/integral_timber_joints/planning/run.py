@@ -99,6 +99,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     if 'movement_id_filter' in options:
         del options['movement_id_filter']
 
+    st_time = time.time()
     with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
         options['lockrenderer'] = lockrenderer
         altered_movements = []
@@ -202,15 +203,17 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             else:
                 raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
 
+    LOGGER.info('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
     # * export computed movements (unsmoothed)
     if args.write:
         save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
             include_traj_in_process=False)
 
     # * smoothing
-    if not args.nosmooth:
+    if not args.no_smooth:
         LOGGER.debug('Smoothing trajectory...')
         smoothed_movements = []
+        st_time = time.time()
         with pp.LockRenderer(): # not args.debug):
             for altered_m in altered_movements:
                 if not isinstance(altered_m, RoboticFreeMovement):
@@ -219,6 +222,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 altered_m.trajectory = smoothed_traj
                 smoothed_movements.append(altered_m)
                 LOGGER.debug(colored('Smooth success: {} | msg: {}'.format(success, msg), color_from_success(success)))
+        LOGGER.info('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
         # * export smoothed movements
         if args.write:
             save_process_and_movements(args.design_dir, args.problem, process, smoothed_movements, overwrite=False,
@@ -255,7 +259,7 @@ def main():
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
-    parser.add_argument('--nosmooth', action='store_false', help='Not apply smoothing on free motions upon a plan is found.')
+    parser.add_argument('--no_smooth', action='store_true', help='Not apply smoothing on free motions upon a plan is found. Defaults to False.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
@@ -331,7 +335,7 @@ def main():
         options.update({
         'reachable_range': (args.reachable_range[0], args.reachable_range[1]),
         })
-    if not args.nosmooth:
+    if not args.no_smooth:
         options.update({
             'smooth_iterations' : 150,
             'max_smooth_time' : 60,
