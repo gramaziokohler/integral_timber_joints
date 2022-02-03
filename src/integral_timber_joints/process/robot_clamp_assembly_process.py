@@ -1313,8 +1313,8 @@ class RobotClampAssemblyProcess(Data):
         else:
             return None
 
-    def load_external_movements(self, process_folder_path, movement_id=None, verbose=False):
-        # type: (str, str, bool) -> list[Movement]
+    def load_external_movements(self, process_folder_path, movement_id=None, use_smoothed_trajectory=True, verbose=False):
+        # type: (str, str, bool, bool) -> list[Movement]
         """Load External Movements from nearby folder if they exist, replace the movements
         with new movements, returns the list of movements modified.
         If movement_id is None, all movements will be parsed. Otherwise only the given movement
@@ -1334,7 +1334,16 @@ class RobotClampAssemblyProcess(Data):
 
         movements_modified = []
         for movement in target_movements:
-            new_movement = self.load_external_movement(process_folder_path, movement, verbose=verbose)
+            new_movement = None
+
+            # Attempt to load from smoothed movement
+            if use_smoothed_trajectory:
+                new_movement = self.load_external_movement(process_folder_path, movement, subdir='smoothed_movements', verbose=verbose)
+            # Attempt to load from normal non-smoothed movement
+            if new_movement is None:
+                new_movement = self.load_external_movement(process_folder_path, movement, subdir='movements', verbose=verbose)
+                print("Rough Trajectory Loaded")
+
             if new_movement is not None:
                 movements_modified.append(new_movement)
         return movements_modified
