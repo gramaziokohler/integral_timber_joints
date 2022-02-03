@@ -3,6 +3,7 @@ import time
 import logging
 import numpy as np
 import argparse
+from tqdm import tqdm
 import pybullet_planning as pp
 from pybullet_planning.motion_planners.utils import elapsed_time
 
@@ -60,7 +61,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         runtime_data[trial_i] = {}
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
-        LOGGER.info(colored('Return success: {}'.format(success), 'green' if success else 'red'))
+        LOGGER.debug(colored('Return success: {}'.format(success), 'green' if success else 'red'))
         if return_upon_success and success:
             break
         trial_i += 1
@@ -203,7 +204,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             else:
                 raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
 
-    LOGGER.info('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
+    LOGGER.debug('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
     # * export computed movements (unsmoothed)
     if args.write:
         save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
@@ -211,18 +212,16 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
     # * smoothing
     if not args.no_smooth:
-        LOGGER.debug('Smoothing trajectory...')
         smoothed_movements = []
         st_time = time.time()
         with pp.LockRenderer(): # not args.debug):
-            for altered_m in altered_movements:
-                if not isinstance(altered_m, RoboticFreeMovement):
-                    continue
+            free_movements = [fm for fm in altered_movements if isinstance(fm, RoboticFreeMovement)]
+            for altered_m in tqdm(free_movements, desc='smoothing'):
                 success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, altered_m, options=options)
                 altered_m.trajectory = smoothed_traj
                 smoothed_movements.append(altered_m)
                 LOGGER.debug(colored('Smooth success: {} | msg: {}'.format(success, msg), color_from_success(success)))
-        LOGGER.info('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
+        LOGGER.debug('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
         # * export smoothed movements
         if args.write:
             save_process_and_movements(args.design_dir, args.problem, process, smoothed_movements, overwrite=False,
@@ -241,7 +240,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         for m_id in sorted(viz_movements.keys()):
             visualize_movement_trajectory(client, robot, process, viz_movements[m_id], step_sim=args.step_sim)
 
-    LOGGER.info('A plan has been found for (seq_n={}) beam id {}!'.format(seq_n, beam_id))
+    LOGGER.debug('A plan has been found for (seq_n={}) beam id {}!'.format(seq_n, beam_id))
     return success
 
 #################################

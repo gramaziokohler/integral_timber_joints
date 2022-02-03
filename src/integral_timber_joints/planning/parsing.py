@@ -87,7 +87,7 @@ def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyPro
     with open(file_path, 'r') as f:
         process = json.load(f, cls=DataDecoder)
         # type: RobotClampAssemblyProcess
-    LOGGER.info(colored('Process json parsed from {}'.format(file_path), 'blue'))
+    LOGGER.debug(colored('Process json parsed from {}'.format(file_path), 'blue'))
 
     # * Double check entire solution is valid
     for beam_id in process.assembly.sequence:
@@ -152,8 +152,7 @@ def save_process_and_movements(design_dir, process_name, _process, _movements,
         m_file_path = os.path.abspath(os.path.join(process_dir, m.get_filepath(movement_subdir)))
         with open(m_file_path, 'w') as f:
             json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)
-    LOGGER.info('---')
-    LOGGER.info(colored('#{} movements written to {}'.format(len(_movements), os.path.abspath(movement_dir)), 'green'))
+    LOGGER.debug(colored('#{} movements written to {}'.format(len(_movements), os.path.abspath(movement_dir)), 'green'))
 
     process = deepcopy(_process)
     if not include_traj_in_process:
@@ -162,7 +161,6 @@ def save_process_and_movements(design_dir, process_name, _process, _movements,
                 m.trajectory = None
     with open(process_file_path, 'w') as f:
         json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
-    LOGGER.info('---')
-    LOGGER.info(colored('Process written to {}'.format(process_file_path), 'green'))
+    LOGGER.debug(colored('Process written to {}'.format(process_file_path), 'green'))
 
 ##########################################

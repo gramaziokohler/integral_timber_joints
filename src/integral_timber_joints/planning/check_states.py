@@ -95,12 +95,11 @@ def main():
     parser.add_argument('--debug', action='store_true', help='debug mode.')
     args = parser.parse_args()
 
-    log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir='results'))
-    log_path = os.path.join(log_folder, 'check_state.log')
-
     logging_level = logging.DEBUG if args.debug else logging.INFO
     LOGGER.setLevel(logging_level)
 
+    # log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir='results'))
+    # log_path = os.path.join(log_folder, 'check_state.log')
     # file_handler = logging.FileHandler(filename=log_path, mode='w')
     # formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
     # file_handler.setFormatter(formatter)

@@ -224,8 +224,9 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
 
     pbar = tqdm(total=len(filtered_movements), desc=f'{beam_id}-priority {priority}')
     for m in filtered_movements:
-        # TODO move propagate here
-        altered_movements = []
+        # * propagate to Nonrobotic movements
+        altered_movements = propagate_states(process, options=options)
+
         m_id = process.movements.index(m)
         if verbose:
             LOGGER.debug('-'*10)
@@ -262,9 +263,6 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
             LOGGER.info('No plan found for {} after {} attempts. {}'.format(m.movement_id, m_attempts, m.short_summary))
             return False, []
 
-        # * propagate to -1 movements
-        altered_new_movements, impact_movements = propagate_states(process, altered_movements, options=options)
-        altered_movements.extend(altered_new_movements)
         total_altered_movements.extend(altered_movements)
         # update progress bar
         pbar.update(1)
@@ -274,78 +272,25 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
 
 ###########################################
 
-def propagate_states(process, selected_movements, options=None):
-    # type: (RobotClampAssemblyProcess, List[Movement], Dict) -> Tuple[List[Movement], List[Movement]]
+def propagate_states(process, options=None):
+    # type: (RobotClampAssemblyProcess, Dict) -> List[Movement]
     """Returns two lists of movements:
         - altered_movements: non-robotic movements with conf updated
         - impacted_movements: robotic movements with start / end conf updated
     """
     options = options or {}
-    verbose = options.get('verbose', False)
-    joint_compare_tolerances = options.get('joint_compare_tolerances', {})
     altered_movements = []
-    impact_movements = []
     all_movements = process.movements
-    for target_m in selected_movements:
-        if not isinstance(target_m, RoboticMovement) or target_m.trajectory is None:
-            # skip non-robotic movement or robotic movement without a trajectory planned
+    for target_m in all_movements:
+        if isinstance(target_m, RoboticMovement):
+            # skip robotic movements
             continue
-        m_id = all_movements.index(target_m)
         target_start_conf = process.get_movement_start_robot_config(target_m)
         target_end_conf = process.get_movement_end_robot_config(target_m)
-        if verbose:
-            LOGGER.debug('\tPropagate states for ({}) : {}'.format(colored(m_id, 'cyan'), target_m.short_summary))
-
-        # * backward fill all adjacent (-1) movements
-        back_id = m_id-1
-        while back_id >= 0:
-            back_m = all_movements[back_id]
-            back_end_conf = process.get_movement_end_robot_config(back_m)
-            if isinstance(back_m, RoboticMovement):
-                if back_end_conf is not None:
-                    # double check if configuration agrees
-                    if not is_configurations_close(back_end_conf, target_start_conf, options=options):
-                        LOGGER.error("Back propagation configruation disagree! {} /\ {}.".format(back_m, target_m))
-                else:
-                    # * write end conf to robot movement with no end conf
-                    m_symbol = '$ Impacted'
-                    m_color = 'yellow'
-                    LOGGER.debug('\t{} (backward): ({}) {}'.format(m_symbol, colored(back_id, m_color), back_m.short_summary))
-                    process.set_movement_end_robot_config(back_m, target_start_conf)
-                    impact_movements.append(back_m)
-                # * break if encountering a robot movement
-                break
+        if (target_start_conf is None)^(target_end_conf is None):
+            if target_start_conf is None:
+                process.set_movement_start_robot_config(target_m, target_end_conf)
             else:
-                # * propagate to Nonrobotic movement
-                if verbose:
-                    m_symbol = '- Altered'
-                    m_color = 'green'
-                    LOGGER.debug('\t{} (backward): ({}) {}'.format(m_symbol, colored(back_id, m_color), back_m.short_summary))
-                process.set_movement_end_robot_config(back_m, target_start_conf)
-                altered_movements.append(back_m)
-                back_id -= 1
-
-        # * forward fill all adjacent (+1) movements
-        forward_id = m_id+1
-        while forward_id < len(all_movements):
-            forward_m = all_movements[forward_id]
-            if isinstance(forward_m, RoboticMovement):
-                if forward_m.trajectory is not None:
-                    # double check if configuration agrees
-                    if not is_configurations_close(target_end_conf, forward_m.trajectory.points[0], options=options):
-                        LOGGER.error("Forward propagation configruation disagree! {} /\ {}.".format(forward_m, target_m))
-                # * break if encountering a robot movement
-                break
-            else:
-                # * propagate to Nonrobotic movement
-                if verbose:
-                    m_symbol = '- Altered'
-                    m_color = 'green'
-                    LOGGER.debug('\t{} (forward): ({}) {}'.format(m_symbol, colored(forward_id, m_color), forward_m.short_summary))
-                # for non-robotic movement start_conf = end_conf, so only need to write end conf here
-                process.set_movement_end_robot_config(forward_m, target_end_conf)
-                altered_movements.append(forward_m)
-                forward_id += 1
-    # end loop selected_movements
-    return altered_movements, impact_movements
-
+                process.set_movement_end_robot_config(target_m, target_start_conf)
+            altered_movements.append(target_m)
+    return altered_movements
