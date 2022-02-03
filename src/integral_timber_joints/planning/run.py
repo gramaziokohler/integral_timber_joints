@@ -3,6 +3,7 @@ import time
 import logging
 import numpy as np
 import argparse
+from tqdm import tqdm
 import pybullet_planning as pp
 from pybullet_planning.motion_planners.utils import elapsed_time
 
@@ -12,8 +13,7 @@ from copy import deepcopy
 from pybullet_planning import wait_if_gui, LockRenderer, HideOutput
 
 from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
-from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances, MAIN_ROBOT_ID, \
-    get_gantry_robot_custom_limits
+from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.utils import print_title, beam_ids_from_argparse_seq_n, color_from_success, LOGGER
 from integral_timber_joints.planning.state import set_state, set_initial_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
@@ -45,7 +45,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     The client will be recreated at each restart as well.
     """
     solve_timeout = options.get('solve_timeout', 600)
-    # TODO change back to 10
+    # max solve iter kept rather high to prioritize timeout
     solve_iters = options.get('solve_iters', 40)
     return_upon_success = options.get('return_upon_success', True)
     ignore_taught_confs = options.get('ignore_taught_confs', False)
@@ -54,14 +54,14 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     start_time = time.time()
     trial_i = 0
     while elapsed_time(start_time) < solve_timeout and trial_i < solve_iters:
-        LOGGER.info('#'*10)
+        LOGGER.debug('#'*10)
         LOGGER.info('Beam {} | {} | Trail #{} | time {:.2f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(start_time)))
         options['profiles'] = {}
         success = compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options)
         runtime_data[trial_i] = {}
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
-        LOGGER.info(colored('Return success: {}'.format(success), 'green' if success else 'red'))
+        LOGGER.debug(colored('Return success: {}'.format(success), 'green' if success else 'red'))
         if return_upon_success and success:
             break
         trial_i += 1
@@ -100,6 +100,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     if 'movement_id_filter' in options:
         del options['movement_id_filter']
 
+    st_time = time.time()
     with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
         options['lockrenderer'] = lockrenderer
         altered_movements = []
@@ -203,23 +204,25 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             else:
                 raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
 
-    # * export computed movements
+    LOGGER.debug('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
+    # * export computed movements (unsmoothed)
     if args.write:
         save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
             include_traj_in_process=False)
 
     # * smoothing
-    if args.smooth:
-        LOGGER.debug('Smoothing trajectory...')
+    if not args.no_smooth:
         smoothed_movements = []
+        st_time = time.time()
         with pp.LockRenderer(): # not args.debug):
-            for altered_m in altered_movements:
-                if not isinstance(altered_m, RoboticFreeMovement):
-                    continue
+            free_movements = [fm for fm in altered_movements if isinstance(fm, RoboticFreeMovement)]
+            for altered_m in tqdm(free_movements, desc='smoothing'):
                 success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, altered_m, options=options)
                 altered_m.trajectory = smoothed_traj
                 smoothed_movements.append(altered_m)
                 LOGGER.debug(colored('Smooth success: {} | msg: {}'.format(success, msg), color_from_success(success)))
+        LOGGER.debug('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
+        # * export smoothed movements
         if args.write:
             save_process_and_movements(args.design_dir, args.problem, process, smoothed_movements, overwrite=False,
                 include_traj_in_process=False, movement_subdir='smoothed_movements')
@@ -237,7 +240,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         for m_id in sorted(viz_movements.keys()):
             visualize_movement_trajectory(client, robot, process, viz_movements[m_id], step_sim=args.step_sim)
 
-    LOGGER.info('A plan has been found for (seq_n={}) beam id {}!'.format(seq_n, beam_id))
+    LOGGER.debug('A plan has been found for (seq_n={}) beam id {}!'.format(seq_n, beam_id))
     return success
 
 #################################
@@ -255,7 +258,7 @@ def main():
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
-    parser.add_argument('--smooth', action='store_false', help='Apply smoothing.')
+    parser.add_argument('--no_smooth', action='store_true', help='Not apply smoothing on free motions upon a plan is found. Defaults to False.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
@@ -317,9 +320,7 @@ def main():
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
         'verbose' : not args.quiet,
-        'low_res' : args.low_res,
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
-        'custom_limits' : get_gantry_robot_custom_limits(MAIN_ROBOT_ID),
         # the collision is counted when penetration distance is bigger than this value
         'collision_distance_threshold' : 0.0012, # in meter,
         'solve_timeout': args.solve_timeout,
@@ -328,12 +329,12 @@ def main():
         'mp_algorithm' : args.mp_algorithm,
     }
     # ! frame, conf compare, joint flip tolerances are set here
-    options.update(get_tolerances(robot))
+    options.update(get_tolerances(robot, low_res=args.low_res))
     if len(args.reachable_range) == 2:
         options.update({
         'reachable_range': (args.reachable_range[0], args.reachable_range[1]),
         })
-    if args.smooth:
+    if not args.no_smooth:
         options.update({
             'smooth_iterations' : 150,
             'max_smooth_time' : 60,
@@ -348,10 +349,10 @@ def main():
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
     for beam_id in beam_ids:
-        LOGGER.info('-'*20)
+        LOGGER.debug('-'*20)
         success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
 
-    LOGGER.info(colored('Planning done.', 'green'))
+    LOGGER.info('Planning done.')
     client.disconnect()
 
 if __name__ == '__main__':

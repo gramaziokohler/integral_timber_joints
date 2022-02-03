@@ -1208,6 +1208,12 @@ class RobotClampAssemblyProcess(Data):
         else:
             return self.get_movement_end_robot_config(movements[index - 1])
 
+    # movement 1 - start conf
+    # movement 0 - end conf
+
+    # movement 0 - start conf
+    # intial_conf
+
     def get_movement_end_robot_config(self, movement):
         # type: (Movement) -> Optional[Configuration]
         """Get the robot configuration at the begining of a Movement.

@@ -111,8 +111,12 @@ def print_title(x, log_level='debug'):
     msg = colored(x, 'blue', 'on_white', attrs=['bold'])
     if log_level == 'debug':
         LOGGER.debug(msg)
-    else:
+    elif log_level == 'info':
         LOGGER.info(msg)
+    elif log_level == 'error':
+        LOGGER.error(msg)
+    elif log_level == 'warn':
+        LOGGER.warn(msg)
 
 def color_from_success(success : bool):
     return 'green' if success else 'red'

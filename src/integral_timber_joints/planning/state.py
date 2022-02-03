@@ -133,7 +133,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 urdf_path = tool.get_urdf_path(PLANNING_DATA_DIR)
                 if reinit_tool or not os.path.exists(urdf_path):
                     tool.save_as_urdf(PLANNING_DATA_DIR, scale=1e-3, triangulize=True)
-                    LOGGER.info('Tool {} ({}) URDF generated to {}'.format(tool.type_name, tool_id, urdf_path))
+                    LOGGER.debug('Tool {} ({}) URDF generated to {}'.format(tool.type_name, tool_id, urdf_path))
                 with HideOutput():
                     tool_robot = load_pybullet(urdf_path, fixed_base=False)
                 client.collision_objects[tool_id] = [tool_robot]
@@ -260,4 +260,3 @@ def set_initial_state(client, robot, process, disable_env=False, reinit_tool=Tru
             options={'debug' : debug, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
     # # * collision sanity check
     # assert not client.check_collisions(robot, full_start_conf, options={'diagnosis':True})
-
