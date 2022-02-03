@@ -1342,7 +1342,6 @@ class RobotClampAssemblyProcess(Data):
             # Attempt to load from normal non-smoothed movement
             if new_movement is None:
                 new_movement = self.load_external_movement(process_folder_path, movement, subdir='movements', verbose=verbose)
-                print("Rough Trajectory Loaded")
 
             if new_movement is not None:
                 movements_modified.append(new_movement)
