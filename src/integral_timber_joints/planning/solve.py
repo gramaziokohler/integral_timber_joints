@@ -17,7 +17,7 @@ from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMov
 from integral_timber_joints.process import RobotClampAssemblyProcess, Movement
 from integral_timber_joints.planning.stream import compute_free_movement, compute_linear_movement
 from integral_timber_joints.planning.utils import notify, print_title, LOGGER
-from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP, R11_JOINT_RESOLUTIONS, R11_JOINT_WEIGHTS
+from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 
 try:
@@ -89,7 +89,6 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         return None
     options = options or {}
     # * low_res mode is used to quickly get a feeling of the planning problem
-    low_res = options.get('low_res', False)
     verbose = options.get('verbose', True)
     joint_compare_tolerances = options.get('joint_compare_tolerances', {})
     if verbose:
@@ -140,14 +139,10 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
-        resolution_ratio = 10.0 if low_res else 1.0
         fm_options = options.copy()
         fm_options.update({
             'rrt_restarts' : 2, #20,
-            'rrt_iterations' : 400, # ! value < 100 might not find solutions even if there is one
             'smooth_iterations': None, # ! smoothing will be done in postprocessing
-            'joint_resolutions' : R11_JOINT_RESOLUTIONS*resolution_ratio,
-            'joint_weights' : R11_JOINT_WEIGHTS,
             # -------------------
             'max_step' : 0.01, # interpolation step size, in meter, used in buffering motion
             })
@@ -162,16 +157,9 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         if prev_robot_conf is not None and not is_configurations_close(prev_robot_conf, traj.points[0], options=options):
             LOGGER.error('Planned trajectory\'s first conf does not agree with the previous movement\'s end conf! Planning fails.')
             return False
-
         movement.trajectory = traj
         process.set_movement_start_robot_config(movement, traj.points[0])
         process.set_movement_end_robot_config(movement, traj.points[-1])
-        # # ! update attached objecs' current frame at the end state
-        # client.set_robot_configuration(robot, end_state[process.robot_config_key])
-        # for object_id, object_state in end_state.items():
-        #     if object_state.attached_to_robot:
-        #         # convert back to millimeter
-        #         object_state.current_frame = list(client.get_object_frame('^{}$'.format(object_id), scale=1e3).values())[0]
         return True
     else:
         notify('Planning fails! Go back to the command line now!')
