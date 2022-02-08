@@ -49,6 +49,10 @@ def mkdir(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
+def safe_rm_dir(d):
+    if os.path.exists(d):
+        shutil.rmtree(d)
+
 ###########################################
 
 def get_process_path(design_dir, assembly_name, subdir='.'):
@@ -172,35 +176,46 @@ def save_process_and_movements(design_dir, process_name, _process, _movements,
 
 ##########################################
 
-def archive_saved_movement(movement, process_folder_path):
-    smoothed_movement_path = os.path.join(process_folder_path, movement.get_filepath(subdir='smoothed_movements'))
-    nonsmoothed_movement_path = os.path.join(process_folder_path, movement.get_filepath(subdir='movements'))
+def move_saved_movement(movement, process_folder_path, to_archive=True):
     archive_path = os.path.join(process_folder_path, 'archived')
-    archive_smoothed_path = os.path.join(archive_path, 'smoothed_movements')
-    archive_nonsmoothed_path = os.path.join(archive_path, 'movements')
-    mkdir(archive_smoothed_path)
-    mkdir(archive_nonsmoothed_path)
+    mkdir(os.path.join(archive_path,'smoothed_movements'))
+    mkdir(os.path.join(archive_path,'movements'))
+
+    smoothed_path = os.path.join(process_folder_path, movement.get_filepath(subdir='smoothed_movements'))
+    nonsmoothed_path = os.path.join(process_folder_path, movement.get_filepath(subdir='movements'))
+    archive_smoothed_path = os.path.join(archive_path, movement.get_filepath(subdir='smoothed_movements'))
+    archive_nonsmoothed_path = os.path.join(archive_path, movement.get_filepath(subdir='movements'))
+
+    if to_archive:
+        from_smoothed_path = smoothed_path
+        from_nonsmoothed_path = nonsmoothed_path
+        to_smoothed_path = archive_smoothed_path
+        to_nonsmoothed_path = archive_nonsmoothed_path
+    else:
+        to_smoothed_path = smoothed_path
+        to_nonsmoothed_path = nonsmoothed_path
+        from_smoothed_path = archive_smoothed_path
+        from_nonsmoothed_path = archive_nonsmoothed_path
+
     movement_removed = False
-    if os.path.exists(smoothed_movement_path):
-        shutil.move(smoothed_movement_path, archive_smoothed_path)
-        # LOGGER.info(f'{smoothed_movement_path} moved to {archive_smoothed_path}')
+    if os.path.exists(from_smoothed_path):
+        shutil.move(from_smoothed_path, to_smoothed_path)
         movement_removed = True
-    if os.path.exists(nonsmoothed_movement_path):
-        shutil.move(nonsmoothed_movement_path, archive_nonsmoothed_path)
-        # LOGGER.info(f'{nonsmoothed_movement_path} moved to {archive_nonsmoothed_path}')
+    if os.path.exists(from_nonsmoothed_path):
+        shutil.move(from_nonsmoothed_path, to_nonsmoothed_path)
         movement_removed = True
     return movement_removed
 
-def archive_saved_movements(process, process_folder_path, beam_ids, movement_id=None):
+def move_saved_movements(process, process_folder_path, beam_ids, movement_id=None, to_archive=True):
     if movement_id is not None:
         if movement_id.startswith('A'):
             movement = process.get_movement_by_movement_id(movement_id)
         else:
             movement = process.movements[int(movement_id)]
         # only remove one movement
-        archive_saved_movement(movement, process_folder_path)
+        move_saved_movement(movement, process_folder_path, to_archive)
     else:
         for beam_id in beam_ids:
             movements = process.get_movements_by_beam_id(beam_id)
             for m in movements:
-                archive_saved_movement(m, process_folder_path)
+                move_saved_movement(m, process_folder_path, to_archive)
