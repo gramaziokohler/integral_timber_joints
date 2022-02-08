@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 from copy import deepcopy
 from compas_fab.backends.pybullet.utils import LOG
@@ -44,6 +45,12 @@ def rfl_setup(model_dir=EXTERNAL_DIR):
 
 ###########################################
 
+def mkdir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+###########################################
+
 def get_process_path(design_dir, assembly_name, subdir='.'):
     if assembly_name.endswith('.json'):
         filename = os.path.basename(assembly_name)
@@ -79,7 +86,7 @@ def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyPro
     # * Load process from file
     file_path = get_process_path(design_dir, process_name, subdir)
     if not os.path.exists(file_path):
-        LOGGER.warning('No temp process file found, using the original one.', 'yellow')
+        LOGGER.warning('No process file found, using the original one.', 'yellow')
         file_path = get_process_path(design_dir, process_name, '.')
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)
@@ -164,3 +171,30 @@ def save_process_and_movements(design_dir, process_name, _process, _movements,
     LOGGER.debug(colored('Process written to {}'.format(process_file_path), 'green'))
 
 ##########################################
+
+def archive_saved_movement(movement, process_folder_path):
+    smoothed_movement_path = os.path.join(process_folder_path, movement.get_filepath(subdir='smoothed_movements'))
+    nonsmoothed_movement_path = os.path.join(process_folder_path, movement.get_filepath(subdir='movements'))
+    archive_path = os.path.join(smoothed_movement_path, '..', 'archived')
+    archive_smoothed_path = os.path.join(archive_path, 'smoothed_movements')
+    archive_nonsmoothed_path = os.path.join(archive_path, 'movements')
+    mkdir(archive_smoothed_path)
+    mkdir(archive_nonsmoothed_path)
+    if os.path.exists(smoothed_movement_path):
+        shutil.move(smoothed_movement_path, archive_smoothed_path)
+    if os.path.exists(smoothed_movement_path):
+        shutil.move(nonsmoothed_movement_path, archive_nonsmoothed_path)
+
+def archive_saved_movements(process, process_folder_path, beam_ids, movement_id=None):
+    if movement_id is not None:
+        if movement_id.startswith('A'):
+            movement = process.get_movement_by_movement_id(movement_id)
+        else:
+            movement = process.movements[int(movement_id)]
+        # only remove one movement
+        archive_saved_movement(movement, process_folder_path)
+    else:
+        for beam_id in beam_ids:
+            movements = process.get_movements_by_beam_id(beam_id)
+            for m in movements:
+                archive_saved_movement(m, process_folder_path)

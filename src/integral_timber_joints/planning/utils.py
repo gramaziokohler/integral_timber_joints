@@ -1,4 +1,4 @@
-import sys
+import os, sys
 import logging
 from numpy import deg2rad, rad2deg
 from termcolor import colored
@@ -149,4 +149,3 @@ def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
             beam_ids = [process.assembly.sequence[seq_i] for seq_i in seq_n]
         LOGGER.info(colored('Solving for beam {}'.format(beam_ids), 'cyan'))
     return beam_ids
-

@@ -340,7 +340,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
             LOGGER.error('compute_linear_motion: end conf disagreement.')
             return None
     else:
-        LOGGER.error('No linear movement found for {}.'.format(movement.short_summary))
+        LOGGER.info('No linear movement found for {}.'.format(movement.short_summary))
     return traj
 
 ##############################
@@ -370,7 +370,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
     if orig_start_conf is None:
-        LOGGER.info('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary))
+        LOGGER.debug('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary))
         # * sample from t0cp if no conf is provided for the robot
         start_t0cf_frame = start_scene[('robot', 'f')].copy()
         start_t0cf_frame.point *= 1e-3
@@ -398,7 +398,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                 if sample_found:
                     break
             else:
-                LOGGER.info(colored('No start robot IK conf can be found for {} after {} attempts, solve fails.'.format(
+                LOGGER.error(colored('No start robot IK conf can be found for {} after {} attempts, solve fails.'.format(
                     movement.short_summary, gantry_attempts), 'red'))
                 return None
         else:
@@ -407,7 +407,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
 
     # TODO clean up code and make a function for start/end conf sampling
     if orig_end_conf is None:
-        LOGGER.info('FreeMovement: Robot end conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary))
+        LOGGER.debug('FreeMovement: Robot end conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary))
             # notify('Warning! Go back to the command line now!')
             # wait_for_user('Please press Enter to confirm.')
         # * sample from t0cp if no conf is provided for the robot
@@ -437,7 +437,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                 if sample_found:
                     break
             else:
-                LOGGER.info(colored('No end robot IK conf can be found for {} after {} attempts, solve fails.'.format(
+                LOGGER.error(colored('No end robot IK conf can be found for {} after {} attempts, solve fails.'.format(
                     movement.short_summary, gantry_attempts), 'red'))
                 return None
         else:
@@ -610,5 +610,5 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
             lockrenderer = LockRenderer()
 
     if verbose:
-        LOGGER.error('No free movement found for {}.'.format(movement.short_summary))
+        LOGGER.info('No free movement found for {}.'.format(movement.short_summary))
     return None

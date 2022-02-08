@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from pybullet_planning import wait_if_gui, LockRenderer, HideOutput
 
-from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
+from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, archive_saved_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.utils import print_title, beam_ids_from_argparse_seq_n, color_from_success, LOGGER
 from integral_timber_joints.planning.state import set_state, set_initial_state
@@ -24,6 +24,7 @@ from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMov
 from integral_timber_joints.process.movement import RoboticMovement
 
 from compas_fab_pychoreo.backend_features.pychoreo_plan_motion import MOTION_PLANNING_ALGORITHMS
+from compas_fab_pychoreo.utils import LOGGER as PYCHOREO_LOGGER
 
 SOLVE_MODE = [
     'nonlinear',
@@ -47,6 +48,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     solve_timeout = options.get('solve_timeout', 600)
     # max solve iter kept rather high to prioritize timeout
     solve_iters = options.get('solve_iters', 40)
+    # return when first solution is found, should be True except when benchmarking
     return_upon_success = options.get('return_upon_success', True)
     ignore_taught_confs = options.get('ignore_taught_confs', False)
     runtime_data = {}
@@ -61,16 +63,26 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         runtime_data[trial_i] = {}
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
-        LOGGER.debug(colored('Return success: {}'.format(success), 'green' if success else 'red'))
+        LOGGER.info('Return success: {}'.format(success))
         if return_upon_success and success:
             break
         trial_i += 1
         copy_st_time = time.time()
+
         # * recreate process and client for the next attempt
         process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
+        archive_saved_movements(process, ext_movement_path, [beam_id], movement_id=args.movement_id)
+        if args.load_external_movements:
+            result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
+            ext_movement_path = os.path.dirname(result_path)
+            loaded_movements = process.load_external_movements(ext_movement_path)
+            if len(loaded_movements) == 0:
+                LOGGER.warning('No external movements loaded from {}'.format(ext_movement_path))
+
         if ignore_taught_confs:
             for m in process.movements:
                 process.set_movement_end_robot_config(m, None)
+
         client.disconnect()
         client, robot, _ = load_RFL_world(viewer=args.viewer, verbose=False)
         set_initial_state(client, robot, process, disable_env=False, reinit_tool=False)
@@ -79,7 +91,8 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         LOGGER.debug('Restarting client/process takes {} | total timeout {}'.format(copy_time, solve_timeout))
         # ! process/client reset time shouldn't be counted in
     else:
-        LOGGER.error('Planning (with restarts) for beam {} failed, exceeding timeout {} after {}.'.format(beam_id, solve_timeout, trial_i))
+        if return_upon_success:
+            LOGGER.error('Planning (with restarts) for beam {} failed, exceeding timeout {:.2f} after {}.'.format(beam_id, solve_timeout, trial_i))
 
     return success, runtime_data
 
@@ -282,11 +295,12 @@ def main():
     parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
     args = parser.parse_args()
 
-    log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir='results'))
+    log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir))
     log_path = os.path.join(log_folder, 'run.log')
 
     logging_level = logging.DEBUG if args.debug else logging.INFO
     LOGGER.setLevel(logging_level)
+    PYCHOREO_LOGGER.setLevel(logging_level)
 
     file_handler = logging.FileHandler(filename=log_path, mode='w')
     formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
@@ -305,15 +319,22 @@ def main():
     # * Load process and recompute actions and states
     process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
+    # * parse target beam/movements to be planned, and archive movement jsons if exist
+    # this must happen before load external movements
+    result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
+    ext_movement_path = os.path.dirname(result_path)
+    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, movement_id=args.movement_id)
+    archive_saved_movements(process, ext_movement_path, beam_ids, movement_id=args.movement_id)
+
     # * force load external if only planning for the free motions
     args.load_external_movements = args.load_external_movements or \
         args.solve_mode == 'free_motion_only'
         # or args.solve_mode == 'movement_id'
     if args.load_external_movements:
-        result_path = get_process_path(args.design_dir, args.problem, subdir='results')
-        ext_movement_path = os.path.dirname(result_path)
         LOGGER.info('Loading external movements from {}'.format(ext_movement_path))
-        process.load_external_movements(ext_movement_path)
+        loaded_movements = process.load_external_movements(ext_movement_path)
+        if len(loaded_movements) == 0:
+            LOGGER.warning('No external movements loaded from {}'.format(ext_movement_path))
 
     #########
     options = {
@@ -323,7 +344,9 @@ def main():
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
         # the collision is counted when penetration distance is bigger than this value
         'collision_distance_threshold' : 0.0012, # in meter,
+        'solve_iters': 2, # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
         'solve_timeout': args.solve_timeout,
+        'return_upon_success' : False,
         'rrt_iterations': args.rrt_iterations,
         'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,
         'mp_algorithm' : args.mp_algorithm,
@@ -347,7 +370,6 @@ def main():
 
     #########
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)
-    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
         success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
