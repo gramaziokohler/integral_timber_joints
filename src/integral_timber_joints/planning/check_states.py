@@ -188,7 +188,7 @@ def main():
 
     movements_need_fix = []
     failure_reasons = []
-    for m in tqdm(chosen_movements):
+    for m in tqdm(chosen_movements, desc='checking movements'):
         start_state = process.get_movement_start_scene(m)
         end_state = process.get_movement_end_scene(m)
         start_conf = process.get_movement_start_robot_config(m)

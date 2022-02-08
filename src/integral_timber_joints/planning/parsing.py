@@ -175,15 +175,21 @@ def save_process_and_movements(design_dir, process_name, _process, _movements,
 def archive_saved_movement(movement, process_folder_path):
     smoothed_movement_path = os.path.join(process_folder_path, movement.get_filepath(subdir='smoothed_movements'))
     nonsmoothed_movement_path = os.path.join(process_folder_path, movement.get_filepath(subdir='movements'))
-    archive_path = os.path.join(smoothed_movement_path, '..', 'archived')
+    archive_path = os.path.join(process_folder_path, 'archived')
     archive_smoothed_path = os.path.join(archive_path, 'smoothed_movements')
     archive_nonsmoothed_path = os.path.join(archive_path, 'movements')
     mkdir(archive_smoothed_path)
     mkdir(archive_nonsmoothed_path)
+    movement_removed = False
     if os.path.exists(smoothed_movement_path):
         shutil.move(smoothed_movement_path, archive_smoothed_path)
-    if os.path.exists(smoothed_movement_path):
+        # LOGGER.info(f'{smoothed_movement_path} moved to {archive_smoothed_path}')
+        movement_removed = True
+    if os.path.exists(nonsmoothed_movement_path):
         shutil.move(nonsmoothed_movement_path, archive_nonsmoothed_path)
+        # LOGGER.info(f'{nonsmoothed_movement_path} moved to {archive_nonsmoothed_path}')
+        movement_removed = True
+    return movement_removed
 
 def archive_saved_movements(process, process_folder_path, beam_ids, movement_id=None):
     if movement_id is not None:

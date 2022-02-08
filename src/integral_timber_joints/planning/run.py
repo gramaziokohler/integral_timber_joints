@@ -45,6 +45,9 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
 
     The client will be recreated at each restart as well.
     """
+    result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
+    ext_movement_path = os.path.dirname(result_path)
+    # ---
     solve_timeout = options.get('solve_timeout', 600)
     # max solve iter kept rather high to prioritize timeout
     solve_iters = options.get('solve_iters', 40)

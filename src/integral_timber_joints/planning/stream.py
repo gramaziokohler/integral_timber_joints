@@ -370,7 +370,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
     gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
     if orig_start_conf is None:
-        LOGGER.debug('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary))
+        LOGGER.info('FreeMovement: Robot start conf is NOT specified in {}, we will sample an IK conf based on the given t0cp frame.'.format(movement.short_summary))
         # * sample from t0cp if no conf is provided for the robot
         start_t0cf_frame = start_scene[('robot', 'f')].copy()
         start_t0cf_frame.point *= 1e-3
