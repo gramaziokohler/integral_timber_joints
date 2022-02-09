@@ -12,7 +12,7 @@ from compas_fab_pychoreo.backend_features.pychoreo_trajectory_smoother import Py
 from compas_fab_pychoreo.utils import is_configurations_close
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 
-from integral_timber_joints.planning.parsing import parse_process, get_process_path, save_process_and_movements
+from integral_timber_joints.planning.parsing import parse_process, get_process_path, save_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP
 from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.utils import print_title, FRAME_TOL, color_from_success, beam_ids_from_argparse_seq_n
@@ -79,7 +79,6 @@ def main():
     #########
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
-    process.set_initial_state_robot_config(process.robot_initial_config)
     set_state(client, robot, process, process.initial_state, initialize=True,
         options={'debug' : False, 'reinit_tool' : False})
 
@@ -133,8 +132,7 @@ def main():
                 wait_for_user()
 
     if args.write:
-        save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
-            include_traj_in_process=False, movement_subdir='smoothed_movements')
+        save_movements(args.design_dir, altered_movements, movement_subdir='smoothed_movements')
 
     client.disconnect()
 

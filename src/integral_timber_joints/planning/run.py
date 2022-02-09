@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from pybullet_planning import wait_if_gui, LockRenderer, HideOutput
 
-from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, move_saved_movements
+from integral_timber_joints.planning.parsing import parse_process, save_process, save_movements, get_process_path, move_saved_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.utils import print_title, beam_ids_from_argparse_seq_n, color_from_success, LOGGER
 from integral_timber_joints.planning.state import set_state, set_initial_state
@@ -64,14 +64,13 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         # we always parse from the home directory to use the original, unplanned process here
         # movements will be updated by parsing individual movement jsons
         process = parse_process(args.design_dir, args.problem)
-        if args.load_external_movements:
-            # * only archive the target movements
-            # if movement_id is not None, only one movement json will be moved to the `archive` folder
-            # otherwise, all the movement under beam_id will be moved
-            move_saved_movements(process, ext_movement_path, [beam_id], movement_id=args.movement_id, to_archive=True)
-            loaded_movements = process.load_external_movements(ext_movement_path)
-            if len(loaded_movements) == 0:
-                LOGGER.warning('No external movements loaded from {}'.format(ext_movement_path))
+        # * only archive the target movements
+        # if movement_id is not None, only one movement json will be moved to the `archive` folder
+        # otherwise, all the movement under beam_id will be moved
+        move_saved_movements(process, ext_movement_path, [beam_id], movement_id=args.movement_id, to_archive=True)
+        loaded_movements = process.load_external_movements(ext_movement_path)
+        if len(loaded_movements) == 0:
+            LOGGER.warning('No external movements loaded from {}'.format(ext_movement_path))
         if ignore_taught_confs:
             for m in process.movements:
                 process.set_movement_end_robot_config(m, None)
@@ -90,7 +89,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         LOGGER.info('Return success: {}'.format(success))
         if return_upon_success and success:
             break
-        if not success and args.load_external_movements:
+        if not success:
             # * move archived movements back if planning fails
             move_saved_movements(process, ext_movement_path, [beam_id], movement_id=args.movement_id, to_archive=False)
 
@@ -228,8 +227,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     LOGGER.debug('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
     # * export computed movements (unsmoothed)
     if args.write:
-        save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
-            include_traj_in_process=False)
+        save_movements(args.design_dir, altered_movements, movement_subdir='movements')
 
     # * smoothing
     if not args.no_smooth:
@@ -245,8 +243,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         LOGGER.debug('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
         # * export smoothed movements
         if args.write:
-            save_process_and_movements(args.design_dir, args.problem, process, smoothed_movements, overwrite=False,
-                include_traj_in_process=False, movement_subdir='smoothed_movements')
+            save_movements(args.design_dir, smoothed_movements, movement_subdir='smoothed_movements')
 
     # * final visualization
     if args.watch:
@@ -364,6 +361,9 @@ def main():
     process = parse_process(args.design_dir, args.problem)
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, movement_id=args.movement_id)
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool, initialize=True)
+
+    # * save a copy of the unplanned process for archival purposes
+    save_process(args.design_dir, args.problem, process, save_dir='results')
 
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
