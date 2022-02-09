@@ -84,9 +84,10 @@ def main():
     parser.add_argument('--problem_subdir', default='.', # pavilion.json
                         help='subdir of the process file, default to `.`. Popular use: `results`, `YJ_tmp`')
     #
-    parser.add_argument('--plan_summary', action='store_true', help='Give a summary of currently found plans.')
-    parser.add_argument('--verify_plan', action='store_true', help='Collision check found trajectories.')
-    parser.add_argument('--traj_collision', action='store_true', help='Check trajectory collisions, not check states.')
+    parser.add_argument('--plan_summary', action='store_true', help='Give a summary of currently found plans. Defaults to False.')
+    parser.add_argument('--verify_plan', action='store_true', help='Collision check found trajectories. Defaults to False.')
+    parser.add_argument('--traj_collision', action='store_true', help='Check trajectory collisions, not check states. Defaults to False.')
+    parser.add_argument('--skip_state_collision_check', action='store_true', help='Skip collision checking among objects for states.')
     #
     parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
@@ -99,17 +100,9 @@ def main():
     logging_level = logging.DEBUG if args.debug else logging.INFO
     LOGGER.setLevel(logging_level)
     PYCHOREO_LOGGER.setLevel(logging.DEBUG)
-
-    # log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir='results'))
-    # log_path = os.path.join(log_folder, 'check_state.log')
-    # file_handler = logging.FileHandler(filename=log_path, mode='w')
-    # formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
-    # file_handler.setFormatter(formatter)
-    # file_handler.setLevel(logging.WARN)
-    # LOGGER.addHandler(file_handler)
     LOGGER.info("planning.run.py started with args: %s" % args)
 
-    process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
+    process = parse_process(args.design_dir, args.problem)
 
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     # * print out a summary of all the movements to check which one hasn't been solved yet
@@ -188,7 +181,7 @@ def main():
 
     movements_need_fix = []
     failure_reasons = []
-    for m in tqdm(chosen_movements):
+    for m in tqdm(chosen_movements, desc='checking movements'):
         start_state = process.get_movement_start_scene(m)
         end_state = process.get_movement_end_scene(m)
         start_conf = process.get_movement_start_robot_config(m)
@@ -212,18 +205,19 @@ def main():
                     ((parent_body, None), (child_body, None))
                 )
 
-        # LOGGER.debug('Start State:')
-        # start_in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
-        # in_collision |= start_in_collision
-        # if start_in_collision:
-        #     LOGGER.error(m.short_summary)
-        #     LOGGER.error('Start State in collision: {}.'.format(start_in_collision))
-        # start_fk_agree, msg = check_FK_consistency(client, robot, process, start_state, options)
-        # fk_disagree |= not start_fk_agree
-        # if not start_fk_agree:
-        #     LOGGER.error(m.short_summary)
-        #     LOGGER.error('Start State FK consistency: {} | {}'.format(start_fk_agree, msg))
-        # LOGGER.debug('#'*20)
+        if not args.skip_state_collision_check:
+            LOGGER.debug('Start State:')
+            start_in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
+            in_collision |= start_in_collision
+            if start_in_collision:
+                LOGGER.error(m.short_summary)
+                LOGGER.error('Start State in collision: {}.'.format(start_in_collision))
+            start_fk_agree, msg = check_FK_consistency(client, robot, process, start_state, options)
+            fk_disagree |= not start_fk_agree
+            if not start_fk_agree:
+                LOGGER.error(m.short_summary)
+                LOGGER.error('Start State FK consistency: {} | {}'.format(start_fk_agree, msg))
+            LOGGER.debug('#'*20)
 
         # * verify found trajectory's collisions and joint flips
         if args.verify_plan:
@@ -237,7 +231,7 @@ def main():
                         # * traj-point collision checking
                         in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
                         # * prev-conf~conf polyline collision checking
-                        in_collision |= client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
+                        # in_collision |= client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
 
                     if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
                         LOGGER.error(m.short_summary)
@@ -253,18 +247,19 @@ def main():
                 LOGGER.warning('No trajectory found!', 'red')
             LOGGER.debug('#'*20)
 
-        # LOGGER.debug('End State:')
-        # end_in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
-        # in_collision |= end_in_collision
-        # if end_in_collision:
-        #     LOGGER.error(m.short_summary)
-        #     LOGGER.error('End State in collision: {}.'.format(end_in_collision))
-        # end_fk_agree, msg = check_FK_consistency(client, robot, process, end_state, options)
-        # fk_disagree |= not end_fk_agree
-        # if not end_fk_agree:
-        #     LOGGER.error(m.short_summary)
-        #     LOGGER.error('End State FK consistency: {} | {}'.format(end_fk_agree, msg))
-        # LOGGER.debug('#'*20)
+        if not args.skip_state_collision_check:
+            LOGGER.debug('End State:')
+            end_in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
+            in_collision |= end_in_collision
+            if end_in_collision:
+                LOGGER.error(m.short_summary)
+                LOGGER.error('End State in collision: {}.'.format(end_in_collision))
+            end_fk_agree, msg = check_FK_consistency(client, robot, process, end_state, options)
+            fk_disagree |= not end_fk_agree
+            if not end_fk_agree:
+                LOGGER.error(m.short_summary)
+                LOGGER.error('End State FK consistency: {} | {}'.format(end_fk_agree, msg))
+            LOGGER.debug('#'*20)
 
         if temp_name in client.extra_disabled_collision_links:
             del client.extra_disabled_collision_links[temp_name]
