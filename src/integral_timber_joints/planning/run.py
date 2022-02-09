@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from pybullet_planning import wait_if_gui, LockRenderer, HideOutput
 
-from integral_timber_joints.planning.parsing import parse_process, save_process_and_movements, get_process_path, save_process
+from integral_timber_joints.planning.parsing import parse_process, save_process, save_movements, get_process_path, move_saved_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.utils import print_title, beam_ids_from_argparse_seq_n, color_from_success, LOGGER
 from integral_timber_joints.planning.state import set_state, set_initial_state
@@ -24,6 +24,7 @@ from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMov
 from integral_timber_joints.process.movement import RoboticMovement
 
 from compas_fab_pychoreo.backend_features.pychoreo_plan_motion import MOTION_PLANNING_ALGORITHMS
+from compas_fab_pychoreo.utils import LOGGER as PYCHOREO_LOGGER
 
 SOLVE_MODE = [
     'nonlinear',
@@ -44,16 +45,36 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
 
     The client will be recreated at each restart as well.
     """
+    result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
+    ext_movement_path = os.path.dirname(result_path)
+    # ---
     solve_timeout = options.get('solve_timeout', 600)
     # max solve iter kept rather high to prioritize timeout
     solve_iters = options.get('solve_iters', 40)
-    return_upon_success = options.get('return_upon_success', True)
+    # return when first solution is found, should be True except when benchmarking
     ignore_taught_confs = options.get('ignore_taught_confs', False)
     runtime_data = {}
 
     start_time = time.time()
     trial_i = 0
     while elapsed_time(start_time) < solve_timeout and trial_i < solve_iters:
+        copy_st_time = time.time()
+        # * recreate process and client for the next attempt
+        # we always parse from the home directory to use the original, unplanned process here
+        # movements will be updated by parsing individual movement jsons
+        process = parse_process(args.design_dir, args.problem)
+        # * load previously planned movements
+        loaded_movements = process.load_external_movements(ext_movement_path)
+        if len(loaded_movements) == 0:
+            LOGGER.warning('No external movements loaded from {}'.format(ext_movement_path))
+        if ignore_taught_confs:
+            for m in process.movements:
+                process.set_movement_end_robot_config(m, None)
+
+        # * set to initial state without initialization (importing tools etc. as collision objects from files)
+        set_initial_state(client, robot, process, initialize=False)
+        copy_time = elapsed_time(copy_st_time)
+
         LOGGER.debug('#'*10)
         LOGGER.info('Beam {} | {} | Trail #{} | time {:.2f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(start_time)))
         options['profiles'] = {}
@@ -61,25 +82,16 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         runtime_data[trial_i] = {}
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
-        LOGGER.debug(colored('Return success: {}'.format(success), 'green' if success else 'red'))
-        if return_upon_success and success:
+        LOGGER.info('Return success: {}'.format(success))
+        if success:
             break
+
         trial_i += 1
-        copy_st_time = time.time()
-        # * recreate process and client for the next attempt
-        process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
-        if ignore_taught_confs:
-            for m in process.movements:
-                process.set_movement_end_robot_config(m, None)
-        client.disconnect()
-        client, robot, _ = load_RFL_world(viewer=args.viewer, verbose=False)
-        set_initial_state(client, robot, process, disable_env=False, reinit_tool=False)
-        copy_time = elapsed_time(copy_st_time)
+        # process/client reset time shouldn't be counted in timeout
         solve_timeout += copy_time
-        LOGGER.debug('Restarting client/process takes {} | total timeout {}'.format(copy_time, solve_timeout))
-        # ! process/client reset time shouldn't be counted in
+        LOGGER.debug('Copy process takes {} | total timeout {}'.format(copy_time, solve_timeout))
     else:
-        LOGGER.error('Planning (with restarts) for beam {} failed, exceeding timeout {} after {}.'.format(beam_id, solve_timeout, trial_i))
+        LOGGER.error('Planning (with restarts) for beam {} failed, exceeding timeout {:.2f} after {}.'.format(beam_id, solve_timeout, trial_i))
 
     return success, runtime_data
 
@@ -207,8 +219,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     LOGGER.debug('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
     # * export computed movements (unsmoothed)
     if args.write:
-        save_process_and_movements(args.design_dir, args.problem, process, altered_movements, overwrite=False,
-            include_traj_in_process=False)
+        save_movements(args.design_dir, altered_movements, movement_subdir='movements')
 
     # * smoothing
     if not args.no_smooth:
@@ -220,12 +231,13 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, altered_m, options=options)
                 altered_m.trajectory = smoothed_traj
                 smoothed_movements.append(altered_m)
-                LOGGER.debug(colored('Smooth success: {} | msg: {}'.format(success, msg), color_from_success(success)))
+                if not success:
+                    LOGGER.error('Smooth success: {} | msg: {}'.format(success, msg))
+                    # TODO return False
         LOGGER.debug('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
         # * export smoothed movements
         if args.write:
-            save_process_and_movements(args.design_dir, args.problem, process, smoothed_movements, overwrite=False,
-                include_traj_in_process=False, movement_subdir='smoothed_movements')
+            save_movements(args.design_dir, smoothed_movements, movement_subdir='smoothed_movements')
 
     # * final visualization
     if args.watch:
@@ -261,7 +273,6 @@ def main():
     parser.add_argument('--no_smooth', action='store_true', help='Not apply smoothing on free motions upon a plan is found. Defaults to False.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
-    parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
     #
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
@@ -282,38 +293,26 @@ def main():
     parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
     args = parser.parse_args()
 
-    log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir='results'))
+    log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir))
     log_path = os.path.join(log_folder, 'run.log')
 
     logging_level = logging.DEBUG if args.debug else logging.INFO
     LOGGER.setLevel(logging_level)
+    PYCHOREO_LOGGER.setLevel(logging_level)
 
-    file_handler = logging.FileHandler(filename=log_path, mode='w')
+    file_handler = logging.FileHandler(filename=log_path, mode='a')
     formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging_level)
     LOGGER.addHandler(file_handler)
     LOGGER.info("planning.run.py started with args: %s" % args)
 
-    if args.movement_id is not None:
-        args.solve_mode = 'movement_id'
-
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
 
-    #########
-    # * Load process and recompute actions and states
-    process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
-
     # * force load external if only planning for the free motions
-    args.load_external_movements = args.load_external_movements or \
-        args.solve_mode == 'free_motion_only'
-        # or args.solve_mode == 'movement_id'
-    if args.load_external_movements:
-        result_path = get_process_path(args.design_dir, args.problem, subdir='results')
-        ext_movement_path = os.path.dirname(result_path)
-        LOGGER.info('Loading external movements from {}'.format(ext_movement_path))
-        process.load_external_movements(ext_movement_path)
+    if args.movement_id is not None:
+        args.solve_mode = 'movement_id'
 
     #########
     options = {
@@ -323,6 +322,7 @@ def main():
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
         # the collision is counted when penetration distance is bigger than this value
         'collision_distance_threshold' : 0.0012, # in meter,
+        'solve_iters': 2, # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
         'solve_timeout': args.solve_timeout,
         'rrt_iterations': args.rrt_iterations,
         'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,
@@ -346,8 +346,25 @@ def main():
         })
 
     #########
-    set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)
-    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
+    # * Load process and recompute actions and states
+    # we always parse from the home directory to use the original, unplanned process here
+    # movements will be updated by parsing individual movement jsons
+    process = parse_process(args.design_dir, args.problem)
+    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, movement_id=args.movement_id)
+    set_initial_state(client, robot, process, reinit_tool=args.reinit_tool, initialize=True)
+
+    # * save a copy of the unplanned process for archival purpose
+    if not os.path.exists(get_process_path(args.design_dir, args.problem, 'results')):
+        save_process(args.design_dir, args.problem, process, save_dir='results')
+
+    # * archive the target movements
+    # if movement_id is not None, only one movement json will be moved to the `archive` folder
+    # otherwise, all the movement under beam_id will be moved
+    result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
+    ext_movement_path = os.path.dirname(result_path)
+    for beam_id in beam_ids:
+        move_saved_movements(process, ext_movement_path, [beam_id], movement_id=args.movement_id, to_archive=True)
+
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
         success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
