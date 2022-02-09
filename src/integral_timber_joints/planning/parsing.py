@@ -93,12 +93,9 @@ def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyPro
         file_path = get_process_path(design_dir, process_name, '.')
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)
-
     with open(file_path, 'r') as f:
         process = json.load(f, cls=DataDecoder)
-        # type: RobotClampAssemblyProcess
     LOGGER.debug(colored('Process json parsed from {}'.format(file_path), 'blue'))
-
     # * Double check entire solution is valid
     for beam_id in process.assembly.sequence:
         if not process.dependency.beam_all_valid(beam_id):

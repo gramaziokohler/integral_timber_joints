@@ -52,7 +52,6 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     # max solve iter kept rather high to prioritize timeout
     solve_iters = options.get('solve_iters', 40)
     # return when first solution is found, should be True except when benchmarking
-    return_upon_success = options.get('return_upon_success', True)
     ignore_taught_confs = options.get('ignore_taught_confs', False)
     runtime_data = {}
 
@@ -64,10 +63,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         # we always parse from the home directory to use the original, unplanned process here
         # movements will be updated by parsing individual movement jsons
         process = parse_process(args.design_dir, args.problem)
-        # * only archive the target movements
-        # if movement_id is not None, only one movement json will be moved to the `archive` folder
-        # otherwise, all the movement under beam_id will be moved
-        move_saved_movements(process, ext_movement_path, [beam_id], movement_id=args.movement_id, to_archive=True)
+        # * load previously planned movements
         loaded_movements = process.load_external_movements(ext_movement_path)
         if len(loaded_movements) == 0:
             LOGGER.warning('No external movements loaded from {}'.format(ext_movement_path))
@@ -87,19 +83,15 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
         LOGGER.info('Return success: {}'.format(success))
-        if return_upon_success and success:
+        if success:
             break
-        if not success:
-            # * move archived movements back if planning fails
-            move_saved_movements(process, ext_movement_path, [beam_id], movement_id=args.movement_id, to_archive=False)
 
         trial_i += 1
         # process/client reset time shouldn't be counted in timeout
         solve_timeout += copy_time
-        LOGGER.debug('Restarting client/process takes {} | total timeout {}'.format(copy_time, solve_timeout))
+        LOGGER.debug('Copy process takes {} | total timeout {}'.format(copy_time, solve_timeout))
     else:
-        if return_upon_success:
-            LOGGER.error('Planning (with restarts) for beam {} failed, exceeding timeout {:.2f} after {}.'.format(beam_id, solve_timeout, trial_i))
+        LOGGER.error('Planning (with restarts) for beam {} failed, exceeding timeout {:.2f} after {}.'.format(beam_id, solve_timeout, trial_i))
 
     return success, runtime_data
 
@@ -239,7 +231,9 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, altered_m, options=options)
                 altered_m.trajectory = smoothed_traj
                 smoothed_movements.append(altered_m)
-                LOGGER.debug(colored('Smooth success: {} | msg: {}'.format(success, msg), color_from_success(success)))
+                if not success:
+                    LOGGER.error('Smooth success: {} | msg: {}'.format(success, msg))
+                    # TODO return False
         LOGGER.debug('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
         # * export smoothed movements
         if args.write:
@@ -279,7 +273,6 @@ def main():
     parser.add_argument('--no_smooth', action='store_true', help='Not apply smoothing on free motions upon a plan is found. Defaults to False.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
-    parser.add_argument('--load_external_movements', action='store_true', help='Load externally saved movements into the parsed process, default to False.')
     #
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--watch', action='store_true', help='Watch computed trajectories in the pybullet GUI.')
@@ -320,8 +313,6 @@ def main():
     # * force load external if only planning for the free motions
     if args.movement_id is not None:
         args.solve_mode = 'movement_id'
-    args.load_external_movements = args.load_external_movements or \
-        args.solve_mode == 'free_motion_only' or args.solve_mode == 'movement_id'
 
     #########
     options = {
@@ -362,8 +353,17 @@ def main():
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, movement_id=args.movement_id)
     set_initial_state(client, robot, process, reinit_tool=args.reinit_tool, initialize=True)
 
-    # * save a copy of the unplanned process for archival purposes
-    save_process(args.design_dir, args.problem, process, save_dir='results')
+    # * save a copy of the unplanned process for archival purpose
+    if not os.path.exists(get_process_path(args.design_dir, args.problem, 'results')):
+        save_process(args.design_dir, args.problem, process, save_dir='results')
+
+    # * archive the target movements
+    # if movement_id is not None, only one movement json will be moved to the `archive` folder
+    # otherwise, all the movement under beam_id will be moved
+    result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
+    ext_movement_path = os.path.dirname(result_path)
+    for beam_id in beam_ids:
+        move_saved_movements(process, ext_movement_path, [beam_id], movement_id=args.movement_id, to_archive=True)
 
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
