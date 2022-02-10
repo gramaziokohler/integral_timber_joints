@@ -1004,7 +1004,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
 
 class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, str, list[str]) -> None
+        # type: (int, int, str, str, List[str]) -> None
         """
 
         This Action can be used for picking up beams with or without flying tools.
@@ -1394,7 +1394,7 @@ class GenericFreeMoveBeamWithGripperAction(RobotAction):
 
 class CloseGripperOnBeamAction(AttachBeamAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, str, list[str]) -> None
+        # type: (int, int, str, str, List[str]) -> None
         """
         This Action can be used for picking up beams with or without flying tools.
         Only a single close Gripper Movement is created.
@@ -1527,14 +1527,14 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
     Does not include gripper retract.
     """
     def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, clamp_ids=None):
-        # type: (int, int, str, list[tuple[str, str]], str, str) -> None
+        # type: (int, int, str, List(Tuple(str, str)), str, str) -> None
         RobotAction.__init__(self)
         DetachBeamAction.__init__(self, beam_id, gripper_id)
         self.seq_n = seq_n
         self.act_n = act_n
-        self.joint_ids = joint_ids  # type: list[tuple[str, str]]
+        self.joint_ids = joint_ids  # type: List(Tuple(str, str))
         if clamp_ids is None:
-            self.clamp_ids = [None for _ in joint_ids]  # type: list[str]
+            self.clamp_ids = [None for _ in joint_ids]  # type: List[str]
         else:
             self.clamp_ids = clamp_ids
 
@@ -1647,14 +1647,14 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         """
         RobotAction.__init__(self, seq_n, act_n)
         self.beam_id = beam_id  # type: str
-        self.joint_ids = joint_ids  # type: list[tuple[str, str]]
-        self.gripper_id = gripper_id  # type: list[str]
+        self.joint_ids = joint_ids  # type: List[Tuple(str, str)]
+        self.gripper_id = gripper_id  # type: List[str]
 
         # Maintaining same list length between screwdriver_ids and joint_ids
         if screwdriver_ids is []:
-            self.screwdriver_ids = [None for _ in joint_ids]  # type: list[str]
+            self.screwdriver_ids = [None for _ in joint_ids]  # type: List[str]
         else:
-            self.screwdriver_ids = screwdriver_ids  # type: list[str]
+            self.screwdriver_ids = screwdriver_ids  # type: List[str]
 
     @property
     def data(self):
@@ -1763,7 +1763,7 @@ class RetractGripperFromBeamAction(RobotAction, DetachBeamAction):
     """Open the gripper and Retract the gripper from the beam."""
 
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, str, list[str]) -> None
+        # type: (int, int, str, str, List[str]) -> None
         """
         Both `beam_id` and `additional_attached_objects` will be detached from the robot.
         """
@@ -1821,7 +1821,7 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
     Pull out slightly further afterwards. Cancel docking offset."""
 
     def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_id=None, tool_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, Tuple[str,str],  str, list[str]) -> None
+        # type: (int, int, str, Tuple[str,str],  str, List[str]) -> None
         """
         Both `beam_id` and `additional_attached_objects` will be detached from the robot.
         """
@@ -1878,7 +1878,7 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
             screw_positions=[0], # Zero is the absolute starting point of the screwdriver
             screwdriver_ids=[self.gripper_id],
             planning_priority=1,
-            speed_type='speed.assembly.screwing',
+            speed_type='speed.assembly.screw_retract',
             tag="Robot and Screwdriver (%s) syncronously move to retract from Joint ('%s-%s')" % (self.gripper_id, self.joint_id[0], self.joint_id[1]),
             allowed_collision_matrix=[(self.gripper_id, self.joint_id[0]), (self.gripper_id, self.joint_id[1])]
         ))
@@ -1916,7 +1916,7 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
     """
 
     def __init__(self, seq_n=0, act_n=0, joint_id=None, tool_position=None, tool_type=None, tool_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, tuple[str, str], str, str, list[str]) -> None
+        # type: (int, int, str, tuple[str, str], str, str, List[str]) -> None
         """
         This docking action includes:
         - TC approaching the target tool (tool_id) (location retrived from `tool_position` from specific `joint_id`)

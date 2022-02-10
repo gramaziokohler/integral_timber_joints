@@ -607,8 +607,8 @@ class AcquireDockingOffset(Movement):
             operator_stop_after="Confirm Docking Offset",
             tag=tag or "Acquire Docking Offset"
         )
-        self.target_frame = target_frame,  # type: Frame
-        self.tool_id = tool_id,  # type: str
+        self.target_frame = target_frame  # type: Frame
+        self.tool_id = tool_id  # type: str
 
     @property
     def data(self):
@@ -646,7 +646,7 @@ class CancelRobotOffset(Movement):
             self,
             tag=tag or "Cancel Docking Offset"
         )
-        self.tool_id = tool_id,  # type: str
+        self.tool_id = tool_id  # type: str
 
     @property
     def data(self):
