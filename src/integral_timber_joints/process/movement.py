@@ -604,7 +604,6 @@ class AcquireDockingOffset(Movement):
     ):
         Movement.__init__(
             self,
-            operator_stop_after="Confirm Docking Offset",
             tag=tag or "Acquire Docking Offset"
         )
         self.target_frame = target_frame  # type: Frame
