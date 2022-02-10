@@ -219,7 +219,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     LOGGER.debug('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
     # * export computed movements (unsmoothed)
     if args.write:
-        save_movements(args.design_dir, altered_movements, movement_subdir='movements')
+        save_movements(args.design_dir, altered_movements, save_dir=args.problem_subdir, movement_subdir='movements')
 
     # * smoothing
     if not args.no_smooth:
@@ -237,7 +237,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         LOGGER.debug('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
         # * export smoothed movements
         if args.write:
-            save_movements(args.design_dir, smoothed_movements, movement_subdir='smoothed_movements')
+            save_movements(args.design_dir, smoothed_movements, save_dir=args.problem_subdir, movement_subdir='smoothed_movements')
 
     # * final visualization
     if args.watch:
@@ -322,7 +322,7 @@ def main():
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
         # the collision is counted when penetration distance is bigger than this value
         'collision_distance_threshold' : 0.0012, # in meter,
-        'solve_iters': 2, # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
+        'solve_iters': 40, # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
         'solve_timeout': args.solve_timeout,
         'rrt_iterations': args.rrt_iterations,
         'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,

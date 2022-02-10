@@ -122,6 +122,9 @@ def save_movements(design_dir, _movements, save_dir='results', indent=None, move
     movement_dir = os.path.join(process_dir, movement_subdir)
     mkdir(movement_dir)
     for m in _movements:
+        if not isinstance(m, RoboticMovement):
+            # * skip saving non-robotic movement
+            continue
         m_file_path = os.path.abspath(os.path.join(process_dir, m.get_filepath(movement_subdir)))
         with open(m_file_path, 'w') as f:
             json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)

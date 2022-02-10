@@ -100,7 +100,16 @@ def main():
     logging_level = logging.DEBUG if args.debug else logging.INFO
     LOGGER.setLevel(logging_level)
     PYCHOREO_LOGGER.setLevel(logging.DEBUG)
-    LOGGER.info("planning.run.py started with args: %s" % args)
+
+    log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir))
+    log_path = os.path.join(log_folder, 'check_states.log')
+    file_handler = logging.FileHandler(filename=log_path, mode='a')
+    formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.INFO)
+    LOGGER.addHandler(file_handler)
+
+    LOGGER.info("planning.check_states.py started with args: %s" % args)
 
     process = parse_process(args.design_dir, args.problem)
 
@@ -153,7 +162,7 @@ def main():
     options = {
         # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
         'collision_distance_threshold' : 0.0012,
-        'diagnosis' : True,
+        'diagnosis' : args.viewer,
         'debug' : args.debug,
         # turn on verbose will make compas_fab_pychoreo to print the
         # joint compare details in DEBUG channel (in a separate logger)
@@ -210,13 +219,11 @@ def main():
             start_in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
             in_collision |= start_in_collision
             if start_in_collision:
-                LOGGER.error(m.short_summary)
-                LOGGER.error('Start State in collision: {}.'.format(start_in_collision))
+                LOGGER.error('{} | Start State in collision: {}.'.format(m.short_summary, start_in_collision))
             start_fk_agree, msg = check_FK_consistency(client, robot, process, start_state, options)
             fk_disagree |= not start_fk_agree
             if not start_fk_agree:
-                LOGGER.error(m.short_summary)
-                LOGGER.error('Start State FK consistency: {} | {}'.format(start_fk_agree, msg))
+                LOGGER.error('{} | Start State FK consistency: {} | {}'.format(m.short_summary, start_fk_agree, msg))
             LOGGER.debug('#'*20)
 
         # * verify found trajectory's collisions and joint flips
@@ -227,15 +234,19 @@ def main():
                 prev_conf = start_conf
                 for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
                     if args.traj_collision:
-                        # with WorldSaver():
                         # * traj-point collision checking
-                        in_collision |= pychore_collision_fn.check_collisions(robot, jpt, options=options)
+                        point_collision = pychore_collision_fn.check_collisions(robot, jpt, options=options)
+                        if point_collision:
+                            LOGGER.warn('Pointwise Collision: {}'.format(m.short_summary))
                         # * prev-conf~conf polyline collision checking
-                        # in_collision |= client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
+                        # polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
+                        # if polyline_collision:
+                        #     LOGGER.error('Polyline Collision: {}'.format(m.short_summary))
+                        in_collision |= point_collision # or polyline_collision
 
                     if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
-                        LOGGER.error(m.short_summary)
-                        LOGGER.error('\t traj point #{}/{}'.format(conf_id, len(m.trajectory.points)))
+                        LOGGER.warn(m.short_summary)
+                        LOGGER.warn('\t traj point #{}/{}'.format(conf_id, len(m.trajectory.points)))
                         joint_flip |= True
                     prev_conf = jpt
                 LOGGER.debug(colored('Trajectory in trouble: in_collision {} | joint_flip {}'.format(in_collision, joint_flip), 'red' if in_collision or joint_flip else 'green'))
@@ -252,13 +263,13 @@ def main():
             end_in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
             in_collision |= end_in_collision
             if end_in_collision:
-                LOGGER.error(m.short_summary)
-                LOGGER.error('End State in collision: {}.'.format(end_in_collision))
+                LOGGER.warn(m.short_summary)
+                LOGGER.warn('End State in collision: {}.'.format(end_in_collision))
             end_fk_agree, msg = check_FK_consistency(client, robot, process, end_state, options)
             fk_disagree |= not end_fk_agree
             if not end_fk_agree:
-                LOGGER.error(m.short_summary)
-                LOGGER.error('End State FK consistency: {} | {}'.format(end_fk_agree, msg))
+                LOGGER.warn(m.short_summary)
+                LOGGER.warn('End State FK consistency: {} | {}'.format(end_fk_agree, msg))
             LOGGER.debug('#'*20)
 
         if temp_name in client.extra_disabled_collision_links:
