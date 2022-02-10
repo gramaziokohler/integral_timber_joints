@@ -1115,7 +1115,7 @@ class RobotClampAssemblyProcess(Data):
 
     def get_movement_start_scene(self, movement):
         # type: (Movement) -> SceneState
-        """ return the start state before the movment."""
+        """ return the start SceneState before the movment."""
         movements = self.movements
         index = movements.index(movement)
         if index == 0:
@@ -1125,10 +1125,8 @@ class RobotClampAssemblyProcess(Data):
 
     def get_movement_end_scene(self, movement):
         # type: (Movement) -> SceneState
-        """
-
-        """
-        from integral_timber_joints.process.state import  SceneState
+        """ return the ending SceneState after the movment."""
+        from integral_timber_joints.process.state import SceneState
         movements = self.movements
         start_state = self.initial_state
         index = movements.index(movement)
@@ -1214,7 +1212,6 @@ class RobotClampAssemblyProcess(Data):
         else:
             return self.get_movement_end_robot_config(movements[index - 1])
 
-
     def get_movement_end_robot_config(self, movement):
         # type: (Movement) -> Optional[Configuration]
         """Get the robot configuration at the end of a Movement.
@@ -1284,12 +1281,10 @@ class RobotClampAssemblyProcess(Data):
         """Returns True if the movement's start scene has a defined robot configuration."""
         return self.get_movement_start_robot_config(movement) is not None
 
-
     def movement_has_end_robot_config(self, movement):
         # type: (Movement) -> bool
         """Returns True if the movement's end scene has a defined robot configuration."""
         return self.get_movement_end_robot_config(movement) is not None
-
 
     def get_object_from_id(self, object_id):
         if object_id.startswith('c') or object_id.startswith('g'):
