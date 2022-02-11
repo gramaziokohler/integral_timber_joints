@@ -43,7 +43,7 @@ def simplify_polygon(pts, tol=1e-5):
 
 
 def conforming_delaunay_triangulation(pts, normal):
-    # type: (list[Point], Vector) -> tuple[list[Point], list[list[int]]]
+    # type: (list[Point], Vector) -> tuple[list(Point), list(list(int))]
 
     v_x = Vector.from_start_end(pts[0], pts[1])
     v_y = normal.cross(v_x)
@@ -61,7 +61,7 @@ def conforming_delaunay_triangulation(pts, normal):
     # print (v,f)
     # * Get rid of extra vertice at end of loop
     mesh = Mesh.from_vertices_and_faces(v, f)
-    # mesh = mesh_weld(mesh, 1e-6)
+    # mesh = mesh_weld(mesh, 15)
     # v, f = mesh.to_vertices_and_faces()
     # print("After cenverting to mesh, len(v) = %s, len(f) = %s" % (len(v), len(f)))
 
@@ -75,7 +75,7 @@ def conforming_delaunay_triangulation(pts, normal):
 
 
 def convex_triangulation(pts, normal):
-    # type: (list[Point], Vector) -> tuple[list[Point], list[list[int]]]
+    # type: (list[Point], Vector) -> tuple[list(Point), list(list(int))]
     faces = []
 
     # Top and bottom caps - triangles

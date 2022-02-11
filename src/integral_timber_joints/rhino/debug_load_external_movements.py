@@ -3,7 +3,7 @@ from integral_timber_joints.process import RobotClampAssemblyProcess, RoboticMov
 
 
 from compas.geometry import Frame, Transformation, Cylinder, Point, transform_points, transpose_matrix, multiply_matrices
-from compas.datastructures import Mesh, mesh_weld
+from compas.datastructures import Mesh
 from compas.data import DataDecoder
 
 try:

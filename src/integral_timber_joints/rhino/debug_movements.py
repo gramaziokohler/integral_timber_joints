@@ -12,7 +12,6 @@ from compas_rhino.utilities import clear_layer, delete_objects, draw_mesh
 
 from compas_rhino.utilities import draw_polylines
 from compas.geometry import Frame, Transformation, Cylinder, Point, transform_points, transpose_matrix, multiply_matrices
-from compas.datastructures import Mesh, mesh_weld
 
 try:
     from typing import Any, Dict, List, Optional, Tuple, Type
