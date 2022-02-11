@@ -263,8 +263,8 @@ def main():
                         help='problem json\'s containing folder\'s name.')
     parser.add_argument('--problem', default='nine_pieces_process.json', # twelve_pieces_process.json
                         help='The name of the problem to solve (json file\'s name, e.g. "nine_pieces_process.json")')
-    parser.add_argument('--problem_subdir', default='.',
-                        help='subdir of the process file, default to `.`. Popular use: `results`')
+    parser.add_argument('--problem_subdir', default='results',
+                        help='subdir for saving movements, default to `results`.')
     #
     parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')

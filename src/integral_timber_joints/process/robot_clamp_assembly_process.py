@@ -1115,7 +1115,7 @@ class RobotClampAssemblyProcess(Data):
 
     def get_movement_start_scene(self, movement):
         # type: (Movement) -> SceneState
-        """ return the start state before the movment."""
+        """ return the start SceneState before the movment."""
         movements = self.movements
         index = movements.index(movement)
         if index == 0:
@@ -1125,10 +1125,8 @@ class RobotClampAssemblyProcess(Data):
 
     def get_movement_end_scene(self, movement):
         # type: (Movement) -> SceneState
-        """
-
-        """
-        from integral_timber_joints.process.state import  SceneState
+        """ return the ending SceneState after the movment."""
+        from integral_timber_joints.process.state import SceneState
         movements = self.movements
         start_state = self.initial_state
         index = movements.index(movement)
@@ -1199,7 +1197,13 @@ class RobotClampAssemblyProcess(Data):
     def get_movement_start_robot_config(self, movement):
         # type: (Movement) -> Optional[Configuration]
         """Get the robot configuration at the begining of a Movement.
-        None if the configuration is undefined.
+
+        Since a Movement do not save the start robot config, the start config is effectively
+        the end config of the previous movement. The start config of the very first movement
+        is pointed to the process.initial_state[('robot', 'c')]
+
+        Returns `Configuration` object. (Might be a partial config of only the relavent joints)
+        Returns None if the configuration is undefined.
         """
         movements = self.movements
         index = movements.index(movement)
@@ -1208,25 +1212,35 @@ class RobotClampAssemblyProcess(Data):
         else:
             return self.get_movement_end_robot_config(movements[index - 1])
 
-    # movement 1 - start conf
-    # movement 0 - end conf
-
-    # movement 0 - start conf
-    # intial_conf
-
     def get_movement_end_robot_config(self, movement):
         # type: (Movement) -> Optional[Configuration]
-        """Get the robot configuration at the begining of a Movement.
+        """Get the robot configuration at the end of a Movement.
+        Robotic movements that contains a taught configuration will create an entry in
+        movement.state_diff[('robot', 'c')]. This represents the end robotic configuration of
+        that Movement.
+
+        Non Robotic Movements (NRM) do not have this entry in their state_diff. In fact, the end
+        configration of a NRM is effectively its starting config. This effectively points to the
+        end config of the previous movement.
+
+
+        Returns `Configuration` object. (Might be a partial config of only the relavent joints)
         None if the configuration is undefined.
         """
-        if self.robot_config_key in movement.state_diff:
-            return movement.state_diff[self.robot_config_key]
+        if isinstance(movement, RoboticMovement):
+            if self.robot_config_key in movement.state_diff:
+                return movement.state_diff[self.robot_config_key]
+            else:
+                return None
         else:
-            return None
+            return self.get_movement_start_robot_config(movement)
 
     def set_movement_start_robot_config(self, movement, robot_configuration):
         # type: (Movement, Configuration) -> None
         """Sets or changes the robot configuration at the begining of a Movement.
+
+        Since a Movement do not save the start robot config, the start config is effectively
+        the end config of the previous movement. See `set_movement_end_robot_config`
         If attempt to set the start of the first movement, the initial state will be changed.
 
         Setting the configuration to None will remove the configuration.
@@ -1247,33 +1261,30 @@ class RobotClampAssemblyProcess(Data):
 
         Setting the configuration to None will remove the configuration.
 
+        Setting the end configuration of a Non Robotic Movement (NRM) will effectively
+        be setting its start_configuration, becuase the movement did not change the state of the robot.
+
         Note that the adjoining start and end configuration of two Movements are pointed to the same object.
         Setting one of them will automatically change the other.
         """
-        if robot_configuration is not None:
-            movement.state_diff[self.robot_config_key] = robot_configuration
+        if isinstance(movement, RoboticMovement):
+            if robot_configuration is not None:
+                movement.state_diff[self.robot_config_key] = robot_configuration
+            else:
+                if self.robot_config_key in movement.state_diff:
+                    del movement.state_diff[self.robot_config_key]
         else:
-            if self.robot_config_key in movement.state_diff:
-                del movement.state_diff[self.robot_config_key]
+            self.set_movement_start_robot_config(movement, robot_configuration)
 
     def movement_has_start_robot_config(self, movement):
         # type: (Movement) -> bool
         """Returns True if the movement's start scene has a defined robot configuration."""
-        movements = self.movements
-        index = movements.index(movement)
-        if index == 0:
-            return self.initial_state[self.robot_config_key] is not None
-        else:
-            return self.movement_has_end_robot_config(movements[index-1])
-        return
+        return self.get_movement_start_robot_config(movement) is not None
 
     def movement_has_end_robot_config(self, movement):
         # type: (Movement) -> bool
         """Returns True if the movement's end scene has a defined robot configuration."""
-        if self.robot_config_key in movement.state_diff:
-            if movement.state_diff[self.robot_config_key] is not None:
-                return True
-        return False
+        return self.get_movement_end_robot_config(movement) is not None
 
     def get_object_from_id(self, object_id):
         if object_id.startswith('c') or object_id.startswith('g'):

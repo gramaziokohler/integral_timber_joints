@@ -205,8 +205,8 @@ class RoboticMovement(Movement):
 
     @property
     def short_summary(self):
-        return '{}(#{}, {}, traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
-                                             int(self.trajectory is not None))
+        return '{}(#{}, {}, has_traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
+                                             self.trajectory is not None)
 
     def create_state_diff(self, process, clear=True):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
