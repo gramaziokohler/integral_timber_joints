@@ -87,7 +87,7 @@ def found_plan_summary(process, result_path):
         for movement in b_movements:
             movement_path = os.path.join(ext_movement_path, movement.get_filepath())
             if not os.path.exists(movement_path):
-                LOGGER.warning('{} not found | {}'.format(movement.movement_id, movement.short_summary))
+                LOGGER.warning('{}: no saved movement found | {}'.format(movement.movement_id, movement.short_summary))
                 all_found = False
         if all_found:
             if len(b_movements) > 0:
@@ -99,7 +99,7 @@ def found_plan_summary(process, result_path):
                 LOGGER.error('({}) Beam #{} empty movement list!'.format(i, beam_id))
         else:
             unfound_beams.append((i, beam_id))
-    LOGGER.info('Unfound beams: {}'.format(unfound_beams))
+    LOGGER.info('Unfound beams (seq_n, beam_id): {}'.format(unfound_beams))
 
 ###########################################
 
@@ -109,8 +109,8 @@ def main():
                         help='problem json\'s containing folder\'s name.')
     parser.add_argument('--problem', default='nine_pieces_process.json', # pavilion_process.json
                         help='The name of the problem to solve')
-    parser.add_argument('--problem_subdir', default='.', # pavilion.json
-                        help='subdir of the process file, default to `.`. Popular use: `results`, `YJ_tmp`')
+    parser.add_argument('--problem_subdir', default='results',
+                        help='subdir for saving movements, default to `results`.')
     #
     parser.add_argument('--plan_summary', action='store_true', help='Give a summary of currently found plans. Defaults to False.')
     parser.add_argument('--verify_plan', action='store_true', help='Collision check found trajectories. Defaults to False.')
@@ -182,7 +182,7 @@ def main():
 
     # * gather all the movements to be checked
     all_movements = process.movements
-    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
+    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id, msg_prefix='Checking')
     chosen_movements = []
     for beam_id in beam_ids:
         actions = process.assembly.get_beam_attribute(beam_id, 'actions')
@@ -226,11 +226,11 @@ def main():
             start_in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
             if start_in_collision:
                 failure_reasons['in_collision'] = True
-                LOGGER.warn('{} | Start State in collision.'.format(m.movement_id))
+                LOGGER.warning('{} | Start State in collision.'.format(m.movement_id))
             start_fk_agree, msg = check_FK_consistency(client, robot, process, start_state, options)
             if not start_fk_agree:
                 failure_reasons['fk_disagree'] = True
-                LOGGER.warn('{} | Start State {}'.format(m.movement_id, msg))
+                LOGGER.warning('{} | Start State {}'.format(m.movement_id, msg))
             LOGGER.debug('#'*20)
 
         # * verify found trajectory's collisions and joint flips
@@ -245,7 +245,7 @@ def main():
                         point_collision = pychore_collision_fn.check_collisions(robot, jpt, options=options)
                         if point_collision:
                             failure_reasons['in_collision'] = True
-                            LOGGER.warn('{} : pointwise collision: #{}/{}'.format(m.movement_id, conf_id,
+                            LOGGER.warning('{} : pointwise collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
                                 len(m.trajectory.points)))
                         # * prev-conf~conf polyline collision checking
                         # polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
@@ -254,12 +254,12 @@ def main():
 
                     if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
                         failure_reasons['joint_flip'] = True
-                        LOGGER.warn('{} : joint_flip: #{}/{}'.format(m.movement_id, conf_id, len(m.trajectory.points)))
+                        LOGGER.warning('{} : joint_flip: trajectory point #{}/{}'.format(m.movement_id, conf_id, len(m.trajectory.points)))
                     prev_conf = jpt
                 # end looping through all trajectory points
             else:
-                no_traj = True
-                LOGGER.warning('No trajectory found!')
+                failure_reasons['no_traj_found'] = True
+                LOGGER.warning('{} : No trajectory found.'.format(m.movement_id))
             LOGGER.debug('#'*20)
 
         if not args.skip_state_collision_check:
@@ -267,11 +267,11 @@ def main():
             end_in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
             if end_in_collision:
                 failure_reasons['in_collision'] = True
-                LOGGER.warn('{} | End State in collision.'.format(m.movement_id))
+                LOGGER.warning('{} | End State in collision.'.format(m.movement_id))
             end_fk_agree, msg = check_FK_consistency(client, robot, process, end_state, options)
             if not end_fk_agree:
                 failure_reasons['fk_disagree'] = True
-                LOGGER.warn('{} | Start State {}'.format(m.movement_id, msg))
+                LOGGER.warning('{} | Start State {}'.format(m.movement_id, msg))
             LOGGER.debug('#'*20)
 
         if temp_name in client.extra_disabled_collision_links:
@@ -285,7 +285,7 @@ def main():
     if len(movements_need_fix) == 0:
         LOGGER.info(colored('Congrats, check state done!', 'green'))
     else:
-        LOGGER.info(colored('Movements that requires care and love:', 'yellow'))
+        LOGGER.warning('Movements that requires care and love:')
         for fm, reason in zip(movements_need_fix, movements_failure_reasons):
             global_movement_id = all_movements.index(fm)
             LOGGER.info('(MovementIndex={}) {}: {}'.format(global_movement_id, fm.short_summary, reason))

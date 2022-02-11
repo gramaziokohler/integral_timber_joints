@@ -123,7 +123,7 @@ def color_from_success(success : bool):
 
 ##########################################
 
-def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
+def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None, msg_prefix='Solving'):
     full_seq_len = len(process.assembly.sequence)
     if movement_id is not None:
         if movement_id.startswith('A'):
@@ -133,7 +133,7 @@ def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
             movement = process.movements[int(movement_id)]
             beam_ids = [process.get_beam_id_from_movement_id(movement.movement_id)]
         global_movement_id = process.movements.index(movement)
-        LOGGER.info(colored('Solving for movement #({}) {}'.format(global_movement_id, movement.movement_id), 'cyan'))
+        LOGGER.info(colored('{} for movement #({}) {}'.format(msg_prefix, global_movement_id, movement.movement_id), 'cyan'))
     else:
         seq_n = seq_n or list(range(full_seq_len))
         for seq_i in seq_n:
@@ -147,5 +147,5 @@ def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
             beam_ids = [process.assembly.sequence[seq_i] for seq_i in range(seq_n[0], seq_n[1]+1)]
         else:
             beam_ids = [process.assembly.sequence[seq_i] for seq_i in seq_n]
-        LOGGER.info(colored('Solving for beam {}'.format(beam_ids), 'cyan'))
+        LOGGER.info(colored('{} for beam {}'.format(msg_prefix, beam_ids), 'cyan'))
     return beam_ids
