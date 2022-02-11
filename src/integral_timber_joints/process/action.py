@@ -855,9 +855,8 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         # Toolchanger engaging - confirmation of alignment necessary.
         self.movements.append(RoboticLinearMovement(
             target_frame=clamp_wcf_final,
-            speed_type='speed.toolchange.approach.clamp_on_structure',
-            tag="Linear Advance to mate toolchanger of %s to detach it from structure." % self._tool_string,
-            operator_stop_before="Confirm ToolChanger alignment",
+            speed_type='speed.docking.approach.clamp_on_structure',
+            tag="Linear Advance to dock toolchanger of %s." % (self._tool_string),
             allowed_collision_matrix=[('tool_changer', self.tool_id)]
         ))
         # Additional ACM between clamp and the attached two beam (at the joint)
@@ -867,7 +866,6 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticDigitalOutput(
             digital_output=DigitalOutput.LockTool,
             tool_id=self.tool_id,
-            operator_stop_after="Confirm ToolChanger Locked",
             tag="Toolchanger Lock %s" % self._tool_string
         ))
         self.movements.append(ClampsJawMovement(
@@ -962,7 +960,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
             target_frame=clamp_wcf_attachapproach2,
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.toolchange.approach.clamp_on_structure',
+            speed_type='speed.place_clamp_to_structure.approach',
             tag="Linear Approach 1 of 2 to attach %s to structure." % self._tool_string,
             allowed_collision_matrix=acm
         ))  # Tool Approach Frame where tool is at structure
@@ -970,7 +968,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
             target_frame=clamp_wcf_final,
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.toolchange.approach.clamp_on_structure',
+            speed_type='speed.place_clamp_to_structure.approach',
             tag="Linear Approach 2 of 2 to attach %s to structure." % self._tool_string,
             allowed_collision_matrix=acm
         ))  # Tool Final Frame at structure
@@ -2008,9 +2006,8 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
         # Toolchanger engaging - confirmation of alignment necessary.
         self.movements.append(RoboticLinearMovement(
             target_frame=Frame.from_transformation(t_world_from_robot_at_docked),
-            speed_type='speed.toolchange.approach.clamp_on_structure',
+            speed_type='speed.docking.approach.screwdriver_on_structure',
             tag="Linear Advance to dock toolchanger of %s." % (self._tool_string),
-            operator_stop_before="Confirm Docking alignment",
             allowed_collision_matrix=[('tool_changer', self.tool_id)]
         ))
 
@@ -2019,7 +2016,6 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
             digital_output=DigitalOutput.LockTool,
             tool_id=self.tool_id,
             attached_objects=self.additional_attached_objects,
-            operator_stop_after="Confirm ToolChanger Locked",
             tag="Toolchanger Lock %s" % self._tool_string
         ))
 
