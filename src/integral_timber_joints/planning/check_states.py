@@ -1,3 +1,4 @@
+from collections import defaultdict
 import os, time
 import logging
 import argparse
@@ -73,6 +74,33 @@ def check_FK_consistency(client, robot, process, scene_state, options=None):
     else:
         return (True, 'No robot config specified.')
 
+def found_plan_summary(process, result_path):
+    ext_movement_path = os.path.dirname(result_path)
+    LOGGER.info('Loading external movements from {}'.format(ext_movement_path))
+    unfound_beams = []
+    # process.load_external_movements(ext_movement_path)
+    for i, beam_id in enumerate(process.assembly.sequence):
+        LOGGER.debug('='*10)
+        LOGGER.debug('({}) Beam #{}:'.format(i, beam_id))
+        b_movements = process.get_movements_by_beam_id(beam_id)
+        all_found = True
+        for movement in b_movements:
+            movement_path = os.path.join(ext_movement_path, movement.get_filepath())
+            if not os.path.exists(movement_path):
+                LOGGER.warning('{} not found | {}'.format(movement.movement_id, movement.short_summary))
+                all_found = False
+        if all_found:
+            if len(b_movements) > 0:
+                LOGGER.debug('({}) Beam #{} all found!'.format(i, beam_id))
+                movement_path = os.path.join(ext_movement_path, b_movements[-1].get_filepath())
+                LOGGER.debug("\tcreated: \t%s" % time.ctime(os.path.getctime(movement_path)))
+                LOGGER.debug("\tlast modified: \t%s" % time.ctime(os.path.getmtime(movement_path)))
+            else:
+                LOGGER.error('({}) Beam #{} empty movement list!'.format(i, beam_id))
+        else:
+            unfound_beams.append((i, beam_id))
+    LOGGER.info('Unfound beams: {}'.format(unfound_beams))
+
 ###########################################
 
 def main():
@@ -109,6 +137,11 @@ def main():
     file_handler.setLevel(logging.INFO)
     LOGGER.addHandler(file_handler)
 
+    pc_file_handler = logging.FileHandler(filename=log_path, mode='a')
+    pc_file_handler.setFormatter(formatter)
+    pc_file_handler.setLevel(logging.DEBUG)
+    PYCHOREO_LOGGER.addHandler(pc_file_handler)
+
     LOGGER.info("planning.check_states.py started with args: %s" % args)
 
     process = parse_process(args.design_dir, args.problem)
@@ -116,31 +149,7 @@ def main():
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     # * print out a summary of all the movements to check which one hasn't been solved yet
     if args.plan_summary:
-        ext_movement_path = os.path.dirname(result_path)
-        LOGGER.info('Loading external movements from {}'.format(ext_movement_path))
-        unfound_beams = []
-        # process.load_external_movements(ext_movement_path)
-        for i, beam_id in enumerate(process.assembly.sequence):
-            LOGGER.debug('='*10)
-            LOGGER.debug('({}) Beam #{}:'.format(i, beam_id))
-            b_movements = process.get_movements_by_beam_id(beam_id)
-            all_found = True
-            for movement in b_movements:
-                movement_path = os.path.join(ext_movement_path, movement.get_filepath())
-                if not os.path.exists(movement_path):
-                    LOGGER.warning('{} not found | {}'.format(movement.movement_id, movement.short_summary))
-                    all_found = False
-            if all_found:
-                if len(b_movements) > 0:
-                    LOGGER.debug('({}) Beam #{} all found!'.format(i, beam_id))
-                    movement_path = os.path.join(ext_movement_path, b_movements[-1].get_filepath())
-                    LOGGER.debug("\tcreated: \t%s" % time.ctime(os.path.getctime(movement_path)))
-                    LOGGER.debug("\tlast modified: \t%s" % time.ctime(os.path.getmtime(movement_path)))
-                else:
-                    LOGGER.error('({}) Beam #{} empty movement list!'.format(i, beam_id))
-            else:
-                unfound_beams.append((i, beam_id))
-        LOGGER.info('Unfound beams: {}'.format(unfound_beams))
+        found_plan_summary(process, result_path)
         return
 
     # * if verifying existing solved movement, load from external movements
@@ -171,6 +180,7 @@ def main():
     # ! frame, conf compare, joint flip tolerances are set here
     options.update(get_tolerances(robot))
 
+    # * gather all the movements to be checked
     all_movements = process.movements
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id)
     chosen_movements = []
@@ -189,17 +199,14 @@ def main():
                 chosen_movements.append(m)
 
     movements_need_fix = []
-    failure_reasons = []
+    movements_failure_reasons = []
     for m in tqdm(chosen_movements, desc='checking movements'):
         start_state = process.get_movement_start_scene(m)
         end_state = process.get_movement_end_scene(m)
         start_conf = process.get_movement_start_robot_config(m)
         end_conf = process.get_movement_end_robot_config(m)
 
-        in_collision = False
-        joint_flip = False
-        no_traj = False
-        fk_disagree = False
+        failure_reasons = {}
         m_index = process.movements.index(m)
         LOGGER.debug('-'*10)
         print_title('(MovementIndex={}) {}'.format(m_index, m.short_summary), log_level='debug')
@@ -217,13 +224,13 @@ def main():
         if not args.skip_state_collision_check:
             LOGGER.debug('Start State:')
             start_in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
-            in_collision |= start_in_collision
             if start_in_collision:
-                LOGGER.error('{} | Start State in collision: {}.'.format(m.short_summary, start_in_collision))
+                failure_reasons['in_collision'] = True
+                LOGGER.warn('{} | Start State in collision.'.format(m.movement_id))
             start_fk_agree, msg = check_FK_consistency(client, robot, process, start_state, options)
-            fk_disagree |= not start_fk_agree
             if not start_fk_agree:
-                LOGGER.error('{} | Start State FK consistency: {} | {}'.format(m.short_summary, start_fk_agree, msg))
+                failure_reasons['fk_disagree'] = True
+                LOGGER.warn('{} | Start State {}'.format(m.movement_id, msg))
             LOGGER.debug('#'*20)
 
         # * verify found trajectory's collisions and joint flips
@@ -237,56 +244,49 @@ def main():
                         # * traj-point collision checking
                         point_collision = pychore_collision_fn.check_collisions(robot, jpt, options=options)
                         if point_collision:
-                            LOGGER.warn('Pointwise Collision: {}'.format(m.short_summary))
+                            failure_reasons['in_collision'] = True
+                            LOGGER.warn('{} : pointwise collision: #{}/{}'.format(m.movement_id, conf_id,
+                                len(m.trajectory.points)))
                         # * prev-conf~conf polyline collision checking
                         # polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
                         # if polyline_collision:
                         #     LOGGER.error('Polyline Collision: {}'.format(m.short_summary))
-                        in_collision |= point_collision # or polyline_collision
 
                     if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
-                        LOGGER.warn(m.short_summary)
-                        LOGGER.warn('\t traj point #{}/{}'.format(conf_id, len(m.trajectory.points)))
-                        joint_flip |= True
+                        failure_reasons['joint_flip'] = True
+                        LOGGER.warn('{} : joint_flip: #{}/{}'.format(m.movement_id, conf_id, len(m.trajectory.points)))
                     prev_conf = jpt
-                LOGGER.debug(colored('Trajectory in trouble: in_collision {} | joint_flip {}'.format(in_collision, joint_flip), 'red' if in_collision or joint_flip else 'green'))
-                if in_collision or joint_flip:
-                    if args.debug:
-                        wait_for_user()
+                # end looping through all trajectory points
             else:
                 no_traj = True
-                LOGGER.warning('No trajectory found!', 'red')
+                LOGGER.warning('No trajectory found!')
             LOGGER.debug('#'*20)
 
         if not args.skip_state_collision_check:
             LOGGER.debug('End State:')
             end_in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
-            in_collision |= end_in_collision
             if end_in_collision:
-                LOGGER.warn(m.short_summary)
-                LOGGER.warn('End State in collision: {}.'.format(end_in_collision))
+                failure_reasons['in_collision'] = True
+                LOGGER.warn('{} | End State in collision.'.format(m.movement_id))
             end_fk_agree, msg = check_FK_consistency(client, robot, process, end_state, options)
-            fk_disagree |= not end_fk_agree
             if not end_fk_agree:
-                LOGGER.warn(m.short_summary)
-                LOGGER.warn('End State FK consistency: {} | {}'.format(end_fk_agree, msg))
+                failure_reasons['fk_disagree'] = True
+                LOGGER.warn('{} | Start State {}'.format(m.movement_id, msg))
             LOGGER.debug('#'*20)
 
         if temp_name in client.extra_disabled_collision_links:
             del client.extra_disabled_collision_links[temp_name]
 
-        checks = [in_collision, joint_flip, no_traj, fk_disagree]
-        if any(checks):
+        if len(failure_reasons) > 0:
             movements_need_fix.append(m)
-            report_msg = 'in_collision: {} | joint_flip: {} | no_traj: {} | fk_disagree: {}'.format(*[colored(c, color=color_from_success(not c)) for c in checks])
-            failure_reasons.append(report_msg)
+            movements_failure_reasons.append(', '.join(failure_reasons))
 
     LOGGER.debug('='*20)
     if len(movements_need_fix) == 0:
         LOGGER.info(colored('Congrats, check state done!', 'green'))
     else:
         LOGGER.info(colored('Movements that requires care and love:', 'yellow'))
-        for fm, reason in zip(movements_need_fix, failure_reasons):
+        for fm, reason in zip(movements_need_fix, movements_failure_reasons):
             global_movement_id = all_movements.index(fm)
             LOGGER.info('(MovementIndex={}) {}: {}'.format(global_movement_id, fm.short_summary, reason))
     LOGGER.debug('='*20)
