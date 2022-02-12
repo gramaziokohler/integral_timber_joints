@@ -123,6 +123,20 @@ def color_from_success(success : bool):
 
 ##########################################
 
+def target_movement_ids_from_beam_ids(process, beam_ids, movement_id=None):
+    target_movement_ids = []
+    if movement_id is not None:
+        if not movement_id.startswith('A'):
+            _movement_id = process.movements[int(movement_id)].movement_id
+        else:
+            _movement_id = movement_id
+        target_movement_ids.append(_movement_id)
+    else:
+        for beam_id in beam_ids:
+            for m in process.get_movements_by_beam_id(beam_id):
+                target_movement_ids.append(m.movement_id)
+    return target_movement_ids
+
 def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None, msg_prefix='Solving'):
     full_seq_len = len(process.assembly.sequence)
     if movement_id is not None:

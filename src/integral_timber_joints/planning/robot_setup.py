@@ -102,6 +102,8 @@ def get_tolerances(robot, low_res=False):
         'joint_resolutions' : joint_resolutions,
         'joint_weights' : {jn : weight for jn, weight in zip(joint_names, R11_JOINT_WEIGHTS)},
         'joint_custom_limits' : get_gantry_robot_custom_limits(MAIN_ROBOT_ID),
+        # the collision is counted when penetration distance is bigger than this value
+        'collision_distance_threshold' : 0.0012, # in meter,
     }
     return tolerances
 

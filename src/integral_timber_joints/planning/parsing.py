@@ -11,7 +11,7 @@ from compas.utilities import DataDecoder, DataEncoder
 
 from pybullet_planning import get_date
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RobotClampAssemblyProcess
-from .utils import LOGGER
+from .utils import LOGGER, target_movement_ids_from_beam_ids
 
 HERE = os.path.dirname(__file__)
 EXTERNAL_DIR = os.path.abspath(os.path.join(HERE, '..', '..', '..', 'external'))
@@ -89,7 +89,7 @@ def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyPro
     # * Load process from file
     file_path = get_process_path(design_dir, process_name, subdir)
     if not os.path.exists(file_path):
-        LOGGER.warning('No process file found, using the original one.', 'yellow')
+        LOGGER.warning('No process file found, using the original one.')
         file_path = get_process_path(design_dir, process_name, '.')
     if not os.path.exists(file_path):
         raise FileNotFoundError(file_path)
@@ -116,18 +116,18 @@ def save_process(design_dir, process_name, _process, save_dir='results', include
 
 
 def save_movements(design_dir, _movements, save_dir='results', indent=None, movement_subdir='movements'):
-    if not _movements:
+    if len(_movements) == 0:
+        LOGGER.warning('No movements to be saved!')
         return
     process_dir = os.path.join(DESIGN_STUDY_DIR, design_dir, save_dir)
     movement_dir = os.path.join(process_dir, movement_subdir)
     mkdir(movement_dir)
     for m in _movements:
-        if not isinstance(m, RoboticMovement):
+        if isinstance(m, RoboticMovement) and m.trajectory is not None:
             # * skip saving non-robotic movement
-            continue
-        m_file_path = os.path.abspath(os.path.join(process_dir, m.get_filepath(movement_subdir)))
-        with open(m_file_path, 'w') as f:
-            json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)
+            m_file_path = os.path.abspath(os.path.join(process_dir, m.get_filepath(movement_subdir)))
+            with open(m_file_path, 'w') as f:
+                json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)
     LOGGER.debug(colored('#{} movements written to {}'.format(len(_movements), os.path.abspath(movement_dir)), 'green'))
 
 ##########################################
@@ -162,16 +162,15 @@ def move_saved_movement(movement, process_folder_path, to_archive=True):
         movement_removed = True
     return movement_removed
 
-def move_saved_movements(process, process_folder_path, beam_ids, movement_id=None, to_archive=True):
-    if movement_id is not None:
-        if movement_id.startswith('A'):
-            movement = process.get_movement_by_movement_id(movement_id)
-        else:
-            movement = process.movements[int(movement_id)]
-        # only remove one movement
-        move_saved_movement(movement, process_folder_path, to_archive)
-    else:
-        for beam_id in beam_ids:
-            movements = process.get_movements_by_beam_id(beam_id)
-            for m in movements:
-                move_saved_movement(m, process_folder_path, to_archive)
+def archive_movements(target_process, beam_ids, process_folder_path, movement_id=None):
+    target_movement_ids = target_movement_ids_from_beam_ids(target_process, beam_ids, movement_id)
+    for m_id in target_movement_ids:
+        target_m = target_process.get_movement_by_movement_id(m_id)
+        move_saved_movement(target_m, process_folder_path)
+
+def reset_movements(source_process: RobotClampAssemblyProcess, target_process: RobotClampAssemblyProcess,
+        beam_ids, movement_id=None):
+    target_movement_ids = target_movement_ids_from_beam_ids(target_process, beam_ids, movement_id)
+    for m_id in target_movement_ids:
+        target_m = target_process.get_movement_by_movement_id(m_id)
+        target_m.data = source_process.get_movement_by_movement_id(m_id).data

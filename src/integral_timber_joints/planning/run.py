@@ -12,7 +12,8 @@ from copy import deepcopy
 
 from pybullet_planning import wait_if_gui, LockRenderer, HideOutput
 
-from integral_timber_joints.planning.parsing import parse_process, save_process, save_movements, get_process_path, move_saved_movements
+from integral_timber_joints.planning.parsing import parse_process, save_process, save_movements, get_process_path, \
+    reset_movements, archive_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.utils import print_title, beam_ids_from_argparse_seq_n, color_from_success, LOGGER
 from integral_timber_joints.planning.state import set_state, set_initial_state
@@ -33,10 +34,6 @@ SOLVE_MODE = [
     'free_motion_only', # 'Only compute free motions.'
 ]
 
-# * Next steps
-# TODO use linkstatistics joint weight and resolutions
-# TODO backtrack in case of subsequent sampling cannot find a solution (linear movement with one end specified)
-
 ##############################################
 
 def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=None):
@@ -51,22 +48,26 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     solve_timeout = options.get('solve_timeout', 600)
     # max solve iter kept rather high to prioritize timeout
     solve_iters = options.get('solve_iters', 40)
-    # return when first solution is found, should be True except when benchmarking
     ignore_taught_confs = options.get('ignore_taught_confs', False)
     runtime_data = {}
+
+    # ! parse the original, unplanned process file
+    source_process = parse_process(args.design_dir, args.problem, subdir='.')
 
     start_time = time.time()
     trial_i = 0
     while elapsed_time(start_time) < solve_timeout and trial_i < solve_iters:
         copy_st_time = time.time()
-        # * recreate process and client for the next attempt
-        # we always parse from the home directory to use the original, unplanned process here
-        # movements will be updated by parsing individual movement jsons
-        process = parse_process(args.design_dir, args.problem)
-        # * load previously planned movements
-        loaded_movements = process.load_external_movements(ext_movement_path)
-        if len(loaded_movements) == 0:
-            LOGGER.warning('No external movements loaded from {}'.format(ext_movement_path))
+        # * parse the WIP process json saved in the problem_subdir
+        process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
+
+        # ! reset target movements from the original, unplanned process file
+        reset_movements(source_process, process, [beam_id], movement_id=args.movement_id)
+
+        # # * load previously planned movements
+        # loaded_movements = process.load_external_movements(ext_movement_path)
+        # if len(loaded_movements) == 0:
+        #     LOGGER.warning('No external movements loaded from {}'.format(ext_movement_path))
         if ignore_taught_confs:
             for m in process.movements:
                 process.set_movement_end_robot_config(m, None)
@@ -76,7 +77,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         copy_time = elapsed_time(copy_st_time)
 
         LOGGER.debug('#'*10)
-        LOGGER.info('Beam {} | {} | Trail #{} | time {:.2f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(start_time)))
+        LOGGER.info('Beam {} | {} | Trail #{} | time elapsed {:.2f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(start_time)))
         options['profiles'] = {}
         success = compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options)
         runtime_data[trial_i] = {}
@@ -91,7 +92,8 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         solve_timeout += copy_time
         LOGGER.debug('Copy process takes {} | total timeout {}'.format(copy_time, solve_timeout))
     else:
-        LOGGER.error('Planning (with restarts) for beam {} failed, exceeding timeout {:.2f} after {}.'.format(beam_id, solve_timeout, trial_i))
+        failure_reason = 'exceeding solve timeout {:.2f}.'.format(solve_timeout) if trial_i < solve_iters else 'exceeding max solve iteration {}'.format(trial_i)
+        LOGGER.error('Planning (with restarts) for beam {} failed: {}'.format(beam_id, failure_reason))
 
     return success, runtime_data
 
@@ -106,81 +108,66 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             index-based (e.g. 79) or string name (e.g. 'A78_M0')
     """
     seq_n = process.assembly.sequence.index(beam_id)
-    all_movements = process.get_movements_by_beam_id(beam_id)
-    options['samplig_order_counter'] = 0
-    options['enforce_continuous'] = True
+    beam_movements = process.get_movements_by_beam_id(beam_id)
     if 'movement_id_filter' in options:
         del options['movement_id_filter']
 
+    solved_movements = []
     st_time = time.time()
     with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
         options['lockrenderer'] = lockrenderer
-        altered_movements = []
         with HideOutput(False): #
             if args.solve_mode == 'nonlinear':
-                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
+                success, _ = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
                     LOGGER.info('A plan NOT found using nonlinear planning at stage 1 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     return False
-                else:
-                    altered_movements.extend(altered_ms)
 
-                # TODO if fails remove the related movement's trajectory and try again
-                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
                     [MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
                     LOGGER.info('A plan NOT found using nonlinear planning at stage 2 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     return False
-                else:
-                    altered_movements.extend(altered_ms)
 
-                # since adjacent "neither_done" states will change to `one_sided` and get skipped
-                # which will cause adjacent linear movement joint flip problems (especially for clamp placements)
-                # Thus, when solving `neither_done`, we solve for both `neither_done` and `one_sided` sequentially
-                # The movement statuses get changed on the fly.
-                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                # First solve for "neither-done" linear movements, and then solve for "single-sided" linear movements
+                success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
                     [MovementStatus.neither_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
                     LOGGER.info('A plan NOT found using nonlinear planning at stage 3 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     return False
-                else:
-                    altered_movements.extend(altered_ms)
 
                 # Ideally, all the free motions should have both start and end conf specified.
-                # one_sided is used to sample the start conf if none is given (especially when `arg.problem_dir = 'YJ_tmp'` is not used).
-                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
+                # one_sided is used to sample the start conf if none is given.
+                success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
                     [MovementStatus.both_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
                     LOGGER.info('A plan NOT found using nonlinear planning at stage 4 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     return False
-                else:
-                    altered_movements.extend(altered_ms)
+                solved_movements = beam_movements
 
             elif args.solve_mode == 'linear':
-                movement_id_range = options.get('movement_id_range', range(0, len(all_movements)))
-                options['movement_id_filter'] = [all_movements[m_i].movement_id for m_i in movement_id_range]
-                # options['enforce_continuous'] = False
-                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
+                movement_id_range = options.get('movement_id_range', range(0, len(beam_movements)))
+                options['movement_id_filter'] = [beam_movements[m_i].movement_id for m_i in movement_id_range]
+                success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
                     [MovementStatus.correct_type], options=options, diagnosis=args.diagnosis, \
                     check_type_only=True)
                 if not success:
                     LOGGER.info('A plan NOT found using linear (chained) planning for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     return False
-                altered_movements.extend(altered_ms)
+                solved_movements = beam_movements
 
             elif args.solve_mode == 'free_motion_only':
-                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],
+                success, solved_movements = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],
                     [MovementStatus.both_done, MovementStatus.one_sided],
                     options=options, diagnosis=args.diagnosis)
                 if not success:
                     LOGGER.info('A plan NOT found for free motion for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                     return False
-                altered_movements.extend(altered_ms)
 
             elif args.solve_mode == 'movement_id':
                 # * compute for movement_id movement
@@ -207,30 +194,32 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     if keep_end != 2:
                         assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
 
-                success, altered_ms = compute_selected_movements(client, robot, process, beam_id, 0, [],
+                success, solved_movements = compute_selected_movements(client, robot, process, beam_id, 0, [],
                     None, options=options, diagnosis=args.diagnosis)
                 if not success:
                     LOGGER.info('A plan NOT found for movement_id {}!'.format(args.movement_id))
                     return False
-                altered_movements.extend(altered_ms)
             else:
                 raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
 
     LOGGER.debug('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
     # * export computed movements (unsmoothed)
     if args.write:
-        save_movements(args.design_dir, altered_movements, save_dir=args.problem_subdir, movement_subdir='movements')
+        # movements without trajectories but end conf set will be saved into the WIP process file
+        save_process(args.design_dir, args.problem, process, save_dir=args.problem_subdir)
+        # ! only robotic movements with trajectory are saved
+        save_movements(args.design_dir, solved_movements, save_dir=args.problem_subdir, movement_subdir='movements')
 
     # * smoothing
     if not args.no_smooth:
         smoothed_movements = []
         st_time = time.time()
         with pp.LockRenderer(): # not args.debug):
-            free_movements = [fm for fm in altered_movements if isinstance(fm, RoboticFreeMovement)]
-            for altered_m in tqdm(free_movements, desc='smoothing'):
-                success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, altered_m, options=options)
-                altered_m.trajectory = smoothed_traj
-                smoothed_movements.append(altered_m)
+            solved_free_movements = [fm for fm in solved_movements if isinstance(fm, RoboticFreeMovement)]
+            for free_m in tqdm(solved_free_movements, desc='smoothing'):
+                success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, free_m, options=options)
+                free_m.trajectory = smoothed_traj
+                smoothed_movements.append(free_m)
                 if not success:
                     LOGGER.error('Smooth success: {} | msg: {}'.format(success, msg))
                     # TODO return False
@@ -243,7 +232,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     if args.watch:
         # order movement according to their ids
         viz_movements = {}
-        for am in altered_movements:
+        for am in solved_movements:
             index = process.movements.index(am)
             viz_movements[index] = am
         print_title('Visualize results')
@@ -320,8 +309,6 @@ def main():
         'diagnosis' : args.diagnosis,
         'verbose' : not args.quiet,
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
-        # the collision is counted when penetration distance is bigger than this value
-        'collision_distance_threshold' : 0.0012, # in meter,
         'solve_iters': 40, # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
         'solve_timeout': args.solve_timeout,
         'rrt_iterations': args.rrt_iterations,
@@ -347,24 +334,18 @@ def main():
 
     #########
     # * Load process and recompute actions and states
-    # we always parse from the home directory to use the original, unplanned process here
-    # movements will be updated by parsing individual movement jsons
-    process = parse_process(args.design_dir, args.problem)
+    # ! parse the WIP process file
+    process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, movement_id=args.movement_id)
-    set_initial_state(client, robot, process, reinit_tool=args.reinit_tool, initialize=True)
-
-    # * save a copy of the unplanned process for archival purpose
-    if not os.path.exists(get_process_path(args.design_dir, args.problem, 'results')):
-        save_process(args.design_dir, args.problem, process, save_dir='results')
 
     # * archive the target movements
     # if movement_id is not None, only one movement json will be moved to the `archive` folder
     # otherwise, all the movement under beam_id will be moved
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     ext_movement_path = os.path.dirname(result_path)
-    for beam_id in beam_ids:
-        move_saved_movements(process, ext_movement_path, [beam_id], movement_id=args.movement_id, to_archive=True)
+    archive_movements(process, beam_ids, ext_movement_path, movement_id=args.movement_id)
 
+    set_initial_state(client, robot, process, reinit_tool=args.reinit_tool, initialize=True)
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
         success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)

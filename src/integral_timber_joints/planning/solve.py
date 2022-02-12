@@ -39,8 +39,8 @@ class MovementStatus(Enum):
     both_done = 4
     neither_done = 5
 
-def get_movement_status(process, m, movement_types, verbose=True, check_type_only=False):
-    # type: (RobotClampAssemblyProcess, Movement, List[Type], bool, bool) -> MovementStatus
+def get_movement_status(process, m, movement_types, check_type_only=False):
+    # type: (RobotClampAssemblyProcess, Movement, List[Type], bool) -> MovementStatus
     """get the movement's current status, see the `MovementStatus` class
 
     Parameters
@@ -67,7 +67,7 @@ def get_movement_status(process, m, movement_types, verbose=True, check_type_onl
     if not isinstance(m, RoboticFreeMovement) and \
             has_start_conf and has_end_conf and not has_traj:
         LOGGER.error(colored('{} has both start, end conf specified, but no traj computed. This is BAD!!'.format(m.short_summary), 'yellow'))
-        notify('Warning! Go back to the command line now!')
+        # notify('Warning! Go back to the command line now!')
     # imply(has_traj, has_start_conf and has_end_conf)
     assert not has_traj or (has_start_conf and has_end_conf)
     if has_traj:
@@ -194,7 +194,6 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         step conf-by-conf if viz_upon_found == True, by default False
     """
     verbose = options.get('verbose', False)
-    m_attempts = options.get('movement_planning_reattempts', 1)
     movement_id_filter = options.get('movement_id_filter', [])
     movement_types = movement_types or []
     if len(movement_id_filter) > 0:
@@ -215,82 +214,34 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
             print_title('* compute {} (priority {}, status {})'.format([mt.__name__ for mt in movement_types], priority,
                 movement_statuses))
 
-    total_altered_movements = []
     # no filter applied if movement_statuses is None
     filtered_movements = [m for m in selected_movements \
         if movement_statuses is None or \
            any([get_movement_status(process, m, movement_types, check_type_only=check_type_only).value == m_st.value
                 for m_st in movement_statuses])]
 
-    pbar = tqdm(total=len(filtered_movements), desc=f'{beam_id}-priority {priority}')
-    for m in filtered_movements:
-        # * propagate to Nonrobotic movements
-        altered_movements = propagate_states(process, options=options)
-
+    computed_movements = []
+    for m in tqdm(filtered_movements, desc=f'{beam_id}-priority {priority}'):
         m_id = process.movements.index(m)
         if verbose:
             LOGGER.debug('-'*10)
             LOGGER.debug('({})'.format(m_id))
-
-        options['samplig_order_counter'] += 1
-        archived_start_conf = process.get_movement_start_robot_config(m)
-        archived_end_conf = process.get_movement_end_robot_config(m)
-
-        for attempt in range(m_attempts):
-            start_time = time.time()
-            plan_success = compute_movement(client, robot, process, m, options, diagnosis)
-            plan_time = elapsed_time(start_time)
+        start_time = time.time()
+        plan_success = compute_movement(client, robot, process, m, options, diagnosis)
+        plan_time = elapsed_time(start_time)
+        if 'profiles' in options:
             # * log planning profile
-            if 'profiles' in options:
-                if m_id not in options['profiles']:
-                    options['profiles'][m_id] = defaultdict(list)
-                options['profiles'][m_id]['movement_id'] = [m.movement_id]
-                options['profiles'][m_id]['plan_time'].append(plan_time)
-                options['profiles'][m_id]['plan_success'].append(plan_success)
-
-            if plan_success:
-                altered_movements.append(m)
-                if viz_upon_found:
-                    with WorldSaver():
-                        visualize_movement_trajectory(client, robot, process, m, step_sim=True)
-                break
-            else:
-                process.set_movement_start_robot_config(m, archived_start_conf)
-                process.set_movement_end_robot_config(m, archived_end_conf)
+            if m_id not in options['profiles']:
+                options['profiles'][m_id] = defaultdict(list)
+            options['profiles'][m_id]['movement_id'] = [m.movement_id]
+            options['profiles'][m_id]['plan_time'].append(plan_time)
+            options['profiles'][m_id]['plan_success'].append(plan_success)
+        if plan_success:
+            if viz_upon_found:
+                with WorldSaver():
+                    visualize_movement_trajectory(client, robot, process, m, step_sim=True)
+            computed_movements.append(m)
         else:
-            # TODO backtracking
-            pbar.close()
-            LOGGER.info('No plan found for {} after {} attempts. {}'.format(m.movement_id, m_attempts, m.short_summary))
+            LOGGER.info('No plan found for {} | {}'.format(m.movement_id, m.short_summary))
             return False, []
-
-        total_altered_movements.extend(altered_movements)
-        # update progress bar
-        pbar.update(1)
-
-    pbar.close()
-    return True, total_altered_movements
-
-###########################################
-
-def propagate_states(process, options=None):
-    # type: (RobotClampAssemblyProcess, Dict) -> List[Movement]
-    """Returns two lists of movements:
-        - altered_movements: non-robotic movements with conf updated
-        - impacted_movements: robotic movements with start / end conf updated
-    """
-    options = options or {}
-    altered_movements = []
-    all_movements = process.movements
-    for target_m in all_movements:
-        if isinstance(target_m, RoboticMovement):
-            # skip robotic movements
-            continue
-        target_start_conf = process.get_movement_start_robot_config(target_m)
-        target_end_conf = process.get_movement_end_robot_config(target_m)
-        if (target_start_conf is None)^(target_end_conf is None):
-            if target_start_conf is None:
-                process.set_movement_start_robot_config(target_m, target_end_conf)
-            else:
-                process.set_movement_end_robot_config(target_m, target_start_conf)
-            altered_movements.append(target_m)
-    return altered_movements
+    return True, computed_movements

@@ -144,7 +144,8 @@ def main():
 
     LOGGER.info("planning.check_states.py started with args: %s" % args)
 
-    process = parse_process(args.design_dir, args.problem)
+    # ! parse from the WIP process file
+    process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     # * print out a summary of all the movements to check which one hasn't been solved yet
@@ -169,8 +170,6 @@ def main():
         assert not client.check_collisions(robot, process.robot_initial_config, options={'diagnosis':True})
 
     options = {
-        # * collision checking tolerance, in meter, peneration distance bigger than this number will be regarded as in collision
-        'collision_distance_threshold' : 0.0012,
         'diagnosis' : args.viewer,
         'debug' : args.debug,
         # turn on verbose will make compas_fab_pychoreo to print the
