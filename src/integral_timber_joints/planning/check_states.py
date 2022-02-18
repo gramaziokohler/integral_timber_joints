@@ -176,7 +176,7 @@ def main():
         # joint compare details in DEBUG channel (in a separate logger)
         'verbose' : True,
     }
-    # ! frame, conf compare, joint flip tolerances are set here
+    # ! frame, conf compare, joint flip and collision peneration tolerances are set here
     options.update(get_tolerances(robot))
 
     # * gather all the movements to be checked
@@ -224,32 +224,34 @@ def main():
             LOGGER.debug('Start State:')
             start_in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
             if start_in_collision:
-                failure_reasons['in_collision'] = True
+                failure_reasons['start_state_in_collision'] = True
                 LOGGER.warning('{} | Start State in collision.'.format(m.movement_id))
             start_fk_agree, msg = check_FK_consistency(client, robot, process, start_state, options)
             if not start_fk_agree:
-                failure_reasons['fk_disagree'] = True
+                failure_reasons['start_state_fk_disagree'] = True
                 LOGGER.warning('{} | Start State {}'.format(m.movement_id, msg))
             LOGGER.debug('#'*20)
 
         # * verify found trajectory's collisions and joint flips
         if args.verify_plan:
-            pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
             if m.trajectory:
                 # print(client._print_object_summary())
                 prev_conf = start_conf
                 for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
                     if args.traj_collision:
                         # * traj-point collision checking
-                        point_collision = pychore_collision_fn.check_collisions(robot, jpt, options=options)
+                        point_collision = client.check_collisions(robot, jpt, options=options)
                         if point_collision:
-                            failure_reasons['in_collision'] = True
+                            failure_reasons['traj_pointwise_collision'] = True
                             LOGGER.warning('{} : pointwise collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
                                 len(m.trajectory.points)))
+
                         # * prev-conf~conf polyline collision checking
-                        # polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
-                        # if polyline_collision:
-                        #     LOGGER.error('Polyline Collision: {}'.format(m.short_summary))
+                        polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
+                        if polyline_collision:
+                            failure_reasons['traj_polyline_collision'] = True
+                            LOGGER.warning('{} : polyline collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
+                                len(m.trajectory.points)))
 
                     if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
                         failure_reasons['joint_flip'] = True
@@ -265,12 +267,12 @@ def main():
             LOGGER.debug('End State:')
             end_in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
             if end_in_collision:
-                failure_reasons['in_collision'] = True
+                failure_reasons['end_state_in_collision'] = True
                 LOGGER.warning('{} | End State in collision.'.format(m.movement_id))
             end_fk_agree, msg = check_FK_consistency(client, robot, process, end_state, options)
             if not end_fk_agree:
-                failure_reasons['fk_disagree'] = True
-                LOGGER.warning('{} | Start State {}'.format(m.movement_id, msg))
+                failure_reasons['end_state_fk_disagree'] = True
+                LOGGER.warning('{} | End State {}'.format(m.movement_id, msg))
             LOGGER.debug('#'*20)
 
         if temp_name in client.extra_disabled_collision_links:

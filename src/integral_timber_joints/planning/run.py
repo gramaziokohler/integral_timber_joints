@@ -79,11 +79,12 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         LOGGER.debug('#'*10)
         LOGGER.info('Beam {} | {} | Trail #{} | time elapsed {:.2f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(start_time)))
         options['profiles'] = {}
+        single_run_st_time = time.time()
         success = compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options)
         runtime_data[trial_i] = {}
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
-        LOGGER.info('Return success: {}'.format(success))
+        LOGGER.info('Return success: {} | runtime of current attempt: {:.1f}'.format(success, elapsed_time(single_run_st_time)))
         if success:
             break
 
@@ -314,6 +315,7 @@ def main():
         'rrt_iterations': args.rrt_iterations,
         'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,
         'mp_algorithm' : args.mp_algorithm,
+        'check_sweeping_collision': True,
     }
     # ! frame, conf compare, joint flip tolerances are set here
     options.update(get_tolerances(robot, low_res=args.low_res))

@@ -109,6 +109,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     # * custom limits
     traj = None
     if isinstance(movement, RoboticLinearMovement):
+        # movement.planning_linear_step_distance_m or 0.01
         lm_options = options.copy()
         lm_options.update({
             'max_step' : 0.01, # interpolation step size, in meter
@@ -145,7 +146,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             'rrt_restarts' : 2, #20,
             'smooth_iterations': None, # ! smoothing will be done in postprocessing
             # -------------------
-            'max_step' : 0.01, # interpolation step size, in meter, used in buffering motion
+            'max_step' : 0.005, # interpolation step size, in meter, used in buffering motion
             })
         traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis)
     else:

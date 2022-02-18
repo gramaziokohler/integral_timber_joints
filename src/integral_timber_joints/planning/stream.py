@@ -562,11 +562,11 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
 
                     with LockRenderer(not diagnosis):
                         goal_constraints = robot.constraints_from_configuration(new_end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
-                        d_options = options.copy()
+                        # d_options = options.copy()
                         # if diagnosis:
                         #     d_options['diagnosis'] = True
                         free_traj = client.plan_motion(robot, goal_constraints, start_configuration=new_start_conf,
-                            group=GANTRY_ARM_GROUP, options=d_options)
+                            group=GANTRY_ARM_GROUP, options=options)
 
                     retraction_msg = "(ST {} ; END {})".format(start_retract_msg, end_retract_msg)
                     if free_traj is not None:
