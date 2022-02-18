@@ -206,7 +206,7 @@ class RoboticMovement(Movement):
     @property
     def short_summary(self):
         return '{}(#{}, {}, has_traj {})'.format(self.__class__.__name__, self.movement_id, self.tag,
-                                             self.trajectory is not None)
+                                                 self.trajectory is not None)
 
     def create_state_diff(self, process, clear=True):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
@@ -348,6 +348,54 @@ class RoboticLinearMovement(RoboticMovement):
 
     def __str__(self):
         return "Linear Move to %s" % (self.target_frame)
+
+    def __init__(
+        self,
+        target_frame=None,  # type: Frame # Target of the Robotic Movement
+        attached_objects=[],  # type: List[str]
+        t_flange_from_attached_objects=[],  # type: List[Transformation]
+        planning_priority=0,  # type: int
+        operator_stop_before=None,  # type: str
+        operator_stop_after=None,  # type: str
+        speed_type="",  # type: str # A string linking to a setting
+        target_configuration=None,  # type: Optional[Configuration]
+        allowed_collision_matrix=[],  # type: list(tuple(str,str))
+        tag=None,  # type: str
+        seed=None  # type: int
+    ):
+        # type: (...) -> RoboticLinearMovement
+
+        RoboticMovement.__init__(
+            self,
+            target_frame=target_frame,  # type: Frame # Target of the Robotic Movement
+            attached_objects=attached_objects,  # type: List[str]
+            t_flange_from_attached_objects=t_flange_from_attached_objects,  # type: List[Transformation]
+            planning_priority=planning_priority,  # type: int
+            operator_stop_before=operator_stop_before,  # type: str
+            operator_stop_after=operator_stop_after,  # type: str
+            speed_type=speed_type,  # type: str # A string linking to a setting
+            target_configuration=target_configuration,  # type: Optional[Configuration]
+            allowed_collision_matrix=allowed_collision_matrix,  # type: list(tuple(str,str))
+            tag=tag,  # type: str
+            seed=seed  # type: int
+        )
+
+        self.planning_linear_step_distance_m = None
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(RoboticLinearMovement, self).data
+        data['planning_linear_step_distance_m'] = self.planning_linear_step_distance_m
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(RoboticLinearMovement, type(self)).data.fset(self, data)
+        self.planning_linear_step_distance_m = data.get('planning_linear_step_distance_m', None)
 
 
 class RoboticDigitalOutput(Movement):
@@ -499,15 +547,16 @@ class ClampsJawMovement(Movement):
             self.state_diff[(clamp_id, 'c')] = clamp._get_kinematic_state()
 
 
-class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
+class RoboticClampSyncLinearMovement(RoboticLinearMovement, ClampsJawMovement):
 
     def __init__(self, target_frame=None, attached_objects=[], t_flange_from_attached_objects=[], jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="",
                  allowed_collision_matrix=[], tag=None):
         tag = tag or "Robot and Clamp Sync Move"
-        RoboticMovement.__init__(self, target_frame, attached_objects, t_flange_from_attached_objects, planning_priority=planning_priority,
-                                 speed_type=speed_type, allowed_collision_matrix=allowed_collision_matrix, tag=tag)
+        RoboticLinearMovement.__init__(self, target_frame, attached_objects, t_flange_from_attached_objects, planning_priority=planning_priority,
+                                       speed_type=speed_type, allowed_collision_matrix=allowed_collision_matrix, tag=tag)
         ClampsJawMovement.__init__(self, jaw_positions, clamp_ids,
                                    planning_priority=planning_priority, speed_type=speed_type, tag=tag)
+        self.planning_linear_step_distance_m = 0.005  # Meters
 
     @property
     def data(self):
@@ -527,11 +576,11 @@ class RoboticClampSyncLinearMovement(RoboticMovement, ClampsJawMovement):
 
     def create_state_diff(self, process, clear=True):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
-        RoboticMovement.create_state_diff(self, process, clear)
+        RoboticLinearMovement.create_state_diff(self, process, clear)
         ClampsJawMovement.create_state_diff(self, process, clear=False)
 
 
-class RobotScrewdriverSyncLinearMovement(RoboticMovement):
+class RobotScrewdriverSyncLinearMovement(RoboticLinearMovement):
     def __init__(
             self,
             target_frame=None,  # type: Frame
@@ -558,7 +607,7 @@ class RobotScrewdriverSyncLinearMovement(RoboticMovement):
         All the screwdriver's frame are updated
         """
 
-        RoboticMovement.__init__(
+        RoboticLinearMovement.__init__(
             self,
             target_frame=target_frame,
             attached_objects=attached_objects,
@@ -569,6 +618,7 @@ class RobotScrewdriverSyncLinearMovement(RoboticMovement):
             tag=tag or "Robot and Clamp Sync Move")
         self.screw_positions = screw_positions
         self.screwdriver_ids = screwdriver_ids
+        self.planning_linear_step_distance_m = 0.005  # Meters
 
     @property
     def data(self):
