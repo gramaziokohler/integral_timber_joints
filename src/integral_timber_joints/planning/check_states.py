@@ -26,6 +26,7 @@ from integral_timber_joints.planning.state import set_state
 from integral_timber_joints.planning.utils import print_title, FRAME_TOL, color_from_success, beam_ids_from_argparse_seq_n, LOGGER
 
 from integral_timber_joints.process import RoboticMovement, RobotClampAssemblyProcess
+from integral_timber_joints.process.movement import RoboticFreeMovement
 
 ###########################################
 def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, process: RobotClampAssemblyProcess,
@@ -117,7 +118,7 @@ def main():
     parser.add_argument('--traj_collision', action='store_true', help='Check trajectory collisions, not check states. Defaults to False.')
     parser.add_argument('--skip_state_collision_check', action='store_true', help='Skip collision checking among objects for states.')
     #
-    parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
+    parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n xx`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
@@ -246,12 +247,13 @@ def main():
                             LOGGER.warning('{} : pointwise collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
                                 len(m.trajectory.points)))
 
-                        # * prev-conf~conf polyline collision checking
-                        polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
-                        if polyline_collision:
-                            failure_reasons['traj_polyline_collision'] = True
-                            LOGGER.warning('{} : polyline collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
-                                len(m.trajectory.points)))
+                        # * prev-conf~conf polyline collision checking, only for free motions
+                        if isinstance(m, RoboticFreeMovement):
+                            polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
+                            if polyline_collision:
+                                failure_reasons['traj_polyline_collision'] = True
+                                LOGGER.warning('{} : polyline collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
+                                    len(m.trajectory.points)))
 
                     if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
                         failure_reasons['joint_flip'] = True

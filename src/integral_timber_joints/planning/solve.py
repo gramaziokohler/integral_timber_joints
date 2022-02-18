@@ -109,10 +109,9 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     # * custom limits
     traj = None
     if isinstance(movement, RoboticLinearMovement):
-        # movement.planning_linear_step_distance_m or 0.01
         lm_options = options.copy()
         lm_options.update({
-            'max_step' : 0.01, # interpolation step size, in meter
+            'max_step' : movement.planning_linear_step_distance_m or 0.01, # interpolation step size, in meter
             'cartesian_attempts' : 1, # boosting up cartesian attempt here does not really help
             # -------------------
             'planner_id' : 'IterativeIK',
@@ -129,7 +128,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         lm_options = options.copy()
         # * interpolation step size, in meter
         lm_options.update({
-            'max_step' : 0.02, # interpolation step size, in meter
+            'max_step' : movement.planning_linear_step_distance_m or 0.02, # interpolation step size, in meter
             'cartesian_attempts' : 1, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
             # -------------------
             'planner_id' : 'IterativeIK',
