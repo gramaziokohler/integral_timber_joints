@@ -59,7 +59,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
         # ! reset target movements from the original, unplanned process file
-        reset_movements(source_process, process, [beam_id], movement_id=args.movement_id)
+        reset_movements(source_process, process, [beam_id], movement_id=args.movement_id, options=options)
 
         # # * load previously planned movements
         # loaded_movements = process.load_external_movements(ext_movement_path)

@@ -169,12 +169,14 @@ def archive_movements(target_process, beam_ids, process_folder_path, movement_id
 
 def reset_movements(source_process: RobotClampAssemblyProcess, target_process: RobotClampAssemblyProcess,
         beam_ids, movement_id=None, options=None):
+    options = options or {}
     use_stored_seed = options.get('use_stored_seed', False)
     target_movement_ids = target_movement_ids_from_beam_ids(target_process, beam_ids, movement_id)
+    saved_seed = None
     for m_id in target_movement_ids:
         target_m = target_process.get_movement_by_movement_id(m_id)
-        saved_seed = copy(target_m.seed)
+        if use_stored_seed and hasattr(target_m, 'seed'):
+            saved_seed = copy(target_m.seed)
         target_m.data = source_process.get_movement_by_movement_id(m_id).data
-        if use_stored_seed:
-            LOGGER.info(saved_seed)
+        if use_stored_seed and hasattr(target_m, 'seed'):
             target_m.seed = saved_seed
