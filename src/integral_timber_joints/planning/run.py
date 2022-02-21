@@ -42,9 +42,6 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
 
     The client will be recreated at each restart as well.
     """
-    result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
-    ext_movement_path = os.path.dirname(result_path)
-    # ---
     solve_timeout = options.get('solve_timeout', 600)
     # max solve iter kept rather high to prioritize timeout
     solve_iters = options.get('solve_iters', 40)
@@ -62,7 +59,7 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
         # ! reset target movements from the original, unplanned process file
-        reset_movements(source_process, process, [beam_id], movement_id=args.movement_id)
+        reset_movements(source_process, process, [beam_id], movement_id=args.movement_id, options=options)
 
         # # * load previously planned movements
         # loaded_movements = process.load_external_movements(ext_movement_path)
@@ -326,7 +323,7 @@ def main():
     if not args.no_smooth:
         options.update({
             'smooth_iterations' : 150,
-            'max_smooth_time' : 60,
+            'max_smooth_time' : 180,
              })
     if args.buffers_for_free_motions:
         options.update({
