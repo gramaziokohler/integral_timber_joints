@@ -89,22 +89,23 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     if not isinstance(movement, RoboticMovement):
         return None
     options = options or {}
-    # * low_res mode is used to quickly get a feeling of the planning problem
     verbose = options.get('verbose', True)
-    joint_compare_tolerances = options.get('joint_compare_tolerances', {})
     if verbose:
         LOGGER.debug(colored(movement.short_summary, 'cyan'))
 
-    # use_stored_seed = options.get('use_stored_seed', False)
-    # set seed stored in the movement
-    # if use_stored_seed:
-    #     seed = movement.seed
-    #     assert seed is not None, 'No meaningful seed saved in the movement.'
-    # else:
-    #     seed = get_random_seed()
-    #     movement.seed = seed
-    # set_random_seed(seed)
-    # set_numpy_seed(seed)
+    use_stored_seed = options.get('use_stored_seed', False)
+    # * set seed stored in the movement
+    seed = None
+    if use_stored_seed:
+        seed = movement.seed
+        if seed is None:
+            LOGGER.warning(f'No meaningful seed saved in movement {movement.movement_id}.')
+        LOGGER.debug(f'using seed {seed}')
+    if seed is None:
+        seed = hash(time.time())
+        movement.seed = seed
+    set_random_seed(seed)
+    set_numpy_seed(seed)
 
     # * custom limits
     traj = None

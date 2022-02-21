@@ -431,7 +431,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         if verbose: LOGGER.debug('End conf sample found after {} gantry iters.'.format(gantry_iter))
                         if debug:
                                 client.set_robot_configuration(robot, orig_end_conf)
-                                LOGGER.debug(orig_end_conf.joint_values)
+                                # LOGGER.debug(orig_end_conf.joint_values)
                                 wait_if_gui('Sampled end conf')
                         break
                 if sample_found:
