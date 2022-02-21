@@ -243,9 +243,9 @@ def ui_save_ik(process):
 
     # * Save IK
     all_movements = process.movements
-    prev_movement = all_movements[movement_id]
+    prev_movement = all_movements[movement_id] # type: RoboticMovement
     if movement_id in process.temp_ik and process.temp_ik[movement_id] is not None:
-        process.set_movement_end_robot_config(prev_movement, process.temp_ik[movement_id])
+        prev_movement.target_configuration = process.temp_ik[movement_id]
         print("IK Saved at end of %s : %s" % (prev_movement.__class__.__name__, prev_movement.tag))
         del process.temp_ik[movement_id]
 
