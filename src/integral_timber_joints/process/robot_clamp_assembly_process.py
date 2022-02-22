@@ -1300,8 +1300,6 @@ class RobotClampAssemblyProcess(Data):
         else:
             return None
 
-
-
     def set_movement_trajectory(self, movement, trajectory):
         # type: (Movement, JointTrajectory) -> None
         """Set the trajectory of a movement.

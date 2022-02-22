@@ -50,6 +50,8 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
 
     # ! parse the original, unplanned process file
     source_process = parse_process(args.design_dir, args.problem, subdir='.')
+    result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
+    ext_movement_path = os.path.dirname(result_path)
 
     start_time = time.time()
     trial_i = 0
@@ -58,16 +60,11 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
         # * parse the WIP process json saved in the problem_subdir
         process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
+        # * load previously planned movements
+        process.load_external_movements(ext_movement_path)
+
         # ! reset target movements from the original, unplanned process file
         reset_movements(source_process, process, [beam_id], movement_id=args.movement_id, options=options)
-
-        # # * load previously planned movements
-        # loaded_movements = process.load_external_movements(ext_movement_path)
-        # if len(loaded_movements) == 0:
-        #     LOGGER.warning('No external movements loaded from {}'.format(ext_movement_path))
-        if ignore_taught_confs:
-            for m in process.movements:
-                process.set_movement_end_robot_config(m, None)
 
         # * set to initial state without initialization (importing tools etc. as collision objects from files)
         set_initial_state(client, robot, process, initialize=False)
@@ -171,27 +168,6 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 # * compute for movement_id movement
                 LOGGER.info('Computing only for {}'.format(args.movement_id))
                 options['movement_id_filter'] = [args.movement_id]
-                # ! allow for both integer-based index and string names
-                if args.movement_id.startswith('A'):
-                    chosen_m = process.get_movement_by_movement_id(args.movement_id)
-                else:
-                    chosen_m = process.movements[int(args.movement_id)]
-                # * if linear movement and has both end specified, ask user keep start or end
-                if get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.has_traj, MovementStatus.both_done]:
-                    chosen_m.trajectory = None
-                    keep_end = int(input("Keep start or end conf? Enter 0 for start, 1 for end. 2 for abandoning both."))
-                    if keep_end == 0:
-                        # keep start
-                        process.set_movement_end_robot_config(chosen_m, None)
-                    elif keep_end == 1:
-                        process.set_movement_start_robot_config(chosen_m, None)
-                    elif keep_end == 2:
-                        process.set_movement_start_robot_config(chosen_m, None)
-                        process.set_movement_end_robot_config(chosen_m, None)
-                        assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.neither_done]
-                    if keep_end != 2:
-                        assert get_movement_status(process, chosen_m, [RoboticLinearMovement]) in [MovementStatus.one_sided]
-
                 success, solved_movements = compute_selected_movements(client, robot, process, beam_id, 0, [],
                     None, options=options, diagnosis=args.diagnosis)
                 if not success:

@@ -159,9 +159,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         if prev_robot_conf is not None and not is_configurations_close(prev_robot_conf, traj.points[0], options=options):
             LOGGER.error('Planned trajectory\'s first conf does not agree with the previous movement\'s end conf! Planning fails.')
             return False
-        movement.trajectory = traj
-        process.set_movement_start_robot_config(movement, traj.points[0])
-        process.set_movement_end_robot_config(movement, traj.points[-1])
+        process.set_movement_trajectory(movement, traj)
         return True
     else:
         notify('Planning fails! Go back to the command line now!')

@@ -108,7 +108,7 @@ def save_process(design_dir, process_name, _process, save_dir='results', include
     if not include_traj_in_process:
         for m in process.movements:
             if isinstance(m, RoboticMovement):
-                m.trajectory = None
+                process.set_movement_trajectory(m, None)
     with open(process_file_path, 'w') as f:
         json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)
     LOGGER.debug(colored('Process written to {}'.format(process_file_path), 'green'))
