@@ -13,7 +13,7 @@ from copy import deepcopy
 from pybullet_planning import wait_if_gui, LockRenderer, HideOutput
 
 from integral_timber_joints.planning.parsing import parse_process, save_process, save_movements, get_process_path, \
-    reset_movements, archive_movements
+    copy_robotic_movements, archive_robotic_movements
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.utils import print_title, beam_ids_from_argparse_seq_n, color_from_success, LOGGER
 from integral_timber_joints.planning.state import set_state, set_initial_state
@@ -36,7 +36,7 @@ SOLVE_MODE = [
 
 ##############################################
 
-def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=None):
+def plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, args, options=None):
     """A wrapper function to plan for all the movements of a beam with restart until a plan is found.
     See `compute_movements_for_beam_id` for detailed planning strategies.
 
@@ -45,47 +45,42 @@ def plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options
     solve_timeout = options.get('solve_timeout', 600)
     # max solve iter kept rather high to prioritize timeout
     solve_iters = options.get('solve_iters', 40)
-    ignore_taught_confs = options.get('ignore_taught_confs', False)
     runtime_data = {}
 
-    # ! parse the original, unplanned process file
-    source_process = parse_process(args.design_dir, args.problem, subdir='.')
-    result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
-    ext_movement_path = os.path.dirname(result_path)
+    wip_process = deepcopy(unplanned_process)
 
     start_time = time.time()
     trial_i = 0
     while elapsed_time(start_time) < solve_timeout and trial_i < solve_iters:
         copy_st_time = time.time()
-        # * parse the WIP process json saved in the problem_subdir
-        process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
-
-        # * load previously planned movements
-        process.load_external_movements(ext_movement_path)
-
-        # ! reset target movements from the original, unplanned process file
-        reset_movements(source_process, process, [beam_id], movement_id=args.movement_id, options=options)
 
         # * set to initial state without initialization (importing tools etc. as collision objects from files)
-        set_initial_state(client, robot, process, initialize=False)
+        set_initial_state(client, robot, wip_process, initialize=False)
         copy_time = elapsed_time(copy_st_time)
 
         LOGGER.debug('#'*10)
         LOGGER.info('Beam {} | {} | Trail #{} | time elapsed {:.2f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(start_time)))
         options['profiles'] = {}
         single_run_st_time = time.time()
-        success = compute_movements_for_beam_id(client, robot, process, beam_id, args, options=options)
+
+        success = compute_movements_for_beam_id(client, robot, wip_process, beam_id, args, options=options)
+
         runtime_data[trial_i] = {}
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
         LOGGER.info('Return success: {} | runtime of current attempt: {:.1f}'.format(success, elapsed_time(single_run_st_time)))
         if success:
+            # ! copy the freshly planned movement back to unplanned_process
+            copy_robotic_movements(wip_process, unplanned_process, [beam_id], movement_id=args.movement_id, options=options)
             break
+        else:
+            # ! reset target movements from the original, unplanned process file
+            copy_robotic_movements(unplanned_process, wip_process, [beam_id], movement_id=args.movement_id, options=options)
 
-        trial_i += 1
-        # process/client reset time shouldn't be counted in timeout
-        solve_timeout += copy_time
-        LOGGER.debug('Copy process takes {} | total timeout {}'.format(copy_time, solve_timeout))
+            trial_i += 1
+            # process/client reset time shouldn't be counted in timeout
+            solve_timeout += copy_time
+            LOGGER.debug('Copy process takes {} | total timeout {}'.format(copy_time, solve_timeout))
     else:
         failure_reason = 'exceeding solve timeout {:.2f}.'.format(solve_timeout) if trial_i < solve_iters else 'exceeding max solve iteration {}'.format(trial_i)
         LOGGER.error('Planning (with restarts) for beam {} failed: {}'.format(beam_id, failure_reason))
@@ -312,22 +307,25 @@ def main():
         })
 
     #########
-    # * Load process and recompute actions and states
-    # ! parse the WIP process file
-    process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
-    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, movement_id=args.movement_id)
+    # * Load process
+    unplanned_process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
+    beam_ids = beam_ids_from_argparse_seq_n(unplanned_process, args.seq_n, movement_id=args.movement_id)
 
-    # * archive the target movements
+    # * archive the target movements (if they already exist in the external movement folder)
     # if movement_id is not None, only one movement json will be moved to the `archive` folder
     # otherwise, all the movement under beam_id will be moved
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     ext_movement_path = os.path.dirname(result_path)
-    archive_movements(process, beam_ids, ext_movement_path, movement_id=args.movement_id)
+    archive_robotic_movements(unplanned_process, beam_ids, ext_movement_path, movement_id=args.movement_id)
 
-    set_initial_state(client, robot, process, reinit_tool=args.reinit_tool, initialize=True)
+    # * load previously planned movements
+    unplanned_process.load_external_movements(ext_movement_path)
+
+    # * Initialize (only needed once) collision objects and tools
+    set_initial_state(client, robot, unplanned_process, reinit_tool=args.reinit_tool, initialize=True)
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
-        success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
+        success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, args, options=options)
 
     LOGGER.info('Planning done.')
     client.disconnect()

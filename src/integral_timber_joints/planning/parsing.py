@@ -10,7 +10,7 @@ from compas.utilities import DataDecoder, DataEncoder
 
 from pybullet_planning import get_date
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RobotClampAssemblyProcess
-from .utils import LOGGER, target_movement_ids_from_beam_ids
+from .utils import LOGGER, robotic_movement_ids_from_beam_ids
 
 HERE = os.path.dirname(__file__)
 EXTERNAL_DIR = os.path.abspath(os.path.join(HERE, '..', '..', '..', 'external'))
@@ -161,19 +161,19 @@ def move_saved_movement(movement, process_folder_path, to_archive=True):
         movement_removed = True
     return movement_removed
 
-def archive_movements(target_process, beam_ids, process_folder_path, movement_id=None):
-    target_movement_ids = target_movement_ids_from_beam_ids(target_process, beam_ids, movement_id)
-    for m_id in target_movement_ids:
+def archive_robotic_movements(target_process, beam_ids, process_folder_path, movement_id=None):
+    robotic_movement_ids = robotic_movement_ids_from_beam_ids(target_process, beam_ids, movement_id)
+    for m_id in robotic_movement_ids:
         target_m = target_process.get_movement_by_movement_id(m_id)
         move_saved_movement(target_m, process_folder_path)
 
-def reset_movements(source_process: RobotClampAssemblyProcess, target_process: RobotClampAssemblyProcess,
+def copy_robotic_movements(source_process: RobotClampAssemblyProcess, target_process: RobotClampAssemblyProcess,
         beam_ids, movement_id=None, options=None):
     options = options or {}
     use_stored_seed = options.get('use_stored_seed', False)
-    target_movement_ids = target_movement_ids_from_beam_ids(target_process, beam_ids, movement_id)
+    robotic_movement_ids = robotic_movement_ids_from_beam_ids(target_process, beam_ids, movement_id)
     saved_seed = None
-    for m_id in target_movement_ids:
+    for m_id in robotic_movement_ids:
         target_m = target_process.get_movement_by_movement_id(m_id)
         if use_stored_seed and hasattr(target_m, 'seed'):
             saved_seed = copy(target_m.seed)

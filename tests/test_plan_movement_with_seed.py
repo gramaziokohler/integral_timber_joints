@@ -11,7 +11,7 @@ from integral_timber_joints.planning.solve import compute_movement
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.utils import beam_ids_from_argparse_seq_n, LOGGER
 from integral_timber_joints.planning.parsing import parse_process, save_process, save_movements, get_process_path, \
-    reset_movements, archive_movements
+    copy_robotic_movements, archive_robotic_movements
 from integral_timber_joints.planning.state import set_state, set_initial_state
 
 HERE = os.path.dirname(__file__)
@@ -115,7 +115,7 @@ def main():
     source_process = parse_process(args.design_dir, args.problem, subdir='.')
 
     # ! reset target movements from the original, unplanned process file
-    reset_movements(source_process, process, beam_ids, movement_id=args.movement_id, options=options)
+    copy_robotic_movements(source_process, process, beam_ids, movement_id=args.movement_id, options=options)
 
     set_initial_state(client, robot, process, reinit_tool=False, initialize=True)
     solve_for_movement(client, robot, process, args, options)
