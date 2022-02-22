@@ -269,6 +269,7 @@ def main():
     parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode, show collisions whenever encountered')
     parser.add_argument('--quiet', action='store_true', help='Disable print out verbose. Defaults to False.')
     parser.add_argument('--draw_mp_exploration', action='store_true', help='Draw motion planning graph exploration. Should be used together with diagnosis')
+    parser.add_argument('--use_stored_seed', action='store_true', help='Use saved random seed in movement for planning.')
     #
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     #
@@ -307,12 +308,15 @@ def main():
         'diagnosis' : args.diagnosis,
         'verbose' : not args.quiet,
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
-        'solve_iters': 40, # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
+        'solve_iters': 40 if not args.use_stored_seed else 1,
+        # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
+        # ! restart is disabled when use_stored_seed = True
         'solve_timeout': args.solve_timeout,
         'rrt_iterations': args.rrt_iterations,
         'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,
         'mp_algorithm' : args.mp_algorithm,
         'check_sweeping_collision': True,
+        'use_stored_seed' : args.use_stored_seed,
     }
     # ! frame, conf compare, joint flip tolerances are set here
     options.update(get_tolerances(robot, low_res=args.low_res))
