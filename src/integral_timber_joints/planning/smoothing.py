@@ -119,7 +119,7 @@ def main():
                     wait_if_gui('Trajectory before smoothing. Press enter to start.')
                     visualize_movement_trajectory(client, robot, process, m, step_sim=args.step_sim,
                         draw_polylines=True, line_color=pp.RED)
-                m.trajectory = smoothed_traj
+                process.set_movement_trajectory(m, smoothed_traj)
                 altered_movements.append(m)
                 if args.watch:
                     print('>'*20)
