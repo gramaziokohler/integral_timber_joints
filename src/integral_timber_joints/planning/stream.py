@@ -16,7 +16,6 @@ from pybullet_planning import link_from_name, sample_tool_ik, is_pose_close
 from pybullet_planning import INF, invert, get_joint_positions, get_unit_vector, draw_point
 
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
-from compas_fab_pychoreo_examples.ik_solver import InverseKinematicsSolver, get_ik_fn_from_ikfast
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.utils import is_configurations_close, is_frames_close
 
