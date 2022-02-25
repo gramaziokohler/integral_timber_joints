@@ -599,7 +599,7 @@ class ScrewdriverMovement(Movement):
     def data(self):
         """ Sub class specific data added to the dictionary of the parent class
         """
-        data = super(ClampsJawMovement, self).data
+        data = super(ScrewdriverMovement, self).data
         data['target_positions'] = self.target_positions
         data['tool_ids'] = self.tool_ids
         data['speed_type'] = self.speed_type
@@ -610,7 +610,7 @@ class ScrewdriverMovement(Movement):
     def data(self, data):
         """ Sub class specific data loaded
         """
-        super(ClampsJawMovement, type(self)).data.fset(self, data)
+        super(ScrewdriverMovement, type(self)).data.fset(self, data)
         self.target_positions = data.get('target_positions', [])
         self.tool_ids = data.get('tool_ids', [])
         self.speed_type = data.get('speed_type', "")

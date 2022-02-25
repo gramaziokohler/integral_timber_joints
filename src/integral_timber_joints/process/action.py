@@ -1763,7 +1763,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             tool_ids = self.screwdriver_ids,
             speed_type='speed.assembly.screw_tighten',
             allowable_target_deviation = 2 * self.screw_tighten_uncertainty,
-            tag="Screwdrivers (%s) tightens screw without sync" % (self.clamp_ids)
+            tag="Screwdrivers (%s) tightens screw without sync" % (self.screwdriver_ids)
         ))  # Extend the clamp arm
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
