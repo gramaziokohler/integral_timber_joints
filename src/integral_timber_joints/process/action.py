@@ -1637,7 +1637,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
     (The gripper used can be Scrwederiver or Gripper.)
     """
 
-    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, screwdriver_ids=[]):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, screwdriver_ids=[], screw_tighten_uncertainty=5):
         """If a screrwdriver is used as the gripper.
         fill in the screwdriver's id into `gripper_id` and also include it in the list of `screwdriver_id`
 
@@ -1647,6 +1647,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         self.beam_id = beam_id  # type: str
         self.joint_ids = joint_ids  # type: List[Tuple(str, str)]
         self.gripper_id = gripper_id  # type: List[str]
+        self.screw_tighten_uncertainty = 5
 
         # Maintaining same list length between screwdriver_ids and joint_ids
         if screwdriver_ids is []:
@@ -1661,6 +1662,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         data['joint_ids'] = self.joint_ids
         data['gripper_id'] = self.gripper_id
         data['screwdriver_ids'] = self.screwdriver_ids
+        data['screw_tighten_uncertainty'] = self.screw_tighten_uncertainty
         return data
 
     @property
@@ -1672,6 +1674,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         super(AssembleBeamWithScrewdriversAction, type(self)).data.fset(self, data)
         self.joint_ids = data.get('joint_ids', [])
         self.clamp_ids = data.get('clamp_ids', [])
+        self.screw_tighten_uncertainty = data.get('screw_tighten_uncertainty', 5)
 
     def __str__(self):
         object_str = "Beam ('%s')" % (self.beam_id)
@@ -1746,13 +1749,22 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             attached_objects=[self.gripper_id, self.beam_id] + self.screwdriver_ids_without_gripper,
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf, t_flange_from_beam] + t_flange_from_attached_screwdrivers,
             screw_positions=[sync_linear_move_amount] * len(self.screwdriver_ids),
+            allowable_target_deviation=self.screw_tighten_uncertainty,
             screwdriver_ids=self.screwdriver_ids,
             planning_priority=1,
-            speed_type='speed.assembly.screwing',
+            speed_type='speed.assembly.screw_assemble',
             tag="Robot and Screwdrivers (%s) syncronously move to screw Beam ('%s')" % (self.screwdriver_ids, self.beam_id),
             allowed_collision_matrix=acm
         ))
 
+        # Robot Clamp Sync Move to final location
+        self.movements.append(ScrewdriverMovement(
+            target_positions = [sync_linear_move_amount + 2 * self.screw_tighten_uncertainty] * len(self.screwdriver_ids),
+            tool_ids = self.screwdriver_ids,
+            speed_type='speed.assembly.screw_tighten',
+            allowable_target_deviation = 2 * self.screw_tighten_uncertainty,
+            tag="Screwdrivers (%s) tightens screw without sync" % (self.clamp_ids)
+        ))  # Extend the clamp arm
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
 
