@@ -48,6 +48,7 @@ from .movement import (
     ClampsJawMovement,
     RoboticClampSyncLinearMovement,
     RobotScrewdriverSyncLinearMovement,
+    ScrewdriverMovement,
     AcquireDockingOffset,
     CancelRobotOffset,
 )
