@@ -508,11 +508,12 @@ class DigitalOutput(object):
 
 
 class ClampsJawMovement(Movement):
-    def __init__(self, jaw_positions=[], clamp_ids=[], speed_type="", planning_priority=-1, tag=None):
+    def __init__(self, jaw_positions=[], clamp_ids=[], speed_type="", planning_priority=-1, allowable_target_deviation=0, tag=None):
         Movement.__init__(self, planning_priority=planning_priority, tag=tag)
         self.jaw_positions = jaw_positions  # type: list[float]
         self.clamp_ids = clamp_ids  # type: list[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
+        self.allowable_target_deviation = allowable_target_deviation # type: float
         self.tag = tag or "Clamp Jaw Move"
 
     def __str__(self):
@@ -526,6 +527,7 @@ class ClampsJawMovement(Movement):
         data['jaw_positions'] = self.jaw_positions
         data['clamp_ids'] = self.clamp_ids
         data['speed_type'] = self.speed_type
+        data['allowable_target_deviation'] = self.allowable_target_deviation
         return data
 
     @data.setter
@@ -536,6 +538,7 @@ class ClampsJawMovement(Movement):
         self.jaw_positions = data.get('jaw_positions', [])
         self.clamp_ids = data.get('clamp_ids', [])
         self.speed_type = data.get('speed_type', "")
+        self.allowable_target_deviation = data.get('allowable_target_deviation', 0)
 
     def create_state_diff(self, process, clear=True):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
@@ -550,12 +553,12 @@ class ClampsJawMovement(Movement):
 class RoboticClampSyncLinearMovement(RoboticLinearMovement, ClampsJawMovement):
 
     def __init__(self, target_frame=None, attached_objects=[], t_flange_from_attached_objects=[], jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="",
-                 allowed_collision_matrix=[], tag=None):
+                 allowed_collision_matrix=[], allowable_target_deviation =0, tag=None):
         tag = tag or "Robot and Clamp Sync Move"
         RoboticLinearMovement.__init__(self, target_frame, attached_objects, t_flange_from_attached_objects, planning_priority=planning_priority,
                                        speed_type=speed_type, allowed_collision_matrix=allowed_collision_matrix, tag=tag)
         ClampsJawMovement.__init__(self, jaw_positions, clamp_ids,
-                                   planning_priority=planning_priority, speed_type=speed_type, tag=tag)
+                                   planning_priority=planning_priority, speed_type=speed_type, allowable_target_deviation=allowable_target_deviation, tag=tag)
         self.planning_linear_step_distance_m = 0.005  # Meters
 
     @property
@@ -580,6 +583,50 @@ class RoboticClampSyncLinearMovement(RoboticLinearMovement, ClampsJawMovement):
         ClampsJawMovement.create_state_diff(self, process, clear=False)
 
 
+class ScrewdriverMovement(Movement):
+    def __init__(self, target_positions=[], tool_ids=[], speed_type="", planning_priority=-1, allowable_target_deviation=0, tag=None):
+        Movement.__init__(self, planning_priority=planning_priority, tag=tag)
+        self.target_positions = target_positions  # type: list[float]
+        self.tool_ids = tool_ids  # type: list[str]
+        self.speed_type = speed_type  # type: str # A string linking to a setting
+        self.allowable_target_deviation = allowable_target_deviation # type: float
+        self.tag = tag or "Clamp Jaw Move"
+
+    def __str__(self):
+        return "Clamps %s Jaw Move to %s" % (self.tool_ids, self.jaw_positions)
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(ClampsJawMovement, self).data
+        data['target_positions'] = self.target_positions
+        data['tool_ids'] = self.tool_ids
+        data['speed_type'] = self.speed_type
+        data['allowable_target_deviation'] = self.allowable_target_deviation
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(ClampsJawMovement, type(self)).data.fset(self, data)
+        self.target_positions = data.get('target_positions', [])
+        self.tool_ids = data.get('tool_ids', [])
+        self.speed_type = data.get('speed_type', "")
+        self.allowable_target_deviation = data.get('allowable_target_deviation', 0)
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}
+        for i, clamp_id in enumerate(self.tool_ids):
+            clamp = process.tool(clamp_id)
+            clamp.clamp_jaw_position = self.target_positions[i]
+            self.state_diff[(clamp_id, 'c')] = clamp._get_kinematic_state()
+
+
+
 class RobotScrewdriverSyncLinearMovement(RoboticLinearMovement):
     def __init__(
             self,
@@ -591,6 +638,7 @@ class RobotScrewdriverSyncLinearMovement(RoboticLinearMovement):
             planning_priority=1,  # type: int
             speed_type="",  # type: str
             allowed_collision_matrix=[],  # type: List[Tuple[str,str]]
+            allowable_target_deviation =0, # type: float
             tag=None  # type: str
     ):
         """Syncronized linear movement between screwdrivers and robot.
@@ -618,6 +666,7 @@ class RobotScrewdriverSyncLinearMovement(RoboticLinearMovement):
             tag=tag or "Robot and Clamp Sync Move")
         self.screw_positions = screw_positions
         self.screwdriver_ids = screwdriver_ids
+        self.allowable_target_deviation = allowable_target_deviation
         self.planning_linear_step_distance_m = 0.005  # Meters
 
     @property
@@ -627,6 +676,7 @@ class RobotScrewdriverSyncLinearMovement(RoboticLinearMovement):
         data = super(RobotScrewdriverSyncLinearMovement, self).data
         data['screw_positions'] = self.screw_positions
         data['screwdriver_ids'] = self.screwdriver_ids
+        data['allowable_target_deviation'] = self.allowable_target_deviation
         return data
 
     @data.setter
@@ -636,6 +686,7 @@ class RobotScrewdriverSyncLinearMovement(RoboticLinearMovement):
         super(RobotScrewdriverSyncLinearMovement, type(self)).data.fset(self, data)
         self.screw_positions = data.get('screw_positions', [])
         self.screwdriver_ids = data.get('screwdriver_ids', [])
+        self.allowable_target_deviation = data.get('allowable_target_deviation', 0)
 
     def __str__(self):
         return "Robot-Screwdriver Linear Sync Move to %s. Screwdrivers %s Move by %s mm." % (self.target_frame, self.screwdriver_ids, self.screw_positions)
