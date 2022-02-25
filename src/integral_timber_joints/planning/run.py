@@ -185,13 +185,16 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         st_time = time.time()
         with pp.LockRenderer(): # not args.debug):
             solved_free_movements = [fm for fm in solved_movements if isinstance(fm, RoboticFreeMovement)]
-            for free_m in tqdm(solved_free_movements, desc='smoothing'):
-                success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, free_m, options=options)
-                free_m.trajectory = smoothed_traj
-                smoothed_movements.append(free_m)
-                if not success:
-                    LOGGER.error('Smooth success: {} | msg: {}'.format(success, msg))
-                    # TODO return False
+            with tqdm(total=len(solved_free_movements), desc='smoothing') as pbar:
+                for free_m in solved_free_movements:
+                    pbar.set_postfix_str(f'{free_m.movement_id}:{free_m.__class__.__name__}, {free_m.tag}')
+                    success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, free_m, options=options)
+                    free_m.trajectory = smoothed_traj
+                    smoothed_movements.append(free_m)
+                    if not success:
+                        LOGGER.error('Smooth success: {} | msg: {}'.format(success, msg))
+                        # TODO return False
+                    pbar.update(1)
         LOGGER.debug('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
         # * export smoothed movements
         if args.write:

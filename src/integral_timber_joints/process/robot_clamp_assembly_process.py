@@ -1144,11 +1144,7 @@ class RobotClampAssemblyProcess(Data):
                 return
             print("Warning: Cannot find diff for state: %s" % str(key))
 
-        # Robot state is not the same as previous.
-        if self.robot_config_key in movements[index].state_diff:
-            scene[self.robot_config_key] = movements[index].state_diff[self.robot_config_key]
-        else:
-            scene[self.robot_config_key] = None
+        scene[self.robot_config_key] = self.get_movement_end_robot_config(movement)
 
         for key in scene.keys_with_unknown_state(skip_robot_config=True):
             # print("Finding Key: %s" % str(key))

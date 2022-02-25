@@ -29,7 +29,7 @@ from integral_timber_joints.process import RoboticMovement, RobotClampAssemblyPr
 from integral_timber_joints.process.movement import RoboticFreeMovement
 
 ###########################################
-def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, process: RobotClampAssemblyProcess,
+def check_state_collisions(client: PyChoreoClient, robot : Robot, process: RobotClampAssemblyProcess,
     scene_state: dict, options=None):
     options = options or {}
     debug = options.get('debug', False)
@@ -42,10 +42,10 @@ def check_state_collisions_among_objects(client: PyChoreoClient, robot : Robot, 
     #     - each pair of (attached object, obstacle)
     #     - each pair of (attached object 1, attached object 2)
     in_collision = client.check_attachment_collisions(options)
+    # * check collision with the robot if a robot configuration is stored in the scene state
     if scene_state[process.robot_config_key]:
         pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
         in_collision |= pychore_collision_fn.check_collisions(robot, scene_state[process.robot_config_key], options=options)
-    # if debug:
     if debug and in_collision:
         client._print_object_summary()
         wait_for_user('Collision checked: {}'.format(in_collision))
@@ -200,93 +200,101 @@ def main():
 
     movements_need_fix = []
     movements_failure_reasons = []
-    for m in tqdm(chosen_movements, desc='checking movements'):
-        start_state = process.get_movement_start_scene(m)
-        end_state = process.get_movement_end_scene(m)
-        start_conf = process.get_movement_start_robot_config(m)
-        end_conf = process.get_movement_end_robot_config(m)
+    with tqdm(total=len(chosen_movements), desc='checking movements') as pbar:
+        for m in chosen_movements:
+            pbar.set_postfix_str(f'{m.movement_id}:{m.__class__.__name__}, {m.tag}')
+            start_state = process.get_movement_start_scene(m)
+            end_state = process.get_movement_end_scene(m)
+            start_conf = process.get_movement_start_robot_config(m)
+            end_conf = process.get_movement_end_robot_config(m)
 
-        failure_reasons = {}
-        m_index = process.movements.index(m)
-        LOGGER.debug('-'*10)
-        print_title('(MovementIndex={}) {}'.format(m_index, m.short_summary), log_level='debug')
+            failure_reasons = {}
+            m_index = process.movements.index(m)
+            LOGGER.debug('-'*10)
+            print_title('(MovementIndex={}) {}'.format(m_index, m.short_summary), log_level='debug')
 
-        # * Movement-specific ACM
-        temp_name = '_tmp'
-        for o1_name, o2_name in m.allowed_collision_matrix:
-            o1_bodies = client._get_bodies('^{}$'.format(o1_name))
-            o2_bodies = client._get_bodies('^{}$'.format(o2_name))
-            for parent_body, child_body in product(o1_bodies, o2_bodies):
-                client.extra_disabled_collision_links[temp_name].add(
-                    ((parent_body, None), (child_body, None))
-                )
+            # * update state
+            set_state(client, robot, process, start_state, options=options)
 
-        if not args.skip_state_collision_check:
-            LOGGER.debug('Start State:')
-            start_in_collision = check_state_collisions_among_objects(client, robot, process, start_state, options=options)
-            if start_in_collision:
-                failure_reasons['start_state_in_collision'] = True
-                LOGGER.warning('{} | Start State in collision.'.format(m.movement_id))
-            start_fk_agree, msg = check_FK_consistency(client, robot, process, start_state, options)
-            if not start_fk_agree:
-                failure_reasons['start_state_fk_disagree'] = True
-                LOGGER.warning('{} | Start State {}'.format(m.movement_id, msg))
-            LOGGER.debug('#'*20)
+            # * Movement-specific ACM
+            temp_name = '_tmp'
+            for o1_name, o2_name in m.allowed_collision_matrix:
+                o1_bodies = client._get_bodies('^{}$'.format(o1_name))
+                o2_bodies = client._get_bodies('^{}$'.format(o2_name))
+                for parent_body, child_body in product(o1_bodies, o2_bodies):
+                    client.extra_disabled_collision_links[temp_name].add(
+                        ((parent_body, None), (child_body, None))
+                    )
 
-        # * verify found trajectory's collisions and joint flips
-        if args.verify_plan:
-            if m.trajectory:
-                # print(client._print_object_summary())
-                prev_conf = start_conf
-                for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
-                    if args.traj_collision:
-                        # * traj-point collision checking
-                        point_collision = client.check_collisions(robot, jpt, options=options)
-                        if point_collision:
-                            failure_reasons['traj_pointwise_collision'] = True
-                            LOGGER.warning('{} : pointwise collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
-                                len(m.trajectory.points)))
+            if not args.skip_state_collision_check:
+                LOGGER.debug('Start State:')
+                start_in_collision = check_state_collisions(client, robot, process, start_state, options=options)
+                if start_in_collision:
+                    failure_reasons['start_state_in_collision'] = True
+                    LOGGER.warning('{} | Start State in collision.'.format(m.movement_id))
+                start_fk_agree, msg = check_FK_consistency(client, robot, process, start_state, options)
+                if not start_fk_agree:
+                    failure_reasons['start_state_fk_disagree'] = True
+                    LOGGER.warning('{} | Start State {}'.format(m.movement_id, msg))
+                LOGGER.debug('#'*20)
 
-                        # * prev-conf~conf polyline collision checking, only for free motions
-                        if isinstance(m, RoboticFreeMovement):
-                            polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
-                            if polyline_collision:
-                                failure_reasons['traj_polyline_collision'] = True
-                                LOGGER.warning('{} : polyline collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
+            # * verify found trajectory's collisions and joint flips
+            if args.verify_plan:
+                if m.trajectory:
+                    # print(client._print_object_summary())
+                    prev_conf = start_conf
+                    for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
+                        if args.traj_collision:
+                            # * traj-point collision checking
+                            point_collision = client.check_collisions(robot, jpt, options=options)
+                            if point_collision:
+                                failure_reasons['traj_pointwise_collision'] = True
+                                LOGGER.warning('{} : pointwise collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
                                     len(m.trajectory.points)))
 
-                    if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
-                        failure_reasons['joint_flip'] = True
-                        LOGGER.warning('{} : joint_flip: trajectory point #{}/{}'.format(m.movement_id, conf_id, len(m.trajectory.points)))
-                    prev_conf = jpt
-                # end looping through all trajectory points
-            else:
-                failure_reasons['no_traj_found'] = True
-                LOGGER.warning('{} : No trajectory found.'.format(m.movement_id))
-            LOGGER.debug('#'*20)
+                            # * prev-conf~conf polyline collision checking, only for free motions
+                            if isinstance(m, RoboticFreeMovement):
+                                polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
+                                if polyline_collision:
+                                    failure_reasons['traj_polyline_collision'] = True
+                                    LOGGER.warning('{} : polyline collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
+                                        len(m.trajectory.points)))
 
-        if not args.skip_state_collision_check:
-            LOGGER.debug('End State:')
-            end_in_collision = check_state_collisions_among_objects(client, robot, process, end_state, options=options)
-            if end_in_collision:
-                failure_reasons['end_state_in_collision'] = True
-                LOGGER.warning('{} | End State in collision.'.format(m.movement_id))
-            end_fk_agree, msg = check_FK_consistency(client, robot, process, end_state, options)
-            if not end_fk_agree:
-                failure_reasons['end_state_fk_disagree'] = True
-                LOGGER.warning('{} | End State {}'.format(m.movement_id, msg))
-            LOGGER.debug('#'*20)
+                        if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
+                            failure_reasons['joint_flip'] = True
+                            LOGGER.warning('{} : joint_flip: trajectory point #{}/{}'.format(m.movement_id, conf_id, len(m.trajectory.points)))
+                        prev_conf = jpt
+                    # end looping through all trajectory points
+                else:
+                    failure_reasons['no_traj_found'] = True
+                    LOGGER.warning('{} : No trajectory found.'.format(m.movement_id))
+                LOGGER.debug('#'*20)
 
-        if temp_name in client.extra_disabled_collision_links:
-            del client.extra_disabled_collision_links[temp_name]
+            if not args.skip_state_collision_check:
+                LOGGER.debug('End State:')
+                end_in_collision = check_state_collisions(client, robot, process, end_state, options=options)
+                if end_in_collision:
+                    failure_reasons['end_state_in_collision'] = True
+                    LOGGER.warning('{} | End State in collision.'.format(m.movement_id))
+                end_fk_agree, msg = check_FK_consistency(client, robot, process, end_state, options)
+                if not end_fk_agree:
+                    failure_reasons['end_state_fk_disagree'] = True
+                    LOGGER.warning('{} | End State {}'.format(m.movement_id, msg))
+                LOGGER.debug('#'*20)
 
-        if len(failure_reasons) > 0:
-            movements_need_fix.append(m)
-            movements_failure_reasons.append(', '.join(failure_reasons))
+            if temp_name in client.extra_disabled_collision_links:
+                del client.extra_disabled_collision_links[temp_name]
+
+            if len(failure_reasons) > 0:
+                movements_need_fix.append(m)
+                movements_failure_reasons.append(', '.join(failure_reasons))
+
+            # update progress bar
+            pbar.update(1)
 
     LOGGER.debug('='*20)
     if len(movements_need_fix) == 0:
-        LOGGER.info(colored('Congrats, check state done!', 'green'))
+        LOGGER.info('Congrats, check state done!')
     else:
         LOGGER.warning('Movements that requires care and love:')
         for fm, reason in zip(movements_need_fix, movements_failure_reasons):

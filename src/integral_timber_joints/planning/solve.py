@@ -1,10 +1,6 @@
 import time
-import logging
 from enum import Enum, unique
-from copy import deepcopy
 from collections import defaultdict
-from turtle import back
-from compas_fab.backends.pybullet.utils import LOG
 from termcolor import colored
 from tqdm import tqdm
 
@@ -220,27 +216,27 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 for m_st in movement_statuses])]
 
     computed_movements = []
-    for m in tqdm(filtered_movements, desc=f'{beam_id}-priority {priority}'):
-        m_id = process.movements.index(m)
-        if verbose:
-            LOGGER.debug('-'*10)
-            LOGGER.debug('({})'.format(m_id))
-        start_time = time.time()
-        plan_success = compute_movement(client, robot, process, m, options, diagnosis)
-        plan_time = elapsed_time(start_time)
-        if 'profiles' in options:
-            # * log planning profile
-            if m_id not in options['profiles']:
-                options['profiles'][m_id] = defaultdict(list)
-            options['profiles'][m_id]['movement_id'] = [m.movement_id]
-            options['profiles'][m_id]['plan_time'].append(plan_time)
-            options['profiles'][m_id]['plan_success'].append(plan_success)
-        if plan_success:
-            if viz_upon_found:
-                with WorldSaver():
-                    visualize_movement_trajectory(client, robot, process, m, step_sim=True)
-            computed_movements.append(m)
-        else:
-            LOGGER.info('No plan found for {} | {}'.format(m.movement_id, m.short_summary))
-            return False, []
+    with tqdm(total=len(filtered_movements), desc=f'{beam_id}-priority {priority}') as pbar:
+        for m in filtered_movements:
+            pbar.set_postfix_str(f'{m.movement_id}:{m.__class__.__name__}, {m.tag}')
+            m_id = process.movements.index(m)
+            start_time = time.time()
+            plan_success = compute_movement(client, robot, process, m, options, diagnosis)
+            plan_time = elapsed_time(start_time)
+            if 'profiles' in options:
+                # * log planning profile
+                if m_id not in options['profiles']:
+                    options['profiles'][m_id] = defaultdict(list)
+                options['profiles'][m_id]['movement_id'] = [m.movement_id]
+                options['profiles'][m_id]['plan_time'].append(plan_time)
+                options['profiles'][m_id]['plan_success'].append(plan_success)
+            if plan_success:
+                if viz_upon_found:
+                    with WorldSaver():
+                        visualize_movement_trajectory(client, robot, process, m, step_sim=True)
+                computed_movements.append(m)
+            else:
+                LOGGER.info('No plan found for {} | {}'.format(m.movement_id, m.short_summary))
+                return False, []
+            pbar.update(1)
     return True, computed_movements
