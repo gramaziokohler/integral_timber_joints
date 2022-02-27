@@ -16,14 +16,14 @@ from pybullet_planning import  link_from_name
 
 from compas_fab_pychoreo.client import PyChoreoClient
 from compas_fab_pychoreo.backend_features.pychoreo_configuration_collision_checker import PyChoreoConfigurationCollisionChecker
-from compas_fab_pychoreo.utils import is_configurations_close, is_frames_close, does_configurations_jump
+from compas_fab_pychoreo.utils import is_configurations_close, is_frames_close, does_configurations_jump, verify_trajectory
 from compas_fab_pychoreo.utils import LOGGER as PYCHOREO_LOGGER
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 
 from integral_timber_joints.planning.parsing import parse_process, get_process_path
 from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP, get_tolerances
 from integral_timber_joints.planning.state import set_state
-from integral_timber_joints.planning.utils import print_title, FRAME_TOL, color_from_success, beam_ids_from_argparse_seq_n, LOGGER
+from integral_timber_joints.planning.utils import print_title, beam_ids_from_argparse_seq_n, LOGGER
 
 from integral_timber_joints.process import RoboticMovement, RobotClampAssemblyProcess
 from integral_timber_joints.process.movement import RoboticFreeMovement
@@ -205,8 +205,6 @@ def main():
             pbar.set_postfix_str(f'{m.movement_id}:{m.__class__.__name__}, {m.tag}')
             start_state = process.get_movement_start_scene(m)
             end_state = process.get_movement_end_scene(m)
-            start_conf = process.get_movement_start_robot_config(m)
-            end_conf = process.get_movement_end_robot_config(m)
 
             failure_reasons = {}
             m_index = process.movements.index(m)
@@ -215,6 +213,19 @@ def main():
 
             # * update state
             set_state(client, robot, process, start_state, options=options)
+
+            # # ! debug
+            # wait_if_gui('before close gripper')
+            # tool_id = 'g2'
+            # tool = process.tool(tool_id)
+            # # tool._set_kinematic_state(scene[(tool_id, 'c')])
+            # tool.close_gripper()
+            # tool_conf = tool.current_configuration.scaled(1e-3)
+            # tool_bodies = client._get_bodies('^{}$'.format(tool_id))
+            # for b in tool_bodies:
+            #     client._set_body_configuration(b, tool_conf)
+            # wait_if_gui('after close gripper')
+            # # ! end debug
 
             # * Movement-specific ACM
             temp_name = '_tmp'
@@ -238,33 +249,24 @@ def main():
                     LOGGER.warning('{} | Start State {}'.format(m.movement_id, msg))
                 LOGGER.debug('#'*20)
 
-            # * verify found trajectory's collisions and joint flips
+            # * verify found trajectory's pointwise collisions, polyline collisions, joint flips, and configuration duplication
             if args.verify_plan:
                 if m.trajectory:
-                    # print(client._print_object_summary())
-                    prev_conf = start_conf
-                    for conf_id, jpt in enumerate(list(m.trajectory.points) + [end_conf]):
-                        if args.traj_collision:
-                            # * traj-point collision checking
-                            point_collision = client.check_collisions(robot, jpt, options=options)
-                            if point_collision:
-                                failure_reasons['traj_pointwise_collision'] = True
-                                LOGGER.warning('{} : pointwise collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
-                                    len(m.trajectory.points)))
-
-                            # * prev-conf~conf polyline collision checking, only for free motions
-                            if isinstance(m, RoboticFreeMovement):
-                                polyline_collision = client.check_sweeping_collisions(robot, prev_conf, jpt, options=options)
-                                if polyline_collision:
-                                    failure_reasons['traj_polyline_collision'] = True
-                                    LOGGER.warning('{} : polyline collision: trajectory point #{}/{}'.format(m.movement_id, conf_id,
-                                        len(m.trajectory.points)))
-
-                        if prev_conf and does_configurations_jump(jpt, prev_conf, options=options):
-                            failure_reasons['joint_flip'] = True
-                            LOGGER.warning('{} : joint_flip: trajectory point #{}/{}'.format(m.movement_id, conf_id, len(m.trajectory.points)))
-                        prev_conf = jpt
-                    # end looping through all trajectory points
+                    start_conf = process.get_movement_start_robot_config(m)
+                    end_conf = process.get_movement_end_robot_config(m)
+                    # * check start and end of trajectory concides with the target start and end conf
+                    if not is_configurations_close(start_conf, m.trajectory.points[0], options=options,
+                        report_when_close=False):
+                        failure_reasons['start conf - traj[0] not consistent'] = True
+                    if not is_configurations_close(end_conf, m.trajectory.points[-1], options=options,
+                        report_when_close=False):
+                        failure_reasons['end conf - traj[-1] not consistent'] = True
+                    # ! note that the verify_trajectory will return False the first time it encounters
+                    # ! a failure, so NOT all the issues will be reported!
+                    options['check_sweeping_collision'] = isinstance(m, RoboticFreeMovement)
+                    traj_valid, traj_msg = verify_trajectory(client, robot, m.trajectory, options=options)
+                    if not traj_valid:
+                        failure_reasons[traj_msg] = True
                 else:
                     failure_reasons['no_traj_found'] = True
                     LOGGER.warning('{} : No trajectory found.'.format(m.movement_id))
