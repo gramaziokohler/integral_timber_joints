@@ -6,7 +6,7 @@ from compas_fab.robots import Configuration
 from compas_fab.robots.trajectory import JointTrajectory
 
 try:
-    from typing import Dict, List, Optional, Tuple
+    # from typing import Dict, List, Optional, Tuple
 
     from integral_timber_joints.process import RobotClampAssemblyProcess
 except:
@@ -168,7 +168,7 @@ class RoboticMovement(Movement):
         self.attached_objects = attached_objects  # type: List[str]
         self.t_flange_from_attached_objects = t_flange_from_attached_objects  # type: List[Transformation]
         self.speed_type = speed_type  # type: str # A string linking to a setting
-        self.trajectory = None  # type: Optional[JointTrajectory]
+        self.trajectory = None  # type: JointTrajectory
         self.target_configuration = target_configuration  # type: Optional[Configuration]
         self.allowed_collision_matrix = allowed_collision_matrix  # type: list(tuple(str,str))
         self.tag = tag or "Generic Robotic Movement"
@@ -590,10 +590,10 @@ class ScrewdriverMovement(Movement):
         self.tool_ids = tool_ids  # type: list[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
         self.allowable_target_deviation = allowable_target_deviation # type: float
-        self.tag = tag or "Clamp Jaw Move"
+        self.tag = tag or "Screwdriver Move"
 
     def __str__(self):
-        return "Clamps %s Jaw Move to %s" % (self.tool_ids, self.jaw_positions)
+        return "Screwdrivers %s Move to %s" % (self.tool_ids, self.target_positions)
 
     @property
     def data(self):
