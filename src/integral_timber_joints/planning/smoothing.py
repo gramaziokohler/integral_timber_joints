@@ -135,7 +135,7 @@ def main():
     altered_movements = []
     movements_need_fix = []
     movements_failure_reasons = []
-    with tqdm(total=len(chosen_movements), desc='checking movements') as pbar:
+    with tqdm(total=len(chosen_movements), desc='smoothing movements') as pbar:
         for m in chosen_movements:
             pbar.set_postfix_str(f'{m.movement_id}:{m.__class__.__name__}, {m.tag}')
 

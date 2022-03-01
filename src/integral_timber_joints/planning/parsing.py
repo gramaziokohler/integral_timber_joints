@@ -114,20 +114,20 @@ def save_process(design_dir, process_name, _process, save_dir='results', include
     LOGGER.debug(colored('Process written to {}'.format(process_file_path), 'green'))
 
 
-def save_movements(design_dir, _movements, save_dir='results', indent=None, movement_subdir='movements'):
-    if len(_movements) == 0:
-        LOGGER.warning('No movements to be saved!')
+def save_movements(design_dir, movements, save_dir='results', indent=None, movement_subdir='movements'):
+    if len(movements) == 0:
+        LOGGER.warning('No movement to be saved!')
         return
     process_dir = os.path.join(DESIGN_STUDY_DIR, design_dir, save_dir)
     movement_dir = os.path.join(process_dir, movement_subdir)
     mkdir(movement_dir)
-    for m in _movements:
+    for m in movements:
         if isinstance(m, RoboticMovement) and m.trajectory is not None:
             # * skip saving non-robotic movement
             m_file_path = os.path.abspath(os.path.join(process_dir, m.get_filepath(movement_subdir)))
             with open(m_file_path, 'w') as f:
                 json.dump(m, f, cls=DataEncoder, indent=indent, sort_keys=True)
-    LOGGER.debug(colored('#{} movements written to {}'.format(len(_movements), os.path.abspath(movement_dir)), 'green'))
+    LOGGER.debug(colored('#{} movements written to {}'.format(len(movements), os.path.abspath(movement_dir)), 'green'))
 
 ##########################################
 

@@ -197,7 +197,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                     pbar.update(1)
         LOGGER.debug('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
         # * export smoothed movements
-        if args.write:
+        if args.write and len(smoothed_movements) > 0:
             save_movements(args.design_dir, smoothed_movements, save_dir=args.problem_subdir, movement_subdir='smoothed_movements')
 
     # * final visualization
