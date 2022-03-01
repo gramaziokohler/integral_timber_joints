@@ -1637,7 +1637,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
     (The gripper used can be Scrwederiver or Gripper.)
     """
 
-    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, screwdriver_ids=[], screw_tighten_uncertainty=5):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, screwdriver_ids=[], screw_tighten_uncertainty=10):
         """If a screrwdriver is used as the gripper.
         fill in the screwdriver's id into `gripper_id` and also include it in the list of `screwdriver_id`
 
@@ -1647,7 +1647,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         self.beam_id = beam_id  # type: str
         self.joint_ids = joint_ids  # type: List[Tuple(str, str)]
         self.gripper_id = gripper_id  # type: List[str]
-        self.screw_tighten_uncertainty = 5
+        self.screw_tighten_uncertainty = screw_tighten_uncertainty
 
         # Maintaining same list length between screwdriver_ids and joint_ids
         if screwdriver_ids is []:
@@ -1674,7 +1674,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         super(AssembleBeamWithScrewdriversAction, type(self)).data.fset(self, data)
         self.joint_ids = data.get('joint_ids', [])
         self.clamp_ids = data.get('clamp_ids', [])
-        self.screw_tighten_uncertainty = data.get('screw_tighten_uncertainty', 5)
+        self.screw_tighten_uncertainty = data.get('screw_tighten_uncertainty', 10)
 
     def __str__(self):
         object_str = "Beam ('%s')" % (self.beam_id)
@@ -1762,7 +1762,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             target_positions = [sync_linear_move_amount + 2 * self.screw_tighten_uncertainty] * len(self.screwdriver_ids),
             tool_ids = self.screwdriver_ids,
             speed_type='speed.assembly.screw_tighten',
-            allowable_target_deviation = 2 * self.screw_tighten_uncertainty,
+            allowable_target_deviation = 2 * self.screw_tighten_uncertainty + 0.05,
             tag="Screwdrivers (%s) tightens screw without sync" % (self.screwdriver_ids)
         ))  # Extend the clamp arm
         # Assign Unique Movement IDs to all movements
