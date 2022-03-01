@@ -4,6 +4,7 @@ from termcolor import cprint, colored
 from itertools import product, combinations
 import numpy as np
 from tqdm import tqdm
+import logging
 
 import pybullet_planning as pp
 from pybullet_planning import wait_if_gui, wait_for_user
@@ -24,7 +25,7 @@ from integral_timber_joints.process import RoboticMovement, RoboticFreeMovement
 
 #################################
 
-def smooth_movement_trajectory(client, process, robot, movement, options=None):
+def smooth_movement_trajectory(client, process, robot, movement:RoboticMovement, options=None):
     """
     Returns
     -------
@@ -42,8 +43,15 @@ def smooth_movement_trajectory(client, process, robot, movement, options=None):
         traj_smoother = CustomTrajectorySmoother(client)
     else:
         traj_smoother = PyChoreoTrajectorySmoother(client)
-    return traj_smoother.smooth_trajectory(robot, movement.trajectory, options=options)
 
+
+    success, new_trajectory, message = traj_smoother.smooth_trajectory(robot, movement.trajectory, options=options)
+    if options['debug']:
+        if success:
+            old_point_count = len(movement.trajectory.points)
+            new_point_count = len(movement.trajectory.points)
+            message += " | pt_count = %i -> %i" % (old_point_count, new_point_count)
+    return success, new_trajectory, message
 #################################
 
 def main():
@@ -59,6 +67,7 @@ def main():
     parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id.')
     #
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
+    parser.add_argument('--start_with_smoothed_result', action='store_true', help='Use custom trajectory smoother.')
     parser.add_argument('--use_custom_smoother', action='store_true', help='Use custom trajectory smoother.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
@@ -74,6 +83,9 @@ def main():
     print('Arguments:', args)
     print('='*10)
 
+    if args.debug:
+        LOGGER.setLevel(logging.DEBUG)
+
     #########
     # * Load process and recompute actions and states
     process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
@@ -82,7 +94,8 @@ def main():
     # * force load external movements
     ext_movement_path = os.path.dirname(result_path)
     cprint('Loading external movements from {}'.format(ext_movement_path), 'cyan')
-    movements_modified = process.load_external_movements(ext_movement_path)
+    use_smoothed_trajectory = args.start_with_smoothed_result
+    movements_modified = process.load_external_movements(ext_movement_path, use_smoothed_trajectory=use_smoothed_trajectory)
     assert len(movements_modified) > 0, 'At least one external movements should be loaded for smoothing.'
 
     #########
@@ -90,6 +103,7 @@ def main():
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
     set_state(client, robot, process, process.initial_state, initialize=True,
         options={'debug' : False, 'reinit_tool' : False})
+    cprint('set_state complete', 'cyan')
 
     options = {
         'debug' : args.debug,
@@ -125,6 +139,7 @@ def main():
         for m in chosen_movements:
             pbar.set_postfix_str(f'{m.movement_id}:{m.__class__.__name__}, {m.tag}')
 
+            # * Perform Smoothing with Planner
             with pp.LockRenderer(): # not args.debug):
                 success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, m, options=options)
             LOGGER.debug('Smooth success: {} | msg: {}'.format(success, msg))
@@ -167,5 +182,6 @@ def main():
     client.disconnect()
 
 if __name__ == '__main__':
+
     main()
 
