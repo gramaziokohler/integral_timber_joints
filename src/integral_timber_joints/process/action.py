@@ -487,7 +487,7 @@ class PickScrewdriverFromStorageAction(PickToolFromStorageAction):
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.retract.withtool',
-            tag="Linear Retract 1 from Storage Frame of %s, after picking up tool." % self._tool_string,
+            tag="Linear Retract 1 from Storage Frame of %s." % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
@@ -502,8 +502,8 @@ class PickScrewdriverFromStorageAction(PickToolFromStorageAction):
             target_frame=tool_storage_approach2_t0cf,
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.toolchange.retract.withtool',
-            tag="Linear Retract 2 from Storage Frame of %s, after picking up tool." % self._tool_string,
+            speed_type='speed.toolchange.post_retract.withtool',
+            tag="Linear Retract 2 from Storage Frame of %s. (Faster)" % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
@@ -760,8 +760,8 @@ class PlaceScrewdriverToStorageAction(PlaceToolToStorageAction):
             target_frame=tool_storage_approach2_t0cf,
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.toolchange.approach.withtool',
-            tag="Linear Advance 1 to approach Storage Frame of %s, to place tool in storage." % self._tool_string,
+            speed_type='speed.toolchange.pre_approach.withtool',
+            tag="Linear Advance 1 to approach Storage Frame of %s. (Faster)" % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
@@ -773,7 +773,7 @@ class PlaceScrewdriverToStorageAction(PlaceToolToStorageAction):
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.approach.withtool',
             target_configuration=tool.tool_storage_configuration,
-            tag="Linear Advance 2 to Storage Frame of %s, to place tool in storage." % self._tool_string,
+            tag="Linear Advance 2 to Storage Frame of %s." % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
