@@ -176,6 +176,7 @@ def main():
         # turn on verbose will make compas_fab_pychoreo to print the
         # joint compare details in DEBUG channel (in a separate logger)
         'verbose' : True,
+        'fail_fast': False,
     }
     # ! frame, conf compare, joint flip and collision peneration tolerances are set here
     options.update(get_tolerances(robot))
