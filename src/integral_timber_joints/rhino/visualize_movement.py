@@ -11,10 +11,12 @@ from compas_rhino.utilities.objects import get_object_name
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry.env_model import EnvironmentModel
-from integral_timber_joints.process import Movement, RobotClampAssemblyProcess, RoboticMovement
+from integral_timber_joints.process import Movement, RobotClampAssemblyProcess, RoboticMovement, OperatorAttachToolMovement
+from integral_timber_joints.rhino.process_artist import ProcessArtist
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
+from integral_timber_joints.rhino.process_artist import AddAnnotationText
 
 try:
     from typing import Dict, List, Optional, Tuple, cast
@@ -29,8 +31,11 @@ except:
 def redraw_state(process):
     artist = get_process_artist()
     # artist.delete_state(redraw=False)
-    artist.draw_state(redraw=True)  # Visualize the state
+    artist.draw_state(redraw=False)  # Visualize the state
+    draw_tool_id_tag(artist, redraw=False)  # Visualize tool id tag
     print_current_state_info(process)
+    rs.EnableRedraw(True)
+    sc.doc.Views.Redraw()
 
 
 def print_current_state_info(process, print_prev=True, print_state=True, print_next=True):
@@ -134,6 +139,18 @@ def ui_prev_robotic_movement(process):
         artist.selected_state_id -= 1
         movement = all_movements[artist.selected_state_id - 1]
         if isinstance(movement, RoboticMovement):
+            return
+
+
+def ui_next_operator_attach_tool(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+    all_movements = process.movements
+    while artist.selected_state_id < len(all_movements):
+        artist.selected_state_id += 1
+        movement = all_movements[artist.selected_state_id - 1]
+        if isinstance(movement, OperatorAttachToolMovement):
             return
 
 
@@ -243,11 +260,55 @@ def ui_save_ik(process):
 
     # * Save IK
     all_movements = process.movements
-    prev_movement = all_movements[movement_id] # type: RoboticMovement
+    prev_movement = all_movements[movement_id]  # type: RoboticMovement
     if movement_id in process.temp_ik and process.temp_ik[movement_id] is not None:
         prev_movement.target_configuration = process.temp_ik[movement_id]
         print("IK Saved at end of %s : %s" % (prev_movement.__class__.__name__, prev_movement.tag))
         del process.temp_ik[movement_id]
+
+
+def draw_tool_id_tag(self, scene=None, redraw=True):
+    # type: (ProcessArtist, any, bool) -> None
+    """Draw tags of tool_id
+    This is a hot fix function that is not yet imcoperated into Process artist
+    """
+    if scene is None:
+        # Limit range
+        if self.selected_state_id < 0:
+            self.selected_state_id = 0
+        if self.selected_state_id > len(self.process.movements):
+            self.selected_state_id = len(self.process.movements)
+        scene = self.get_current_selected_scene_state()
+
+    # Layer:
+    rs.EnableRedraw(False)
+    layer = 'itj::interactive::beams_seqtag'
+    rs.CurrentLayer(layer)
+
+    delete_tool_id_tag(self)
+
+    # * Draw meshes to Rhino and add guids to tracking dict
+    for object_id in self.process.tool_ids:
+        tool_base_frame = scene[(object_id, 'f')]
+        layer = 'itj::interactive::beams_seqtag'
+        guid = AddAnnotationText(tool_base_frame, object_id, 50, layer, redraw=False)
+        self.tool_id_tags.append(guid)
+
+    # Enable Redraw
+    if redraw:
+        rs.EnableRedraw(True)
+        sc.doc.Views.Redraw()
+
+def delete_tool_id_tag(self, redraw=True):
+
+    if hasattr(self, 'tool_id_tags'):
+        purge_objects(self.tool_id_tags, redraw=False)
+    self.tool_id_tags = []
+
+    # Enable Redraw
+    if redraw:
+        rs.EnableRedraw(True)
+        sc.doc.Views.Redraw()
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None
@@ -269,6 +330,7 @@ def show_menu(process):
     rs.EnableRedraw(False)
     artist.delete_state(redraw=False)
     artist.draw_state(redraw=False)  # Visualize the state
+    draw_tool_id_tag(artist, redraw=False)  # Visualize the state
     print_current_state_info(process)
 
     # Hide interactive beams and beams in positions
@@ -306,6 +368,8 @@ def show_menu(process):
                  },
                 {'name': 'PrevRoboticMovement', 'action': ui_prev_robotic_movement
                  },
+                {'name': 'NextOperatorAttachTool', 'action': ui_next_operator_attach_tool
+                 },
                 {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
                  },
                 {'name': 'GoToState', 'action': ui_goto_state_by_state_index
@@ -338,6 +402,7 @@ def show_menu(process):
             artist.hide_all_env_mesh()
             artist.hide_robot()
             show_interactive_beams_delete_state_vis()
+            delete_tool_id_tag(artist)
             return Rhino.Commands.Result.Cancel
 
         # User cancel command by Escape
