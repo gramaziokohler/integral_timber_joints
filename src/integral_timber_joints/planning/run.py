@@ -106,70 +106,69 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     st_time = time.time()
     with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
         options['lockrenderer'] = lockrenderer
-        with HideOutput(False): #
-            if args.solve_mode == 'nonlinear':
-                success, _ = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
-                    [MovementStatus.neither_done, MovementStatus.one_sided],
-                    options=options, diagnosis=args.diagnosis)
-                if not success:
-                    LOGGER.info('A plan NOT found using nonlinear planning at stage 1 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
-                    return False
+        if args.solve_mode == 'nonlinear':
+            success, _ = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
+                [MovementStatus.neither_done, MovementStatus.one_sided],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('A plan NOT found using nonlinear planning at stage 1 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                return False
 
-                success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-                    [MovementStatus.one_sided],
-                    options=options, diagnosis=args.diagnosis)
-                if not success:
-                    LOGGER.info('A plan NOT found using nonlinear planning at stage 2 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
-                    return False
+            success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                [MovementStatus.one_sided],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('A plan NOT found using nonlinear planning at stage 2 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                return False
 
-                # First solve for "neither-done" linear movements, and then solve for "single-sided" linear movements
-                success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-                    [MovementStatus.neither_done, MovementStatus.one_sided],
-                    options=options, diagnosis=args.diagnosis)
-                if not success:
-                    LOGGER.info('A plan NOT found using nonlinear planning at stage 3 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
-                    return False
+            # First solve for "neither-done" linear movements, and then solve for "single-sided" linear movements
+            success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
+                [MovementStatus.neither_done, MovementStatus.one_sided],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('A plan NOT found using nonlinear planning at stage 3 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                return False
 
-                # Ideally, all the free motions should have both start and end conf specified.
-                # one_sided is used to sample the start conf if none is given.
-                success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
-                    [MovementStatus.both_done, MovementStatus.one_sided],
-                    options=options, diagnosis=args.diagnosis)
-                if not success:
-                    LOGGER.info('A plan NOT found using nonlinear planning at stage 4 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
-                    return False
-                solved_movements = beam_movements
+            # Ideally, all the free motions should have both start and end conf specified.
+            # one_sided is used to sample the start conf if none is given.
+            success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
+                [MovementStatus.both_done, MovementStatus.one_sided],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('A plan NOT found using nonlinear planning at stage 4 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                return False
+            solved_movements = beam_movements
 
-            elif args.solve_mode == 'linear':
-                movement_id_range = options.get('movement_id_range', range(0, len(beam_movements)))
-                options['movement_id_filter'] = [beam_movements[m_i].movement_id for m_i in movement_id_range]
-                success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
-                    [MovementStatus.correct_type], options=options, diagnosis=args.diagnosis, \
-                    check_type_only=True)
-                if not success:
-                    LOGGER.info('A plan NOT found using linear (chained) planning for (seq_n={}) beam {}!'.format(seq_n, beam_id))
-                    return False
-                solved_movements = beam_movements
+        elif args.solve_mode == 'linear':
+            movement_id_range = options.get('movement_id_range', range(0, len(beam_movements)))
+            options['movement_id_filter'] = [beam_movements[m_i].movement_id for m_i in movement_id_range]
+            success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
+                [MovementStatus.correct_type], options=options, diagnosis=args.diagnosis, \
+                check_type_only=True)
+            if not success:
+                LOGGER.info('A plan NOT found using linear (chained) planning for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                return False
+            solved_movements = beam_movements
 
-            elif args.solve_mode == 'free_motion_only':
-                success, solved_movements = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],
-                    [MovementStatus.both_done, MovementStatus.one_sided],
-                    options=options, diagnosis=args.diagnosis)
-                if not success:
-                    LOGGER.info('A plan NOT found for free motion for (seq_n={}) beam {}!'.format(seq_n, beam_id))
-                    return False
+        elif args.solve_mode == 'free_motion_only':
+            success, solved_movements = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],
+                [MovementStatus.both_done, MovementStatus.one_sided],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('A plan NOT found for free motion for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                return False
 
-            elif args.solve_mode == 'movement_id':
-                # * compute for movement_id movement
-                LOGGER.info('Computing only for {}'.format(args.movement_id))
-                options['movement_id_filter'] = [args.movement_id]
-                success, solved_movements = compute_selected_movements(client, robot, process, beam_id, 0, [],
-                    None, options=options, diagnosis=args.diagnosis)
-                if not success:
-                    LOGGER.info('A plan NOT found for movement_id {}!'.format(args.movement_id))
-                    return False
-            else:
-                raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
+        elif args.solve_mode == 'movement_id':
+            # * compute for movement_id movement
+            LOGGER.info('Computing only for {}'.format(args.movement_id))
+            options['movement_id_filter'] = [args.movement_id]
+            success, solved_movements = compute_selected_movements(client, robot, process, beam_id, 0, [],
+                None, options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('A plan NOT found for movement_id {}!'.format(args.movement_id))
+                return False
+        else:
+            raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
 
     LOGGER.debug('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
     # * export computed movements (unsmoothed)

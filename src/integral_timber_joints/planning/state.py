@@ -133,7 +133,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 urdf_path = tool.get_urdf_path(PLANNING_DATA_DIR)
                 if reinit_tool or not os.path.exists(urdf_path):
                     tool.save_as_urdf(PLANNING_DATA_DIR, scale=1e-3, triangulize=True)
-                    LOGGER.debug('Tool {} ({}) URDF generated to {}'.format(tool.type_name, tool_id, urdf_path))
+                    LOGGER.info('Tool {} ({}) URDF generated to {}'.format(tool.type_name, tool_id, urdf_path))
                 with HideOutput():
                     tool_robot = load_pybullet(urdf_path, fixed_base=False)
                 client.collision_objects[tool_id] = [tool_robot]

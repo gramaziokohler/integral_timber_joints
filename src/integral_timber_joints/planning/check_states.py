@@ -215,19 +215,6 @@ def main():
             # * update state
             set_state(client, robot, process, start_state, options=options)
 
-            # # ! debug
-            # wait_if_gui('before close gripper')
-            # tool_id = 'g2'
-            # tool = process.tool(tool_id)
-            # # tool._set_kinematic_state(scene[(tool_id, 'c')])
-            # tool.close_gripper()
-            # tool_conf = tool.current_configuration.scaled(1e-3)
-            # tool_bodies = client._get_bodies('^{}$'.format(tool_id))
-            # for b in tool_bodies:
-            #     client._set_body_configuration(b, tool_conf)
-            # wait_if_gui('after close gripper')
-            # # ! end debug
-
             # * Movement-specific ACM
             temp_name = '_tmp'
             for o1_name, o2_name in m.allowed_collision_matrix:
