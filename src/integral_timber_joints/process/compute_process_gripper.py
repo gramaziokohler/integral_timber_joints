@@ -1,4 +1,4 @@
-from compas.geometry import Translation, Vector, Transformation, Frame
+from compas.geometry import Translation, Vector, Transformation, Frame, Point
 from integral_timber_joints.assembly import BeamAssemblyMethod
 from integral_timber_joints.process.dependency import ComputationalResult
 
@@ -192,6 +192,11 @@ def compute_gripper_grasp_pose(process, beam_id, verbose=False):
         t_world_from_beam = Transformation.from_frame(beam.frame)
         t_beam_from_screwdriver_tcp = t_world_from_beam.inverse() * t_world_from_screwdriver_tcp
         process.assembly.set_beam_attribute(beam_id, "gripper_tcp_in_ocf", Frame.from_transformation(t_beam_from_screwdriver_tcp))
+
+        # Update the gripper_grasp_dist_from_start using the screwdriver location
+        gripper_grasp_dist_from_start = Point(0,0,0).transformed(t_beam_from_screwdriver_tcp).x
+        process.assembly.set_beam_attribute(beam_id, "gripper_grasp_dist_from_start", gripper_grasp_dist_from_start)
+
         return ComputationalResult.ValidCanContinue
     else:
         # * Computing `gripper_grasp_face` if it is None
