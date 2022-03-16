@@ -478,6 +478,9 @@ def recompute_initial_state(process, verbose=False):
         # Clamps should have a open clamp jaw state in the begining.
         if isinstance(tool, Clamp):
             tool.open_clamp()
+        # Grippers should have a open gripper jaw state in the begining.
+        if tool.__class__ == Gripper:
+            tool.open_gripper()
         process.initial_state[(tool_id, 'f')] = tool.tool_storage_frame
         process.initial_state[(tool_id, 'a')] = False
         process.initial_state[(tool_id, 'c')] = tool._get_kinematic_state()
