@@ -171,7 +171,7 @@ def main():
         assert not client.check_collisions(robot, process.robot_initial_config, options={'diagnosis':True})
 
     options = {
-        'diagnosis' : args.viewer,
+        'diagnosis' : True, # args.viewer,
         'debug' : args.debug,
         # turn on verbose will make compas_fab_pychoreo to print the
         # joint compare details in DEBUG channel (in a separate logger)
