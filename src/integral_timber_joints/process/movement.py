@@ -790,6 +790,7 @@ class SetWorkpieceWeight(Movement):
         self.beam_id = beam_id
         self.weight_kg = weight_kg
         self.center_of_gravity = center_of_gravity # type: Tuple(float, float, float)
+        self.tag = tag or "Set Workpiece Weight to %skg" % self.weight_kg
 
     def __str__(self):
         return "SetWorkpieceWeight to %s kg." % self.weight_kg
@@ -806,7 +807,8 @@ class SetWorkpieceWeight(Movement):
         return cls(
             beam_id=beam_id,
             weight_kg=weight_kg,
-            center_of_gravity = center_of_gravity
+            center_of_gravity = center_of_gravity,
+            tag = "Set Workpiece Weight to %skg for Beam('%s')" % (weight_kg, beam_id)
         )
 
     @property

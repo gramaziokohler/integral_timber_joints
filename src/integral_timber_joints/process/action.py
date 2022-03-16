@@ -1508,7 +1508,7 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
         ))
 
         # Set workpiece weight to zero
-        self.movements.append(SetWorkpieceWeight(weight_kg=0))
+        self.movements.append(SetWorkpieceWeight(weight_kg=0, tag="Set Workpiece Weight to zero."))
 
         # Gripper Linear Retract
         self.movements.append(RoboticLinearMovement(
@@ -1823,7 +1823,7 @@ class RetractGripperFromBeamAction(RobotAction, DetachBeamAction):
         ))
 
         # Set workpiece weight to zero
-        self.movements.append(SetWorkpieceWeight(weight_kg=0))
+        self.movements.append(SetWorkpieceWeight(weight_kg=0, tag="Set Workpiece Weight to zero."))
 
         # Gripper Linear Retract
         self.movements.append(RoboticLinearMovement(
@@ -1890,7 +1890,7 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
         ))
 
         # Set workpiece weight to zero
-        self.movements.append(SetWorkpieceWeight(weight_kg=0))
+        self.movements.append(SetWorkpieceWeight(weight_kg=0, tag="Set Workpiece Weight to zero."))
 
         # Robot Clamp Sync Move to retract back to begin_assemble location
         self.movements.append(RobotScrewdriverSyncLinearMovement(
