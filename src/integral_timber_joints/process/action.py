@@ -400,6 +400,7 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
             speed_type='speed.transit.rapid',
             tag="Free Move reach Storage Approach Frame of %s, to get tool." % self._tool_string
         ))  # Tool Storage Approach
+
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_storage_frame_t0cf,
             speed_type='speed.toolchange.approach.notool',
@@ -407,15 +408,11 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
             tag="Linear Advance to Storage Frame of %s, to get tool." % self._tool_string,
             allowed_collision_matrix=[('tool_changer', self.tool_id)]
         ))  # Tool Storage Final
+
         self.movements.append(RoboticDigitalOutput(
             digital_output=DigitalOutput.LockTool,
             tool_id=self.tool_id,
             tag="Toolchanger Lock %s" % self._tool_string))
-        self.movements.append(RoboticDigitalOutput(
-            digital_output=DigitalOutput.OpenGripper,
-            tool_id=self.tool_id,
-            tag="%s Open Gripper to release itself from storage pad." % self._tool_string
-        ))
 
         tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
 
@@ -429,7 +426,7 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
             speed_type='speed.toolchange.retract.withtool',
             tag="Linear Retract after getting %s from storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm
-        ))
+        )) # Lift up tool
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -630,11 +627,7 @@ class PlaceGripperToStorageAction(PlaceToolToStorageAction):
             tag="Linear Advance to Storage Frame of %s, to place tool in storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))  # Tool Storage Final
-        self.movements.append(RoboticDigitalOutput(
-            digital_output=DigitalOutput.CloseGripper,
-            tool_id=self.tool_id,
-            tag="%s Close Gripper to lock onto storage pad." % self._tool_string
-        ))
+
         self.movements.append(RoboticDigitalOutput(
             digital_output=DigitalOutput.UnlockTool,
             tool_id=self.tool_id,
