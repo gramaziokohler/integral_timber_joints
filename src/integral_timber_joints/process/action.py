@@ -1759,7 +1759,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
 
         # Robot Clamp Sync Move to final location
         self.movements.append(ScrewdriverMovement(
-            target_positions = [sync_linear_move_amount + 2 * self.screw_tighten_uncertainty] * len(self.screwdriver_ids),
+            target_positions = [sync_linear_move_amount + self.screw_tighten_uncertainty] * len(self.screwdriver_ids),
             tool_ids = self.screwdriver_ids,
             speed_type='speed.assembly.screw_tighten',
             allowable_target_deviation = 2 * self.screw_tighten_uncertainty + 0.05,
