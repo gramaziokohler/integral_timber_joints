@@ -51,6 +51,7 @@ from .movement import (
     ScrewdriverMovement,
     AcquireDockingOffset,
     CancelRobotOffset,
+    SetWorkpieceWeight,
 )
 from .path_planner import PathPlanner, RFLPathPlanner
 from .dependency import ComputationalResult, ComputationalDependency

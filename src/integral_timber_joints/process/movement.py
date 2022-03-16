@@ -513,7 +513,7 @@ class ClampsJawMovement(Movement):
         self.jaw_positions = jaw_positions  # type: list[float]
         self.clamp_ids = clamp_ids  # type: list[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
-        self.allowable_target_deviation = allowable_target_deviation # type: float
+        self.allowable_target_deviation = allowable_target_deviation  # type: float
         self.tag = tag or "Clamp Jaw Move"
 
     def __str__(self):
@@ -553,7 +553,7 @@ class ClampsJawMovement(Movement):
 class RoboticClampSyncLinearMovement(RoboticLinearMovement, ClampsJawMovement):
 
     def __init__(self, target_frame=None, attached_objects=[], t_flange_from_attached_objects=[], jaw_positions=[], clamp_ids=[], planning_priority=1, speed_type="",
-                 allowed_collision_matrix=[], allowable_target_deviation =0, tag=None):
+                 allowed_collision_matrix=[], allowable_target_deviation=0, tag=None):
         tag = tag or "Robot and Clamp Sync Move"
         RoboticLinearMovement.__init__(self, target_frame, attached_objects, t_flange_from_attached_objects, planning_priority=planning_priority,
                                        speed_type=speed_type, allowed_collision_matrix=allowed_collision_matrix, tag=tag)
@@ -589,7 +589,7 @@ class ScrewdriverMovement(Movement):
         self.target_positions = target_positions  # type: list[float]
         self.tool_ids = tool_ids  # type: list[str]
         self.speed_type = speed_type  # type: str # A string linking to a setting
-        self.allowable_target_deviation = allowable_target_deviation # type: float
+        self.allowable_target_deviation = allowable_target_deviation  # type: float
         self.tag = tag or "Screwdriver Move"
 
     def __str__(self):
@@ -626,7 +626,6 @@ class ScrewdriverMovement(Movement):
             self.state_diff[(clamp_id, 'c')] = clamp._get_kinematic_state()
 
 
-
 class RobotScrewdriverSyncLinearMovement(RoboticLinearMovement):
     def __init__(
             self,
@@ -638,7 +637,7 @@ class RobotScrewdriverSyncLinearMovement(RoboticLinearMovement):
             planning_priority=1,  # type: int
             speed_type="",  # type: str
             allowed_collision_matrix=[],  # type: List[Tuple[str,str]]
-            allowable_target_deviation =0, # type: float
+            allowable_target_deviation=0,  # type: float
             tag=None  # type: str
     ):
         """Syncronized linear movement between screwdrivers and robot.
@@ -765,6 +764,69 @@ class CancelRobotOffset(Movement):
 
     def __str__(self):
         return "Cancel docking offset for Tool ('%s')" % self.tool_id
+
+    def create_state_diff(self, process, clear=True):
+        # type: (RobotClampAssemblyProcess, Optional[bool]) -> None
+        if clear:
+            self.state_diff = {}
+
+
+class SetWorkpieceWeight(Movement):
+
+    def __init__(self, beam_id=None, weight_kg=0, center_of_gravity=[0,0,0], operator_stop_before=None, operator_stop_after=None, tag=None, planning_priority=-1):
+        # type: (DigitalOutput, str, float, Tuple(float, float, float), str, str, str, int) -> SetWorkpieceWeight
+        """ `beam_id` relates to the beam that is being held.
+        This is mostly for reference and is not used during execution.
+
+        `weight_kg` should be the weight of the beam.
+
+        State Diff
+        ----------
+
+        there is no entry in the state diff.
+        """
+        Movement.__init__(self, operator_stop_before=operator_stop_before,
+                          operator_stop_after=operator_stop_after, planning_priority=planning_priority, tag=tag)
+        self.beam_id = beam_id
+        self.weight_kg = weight_kg
+        self.center_of_gravity = center_of_gravity # type: Tuple(float, float, float)
+
+    def __str__(self):
+        return "SetWorkpieceWeight to %s kg." % self.weight_kg
+
+    @classmethod
+    def from_process_beam_id(cls, process, beam_id):
+        """Convinence method to create the Movement command from a beam_id"""
+                # Set Workpiece Weight
+        beam = process.assembly.beam(beam_id)
+        weight_kg = beam.density * beam.rough_volume
+        gripper_grasp_dist_from_start = process.assembly.get_beam_attribute(beam_id, "gripper_grasp_dist_from_start")
+        beam_grasp_offset = beam.length / 2 - gripper_grasp_dist_from_start
+        center_of_gravity = [beam_grasp_offset, 0, 240]
+        return cls(
+            beam_id=beam_id,
+            weight_kg=weight_kg,
+            center_of_gravity = center_of_gravity
+        )
+
+    @property
+    def data(self):
+        """ Sub class specific data added to the dictionary of the parent class
+        """
+        data = super(SetWorkpieceWeight, self).data
+        data['beam_id'] = self.beam_id
+        data['weight_kg'] = self.weight_kg
+        data['center_of_gravity'] = self.center_of_gravity
+        return data
+
+    @data.setter
+    def data(self, data):
+        """ Sub class specific data loaded
+        """
+        super(SetWorkpieceWeight, type(self)).data.fset(self, data)
+        self.beam_id = data.get('beam_id', None)
+        self.weight_kg = data.get('weight_kg', 0)
+        self.center_of_gravity = data.get('center_of_gravity', [0,0,0])
 
     def create_state_diff(self, process, clear=True):
         # type: (RobotClampAssemblyProcess, Optional[bool]) -> None

@@ -1070,6 +1070,9 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
             operator_stop_after="Confirm Grip OK",
             tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
 
+        # Set Workpiece Weight
+        self.movements.append(SetWorkpieceWeight.from_process_beam_id(process, self.beam_id))
+
         # Compute Attached Screwdrives transformations
 
         gripper = process.get_gripper_of_beam(self.beam_id)
@@ -1428,6 +1431,9 @@ class CloseGripperOnBeamAction(AttachBeamAction):
             operator_stop_after="Confirm Grip OK",
             tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
 
+        # Set Workpiece Weight
+        self.movements.append(SetWorkpieceWeight.from_process_beam_id(process, self.beam_id))
+
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
 
@@ -1500,6 +1506,11 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
             operator_stop_after="Confirm Gripper Cleared Beam",
             tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)
         ))
+
+        # Set workpiece weight to zero
+        self.movements.append(SetWorkpieceWeight(weight_kg=0))
+
+        # Gripper Linear Retract
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_finalretract,
             attached_objects=[self.gripper_id],
@@ -1750,7 +1761,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             allowed_collision_matrix=acm
         ))
 
-        # Robot Clamp Sync Move to final location
+        # Robot Clamp Sync Move to tighten screw
         self.movements.append(ScrewdriverMovement(
             target_positions = [sync_linear_move_amount + self.screw_tighten_uncertainty] * len(self.screwdriver_ids),
             tool_ids = self.screwdriver_ids,
@@ -1758,12 +1769,14 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             allowable_target_deviation = 2 * self.screw_tighten_uncertainty + 0.05,
             tag="Screwdrivers (%s) tightens screw without sync" % (self.screwdriver_ids)
         ))  # Extend the clamp arm
+
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
 
 
 class RetractGripperFromBeamAction(RobotAction, DetachBeamAction):
-    """Open the gripper and Retract the gripper from the beam."""
+    """Open the gripper and Retract the gripper from the beam.
+    Used in Clamped Beam and Screwed-with-gripper Assembly"""
 
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
         # type: (int, int, str, str, List[str]) -> None
@@ -1799,6 +1812,7 @@ class RetractGripperFromBeamAction(RobotAction, DetachBeamAction):
         assembly_wcf_finalretract = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_finalretract')
         assert assembly_wcf_finalretract is not None
 
+        # Open Gripper Jaw
         self.movements.append(RoboticDigitalOutput(
             digital_output=DigitalOutput.OpenGripper,
             tool_id=self.gripper_id,
@@ -1807,6 +1821,11 @@ class RetractGripperFromBeamAction(RobotAction, DetachBeamAction):
             operator_stop_after="Confirm Gripper Cleared Beam",
             tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)
         ))
+
+        # Set workpiece weight to zero
+        self.movements.append(SetWorkpieceWeight(weight_kg=0))
+
+        # Gripper Linear Retract
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_finalretract,
             attached_objects=[self.gripper_id],
@@ -1870,14 +1889,14 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
             tag="Detach Screwdriver ('%s') from Joint ('%s-%s')" % (self.gripper_id, self.joint_id[0], self.joint_id[1]),
         ))
 
-        sync_linear_move_amount = screwdriver_assembled_attached.point.distance_to_point(screwdriver_assembled_retracted.point)
+        # Set workpiece weight to zero
+        self.movements.append(SetWorkpieceWeight(weight_kg=0))
 
         # Robot Clamp Sync Move to retract back to begin_assemble location
         self.movements.append(RobotScrewdriverSyncLinearMovement(
             target_frame=screwdriver_assembled_retracted,
             attached_objects=[self.gripper_id],
             t_flange_from_attached_objects=[process.robot_toolchanger.t_t0cf_from_tcf],
-            # screw_positions=[-1.0 * sync_linear_move_amount],
             screw_positions=[0], # Zero is the absolute starting point of the screwdriver
             screwdriver_ids=[self.gripper_id],
             planning_priority=1,
