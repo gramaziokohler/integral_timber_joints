@@ -1297,6 +1297,27 @@ class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
             allowed_collision_matrix=acm,
         ))
 
+        # * Top Grasp Target Frame as intermediate
+        # ! Hot fix to add a intermediate position before beam reorientation
+        f_beam_at_position_in_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_screwdriver_pre_attachment_pose')
+        t_world_from_beam = Transformation.from_frame(f_beam_at_position_in_wcf)
+        t_toolbase_from_robot_flange = toolchanger.t_tcf_from_t0cf
+        t_tooltip_from_toolbase = gripper.t_tcf_from_t0cf
+        t_beam_from_tooltip = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, 'gripper_tcp_in_ocf'))
+        t_world_from_robot = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_robot_flange
+        # Beam Grasp
+        t_gripper_tcf_from_beam = t_beam_from_tooltip.inverse()
+        self.movements.append(RoboticLinearMovement(
+            target_frame=Frame.from_transformation(t_world_from_robot),
+            attached_objects=[self.gripper_id, self.beam_id],
+            t_flange_from_attached_objects=[
+                toolchanger.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+            ],
+            speed_type='speed.transfer.rapid',
+            tag="Linear Move to intermediate position before reorienting Beam ('%s')" % (self.beam_id)
+        ))
+
         # * Free Move to go to screwdriver attachment pose
         f_beam_at_position_in_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_screwdriver_attachment_pose')
         t_world_from_beam = Transformation.from_frame(f_beam_at_position_in_wcf)
@@ -1306,7 +1327,7 @@ class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
         t_world_from_robot_at_pickup_approach = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_robot_flange
         # Beam Grasp
         t_gripper_tcf_from_beam = t_beam_from_tooltip.inverse()
-        self.movements.append(RoboticFreeMovement(
+        self.movements.append(RoboticLinearMovement(
             target_frame=Frame.from_transformation(t_world_from_robot_at_pickup_approach),
             attached_objects=[self.gripper_id, self.beam_id],
             t_flange_from_attached_objects=[
@@ -1314,7 +1335,7 @@ class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
                 toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
             ],
             speed_type='speed.transfer.rapid',
-            tag="Free Move to reorient Beam ('%s')" % (self.beam_id)
+            tag="Final Move to reorient Beam ('%s')" % (self.beam_id)
         ))
 
         # Assign Unique Movement IDs to all movements
