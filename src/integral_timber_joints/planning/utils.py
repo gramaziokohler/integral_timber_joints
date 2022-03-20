@@ -1,12 +1,41 @@
-import sys
+import os, sys
+import logging
 from numpy import deg2rad, rad2deg
-from termcolor import cprint
+from termcolor import colored
 from plyer import notification
 
 from compas_fab.robots import Configuration, JointTrajectory, JointTrajectoryPoint, Duration
+from integral_timber_joints.process import RoboticMovement
 
-# in meter, used for frame comparison
+# fallback tolerance in meter, used for frame comparison
 FRAME_TOL = 0.001
+
+###########################################
+# borrowed from: https://github.com/compas-dev/compas_fab/blob/3efe608c07dc5b08653ee4132a780a3be9fb93af/src/compas_fab/backends/pybullet/utils.py#L83
+def get_logger(name):
+    logger = logging.getLogger(name)
+
+    try:
+        from colorlog import ColoredFormatter
+        formatter = ColoredFormatter("%(log_color)s%(levelname)-8s%(reset)s %(white)s%(message)s",
+                                     datefmt=None,
+                                     reset=True,
+                                     log_colors={'DEBUG': 'cyan', 'INFO': 'green',
+                                                 'WARNING': 'yellow',
+                                                 'ERROR': 'red', 'CRITICAL': 'red',
+                                                 }
+                                     )
+    except ImportError:
+        formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+    return logger
+
+LOGGER = get_logger('itj_planning')
 
 ##########################################
 
@@ -78,18 +107,39 @@ def notify(msg=''):
             )
         except ImportError:
             pass
-    cprint(msg, 'yellow')
 
-def print_title(x):
-    print('\n\n')
-    cprint(x, 'blue', 'on_white', attrs=['bold'])
+def print_title(x, log_level='debug'):
+    msg = colored(x, 'blue', 'on_white', attrs=['bold'])
+    if log_level == 'debug':
+        LOGGER.debug(msg)
+    elif log_level == 'info':
+        LOGGER.info(msg)
+    elif log_level == 'error':
+        LOGGER.error(msg)
+    elif log_level == 'warn':
+        LOGGER.warn(msg)
 
 def color_from_success(success : bool):
     return 'green' if success else 'red'
 
 ##########################################
 
-def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
+def robotic_movement_ids_from_beam_ids(process, beam_ids, movement_id=None):
+    robotic_movement_ids = []
+    if movement_id is not None:
+        if not movement_id.startswith('A'):
+            _movement_id = process.movements[int(movement_id)].movement_id
+        else:
+            _movement_id = movement_id
+        robotic_movement_ids.append(_movement_id)
+    else:
+        for beam_id in beam_ids:
+            for m in process.get_movements_by_beam_id(beam_id):
+                if isinstance(m, RoboticMovement):
+                    robotic_movement_ids.append(m.movement_id)
+    return robotic_movement_ids
+
+def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None, msg_prefix='Solving'):
     full_seq_len = len(process.assembly.sequence)
     if movement_id is not None:
         if movement_id.startswith('A'):
@@ -99,7 +149,7 @@ def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
             movement = process.movements[int(movement_id)]
             beam_ids = [process.get_beam_id_from_movement_id(movement.movement_id)]
         global_movement_id = process.movements.index(movement)
-        cprint('Solving for movement #({}) {}'.format(global_movement_id, movement.movement_id), 'cyan')
+        LOGGER.info(colored('{} for movement #({}) {}'.format(msg_prefix, global_movement_id, movement.movement_id), 'cyan'))
     else:
         seq_n = seq_n or list(range(full_seq_len))
         for seq_i in seq_n:
@@ -113,6 +163,5 @@ def beam_ids_from_argparse_seq_n(process, seq_n, movement_id=None):
             beam_ids = [process.assembly.sequence[seq_i] for seq_i in range(seq_n[0], seq_n[1]+1)]
         else:
             beam_ids = [process.assembly.sequence[seq_i] for seq_i in seq_n]
-        cprint('Solving for beam {}'.format(beam_ids), 'cyan')
+        LOGGER.info(colored('{} for beam {}'.format(msg_prefix, beam_ids), 'cyan'))
     return beam_ids
-

@@ -1,7 +1,8 @@
-from compas_fab.robots import Configuration
 from termcolor import cprint
 import numpy as np
 
+from compas.robots import Joint
+from compas_fab.robots import Configuration
 from compas_fab_pychoreo.client import PyChoreoClient
 from pybullet_planning import draw_pose, set_camera_pose, unit_pose, LockRenderer, set_camera
 
@@ -16,22 +17,7 @@ BARE_ARM_GROUP = 'robot11'
 GANTRY_ARM_GROUP = 'robot11_eaXYZ'
 GANTRY_GROUP = 'robot11_gantry'
 
-# a preset configuration, only used in initializing the state
-# this set the other unused robot to the right configurations
-R11_INTER_CONF_VALS = convert_rfl_robot_conf_unit([21000.0, 0.0, -4900.0,
-    0.0, -22.834741999999999, -30.711554, 0.0, 57.335655000000003, 0.0])
-R12_INTER_CONF_VALS = convert_rfl_robot_conf_unit([-9237, -4000, #-4000.8486330000001,
-    0.0, -80.0, 65.0, 65.0, 20.0, -20.0])
-
-R21_IDLE_CONF_VALS = convert_rfl_robot_conf_unit([38000, 0, -4915,
-    0, 0, 0, 0, 0, 0])
-R22_IDLE_CONF_VALS = convert_rfl_robot_conf_unit([-12237, -4915,
-    0, 0, 0, 0, 0, 0])
-
 ############################################
-
-# 2 for prismatic, 0 for revoluted
-RFL_SINGLE_ARM_JOINT_TYPES = [2, 2, 0, 0, 0, 0, 0, 0,]
 
 import ikfast_abb_irb4600_40_255
 TRAC_IK_TIMEOUT = 1.0 # 0.1
@@ -46,13 +32,7 @@ except ImportError:
     except ImportError as e:
         # TODO: script to compile automatically
         raise ImportError('Please install TRAC-IK or compile IKFast.')
-cprint('Use Track IK: {}'.format(USE_TRACK_IK), 'yellow')
-
-# https://github.com/yijiangh/coop_assembly/blob/dev/src/coop_assembly/planning/robot_setup.py#L147
-R11_JOINT_WEIGHTS = np.reciprocal([0.1, 0.1, 0.1,
-        2.618, 2.618, 2.618, 6.2832, 6.2832, 7.854])
-R11_JOINT_RESOLUTIONS = 10*np.array([0.01, 0.01, 0.01,
-        0.01079, 0.00725, 0.012249, 0.009173, 0.037541, 0.01313])
+# cprint('Use Track IK: {}'.format(USE_TRACK_IK), 'yellow')
 
 ############################################
 
@@ -66,21 +46,6 @@ def rfl_robot_joint_names(robot_id='robot12', include_gantry=False):
         return [bridge_joint_name] + joint_names
     else:
         return joint_names
-
-def to_rlf_robot_full_conf(robot11_confval, robot12_confval):
-    return Configuration(
-        joint_values = (*robot11_confval, *robot12_confval,
-                  *R21_IDLE_CONF_VALS, *R22_IDLE_CONF_VALS),
-        joint_types = (
-            *([2] + RFL_SINGLE_ARM_JOINT_TYPES), *RFL_SINGLE_ARM_JOINT_TYPES,
-            *([2] + RFL_SINGLE_ARM_JOINT_TYPES), *RFL_SINGLE_ARM_JOINT_TYPES,),
-        joint_names = (
-            *rfl_robot_joint_names('robot11', include_gantry=True),
-            *rfl_robot_joint_names('robot12', include_gantry=False),
-            *rfl_robot_joint_names('robot21', include_gantry=True),
-            *rfl_robot_joint_names('robot22', include_gantry=False),
-            )
-        )
 
 ############################################
 # TODO use arm group from SRDF
@@ -106,6 +71,45 @@ def get_gantry_robot_custom_limits(robot_id='robot11'):
         joint_names[7] : (-2.094395, 2.09439),
         joint_names[8] : (-3.159045, 3.15904),
     }
+
+def get_tolerances(robot, low_res=False):
+    # for discussions on tolerance, see: https://github.com/gramaziokohler/integral_timber_joints/issues/145
+    joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+    joint_types = robot.get_joint_types_by_names(joint_names)
+    res_ratio = 10 if low_res else 1.0
+    # TODO joint resolution and weight from joint name
+    # * threshold to check joint flipping
+    joint_jump_tolerances = {}
+    joint_compare_tolerances = {}
+    joint_resolutions = {}
+    for jt_name, jt_type in zip(joint_names, joint_types):
+        # 0.1 rad = 5.7 deg
+        if jt_type == Joint.REVOLUTE:
+            joint_jump_tolerances[jt_name] = 10.0 * np.pi / 180.0 # 0.174 rad
+            joint_resolutions[jt_name] = 10.0 * np.pi / 180.0 * res_ratio# 0.174 rad
+            joint_compare_tolerances[jt_name] = 0.0017 # rad, try tightened to 0.001 if possible
+        elif jt_type == Joint.PRISMATIC:
+            joint_jump_tolerances[jt_name] = 0.05 # meter
+            joint_resolutions[jt_name] = 0.05 * res_ratio # meter
+            joint_compare_tolerances[jt_name] = 1e-5
+        else:
+            raise ValueError("Strange joint type {} | {}".format(jt_type, jt_name))
+    tolerances = {
+        'joint_jump_tolerances' : joint_jump_tolerances,
+        'joint_compare_tolerances' : joint_compare_tolerances,
+        'frame_compare_distance_tolerance' : 0.0011, # meter
+        'frame_compare_axis_angle_tolerance' : 0.0025, # rad
+        'joint_resolutions' : joint_resolutions,
+        'joint_weights' : {jn : weight for jn, weight in zip(joint_names, R11_JOINT_WEIGHTS)},
+        'joint_custom_limits' : get_gantry_robot_custom_limits(MAIN_ROBOT_ID),
+        # the collision is counted when penetration distance is bigger than this value
+        'collision_distance_threshold' : 0.0012, # in meter,
+    }
+    return tolerances
+
+# TODO joint weight as np.reciprocal(joint velocity bound) from URDF
+R11_JOINT_WEIGHTS = np.reciprocal([0.1, 0.1, 0.1,
+        2.618, 2.618, 2.618, 6.2832, 6.2832, 7.854])
 
 ########################################
 

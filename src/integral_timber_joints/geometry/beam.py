@@ -115,6 +115,26 @@ class Beam(Network):
         self.attributes['height'] = float(value)
 
     @property
+    def rough_volume(self):
+        # type: () -> float
+        """The unit is related to the unit used in the width, length, height.
+        For example mm^3 or m^3"""
+        return self.width * self.height * self.length
+
+    @property
+    def density(self):
+        # type: () -> float
+        """Optional attribute for density of wood.
+        Unit is kg per unit volume.
+        Default to 4.6e-07 kg/mm3"""
+        return self.attributes.get('density', 460.0 * 1e-9) # Default
+
+    @density.setter
+    def density(self, value):
+        # type: (float) -> None
+        self.attributes['density'] = float(value)
+
+    @property
     def frame(self):
         # type: () -> Frame
         """Final position of the beam as-designed """
@@ -656,7 +676,7 @@ class Beam(Network):
     # -----------------------
 
     def get_beam_beam_coplanar_face_ids(self, neighbor_beam, tol=0.005):
-        # type: (Beam, float) -> list[tuple[str,str]]
+        # type: (Beam, float) -> list[tuple(str,str)]
         """
         Computes the faces that are coplanar between two beams
         Returns:

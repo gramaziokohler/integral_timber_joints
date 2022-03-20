@@ -369,7 +369,7 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
     vprint('assembly_vector_in_ocf = %s' % assembly_vector_in_ocf)
 
     possible_rotation_vectors = []
-    possible_rotation_vector_dowm_amount = []
+    possible_rotation_vector_down_amount = []
     # Trying all four possible rotations to get a new assembly and compare it so see which one points downwards
     for t_change_of_basis_rotation_at_final in four_possible_rotations():
         vprint("t_change_of_basis_rotation_at_final = %s" % t_change_of_basis_rotation_at_final)
@@ -380,20 +380,59 @@ def compute_beam_pickupretract(process, beam_id, verbose=False):
         new_assembly_vector_down_amount = Vector(0, 0, -1).dot(new_assembly_vector_at_pickup_in_wcf)
         vprint('new_assembly_vector_down_amount = %s' % new_assembly_vector_down_amount)
         possible_rotation_vectors.append(t_change_of_basis_rotation_at_final)
-        possible_rotation_vector_dowm_amount.append(new_assembly_vector_down_amount)
+        possible_rotation_vector_down_amount.append(new_assembly_vector_down_amount)
         vprint("--------------")
 
     # After identifying the best rotation. Apply it to find the new pose of the beam after pickup
-    x = max(possible_rotation_vector_dowm_amount)
+    x = max(possible_rotation_vector_down_amount)
 
-    best_rotation_index = possible_rotation_vector_dowm_amount.index(x)
+    best_rotation_index = possible_rotation_vector_down_amount.index(x)
     t_world_from_beam_at_pickupretract = Transformation.from_frame(assembly_wcf_pickupretract)
     t_world_from_beam_at_newpose = t_world_from_beam_at_pickupretract * possible_rotation_vectors[best_rotation_index]
 
     f_world_from_beam_at_newpose = Frame.from_transformation(t_world_from_beam_at_newpose)
+
+    # Add some offset to world up direction
+    f_world_from_beam_at_newpose.point = f_world_from_beam_at_newpose.point.transformed(Translation.from_vector([0, 0, 50]))
+
     process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_screwdriver_attachment_pose', f_world_from_beam_at_newpose)
     vprint("process.assembly.set_beam_attribute(%s, 'assembly_wcf_screwdriver_attachment_pose', %s)" % (beam_id, f_world_from_beam_at_newpose))
 
+    # --------------------------------------
+    # ! Hot fix to add a intermediate position before beam reorientation
+
+    # Trying all four possible rotations to get a new grasp and compare it so see which one points downwards
+    gripper_tcp_in_ocf = process.assembly.get_beam_attribute(beam_id, 'gripper_tcp_in_ocf')
+    grasp_vector_in_ocf = gripper_tcp_in_ocf.zaxis
+    possible_rotation_vectors = []
+    possible_rotation_vector_down_amount = []
+
+    for t_change_of_basis_rotation_at_final in four_possible_rotations():
+        vprint("t_change_of_basis_rotation_at_final = %s" % t_change_of_basis_rotation_at_final)
+        new_grasp_vector_in_ocf = grasp_vector_in_ocf.transformed(t_change_of_basis_rotation_at_final)
+        vprint('new_grasp_vector_in_ocf = %s' % new_grasp_vector_in_ocf)
+        new_grasp_vector_at_pickup_in_wcf = new_grasp_vector_in_ocf.transformed(t_world_from_beam_at_final).transformed(t_beam_final_from_beam_at_pickup)
+        vprint('new_grasp_vector_at_pickup_in_wcf = %s' % new_grasp_vector_at_pickup_in_wcf)
+        new_grasp_vector_down_amount = Vector(0, 0, -1).dot(new_grasp_vector_at_pickup_in_wcf)
+        vprint('new_grasp_vector_down_amount = %s' % new_grasp_vector_down_amount)
+        possible_rotation_vectors.append(t_change_of_basis_rotation_at_final)
+        possible_rotation_vector_down_amount.append(new_grasp_vector_down_amount)
+        vprint("--------------")
+
+    # After identifying the best rotation. Apply it to find the new pose of the beam after pickup
+    x = max(possible_rotation_vector_down_amount)
+
+    best_rotation_index = possible_rotation_vector_down_amount.index(x)
+    t_world_from_beam_at_pickupretract = Transformation.from_frame(assembly_wcf_pickupretract)
+    t_world_from_beam_at_newpose = t_world_from_beam_at_pickupretract * possible_rotation_vectors[best_rotation_index]
+
+    f_world_from_beam_at_newpose = Frame.from_transformation(t_world_from_beam_at_newpose)
+
+    # Add some offset to world up direction
+    f_world_from_beam_at_newpose.point = f_world_from_beam_at_newpose.point.transformed(Translation.from_vector([0, 0, 300]))
+
+    process.assembly.set_beam_attribute(beam_id, 'assembly_wcf_screwdriver_pre_attachment_pose', f_world_from_beam_at_newpose)
+    vprint("process.assembly.set_beam_attribute(%s, 'assembly_wcf_screwdriver_pre_attachment_pose', %s)" % (beam_id, f_world_from_beam_at_newpose))
     return ComputationalResult.ValidCanContinue
 
 

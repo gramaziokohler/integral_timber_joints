@@ -35,6 +35,7 @@ else:
         from typing import List, Dict, Tuple, Optional
         from termcolor import colored, cprint
         from integral_timber_joints.process.state import ObjectState, SceneState
+        from compas_fab.robots.trajectory import JointTrajectory
 
 
 class RobotClampAssemblyProcess(Data):
@@ -1115,7 +1116,7 @@ class RobotClampAssemblyProcess(Data):
 
     def get_movement_start_scene(self, movement):
         # type: (Movement) -> SceneState
-        """ return the start state before the movment."""
+        """ return the start SceneState before the movment."""
         movements = self.movements
         index = movements.index(movement)
         if index == 0:
@@ -1125,10 +1126,8 @@ class RobotClampAssemblyProcess(Data):
 
     def get_movement_end_scene(self, movement):
         # type: (Movement) -> SceneState
-        """
-
-        """
-        from integral_timber_joints.process.state import  SceneState
+        """ return the ending SceneState after the movment."""
+        from integral_timber_joints.process.state import SceneState
         movements = self.movements
         start_state = self.initial_state
         index = movements.index(movement)
@@ -1145,11 +1144,7 @@ class RobotClampAssemblyProcess(Data):
                 return
             print("Warning: Cannot find diff for state: %s" % str(key))
 
-        # Robot state is not the same as previous.
-        if self.robot_config_key in movements[index].state_diff:
-            scene[self.robot_config_key] = movements[index].state_diff[self.robot_config_key]
-        else:
-            scene[self.robot_config_key] = None
+        scene[self.robot_config_key] = self.get_movement_end_robot_config(movement)
 
         for key in scene.keys_with_unknown_state(skip_robot_config=True):
             # print("Finding Key: %s" % str(key))
@@ -1196,78 +1191,138 @@ class RobotClampAssemblyProcess(Data):
         """Changes the default value of the initial state robot config."""
         self.initial_state[self.robot_config_key] = robot_configuration
 
+    def get_prev_robotic_movement(self, movement):
+        # type: (Movement) -> RoboticMovement
+        """Get the RoboticMovement before the given Movement.
+        If the given movement is the first Robotic Movement, return None.
+        """
+
+        movements = self.movements
+        index = movements.index(movement)
+        if index == 0:
+            return None
+
+        prev_movement = movements[index - 1]
+        if isinstance(prev_movement, RoboticMovement):
+            return prev_movement
+        else:
+            # Recurse until a RoboticMovement is found
+            return self.get_prev_robotic_movement(prev_movement)
+
+    def get_next_robotic_movement(self, movement):
+        # type: (Movement) -> RoboticMovement
+        """Get the RoboticMovement after the given Movement.
+        If the given movement is the last Robotic Movement, return None.
+        """
+
+        movements = self.movements
+        index = movements.index(movement)
+        if index == len(movements) - 1:
+            return None
+
+        next_movement = movements[index + 1]
+        if isinstance(next_movement, RoboticMovement):
+            return next_movement
+        else:
+            # Recurse until a RoboticMovement is found
+            return self.get_next_robotic_movement(next_movement)
+
     def get_movement_start_robot_config(self, movement):
         # type: (Movement) -> Optional[Configuration]
         """Get the robot configuration at the begining of a Movement.
-        None if the configuration is undefined.
+
+        1. `if` the `movement` is the first movement, use the `process.robot_initial_config`
+        2. `elif` the `movement` has a planned trajectory, use the first point of that `movement.trajectory`
+        3. `elif` there are no `prev_robotic_movement`, use the `process.robot_initial_config`
+        3. `elif` the `prev_robotic_movement` has a `target_configuration`  use `prev_robotic_movement.target_configuration`
+        4. `elif` the `prev_robotic_movement` has a planned trajectory, use the last point of that `prev_robotic_movement.trajectory`
+        5. `else` return `None`
+
+        Returns `Configuration` object. (Might be a partial config of only the relavent joints)
+        Returns None if the configuration is undefined.
+
         """
+
+        # * Examine Self
         movements = self.movements
         index = movements.index(movement)
         if index == 0:
-            return self.initial_state[self.robot_config_key]
-        else:
-            return self.get_movement_end_robot_config(movements[index - 1])
+            return self.robot_initial_config
+        elif isinstance(movement, RoboticMovement) and movement.trajectory is not None and len(movement.trajectory.points) > 0:
+            return movement.trajectory.points[0]
 
-    def get_movement_end_robot_config(self, movement):
-        # type: (Movement) -> Optional[Configuration]
-        """Get the robot configuration at the begining of a Movement.
-        None if the configuration is undefined.
-        """
-        if self.robot_config_key in movement.state_diff:
-            return movement.state_diff[self.robot_config_key]
+        # * Examine Neighbour
+        prev_robotic_movement = self.get_prev_robotic_movement(movement)
+        if prev_robotic_movement is None:
+            return self.robot_initial_config
+        if prev_robotic_movement.target_configuration is not None:
+            return prev_robotic_movement.target_configuration
+        elif prev_robotic_movement.trajectory is not None and len(prev_robotic_movement.trajectory.points) > 0:
+            return self.get_movement_end_robot_config(movements[index - 1])
         else:
             return None
 
-    def set_movement_start_robot_config(self, movement, robot_configuration):
-        # type: (Movement, Configuration) -> None
-        """Sets or changes the robot configuration at the begining of a Movement.
-        If attempt to set the start of the first movement, the initial state will be changed.
+    def get_movement_end_robot_config(self, movement):
+        # type: (Movement) -> Optional[Configuration]
+        """Get the robot configuration at the end of a Movement.
 
-        Setting the configuration to None will remove the configuration.
+        - `if` the `movement` is not a Robotic Movement, delegate to `get_movement_start_robot_config(movement)`
 
-        Note that the adjoining start and end configuration of two Movements are pointed to the same object.
-        Setting one of them will automatically change the other.
+        - `if` the `movement` has a `target_configuration`  use `movement.target_configuration`
+        - `elif` the `movement` has a planned trajectory, use the end point of `movement.trajectory`
+        - `elif` there are no `next_robotic_movement`, return None
+        - `elif` the `next_robotic_movement` has a planned trajectory, use the first point of `next_robotic_movement.trajectory`
+        - `else` return `None`
+
+        Returns `Configuration` object. (Might be a partial config of only the relavent joints)
+        None if the configuration is undefined.
         """
-        movements = self.movements
-        index = movements.index(movement)
-        if index == 0:
-            self.initial_state[self.robot_config_key] = robot_configuration
+        # * Delegation
+        if not isinstance(movement, RoboticMovement):
+            return self.get_movement_start_robot_config(movement)
+
+        # * Examine Self
+        if movement.target_configuration is not None:
+            return movement.target_configuration
+        elif movement.trajectory is not None and len(movement.trajectory.points) > 0:
+            return movement.trajectory.points[-1]
+
+        # * Examine Neighbour
+        next_robotic_movement = self.get_next_robotic_movement(movement)
+        if next_robotic_movement is None:
+            return None
+        elif next_robotic_movement.trajectory is not None and len(next_robotic_movement.trajectory.points) > 0:
+            return next_robotic_movement.trajectory.points[0]
         else:
-            self.set_movement_end_robot_config(movements[index - 1], robot_configuration)
+            return None
 
-    def set_movement_end_robot_config(self, movement, robot_configuration):
-        # type: (Movement, Configuration) -> None
-        """Sets or changes the robot configuration at the end of a Movement.
+    def set_movement_trajectory(self, movement, trajectory):
+        # type: (Movement, JointTrajectory) -> None
+        """Set the trajectory of a movement.
+        Setting trajectory to None can be used to reset the Movement to the unplanned state.
 
-        Setting the configuration to None will remove the configuration.
+        Setting trajectory to a Non Robotic Movement will throw an IndexError
 
-        Note that the adjoining start and end configuration of two Movements are pointed to the same object.
-        Setting one of them will automatically change the other.
+        Implementation Note:
+        This function also updates the `movement.state_diff[('robot', 'c')] `
         """
-        if robot_configuration is not None:
-            movement.state_diff[self.robot_config_key] = robot_configuration
+        if not isinstance(movement, RoboticMovement):
+            raise IndexError
+        movement.trajectory = trajectory
+        if trajectory is not None:
+            movement.state_diff[('robot', 'c')] = trajectory.points[-1]
         else:
-            if self.robot_config_key in movement.state_diff:
-                del movement.state_diff[self.robot_config_key]
+            movement.state_diff[('robot', 'c')] = None
 
     def movement_has_start_robot_config(self, movement):
         # type: (Movement) -> bool
         """Returns True if the movement's start scene has a defined robot configuration."""
-        movements = self.movements
-        index = movements.index(movement)
-        if index == 0:
-            return self.initial_state[self.robot_config_key] is not None
-        else:
-            return self.movement_has_end_robot_config(movements[index-1])
-        return
+        return self.get_movement_start_robot_config(movement) is not None
 
     def movement_has_end_robot_config(self, movement):
         # type: (Movement) -> bool
         """Returns True if the movement's end scene has a defined robot configuration."""
-        if self.robot_config_key in movement.state_diff:
-            if movement.state_diff[self.robot_config_key] is not None:
-                return True
-        return False
+        return self.get_movement_end_robot_config(movement) is not None
 
     def get_object_from_id(self, object_id):
         if object_id.startswith('c') or object_id.startswith('g'):
@@ -1313,8 +1368,8 @@ class RobotClampAssemblyProcess(Data):
         else:
             return None
 
-    def load_external_movements(self, process_folder_path, movement_id=None, verbose=False):
-        # type: (str, str, bool) -> list[Movement]
+    def load_external_movements(self, process_folder_path, movement_id=None, use_smoothed_trajectory=True, verbose=False):
+        # type: (str, str, bool, bool) -> list[Movement]
         """Load External Movements from nearby folder if they exist, replace the movements
         with new movements, returns the list of movements modified.
         If movement_id is None, all movements will be parsed. Otherwise only the given movement
@@ -1334,7 +1389,15 @@ class RobotClampAssemblyProcess(Data):
 
         movements_modified = []
         for movement in target_movements:
-            new_movement = self.load_external_movement(process_folder_path, movement, verbose=verbose)
+            new_movement = None
+
+            # Attempt to load from smoothed movement
+            if use_smoothed_trajectory:
+                new_movement = self.load_external_movement(process_folder_path, movement, subdir='smoothed_movements', verbose=verbose)
+            # Attempt to load from normal non-smoothed movement
+            if new_movement is None:
+                new_movement = self.load_external_movement(process_folder_path, movement, subdir='movements', verbose=verbose)
+
             if new_movement is not None:
                 movements_modified.append(new_movement)
         return movements_modified
@@ -1387,6 +1450,8 @@ class RobotClampAssemblyProcess(Data):
             robot_model.scale(1000)
             self._robot_model = robot_model  # type: RobotModel
             self._robot_model_load_success = True
+            print("RobotModel loaded from %s" % loader.path)
+
             print("- %s Loaded: %i Links, %i Joints" % (robot_model.name, len(robot_model.links), len(robot_model.joints)))
         else:
             # You should have this repo https://github.com/yijiangh/rfl_description/tree/victor/cables as submodule

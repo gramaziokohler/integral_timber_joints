@@ -8,7 +8,7 @@
     :outputs (?traj)
     :certified (and
                   (MoveAction ?conf1 ?conf2 ?traj)
-                  (Traj ?traj)
+                ;;   (Traj ?traj)
                )
   )
 
@@ -19,9 +19,9 @@
     :outputs (?conf1 ?conf2 ?traj)
     :certified (and
                     (PickElementAction ?element ?conf1 ?conf2 ?traj)
-                    (RobotConf ?conf1)
-                    (RobotConf ?conf2)
-                    (Traj ?traj)
+                    ;; (RobotConf ?conf1)
+                    ;; (RobotConf ?conf2)
+                    ;; (Traj ?traj)
                 )
   )
 
@@ -32,9 +32,9 @@
     :outputs (?conf1 ?conf2 ?traj)
     :certified (and
                     (PlaceElementAction ?element ?conf1 ?conf2 ?traj)
-                    (RobotConf ?conf1)
-                    (RobotConf ?conf2)
-                    (Traj ?traj)
+                    ;; (RobotConf ?conf1)
+                    ;; (RobotConf ?conf2)
+                    ;; (Traj ?traj)
                 )
   )
 
@@ -45,9 +45,9 @@
     :outputs (?conf1 ?conf2 ?traj)
     :certified (and
                     (PickToolAction ?object ?conf1 ?conf2 ?traj)
-                    (RobotConf ?conf1)
-                    (RobotConf ?conf2)
-                    (Traj ?traj)
+                    ;; (RobotConf ?conf1)
+                    ;; (RobotConf ?conf2)
+                    ;; (Traj ?traj)
                 )
   )
 
@@ -58,9 +58,9 @@
     :outputs (?conf1 ?conf2 ?traj)
     :certified (and
                     (PlaceToolAction ?object ?conf1 ?conf2 ?traj)
-                    (RobotConf ?conf1)
-                    (RobotConf ?conf2)
-                    (Traj ?traj)
+                    ;; (RobotConf ?conf1)
+                    ;; (RobotConf ?conf2)
+                    ;; (Traj ?traj)
                 )
   )
 

@@ -400,6 +400,7 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
             speed_type='speed.transit.rapid',
             tag="Free Move reach Storage Approach Frame of %s, to get tool." % self._tool_string
         ))  # Tool Storage Approach
+
         self.movements.append(RoboticLinearMovement(
             target_frame=tool_storage_frame_t0cf,
             speed_type='speed.toolchange.approach.notool',
@@ -407,15 +408,11 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
             tag="Linear Advance to Storage Frame of %s, to get tool." % self._tool_string,
             allowed_collision_matrix=[('tool_changer', self.tool_id)]
         ))  # Tool Storage Final
+
         self.movements.append(RoboticDigitalOutput(
             digital_output=DigitalOutput.LockTool,
             tool_id=self.tool_id,
             tag="Toolchanger Lock %s" % self._tool_string))
-        self.movements.append(RoboticDigitalOutput(
-            digital_output=DigitalOutput.OpenGripper,
-            tool_id=self.tool_id,
-            tag="%s Open Gripper to release itself from storage pad." % self._tool_string
-        ))
 
         tool_env_acm = [(self.tool_id, env_id) for env_id in process.environment_models.keys()]
 
@@ -429,7 +426,7 @@ class PickGripperFromStorageAction(PickToolFromStorageAction):
             speed_type='speed.toolchange.retract.withtool',
             tag="Linear Retract after getting %s from storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm
-        ))
+        )) # Lift up tool
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -487,7 +484,7 @@ class PickScrewdriverFromStorageAction(PickToolFromStorageAction):
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.retract.withtool',
-            tag="Linear Retract 1 from Storage Frame of %s, after picking up tool." % self._tool_string,
+            tag="Linear Retract 1 from Storage Frame of %s." % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
@@ -502,8 +499,8 @@ class PickScrewdriverFromStorageAction(PickToolFromStorageAction):
             target_frame=tool_storage_approach2_t0cf,
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.toolchange.retract.withtool',
-            tag="Linear Retract 1 from Storage Frame of %s, after picking up tool." % self._tool_string,
+            speed_type='speed.toolchange.post_retract.withtool',
+            tag="Linear Retract 2 from Storage Frame of %s. (Faster)" % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
@@ -630,11 +627,7 @@ class PlaceGripperToStorageAction(PlaceToolToStorageAction):
             tag="Linear Advance to Storage Frame of %s, to place tool in storage." % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))  # Tool Storage Final
-        self.movements.append(RoboticDigitalOutput(
-            digital_output=DigitalOutput.CloseGripper,
-            tool_id=self.tool_id,
-            tag="%s Close Gripper to lock onto storage pad." % self._tool_string
-        ))
+
         self.movements.append(RoboticDigitalOutput(
             digital_output=DigitalOutput.UnlockTool,
             tool_id=self.tool_id,
@@ -760,8 +753,8 @@ class PlaceScrewdriverToStorageAction(PlaceToolToStorageAction):
             target_frame=tool_storage_approach2_t0cf,
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.toolchange.approach.withtool',
-            tag="Linear Advance 1 to approach Storage Frame of %s, to place tool in storage." % self._tool_string,
+            speed_type='speed.toolchange.pre_approach.withtool',
+            tag="Linear Advance 1 to approach Storage Frame of %s. (Faster)" % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
@@ -773,7 +766,7 @@ class PlaceScrewdriverToStorageAction(PlaceToolToStorageAction):
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
             speed_type='speed.toolchange.approach.withtool',
             target_configuration=tool.tool_storage_configuration,
-            tag="Linear Advance 2 to Storage Frame of %s, to place tool in storage." % self._tool_string,
+            tag="Linear Advance 2 to Storage Frame of %s." % self._tool_string,
             allowed_collision_matrix=tool_env_acm,
         ))
 
@@ -855,9 +848,8 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         # Toolchanger engaging - confirmation of alignment necessary.
         self.movements.append(RoboticLinearMovement(
             target_frame=clamp_wcf_final,
-            speed_type='speed.toolchange.approach.clamp_on_structure',
-            tag="Linear Advance to mate toolchanger of %s to detach it from structure." % self._tool_string,
-            operator_stop_before="Confirm ToolChanger alignment",
+            speed_type='speed.docking.approach.clamp_on_structure',
+            tag="Linear Advance to dock toolchanger of %s." % (self._tool_string),
             allowed_collision_matrix=[('tool_changer', self.tool_id)]
         ))
         # Additional ACM between clamp and the attached two beam (at the joint)
@@ -867,7 +859,6 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         self.movements.append(RoboticDigitalOutput(
             digital_output=DigitalOutput.LockTool,
             tool_id=self.tool_id,
-            operator_stop_after="Confirm ToolChanger Locked",
             tag="Toolchanger Lock %s" % self._tool_string
         ))
         self.movements.append(ClampsJawMovement(
@@ -962,7 +953,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
             target_frame=clamp_wcf_attachapproach2,
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.toolchange.approach.clamp_on_structure',
+            speed_type='speed.place_clamp_to_structure.approach',
             tag="Linear Approach 1 of 2 to attach %s to structure." % self._tool_string,
             allowed_collision_matrix=acm
         ))  # Tool Approach Frame where tool is at structure
@@ -970,7 +961,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
             target_frame=clamp_wcf_final,
             attached_objects=[self.tool_id],
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.toolchange.approach.clamp_on_structure',
+            speed_type='speed.place_clamp_to_structure.approach',
             tag="Linear Approach 2 of 2 to attach %s to structure." % self._tool_string,
             allowed_collision_matrix=acm
         ))  # Tool Final Frame at structure
@@ -1004,7 +995,7 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
 
 class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, str, list[str]) -> None
+        # type: (int, int, str, str, List[str]) -> None
         """
 
         This Action can be used for picking up beams with or without flying tools.
@@ -1078,6 +1069,9 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
             operator_stop_before="Confirm Gripper Ready to close ",
             operator_stop_after="Confirm Grip OK",
             tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
+
+        # Set Workpiece Weight
+        self.movements.append(SetWorkpieceWeight.from_process_beam_id(process, self.beam_id))
 
         # Compute Attached Screwdrives transformations
 
@@ -1303,6 +1297,27 @@ class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
             allowed_collision_matrix=acm,
         ))
 
+        # * Top Grasp Target Frame as intermediate
+        # ! Hot fix to add a intermediate position before beam reorientation
+        f_beam_at_position_in_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_screwdriver_pre_attachment_pose')
+        t_world_from_beam = Transformation.from_frame(f_beam_at_position_in_wcf)
+        t_toolbase_from_robot_flange = toolchanger.t_tcf_from_t0cf
+        t_tooltip_from_toolbase = gripper.t_tcf_from_t0cf
+        t_beam_from_tooltip = Transformation.from_frame(process.assembly.get_beam_attribute(self.beam_id, 'gripper_tcp_in_ocf'))
+        t_world_from_robot = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_robot_flange
+        # Beam Grasp
+        t_gripper_tcf_from_beam = t_beam_from_tooltip.inverse()
+        self.movements.append(RoboticLinearMovement(
+            target_frame=Frame.from_transformation(t_world_from_robot),
+            attached_objects=[self.gripper_id, self.beam_id],
+            t_flange_from_attached_objects=[
+                toolchanger.t_t0cf_from_tcf,
+                toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
+            ],
+            speed_type='speed.transfer.rapid',
+            tag="Linear Move to intermediate position before reorienting Beam ('%s')" % (self.beam_id)
+        ))
+
         # * Free Move to go to screwdriver attachment pose
         f_beam_at_position_in_wcf = process.assembly.get_beam_attribute(self.beam_id, 'assembly_wcf_screwdriver_attachment_pose')
         t_world_from_beam = Transformation.from_frame(f_beam_at_position_in_wcf)
@@ -1312,7 +1327,7 @@ class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
         t_world_from_robot_at_pickup_approach = t_world_from_beam * t_beam_from_tooltip * t_tooltip_from_toolbase * t_toolbase_from_robot_flange
         # Beam Grasp
         t_gripper_tcf_from_beam = t_beam_from_tooltip.inverse()
-        self.movements.append(RoboticFreeMovement(
+        self.movements.append(RoboticLinearMovement(
             target_frame=Frame.from_transformation(t_world_from_robot_at_pickup_approach),
             attached_objects=[self.gripper_id, self.beam_id],
             t_flange_from_attached_objects=[
@@ -1320,7 +1335,7 @@ class PickAndRotateBeamForAttachingScrewdriverAction(RobotAction):
                 toolchanger.t_t0cf_from_tcf * gripper.t_t0cf_from_tcf * t_gripper_tcf_from_beam
             ],
             speed_type='speed.transfer.rapid',
-            tag="Free Move to reorient Beam ('%s')" % (self.beam_id)
+            tag="Final Move to reorient Beam ('%s')" % (self.beam_id)
         ))
 
         # Assign Unique Movement IDs to all movements
@@ -1394,7 +1409,7 @@ class GenericFreeMoveBeamWithGripperAction(RobotAction):
 
 class CloseGripperOnBeamAction(AttachBeamAction):
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, str, list[str]) -> None
+        # type: (int, int, str, str, List[str]) -> None
         """
         This Action can be used for picking up beams with or without flying tools.
         Only a single close Gripper Movement is created.
@@ -1436,6 +1451,9 @@ class CloseGripperOnBeamAction(AttachBeamAction):
             operator_stop_before="Confirm Gripper Ready to close ",
             operator_stop_after="Confirm Grip OK",
             tag="Gripper ('%s') Close Gripper to grip Beam ('%s')" % (self.gripper_id, self.beam_id)))
+
+        # Set Workpiece Weight
+        self.movements.append(SetWorkpieceWeight.from_process_beam_id(process, self.beam_id))
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
@@ -1509,6 +1527,11 @@ class BeamPlacementWithoutClampsAction(RobotAction, DetachBeamAction):
             operator_stop_after="Confirm Gripper Cleared Beam",
             tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)
         ))
+
+        # Set workpiece weight to zero
+        self.movements.append(SetWorkpieceWeight(weight_kg=0, tag="Set Workpiece Weight to zero."))
+
+        # Gripper Linear Retract
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_finalretract,
             attached_objects=[self.gripper_id],
@@ -1527,14 +1550,14 @@ class BeamPlacementWithClampsAction(RobotAction, DetachBeamAction):
     Does not include gripper retract.
     """
     def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, clamp_ids=None):
-        # type: (int, int, str, list[tuple[str, str]], str, str) -> None
+        # type: (int, int, str, List(Tuple(str, str)), str, str) -> None
         RobotAction.__init__(self)
         DetachBeamAction.__init__(self, beam_id, gripper_id)
         self.seq_n = seq_n
         self.act_n = act_n
-        self.joint_ids = joint_ids  # type: list[tuple[str, str]]
+        self.joint_ids = joint_ids  # type: List(Tuple(str, str))
         if clamp_ids is None:
-            self.clamp_ids = [None for _ in joint_ids]  # type: list[str]
+            self.clamp_ids = [None for _ in joint_ids]  # type: List[str]
         else:
             self.clamp_ids = clamp_ids
 
@@ -1639,7 +1662,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
     (The gripper used can be Scrwederiver or Gripper.)
     """
 
-    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, screwdriver_ids=[]):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, screwdriver_ids=[], screw_tighten_uncertainty=10):
         """If a screrwdriver is used as the gripper.
         fill in the screwdriver's id into `gripper_id` and also include it in the list of `screwdriver_id`
 
@@ -1647,14 +1670,15 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         """
         RobotAction.__init__(self, seq_n, act_n)
         self.beam_id = beam_id  # type: str
-        self.joint_ids = joint_ids  # type: list[tuple[str, str]]
-        self.gripper_id = gripper_id  # type: list[str]
+        self.joint_ids = joint_ids  # type: List[Tuple(str, str)]
+        self.gripper_id = gripper_id  # type: List[str]
+        self.screw_tighten_uncertainty = screw_tighten_uncertainty
 
         # Maintaining same list length between screwdriver_ids and joint_ids
         if screwdriver_ids is []:
-            self.screwdriver_ids = [None for _ in joint_ids]  # type: list[str]
+            self.screwdriver_ids = [None for _ in joint_ids]  # type: List[str]
         else:
-            self.screwdriver_ids = screwdriver_ids  # type: list[str]
+            self.screwdriver_ids = screwdriver_ids  # type: List[str]
 
     @property
     def data(self):
@@ -1663,6 +1687,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         data['joint_ids'] = self.joint_ids
         data['gripper_id'] = self.gripper_id
         data['screwdriver_ids'] = self.screwdriver_ids
+        data['screw_tighten_uncertainty'] = self.screw_tighten_uncertainty
         return data
 
     @property
@@ -1674,6 +1699,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
         super(AssembleBeamWithScrewdriversAction, type(self)).data.fset(self, data)
         self.joint_ids = data.get('joint_ids', [])
         self.clamp_ids = data.get('clamp_ids', [])
+        self.screw_tighten_uncertainty = data.get('screw_tighten_uncertainty', 10)
 
     def __str__(self):
         object_str = "Beam ('%s')" % (self.beam_id)
@@ -1748,22 +1774,33 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             attached_objects=[self.gripper_id, self.beam_id] + self.screwdriver_ids_without_gripper,
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf, t_flange_from_beam] + t_flange_from_attached_screwdrivers,
             screw_positions=[sync_linear_move_amount] * len(self.screwdriver_ids),
+            allowable_target_deviation=self.screw_tighten_uncertainty,
             screwdriver_ids=self.screwdriver_ids,
             planning_priority=1,
-            speed_type='speed.assembly.screwing',
+            speed_type='speed.assembly.screw_assemble',
             tag="Robot and Screwdrivers (%s) syncronously move to screw Beam ('%s')" % (self.screwdriver_ids, self.beam_id),
             allowed_collision_matrix=acm
         ))
+
+        # Robot Clamp Sync Move to tighten screw
+        self.movements.append(ScrewdriverMovement(
+            target_positions = [sync_linear_move_amount + self.screw_tighten_uncertainty] * len(self.screwdriver_ids),
+            tool_ids = self.screwdriver_ids,
+            speed_type='speed.assembly.screw_tighten',
+            allowable_target_deviation = 2 * self.screw_tighten_uncertainty + 0.05,
+            tag="Screwdrivers (%s) tightens screw without sync" % (self.screwdriver_ids)
+        ))  # Extend the clamp arm
 
         # Assign Unique Movement IDs to all movements
         self.assign_movement_ids()
 
 
 class RetractGripperFromBeamAction(RobotAction, DetachBeamAction):
-    """Open the gripper and Retract the gripper from the beam."""
+    """Open the gripper and Retract the gripper from the beam.
+    Used in Clamped Beam and Screwed-with-gripper Assembly"""
 
     def __init__(self, seq_n=0, act_n=0, beam_id=None, gripper_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, str, list[str]) -> None
+        # type: (int, int, str, str, List[str]) -> None
         """
         Both `beam_id` and `additional_attached_objects` will be detached from the robot.
         """
@@ -1796,6 +1833,7 @@ class RetractGripperFromBeamAction(RobotAction, DetachBeamAction):
         assembly_wcf_finalretract = process.get_gripper_t0cp_for_beam_at(self.beam_id, 'assembly_wcf_finalretract')
         assert assembly_wcf_finalretract is not None
 
+        # Open Gripper Jaw
         self.movements.append(RoboticDigitalOutput(
             digital_output=DigitalOutput.OpenGripper,
             tool_id=self.gripper_id,
@@ -1804,6 +1842,11 @@ class RetractGripperFromBeamAction(RobotAction, DetachBeamAction):
             operator_stop_after="Confirm Gripper Cleared Beam",
             tag="Open Gripper ('%s') and let go of Beam ('%s')" % (self.gripper_id, self.beam_id)
         ))
+
+        # Set workpiece weight to zero
+        self.movements.append(SetWorkpieceWeight(weight_kg=0, tag="Set Workpiece Weight to zero."))
+
+        # Gripper Linear Retract
         self.movements.append(RoboticLinearMovement(
             target_frame=assembly_wcf_finalretract,
             attached_objects=[self.gripper_id],
@@ -1821,7 +1864,7 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
     Pull out slightly further afterwards. Cancel docking offset."""
 
     def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_id=None, tool_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, Tuple[str,str],  str, list[str]) -> None
+        # type: (int, int, str, Tuple[str,str],  str, List[str]) -> None
         """
         Both `beam_id` and `additional_attached_objects` will be detached from the robot.
         """
@@ -1867,18 +1910,18 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
             tag="Detach Screwdriver ('%s') from Joint ('%s-%s')" % (self.gripper_id, self.joint_id[0], self.joint_id[1]),
         ))
 
-        sync_linear_move_amount = screwdriver_assembled_attached.point.distance_to_point(screwdriver_assembled_retracted.point)
+        # Set workpiece weight to zero
+        self.movements.append(SetWorkpieceWeight(weight_kg=0, tag="Set Workpiece Weight to zero."))
 
         # Robot Clamp Sync Move to retract back to begin_assemble location
         self.movements.append(RobotScrewdriverSyncLinearMovement(
             target_frame=screwdriver_assembled_retracted,
             attached_objects=[self.gripper_id],
             t_flange_from_attached_objects=[process.robot_toolchanger.t_t0cf_from_tcf],
-            # screw_positions=[-1.0 * sync_linear_move_amount],
             screw_positions=[0], # Zero is the absolute starting point of the screwdriver
             screwdriver_ids=[self.gripper_id],
             planning_priority=1,
-            speed_type='speed.assembly.screwing',
+            speed_type='speed.assembly.screw_retract',
             tag="Robot and Screwdriver (%s) syncronously move to retract from Joint ('%s-%s')" % (self.gripper_id, self.joint_id[0], self.joint_id[1]),
             allowed_collision_matrix=[(self.gripper_id, self.joint_id[0]), (self.gripper_id, self.joint_id[1])]
         ))
@@ -1889,7 +1932,7 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
             t_flange_from_attached_objects=[process.robot_toolchanger.t_t0cf_from_tcf],
             speed_type='speed.gripper.retract',
             tag="Linear retract after picking up Screwdriver ('%s')" % self.gripper_id,
-            allowed_collision_matrix=[(self.gripper_id, self.joint_id[1])],
+            allowed_collision_matrix=[(self.gripper_id, self.joint_id[0]), (self.gripper_id, self.joint_id[1])]
         ))
 
         self.movements.append(CancelRobotOffset(
@@ -1916,7 +1959,7 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
     """
 
     def __init__(self, seq_n=0, act_n=0, joint_id=None, tool_position=None, tool_type=None, tool_id=None, additional_attached_objects=[]):
-        # type: (int, int, str, tuple[str, str], str, str, list[str]) -> None
+        # type: (int, int, str, tuple[str, str], str, str, List[str]) -> None
         """
         This docking action includes:
         - TC approaching the target tool (tool_id) (location retrived from `tool_position` from specific `joint_id`)
@@ -2008,9 +2051,8 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
         # Toolchanger engaging - confirmation of alignment necessary.
         self.movements.append(RoboticLinearMovement(
             target_frame=Frame.from_transformation(t_world_from_robot_at_docked),
-            speed_type='speed.toolchange.approach.clamp_on_structure',
+            speed_type='speed.docking.approach.screwdriver_on_structure',
             tag="Linear Advance to dock toolchanger of %s." % (self._tool_string),
-            operator_stop_before="Confirm Docking alignment",
             allowed_collision_matrix=[('tool_changer', self.tool_id)]
         ))
 
@@ -2019,7 +2061,6 @@ class DockWithScrewdriverAction(RobotAction, AttachToolAction):
             digital_output=DigitalOutput.LockTool,
             tool_id=self.tool_id,
             attached_objects=self.additional_attached_objects,
-            operator_stop_after="Confirm ToolChanger Locked",
             tag="Toolchanger Lock %s" % self._tool_string
         ))
 

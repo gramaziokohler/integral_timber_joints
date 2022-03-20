@@ -377,16 +377,16 @@ class ProcessArtist(object):
         self.assembly_artist = AssemblyNurbsArtist(process.assembly, 'itj::interactive::beams_brep')
 
         # # Create guid in dictionary to store geometries added to Rhino document
-        self._beam_guids = {}  # type: dict[str, dict[str, list[str]]]
-        self._gripper_guids = {}  # type: dict[str, dict[str, list[str]]]
-        self._asstool_guids = {}  # type: dict[str, dict[str, list[str]]]
-        self._interactive_guids = {}  # type: dict[str, dict[str, list[str]]]
-        self._state_visualization_guids = {}  # type: dict[str, list[str]]
+        self._beam_guids = {}  # type: dict[str, dict(str, List[str])]
+        self._gripper_guids = {}  # type: dict(str, dict(str, List[str]))
+        self._asstool_guids = {}  # type: dict(str, dict(str, List[str]))
+        self._interactive_guids = {}  # type: dict(str, dict(str, List[str]))
+        self._state_visualization_guids = {}  # type: dict[str, List[str]]
         self.state_visualization_current_state = {}
-        self._trajectory_visualization_guids = {}  # type: dict[str, list[str]]
-        self._tools_in_storage_guids = {}  # type: dict[str, list[str]]
-        self._env_mesh_guids = {}  # type: dict[str, list[str]]
-        self._robot_guids = {'visual': [], 'collision': []}  # type: dict[str, list[str]]
+        self._trajectory_visualization_guids = {}  # type: dict[str, List[str]]
+        self._tools_in_storage_guids = {}  # type: dict[str, List[str]]
+        self._env_mesh_guids = {}  # type: dict[str, List[str]]
+        self._robot_guids = {'visual': [], 'collision': []}  # type: dict[str, List[str]]
 
         self.settings = {
             'color.vertex': (255, 255, 255),
@@ -432,7 +432,7 @@ class ProcessArtist(object):
     # Functions to handle the guid records
     #######################################
     def beam_guids(self, beam_id):
-        # type: (str) -> dict[str, list[guid]]
+        # type: (str) -> dict[str, List[guid]]
         if beam_id not in self._beam_guids:
             self._beam_guids[beam_id] = {}
         return self._beam_guids[beam_id]
@@ -444,55 +444,55 @@ class ProcessArtist(object):
         return self.beam_guids(beam_id)[position_id]
 
     def gripper_guids(self, beam_id):
-        # type: (str) -> dict[str, list[guid]]
+        # type: (str) -> dict[str, List[guid]]
         if beam_id not in self._gripper_guids:
             self._gripper_guids[beam_id] = {}
         return self._gripper_guids[beam_id]
 
     def gripper_guids_at_position(self, beam_id, position_id):
-        # type: (str, str) -> list[guid]
+        # type: (str, str) -> List[guid]
         if position_id not in self.gripper_guids(beam_id):
             self.gripper_guids(beam_id)[position_id] = []
         return self.gripper_guids(beam_id)[position_id]
 
     def asstool_guids(self, joint_id):
-        # type: (tuple(str, str)) -> dict[str, list[guid]]
+        # type: (tuple(str, str)) -> dict[str, List[guid]]
         if joint_id not in self._asstool_guids:
             self._asstool_guids[joint_id] = {}
         return self._asstool_guids[joint_id]
 
     def asstool_guids_at_position(self, joint_id, position_id):
-        # type: (str, str) -> list[guid]
+        # type: (str, str) -> List[guid]
         if position_id not in self.asstool_guids(joint_id):
             self.asstool_guids(joint_id)[position_id] = []
         return self.asstool_guids(joint_id)[position_id]
 
     def interactive_guids(self, beam_id):
-        # type: (tuple(str, str)) -> dict[str, list[guid]]
+        # type: (tuple(str, str)) -> dict[str, List[guid]]
         if beam_id not in self._interactive_guids:
             self._interactive_guids[beam_id] = {}
         return self._interactive_guids[beam_id]
 
     def interactive_guids_at_layer(self, beam_id, layer_name):
-        # type: (str, str) -> list[guid]
+        # type: (str, str) -> List[guid]
         if layer_name not in self.interactive_guids(beam_id):
             self.interactive_guids(beam_id)[layer_name] = []
         return self.interactive_guids(beam_id)[layer_name]
 
     def state_visualization_guids(self, object_id):
-        # type: (str) -> list[guid]
+        # type: (str) -> List[guid]
         if object_id not in self._state_visualization_guids:
             self._state_visualization_guids[object_id] = []
         return self._state_visualization_guids[object_id]
 
     def tools_in_storage_guids(self, tool_id):
-        # type: (str) -> list[guid]
+        # type: (str) -> List[guid]
         if tool_id not in self._tools_in_storage_guids:
             self._tools_in_storage_guids[tool_id] = []
         return self._tools_in_storage_guids[tool_id]
 
     def env_mesh_guids(self, env_id):
-        # type: (str) -> list[guid]
+        # type: (str) -> List[guid]
         if env_id not in self._env_mesh_guids:
             self._env_mesh_guids[env_id] = []
         return self._env_mesh_guids[env_id]
@@ -1223,18 +1223,47 @@ class ProcessArtist(object):
     # State
     ######################
 
-    def get_current_selected_scene_state(self):
-        # type: () -> SceneState
+    def get_current_selected_scene_state(self, override_attached_objects_with_fk = True):
+        # type: (bool) -> SceneState
         """
         Return the currently selected SceneState
+
+        if `override_attached_objects_with_fk` is true, and if robot config is defined,
+        the frame of the attached objects will be overridden by the FK result of the robot.
+
         Note state_id = 1 is referring to end of the first (0) movement.
         """
         state_id = self.selected_state_id
+        scene = None
+        # Short circuit for returning the initial state.
+        # No override_attached_objects_with_fk will be performed.
         if state_id == 0:
-            return self.process.initial_state
-        else:
-            movement = self.process.movements[state_id - 1]  # type: RoboticMovement
-            return self.process.get_movement_end_scene(movement)
+            scene =  self.process.initial_state
+            return scene
+
+
+        movement = self.process.movements[state_id - 1]  # type: RoboticMovement
+        scene =  self.process.get_movement_end_scene(movement)
+
+        process = self.process
+        if override_attached_objects_with_fk:
+            if isinstance(movement, RoboticMovement):
+                if ('robot', 'c') in scene and scene[('robot', 'c')] is not None:
+                    from copy import deepcopy
+                    scene = deepcopy(scene)
+
+                    # * Compute FK
+                    configuration = scene[('robot', 'c')]  # type: Configuration
+                    fk_flange_frame = process.robot_model.forward_kinematics(configuration.scaled(1000), process.ROBOT_END_LINK)
+                    t_world_from_flange = Transformation.from_frame(fk_flange_frame)
+                    scene[('tool_changer', 'f')] = fk_flange_frame
+
+                    # * Set attached objects, use `t_flange_from_attached_objects` in Movement
+                    for object_id, t_flange_from_attached_objects in zip(movement.attached_objects, movement.t_flange_from_attached_objects):
+                        t_world_from_object = t_world_from_flange * t_flange_from_attached_objects
+                        scene[(object_id, 'f')] = Frame.from_transformation(t_world_from_object)
+
+        return scene
 
     def _get_state_attached_objects_meshes(self, scene, attached_objects_only=False, moved_objects_only=False):
         # type: (SceneState, bool, bool) -> Dict[str, Tuple[Frame, List[Mesh]]]
@@ -1311,6 +1340,10 @@ class ProcessArtist(object):
     def draw_state(self, scene=None, redraw=True):
         # type: (SceneState, bool) -> None
         """Draw objects that relates to a specific object state dictionary.
+
+        If robot configuration is defined, the robot model will be drawn. Otherwise, rob_wrist will be displayed.
+
+        This function is used for both Visualize Movement and Visualize Trajectory
 
         You do not have to call delete_state() to erase previous geometry.
         Old geometry that are same as new geometry will not be redrawn
@@ -1403,7 +1436,7 @@ class ProcessArtist(object):
     def _draw_mesh_sweep_polyline(self, mesh, transformations, color=(0, 30, 180)):
         # type: (Mesh, list[Transformation], Tuple(int,int,int)) -> list[guid]
         polyline_dicts = []
-        welded_mesh = mesh_weld(mesh, 1e-5)
+        welded_mesh = mesh_weld(mesh, 15)
         vertices, faces = welded_mesh.to_vertices_and_faces()
         transposed_transformations = [transpose_matrix(T) for T in transformations]
 
@@ -1417,8 +1450,8 @@ class ProcessArtist(object):
             polyline_dicts.append(polyline_dict)
         return draw_polylines(polyline_dicts, redraw=False)
 
-    def draw_sweep_trajectory(self, redraw=True):
-        # type: (bool) -> None
+    def draw_sweep_trajectory(self, scene, redraw=True):
+        # type: (SceneState, bool) -> None
         from compas.geometry import Transformation, Frame
         assembly = self.process.assembly  # type: Assembly
         rs.EnableRedraw(False)
@@ -1456,7 +1489,6 @@ class ProcessArtist(object):
         # * Draw Attached objects
         # Scene
         guids = {}
-        scene = self.get_current_selected_scene_state()
         meshes_for_objects = self._get_state_attached_objects_meshes(scene, attached_objects_only=True)
         print("Drawing %s Sweep Trajectory with %i meshes and %i trajectory points." % (movement_id, len(meshes_for_objects), len(trajectory_frames)))
         for object_id in meshes_for_objects:

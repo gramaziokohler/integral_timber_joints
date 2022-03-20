@@ -559,6 +559,16 @@ def set_tool_storage_configuration(process):
                 assert isinstance(configuration, Configuration)
                 process.tool(tool_id).tool_storage_configuration = configuration
                 print("Tool Storage Configuration is successfully loaded from %s" % path)
+
+                # Perform FK with robot model to get flange frame and tool frame
+                configuration_mm = configuration.scaled(1000)
+                robot_flange_frame = process.robot_model.forward_kinematics(configuration_mm, process.ROBOT_END_LINK)
+                toolchanger = process.robot_toolchanger
+                toolchanger.current_frame = robot_flange_frame
+                tool_frame = toolchanger.current_tcf
+                process.tool(tool_id).tool_storage_frame = tool_frame
+                print("Tool storage frame set at %s" % tool_frame)
+
         else:
             print("Function Canceled")
 
@@ -591,7 +601,7 @@ def show_menu(process):
 
         # Have artist paint all the tools in storage position and env mesh
         for tool_id in process.tool_ids:
-            artist.draw_tool_in_storage(tool_id)
+            artist.draw_tool_in_storage(tool_id, delete_old=True)
 
         artist.draw_robot(process.robot_initial_config)
         artist.draw_all_env_mesh(delete_old=True)
