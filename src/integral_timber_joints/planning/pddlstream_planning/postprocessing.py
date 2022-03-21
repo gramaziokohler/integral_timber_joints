@@ -5,6 +5,8 @@ from compas.geometry import Transformation, Frame
 from compas_fab.robots import Trajectory
 from compas.robots.configuration import Configuration
 
+from integral_timber_joints.process import RobotClampAssemblyProcess, RobotAction
+
 from integral_timber_joints.process.state import ObjectState, SceneState, copy_state_dict
 from integral_timber_joints.planning.parsing import parse_process, save_process, get_process_path
 from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, AssembleBeamWithScrewdriversAction,  RetractGripperFromBeamAction, PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, ManaulAssemblyAction, OperatorAttachScrewdriverAction, DockWithScrewdriverAction, RetractScrewdriverFromBeamAction, PickAndRotateBeamForAttachingScrewdriverAction
@@ -74,41 +76,41 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
 
     return actions
 
-def assign_ik_conf_to_action(process, action, conf):
-    # * trigger movement computation
-    action.create_movements(process)
-    action.assign_movement_ids()
-    for movement in action.movements:
-        movement.create_state_diff(process)
-    for mov_n, movement in enumerate(action.movements):
-        # if verbose:
-        #     print("Processing Seq %i Action %i Movement %i: %s" % (action.seq_n, action.act_n, mov_n, movement.tag))
-        if (isinstance(movement, RoboticLinearMovement) and 'Advance' in movement.tag) or \
-            isinstance(movement, RoboticClampSyncLinearMovement):
-            if isinstance(conf, Configuration):
-                process.set_movement_end_robot_config(movement, conf)
-    return action
+# def assign_ik_conf_to_action(process, action, conf):
+#     # * trigger movement computation
+#     action.create_movements(process)
+#     action.assign_movement_ids()
+#     for movement in action.movements:
+#         movement.create_state_diff(process)
+#     for mov_n, movement in enumerate(action.movements):
+#         # if verbose:
+#         #     print("Processing Seq %i Action %i Movement %i: %s" % (action.seq_n, action.act_n, mov_n, movement.tag))
+#         if (isinstance(movement, RoboticLinearMovement) and 'Advance' in movement.tag) or \
+#             isinstance(movement, RoboticClampSyncLinearMovement):
+#             if isinstance(conf, Configuration):
+#                 process.set_movement_end_robot_config(movement, conf)
+#     return action
 
-def assign_trajs_to_action(process, action, command):
-    # * trigger movement computation
-    action.create_movements(process)
-    action.assign_movement_ids()
-    for movement in action.movements:
-        movement.create_state_diff(process)
-    assert len(action.movements) == len(command.state_diffs)
-    assert len(action.movements) == len(command.trajs)
-    for mov_n, (movement, state_diff, traj) in enumerate(zip(action.movements, command.state_diffs, command.trajs)):
-        if mov_n == 0:
-            for key in command.start_state.object_keys:
-                if command.start_state[key] is not None:
-                    action.movements[0].state_diff[key] = command.start_state[key]
-        movement.state_diff.update(state_diff)
-        if isinstance(movement, RoboticMovement) and traj is not None:
-            movement.trajectory = traj
-            process.set_movement_end_robot_config(movement, traj.points[-1])
-    return action
+# def assign_trajs_to_action(process, action, command):
+#     # * trigger movement computation
+#     action.create_movements(process)
+#     action.assign_movement_ids()
+#     for movement in action.movements:
+#         movement.create_state_diff(process)
+#     assert len(action.movements) == len(command.state_diffs)
+#     assert len(action.movements) == len(command.trajs)
+#     for mov_n, (movement, state_diff, traj) in enumerate(zip(action.movements, command.state_diffs, command.trajs)):
+#         if mov_n == 0:
+#             for key in command.start_state.object_keys:
+#                 if command.start_state[key] is not None:
+#                     action.movements[0].state_diff[key] = command.start_state[key]
+#         movement.state_diff.update(state_diff)
+#         if isinstance(movement, RoboticMovement) and traj is not None:
+#             movement.trajectory = traj
+#             process.set_movement_end_robot_config(movement, traj.points[-1])
+#     return action
 
-def action_compute_movements(process, action):
+def action_compute_movements(process: RobotClampAssemblyProcess, action: RobotAction):
     action.create_movements(process)
     action.assign_movement_ids()
     for movement in action.movements:
@@ -260,5 +262,4 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
     process.assembly.set_beam_attribute(beam_id, 'actions', acts)
 
     # * write to file
-    process_fp = get_process_path(design_dir, problem_name, subdir=save_subdir)
-    save_process(process, process_fp, deepcopy=False)
+    save_process(design_dir, problem_name, process, save_dir=save_subdir)

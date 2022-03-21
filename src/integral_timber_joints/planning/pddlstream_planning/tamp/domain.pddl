@@ -31,19 +31,19 @@
 
     ; ? static predicates but will be sampled by stream functions
     (PickBeamWithGripperAction ?element ?gripper ?action)
-    ;; (BeamPlacementWithClampsAction ?element ?gripper ?action)
-    ;; (BeamPlacementWithoutClampsAction ?element ?gripper ?action)
-    ;; (BundledAssemblePlacementWithScrewDriversAction ?element ?gripper ?action)
-    ;; (RetractGripperFromBeamAction ?element ?gripper ?action)
+    (BeamPlacementWithClampsAction ?element ?gripper ?action)
+    (BeamPlacementWithoutClampsAction ?element ?gripper ?action)
+    (BundledAssemblePlacementWithScrewDriversAction ?element ?gripper ?action)
+    (RetractGripperFromBeamAction ?element ?gripper ?action)
     ;
-    ;; (PickGripperFromStorageAction ?tool ?action)
-    ;; (PickClampFromStorageAction ?tool ?action)
-    ;; (PickScrewdriverFromStorageAction ?tool ?action)
-    ;; (PlaceGripperToStorageAction ?tool ?action)
-    ;; (PlaceClampToStorageAction ?tool ?action)
-    ;; (PlaceScrewdriverToStorageAction ?tool ?action)
-    ;; (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
-    ;; (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
+    (PickGripperFromStorageAction ?tool ?action)
+    (PickClampFromStorageAction ?tool ?action)
+    (PickScrewdriverFromStorageAction ?tool ?action)
+    (PlaceGripperToStorageAction ?tool ?action)
+    (PlaceClampToStorageAction ?tool ?action)
+    (PlaceScrewdriverToStorageAction ?tool ?action)
+    (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
+    (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
 
     ; * for construction sequence
     (FirstElement ?element)
@@ -317,7 +317,7 @@
                     ; ! sampled
                     ;; (imply (Gripper ?tool) (PlaceGripperToStorageAction ?tool ?action))
                     ;; (imply (Clamp ?tool) (PlaceClampToStorageAction ?tool ?action))
-                    (imply (ScrewDriver ?tool) (PlaceScrewdriverToStorageAction ?tool ?action))
+                    ;; (imply (ScrewDriver ?tool) (PlaceScrewdriverToStorageAction ?tool ?action))
                   )
     :effect (and (not (Attached ?tool ?grasp))
                  (RobotToolChangerEmpty)
@@ -342,7 +342,7 @@
                     ; ! switch for cutting down meaningless clamp placements
                     (not (Assembled ?element2))
                     ; ! sampled
-                    (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
+                    ;; (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
                     )
     :effect (and (not (Attached ?tool ?grasp))
                  (AtPose ?tool ?pose)
