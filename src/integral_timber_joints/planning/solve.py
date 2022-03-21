@@ -86,6 +86,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         return None
     options = options or {}
     verbose = options.get('verbose', True)
+    force_linear_to_free_movement = options.get('force_linear_to_free_movement', False)
     if verbose:
         LOGGER.debug(colored(movement.short_summary, 'cyan'))
 
@@ -103,6 +104,14 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
     set_random_seed(seed)
     set_numpy_seed(seed)
 
+    if force_linear_to_free_movement:
+        orig_movement = movement
+        movement = RoboticFreeMovement.from_data(orig_movement.data)
+        for action in process.actions:
+            for i in range(len(action.movements)):
+                if action.movements[i] == orig_movement:
+                    action.movements[i] = movement
+
     # * custom limits
     traj = None
     if isinstance(movement, RoboticLinearMovement):
@@ -118,7 +127,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
             # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
-        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis, **kwargs)
+        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticClampSyncLinearMovement) or \
          isinstance(movement, RobotScrewdriverSyncLinearMovement):
         #  'reorient' in movement.short_summary:
@@ -135,7 +144,7 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
             # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
-        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis, **kwargs)
+        traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticFreeMovement):
         fm_options = options.copy()
         fm_options.update({
@@ -150,7 +159,14 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         return None
 
     if traj is not None:
-        # update start/end states
+        if force_linear_to_free_movement:
+            orig_movement.trajectory = movement.trajectory
+            for action in process.actions:
+                for i in range(len(action.movements)):
+                    if action.movements[i] == movement:
+                        action.movements[i] = orig_movement
+            movement = orig_movement
+
         prev_robot_conf = process.get_movement_start_robot_config(movement)
         if prev_robot_conf is not None and not is_configurations_close(prev_robot_conf, traj.points[0], options=options):
             LOGGER.error('Planned trajectory\'s first conf does not agree with the previous movement\'s end conf! Planning fails.')

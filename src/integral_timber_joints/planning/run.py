@@ -183,7 +183,11 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         smoothed_movements = []
         st_time = time.time()
         with pp.LockRenderer(): # not args.debug):
-            solved_free_movements = [fm for fm in solved_movements if isinstance(fm, RoboticFreeMovement)]
+            if args.force_linear_to_free_movement:
+                solved_free_movements = [fm for fm in solved_movements if isinstance(fm, RoboticMovement)]
+            else:
+                solved_free_movements = [fm for fm in solved_movements if isinstance(fm, RoboticFreeMovement)]
+
             with tqdm(total=len(solved_free_movements), desc='smoothing') as pbar:
                 for free_m in solved_free_movements:
                     pbar.set_postfix_str(f'{free_m.movement_id}:{free_m.__class__.__name__}, {free_m.tag}')
@@ -231,6 +235,8 @@ def main():
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
     parser.add_argument('--no_smooth', action='store_true', help='Not apply smoothing on free motions upon a plan is found. Defaults to False.')
+    parser.add_argument('--keep_planned_movements', action='store_true', help='Defaults to False.')
+    parser.add_argument('--force_linear_to_free_movement', action='store_true', help='Defaults to False.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     #
@@ -290,6 +296,7 @@ def main():
         'mp_algorithm' : args.mp_algorithm,
         'check_sweeping_collision': True,
         'use_stored_seed' : args.use_stored_seed,
+        'force_linear_to_free_movement' : args.force_linear_to_free_movement,
     }
     # ! frame, conf compare, joint flip tolerances are set here
     options.update(get_tolerances(robot, low_res=args.low_res))
@@ -318,6 +325,7 @@ def main():
     # otherwise, all the movement under beam_id will be moved
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     ext_movement_path = os.path.dirname(result_path)
+    # TODO add a flag here to ignore this when "args.keep_planned_movements=True"
     archive_robotic_movements(unplanned_process, beam_ids, ext_movement_path, movement_id=args.movement_id)
 
     # * load previously planned movements

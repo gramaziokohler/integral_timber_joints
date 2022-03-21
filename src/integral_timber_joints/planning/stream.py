@@ -283,16 +283,16 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
                 break
             else:
                 path_failures += 1
-        # else:
-        #     # * fallback to ladder graph
-        #     lm_options = options.copy()
-        #     lm_options['planner_id'] = 'LadderGraph'
-        #     lm_options['ik_function'] = _get_sample_bare_arm_ik_fn(client, robot)
-        #     # pose -> list(conf values)
-        #     cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
-        #         group=BARE_ARM_GROUP, options=lm_options)
-        #     if cart_conf:
-        #         success_planner = 'LadderGraph'
+        else:
+            # * fallback to ladder graph
+            lm_options = options.copy()
+            lm_options['planner_id'] = 'LadderGraph'
+            lm_options['ik_function'] = _get_sample_bare_arm_ik_fn(client, robot)
+            # pose -> list(conf values)
+            cart_conf = client.plan_cartesian_motion(robot, interp_frames, start_configuration=gantry_arm_conf,
+                group=BARE_ARM_GROUP, options=lm_options)
+            if cart_conf:
+                success_planner = 'LadderGraph'
 
         if not cart_conf:
             if verbose:
@@ -310,9 +310,9 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
         if lockrenderer is not None:
             lockrenderer.restore()
         LOGGER.debug('Start diagnosis.')
-        LOGGER.debug('movement.allowed_collision_matrix: ', movement.allowed_collision_matrix)
-        LOGGER.debug('extra_disabled_collision_links: ', client.extra_disabled_collision_links)
-        client._print_object_summary()
+        LOGGER.debug(f'movement.allowed_collision_matrix: {movement.allowed_collision_matrix}')
+        LOGGER.debug(f'extra_disabled_collision_links: {client.extra_disabled_collision_links}')
+        # client._print_object_summary()
         d_options = options.copy()
         d_options['diagnosis'] = True
         in_collision = client.check_collisions(robot, gantry_arm_conf, options=d_options)
