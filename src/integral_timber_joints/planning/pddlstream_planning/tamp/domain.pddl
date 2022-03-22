@@ -97,7 +97,7 @@
                     ; ! tool state precondition, might help pruning
                     ;; (not (ExistNoClampAtOneAssembledJoints ?element))
                     ; ! sampled
-                    (PickBeamWithGripperAction ?element ?tool ?action)
+                    ;; (PickBeamWithGripperAction ?element ?tool ?action)
                   )
     :effect (and (not (AtRack ?element))
                  (Attached ?element ?e_grasp)

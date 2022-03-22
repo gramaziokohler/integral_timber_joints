@@ -119,7 +119,7 @@ def action_compute_movements(process: RobotClampAssemblyProcess, action: RobotAc
 
 ##############################################
 
-def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name, symbolic=False, save_subdir='results', verbose=False):
+def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan, design_dir, problem_name, symbolic=False, save_subdir='results', verbose=False):
     """
         design_dir = '211010_CantiBox'
         problem_name = 'CantiBoxLeft_process.json'
@@ -162,6 +162,7 @@ def save_pddlstream_plan_to_itj_process(process, plan, design_dir, problem_name,
         elif pddl_action.name == 'assemble_beam_with_screwdrivers_and_gripper_at_rack':
             beam_id = pddl_action.args[0]
             gripper_id = pddl_action.args[-3]
+            # ! screwdriver actions bundled to enforce immediate returnning of screwdrivers to racks
             itj_act = _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=verbose)
 
         elif pddl_action.name == 'retract_gripper_from_beam':

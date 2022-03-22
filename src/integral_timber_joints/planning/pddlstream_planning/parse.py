@@ -5,7 +5,7 @@ from collections import defaultdict
 
 import integral_timber_joints.planning.pddlstream_planning.load_pddlstream
 from integral_timber_joints.planning.pddlstream_planning import ITJ_PDDLSTREAM_DEF_DIR
-from integral_timber_joints.planning.pddlstream_planning.stream import get_action_ik_fn
+from integral_timber_joints.planning.pddlstream_planning.action_stream import sample_ik_for_action
 from integral_timber_joints.planning.utils import beam_ids_from_argparse_seq_n
 
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
@@ -229,7 +229,7 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
         stream_map = DEBUG
     else:
         stream_map = {
-            'inverse-kinematics':  from_fn(get_action_ik_fn(client, process, robot, options=options)),
+            'inverse-kinematics':  from_fn(sample_ik_for_action(client, process, robot, options=options)),
         }
 
     goal_literals = []

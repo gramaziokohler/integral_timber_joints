@@ -1,3 +1,9 @@
+## Run
+
+```
+p -m integral_timber_joints.planning.pddlstream_planning.run --write --design_dir 211010_CantiBox --problem CantiBoxLeft_process.json
+```
+
 ## Assumptions
 
 1. All beam and tools grasps are predetermined and fixed, no need to sample.
