@@ -5,7 +5,8 @@ from collections import defaultdict
 
 import integral_timber_joints.planning.pddlstream_planning.load_pddlstream
 from integral_timber_joints.planning.pddlstream_planning import ITJ_PDDLSTREAM_DEF_DIR
-from integral_timber_joints.planning.pddlstream_planning.action_stream import sample_ik_for_action
+from .action_stream import get_action_ik_fn
+
 from integral_timber_joints.planning.utils import beam_ids_from_argparse_seq_n
 
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
@@ -21,9 +22,8 @@ from pddlstream.language.generator import from_gen_fn, from_fn, from_test
 
 #################################################
 
-# : PyChoreoClient
-def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
-        debug=False, reset_to_home=True, seq_n=None,
+def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyProcess, robot,
+        enable_stream=True, reset_to_home=True, seq_n=None,
         use_fluents=True, symbolic_only=False, options=None):
     """Convert a Process instance into a PDDLStream formulation
     """
@@ -225,11 +225,11 @@ def get_pddlstream_problem(client, process: RobotClampAssemblyProcess, robot,
                 gripper_from_beam[beam_id].add(g_name)
                 gripper_from_beam[beam_id].add(g_name)
 
-    if debug:
+    if not enable_stream:
         stream_map = DEBUG
     else:
         stream_map = {
-            'inverse-kinematics':  from_fn(sample_ik_for_action(client, process, robot, options=options)),
+            'sample-place_clamp_to_structure':  from_fn(get_action_ik_fn(client, process, robot, 'place_clamp_to_structure', options=options)),
         }
 
     goal_literals = []

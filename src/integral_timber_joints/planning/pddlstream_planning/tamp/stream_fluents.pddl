@@ -2,16 +2,16 @@
 
   ; ! do I have to put all preconditions from the action here?
   ; or it's computed "on-demand" from the action?
-  (:stream sample-pick_beam_with_gripper
-    ; beam_id, gripper_id
-    :inputs (?element ?gripper)
-    :domain (and (Element ?element) (Gripper ?gripper))
-    :fluents (AtPose Attached)
-    :outputs (?action)
-    :certified (and
-                 (PickBeamWithGripperAction ?element ?gripper ?action)
-               )
-  )
+;;   (:stream sample-pick_beam_with_gripper
+;;     ; beam_id, gripper_id
+;;     :inputs (?element ?gripper)
+;;     :domain (and (Element ?element) (Gripper ?gripper))
+;;     :fluents (AtPose Attached)
+;;     :outputs (?action)
+;;     :certified (and
+;;                  (PickBeamWithGripperAction ?element ?gripper ?action)
+;;                )
+;;   )
 
 ;;   (:stream sample-beam_placement_with_clamps
 ;;     ; beam_id, gripper_id
@@ -110,15 +110,15 @@
 ;;                )
 ;;   )
 
-  (:stream sample-place_screwdriver_at_rack
-    :inputs (?element ?tool)
-    :domain (and (Element ?element) (ScrewDriver ?tool))
-    :fluents (AtPose Attached)
-    :outputs (?action)
-    :certified (and
-                (PlaceScrewdriverToStorageAction ?tool ?action)
-               )
-  )
+;;   (:stream sample-place_screwdriver_at_rack
+;;     :inputs (?element ?tool)
+;;     :domain (and (Element ?element) (ScrewDriver ?tool))
+;;     :fluents (AtPose Attached)
+;;     :outputs (?action)
+;;     :certified (and
+;;                 (PlaceScrewdriverToStorageAction ?tool ?action)
+;;                )
+;;   )
 
 ;;   ;;;;;;;;;;;;;;;;;
 

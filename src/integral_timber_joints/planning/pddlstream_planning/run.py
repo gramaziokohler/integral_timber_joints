@@ -5,11 +5,12 @@ from termcolor import cprint
 import integral_timber_joints.planning.pddlstream_planning.load_pddlstream
 from integral_timber_joints.planning.pddlstream_planning.parse import get_pddlstream_problem
 from integral_timber_joints.planning.pddlstream_planning.postprocessing import save_pddlstream_plan_to_itj_process
-from integral_timber_joints.planning.pddlstream_planning.utils import print_itj_pddl_plan
+from integral_timber_joints.planning.pddlstream_planning.utils import print_itj_pddl_plan, print_pddl_task_object_names
 
+from integral_timber_joints.planning.robot_setup import load_RFL_world
 from integral_timber_joints.planning.parsing import parse_process
 from integral_timber_joints.planning.state import set_state, set_initial_state
-from integral_timber_joints.planning.pddlstream_planning.utils import print_pddl_task_object_names
+from integral_timber_joints.planning.utils import LOGGER
 
 from pddlstream.algorithms.downward import set_cost_scale, parse_action, get_cost_scale
 from pddlstream.algorithms.meta import solve
@@ -32,6 +33,7 @@ def main():
     parser.add_argument('--nofluents', action='store_true', help='Not use fluent facts in stream definitions.')
     parser.add_argument('--algorithm', default='incremental', help='PDDLSteam planning algorithm.')
     parser.add_argument('--symbolics', action='store_true', help='Use the symbolic-only PDDL formulation.')
+    parser.add_argument('--disable_stream', action='store_true', help='Disable stream sampling in planning. Enable this will essentially ignore all the geometric constraints and all sampled predicate will be assumed always available. Defaults to False')
     parser.add_argument('--return_rack', action='store_true', help='Add all-tools-back-to-rack to the goal.')
     parser.add_argument('--costs', action='store_true', help='Use user-defined costs for actions.')
     # ! pyplanner config
@@ -48,26 +50,27 @@ def main():
     parser.add_argument('--save_dir', type=str, default='results',
         help='Subdir in the process design folder to save the process to, defaults to `results`.')
     parser.add_argument('--debug', action='store_true', help='Debug mode.')
+    parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode.')
     #
     args = parser.parse_args()
     print('Arguments:', args)
 
     #########
     # * Connect to path planning backend and initialize robot parameters
-    # client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
-    client = None
-    robot = None
+    client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis)
 
     #########
     # * Load process and recompute actions and states
     process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
-    # set_initial_state(client, robot, process, reinit_tool=args.reinit_tool)
+
+    # * initialize collision objects and tools in the scene
+    set_initial_state(client, robot, process, reinit_tool=False, initialize=True)
 
     #########
     # * PDDLStream problem conversion and planning
-    cprint('Using {} backend.'.format('pyplanner' if not args.nofluents else 'downward'), 'cyan')
+    LOGGER.info('Using {} backend.'.format('pyplanner' if not args.nofluents else 'downward'), 'cyan')
     pddlstream_problem = get_pddlstream_problem(client, process, robot,
-        debug=True, reset_to_home=args.return_rack, use_fluents=not args.nofluents, seq_n=args.seq_n, symbolic_only=args.symbolics)[0]
+        enable_stream=not args.disable_stream, reset_to_home=args.return_rack, use_fluents=not args.nofluents, seq_n=args.seq_n, symbolic_only=args.symbolics)[0]
 
     if args.debug:
         print_pddl_task_object_names(pddlstream_problem)
@@ -103,10 +106,10 @@ def main():
 
     #########
     # * PDDLStream problem conversion and planning
-    print('-'*10)
+    LOGGER.debug('-'*10)
     print_itj_pddl_plan(plan)
-    cprint('Planning {}'.format('succeeds' if plan_success else 'fails'), 'green' if plan_success else 'red')
-    print('Plan length: ', len(plan))
+    LOGGER.info('Planning {}'.format('succeeds' if plan_success else 'fails'), 'green' if plan_success else 'red')
+    LOGGER.info('Plan length: ', len(plan))
 
     if plan_success and args.write:
         save_pddlstream_plan_to_itj_process(process, plan, args.design_dir, args.problem, verbose=0, save_subdir=args.save_dir)

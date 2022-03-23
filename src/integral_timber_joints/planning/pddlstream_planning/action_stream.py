@@ -1,3 +1,4 @@
+from typing import List
 from termcolor import colored
 from collections import namedtuple
 import time
@@ -17,6 +18,8 @@ from integral_timber_joints.planning.stream import _get_sample_bare_arm_ik_fn
 from integral_timber_joints.planning.utils import LOGGER
 
 from integral_timber_joints.process import RobotClampAssemblyProcess, RoboticMovement, RoboticFreeMovement, SceneState, Action
+from integral_timber_joints.process.movement import Movement
+from .utils import ITJ_ACTION_CLASS_FROM_PDDL_ACTION_NAME
 
 ######################################
 
@@ -43,22 +46,24 @@ def assign_fluent_state(client: PyChoreoClient, robot: Robot,
             object_name, grasp_transform = args
             state[(object_name, 'a')] = True
             state[(object_name, 'g')] = grasp_transform
-        elif name == 'toolassignedtojoint':
-            #  (ToolAssignedToJoint ?element1 ?element2 ?tool)
-            e1, e2, tool = args
-            assigned_tool_from_joints[JOINT_KEY((e1,e2))] = tool
+        # elif name == 'toolassignedtojoint':
+        #     #  (ToolAssignedToJoint ?element1 ?element2 ?tool)
+        #     e1, e2, tool = args
+        #     assigned_tool_from_joints[JOINT_KEY((e1,e2))] = tool
         else:
             raise ValueError(name)
-    set_state(client, robot, process, state)
-    return state, assigned_tool_from_joints
+    if not set_state(client, robot, process, state):
+        LOGGER.error('assign_fluent_state: set state error.')
+        raise RuntimeError()
+    return state # , assigned_tool_from_joints
 
-def apply_movement_state_diff(scene: SceneState, movements, debug=False):
+def apply_movement_state_diff(scene: SceneState, movements: List[Movement], debug=False):
     for key in scene.object_keys:
         for m in movements[::-1]:
             if key in m.state_diff:
                 scene[key] = m.state_diff[key]
                 if debug:
-                    print(colored(key, 'blue' if key[0]=='robot' else 'grey'), m.state_diff[key])
+                    LOGGER.debug(colored(key, 'blue' if key[0]=='robot' else 'grey'), m.state_diff[key])
                 break # ! break movement loop
     return scene
 
@@ -66,46 +71,66 @@ def apply_movement_state_diff(scene: SceneState, movements, debug=False):
 
 def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
         process: RobotClampAssemblyProcess,
-        itj_action: Action, fluents, options=None):
+        action: Action, fluents: List[str], options=None):
 
     debug = options.get('debug', False)
     verbose = options.get('verbose', False)
     gantry_attempts = options.get('gantry_attempts', 50)
     reachable_range = options.get('reachable_range', (0.2, 2.4))
 
-    # * create start state scene for the action based on fluents
-    _action_scene, assigned_tool_from_joints = assign_fluent_state(client, robot, process, fluents)
+    # * compute movements from action
+    action.create_movements(process)
 
-    itj_action.create_movements(process)
-    end_scene = _action_scene.copy()
-    for i, movement in enumerate(itj_action.movements):
+    # * create start state scene for the action based on fluents
+    action_initial_scene = assign_fluent_state(client, robot, process, fluents)
+    end_scene = action_initial_scene.copy()
+
+    for i, movement in enumerate(action.movements):
+        # * skip non-robotic movements
+        if not isinstance(movement, RoboticMovement):
+           continue
+
+        # * skip if there exists a taught conf
+        if movement.target_configuration is not None:
+            continue
+
         if debug:
             LOGGER.debug('='*5)
             LOGGER.debug('{} - {}'.format(i, movement.short_summary))
 
+        # * trigger state diff computation
         movement.create_state_diff(process)
+
         # * apply movement state_diff on the end_scene from the last movement
         start_scene = end_scene.copy()
-        end_scene = apply_movement_state_diff(end_scene, [itj_action.movements[i]], debug=debug)
+        end_scene = apply_movement_state_diff(end_scene, [action.movements[i]], debug=debug)
 
         # * set start state
         if not set_state(client, robot, process, start_scene, options=options):
-            LOGGER.error('Compute linear movement: set start state error.')
-            return None
+            LOGGER.error('sample_ik_for_action: set state error.')
+            raise RuntimeError()
+            # return None
 
-        # * skip free and non-robotic movements
-        if not isinstance(movement, RoboticMovement) or \
-           isinstance(movement, RoboticFreeMovement):
-           continue
-        if end_scene[('robot', 'f')] is None:
+        if movement.target_frame is None:
             LOGGER.warning(f'Target frame is None in {movement.short_summary}')
+            # raise some serious error
 
         # * compute IK
         sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
         gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
         gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
 
-        end_t0cf_frame = end_scene[('robot', 'f')].copy()
+        # * ACM setup
+        temp_name = '_tmp'
+        for o1_name, o2_name in movement.allowed_collision_matrix:
+            o1_bodies = client._get_bodies('^{}$'.format(o1_name))
+            o2_bodies = client._get_bodies('^{}$'.format(o2_name))
+            for parent_body, child_body in product(o1_bodies, o2_bodies):
+                client.extra_disabled_collision_links[temp_name].add(
+                    ((parent_body, None), (child_body, None))
+                )
+
+        end_t0cf_frame = movement.target_frame.copy()
         end_t0cf_frame.point *= 1e-3
         sample_found = False
 
@@ -127,10 +152,31 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
                     break
             if sample_found:
                 break
-        else:
+
+        # ! reset ACM
+        if temp_name in client.extra_disabled_collision_links:
+            del client.extra_disabled_collision_links[temp_name]
+
+        # ! return None if one of the movement cannot find an IK solution
+        if not sample_found:
             LOGGER.error(colored('No robot IK conf can be found for {} after {} attempts.'.format(
                 movement.short_summary, gantry_attempts), 'red'))
             return None
 
     # cprint('sample pick element succeeds for {}|{}.'.format(obj_name, tool_name), 'green')
-    # return (itj_action,)
+    return (action,)
+
+##########################################
+
+def get_action_ik_fn(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, action_name: str, options=None):
+    action_class = ITJ_ACTION_CLASS_FROM_PDDL_ACTION_NAME[action_name]
+
+    if action_name in ['place_clamp_to_structure', 'pick_clamp_from_structure']:
+        def ik_fn(tool_id: str, element1: str, element2: str,
+            fluents: List[str]):
+            tool = process.clamp(tool_id)
+            action = action_class(joint_id=(element1, element2), tool_type=tool.type_name, tool_id=tool_id)
+            return sample_ik_for_action(client, robot, process, action, fluents, options=options)
+
+    return ik_fn
+

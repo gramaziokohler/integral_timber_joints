@@ -13,6 +13,7 @@ from pddlstream.algorithms.algorithm import parse_problem
 from pddlstream.algorithms.downward import get_problem, task_from_domain_problem
 
 from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, AssembleBeamWithScrewdriversAction,  RetractGripperFromBeamAction, PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, ManaulAssemblyAction, OperatorAttachScrewdriverAction, DockWithScrewdriverAction, RetractScrewdriverFromBeamAction
+from integral_timber_joints.planning.utils import LOGGER
 
 ##########################################
 
@@ -58,12 +59,12 @@ def print_pddl_task_object_names(pddl_problem):
         pddl_problem, unit_costs=True)
     problem = get_problem(evaluations, goal_exp, domain, unit_costs=True)
     task = task_from_domain_problem(domain, problem)
-    print('='*10)
+    LOGGER.debug('='*10)
     for task_obj, pddl_object in sorted(
             zip(task.objects, map(lambda x: obj_from_pddl(x.name), task.objects)),
             key=lambda x: int(x[0].name.split('v')[1])):
-        print('{} : {}'.format(task_obj.name, colored_str_from_object(pddl_object.value)))
-    print('='*10)
+        LOGGER.debug('{} : {}'.format(task_obj.name, colored_str_from_object(pddl_object.value)))
+    LOGGER.debug('='*10)
 
 ##########################################
 
@@ -98,19 +99,19 @@ def print_itj_pddl_plan(plan, show_details=False):
     for action in plan:
         if isinstance(action, DurativeAction):
             name, args, start, duration = action
-            print('{:.2f} - {:.2f}) {} {}'.format(start, start+duration, name,
+            LOGGER.info('{:.2f} - {:.2f}) {} {}'.format(start, start+duration, name,
                                                   ' '.join(map(str_from_object, args))))
         elif isinstance(action, Action):
             name, args = action
-            print('{:2}) {} {}'.format(step, colored(name, 'green'), ' '.join(map(color_print_fn, args))))
+            LOGGER.info('{:2}) {} {}'.format(step, colored(name, 'green'), ' '.join(map(color_print_fn, args))))
             step += 1
         elif isinstance(action, StreamAction):
             name, inputs, outputs = action
-            print('    {}({})->({})'.format(name, ', '.join(map(str_from_object, inputs)),
+            LOGGER.info('    {}({})->({})'.format(name, ', '.join(map(str_from_object, inputs)),
                                             ', '.join(map(str_from_object, outputs))))
         elif isinstance(action, FunctionAction):
             name, inputs = action
-            print('    {}({})'.format(name, ', '.join(map(str_from_object, inputs))))
+            LOGGER.info('    {}({})'.format(name, ', '.join(map(str_from_object, inputs))))
         else:
             raise NotImplementedError(action)
 

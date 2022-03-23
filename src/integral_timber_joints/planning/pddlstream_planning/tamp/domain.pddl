@@ -342,7 +342,7 @@
                     ; ! switch for cutting down meaningless clamp placements
                     (not (Assembled ?element2))
                     ; ! sampled
-                    ;; (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
+                    (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
                     )
     :effect (and (not (Attached ?tool ?grasp))
                  (AtPose ?tool ?pose)
