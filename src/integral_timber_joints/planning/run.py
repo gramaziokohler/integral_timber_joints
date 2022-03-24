@@ -325,8 +325,8 @@ def main():
     # otherwise, all the movement under beam_id will be moved
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     ext_movement_path = os.path.dirname(result_path)
-    # TODO add a flag here to ignore this when "args.keep_planned_movements=True"
-    archive_robotic_movements(unplanned_process, beam_ids, ext_movement_path, movement_id=args.movement_id)
+    if not args.keep_planned_movements:
+        archive_robotic_movements(unplanned_process, beam_ids, ext_movement_path, movement_id=args.movement_id)
 
     # * load previously planned movements
     unplanned_process.load_external_movements(ext_movement_path)
