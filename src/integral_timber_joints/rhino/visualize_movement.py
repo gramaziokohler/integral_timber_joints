@@ -11,7 +11,7 @@ from compas_rhino.utilities.objects import get_object_name
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.geometry.env_model import EnvironmentModel
-from integral_timber_joints.process import Movement, RobotClampAssemblyProcess, RoboticMovement, OperatorAttachToolMovement
+from integral_timber_joints.process import Movement, RobotClampAssemblyProcess, RoboticMovement, OperatorAttachToolMovement, RoboticFreeMovement
 from integral_timber_joints.rhino.process_artist import ProcessArtist
 from integral_timber_joints.rhino.load import get_process, get_process_artist, process_is_none
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, purge_objects, recompute_dependent_solutions
@@ -139,6 +139,30 @@ def ui_prev_robotic_movement(process):
         artist.selected_state_id -= 1
         movement = all_movements[artist.selected_state_id - 1]
         if isinstance(movement, RoboticMovement):
+            return
+
+
+def ui_next_robotic_free_movement(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+    all_movements = process.movements
+    while artist.selected_state_id < len(all_movements):
+        artist.selected_state_id += 1
+        movement = all_movements[artist.selected_state_id - 1]
+        if isinstance(movement, RoboticFreeMovement):
+            return
+
+
+def ui_prev_robotic_free_movement(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    assembly = process.assembly  # type: Assembly
+    artist = get_process_artist()
+    all_movements = process.movements
+    while artist.selected_state_id > 0:
+        artist.selected_state_id -= 1
+        movement = all_movements[artist.selected_state_id - 1]
+        if isinstance(movement, RoboticFreeMovement):
             return
 
 
@@ -299,6 +323,7 @@ def draw_tool_id_tag(self, scene=None, redraw=True):
         rs.EnableRedraw(True)
         sc.doc.Views.Redraw()
 
+
 def delete_tool_id_tag(self, redraw=True):
 
     if hasattr(self, 'tool_id_tags'):
@@ -309,6 +334,7 @@ def delete_tool_id_tag(self, redraw=True):
     if redraw:
         rs.EnableRedraw(True)
         sc.doc.Views.Redraw()
+
 
 def show_menu(process):
     # type: (RobotClampAssemblyProcess) -> None

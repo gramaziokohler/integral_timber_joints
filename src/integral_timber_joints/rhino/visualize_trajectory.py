@@ -16,7 +16,7 @@ from integral_timber_joints.rhino.load import get_activedoc_process_path, get_pr
 from integral_timber_joints.rhino.process_artist import ProcessArtist
 from integral_timber_joints.rhino.utility import get_existing_beams_filter, recompute_dependent_solutions
 from integral_timber_joints.rhino.visualize_movement import (print_current_state_info, ui_goto_state_by_beam_seq, ui_goto_state_by_state_index, ui_hide_env_meshes, ui_next_step,
-                                                             ui_prev_step, ui_show_env_meshes, ui_next_robotic_movement, ui_prev_robotic_movement)
+                                                             ui_prev_step, ui_show_env_meshes, ui_next_robotic_movement, ui_prev_robotic_movement, ui_next_robotic_free_movement, ui_prev_robotic_free_movement)
 from integral_timber_joints.tools import Clamp, Gripper, RobotWrist, ToolChanger
 
 
@@ -120,9 +120,13 @@ def show_menu(process):
         menu = {
             'message': "Choose Options or Type in State Number directly: (ESC to exit)",
             'options': [
-                {'name': 'NextRoboticMovement', 'action': ui_next_robotic_movement
+                {'name': 'NextRobMovement', 'action': ui_next_robotic_movement
                  },
-                {'name': 'PrevRoboticMovement', 'action': ui_prev_robotic_movement
+                {'name': 'PrevRobMovement', 'action': ui_prev_robotic_movement
+                 },
+                {'name': 'NextRobFreeMovement', 'action': ui_next_robotic_free_movement
+                 },
+                {'name': 'PrevRobFreeMovement', 'action': ui_prev_robotic_free_movement
                  },
                 {'name': 'GoToBeam', 'action': ui_goto_state_by_beam_seq
                  },
