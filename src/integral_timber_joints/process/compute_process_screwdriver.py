@@ -19,8 +19,6 @@ except:
 # Automatically Invoked Functions
 # -------------------------------------
 
-SCREWDRIVER_APPROACH_AMOUNT = 20
-
 
 def compute_screwdriver_positions(process, beam_id, verbose=False):
     # type: (RobotClampAssemblyProcess, str, bool) -> ComputationalResult
@@ -60,6 +58,10 @@ def compute_screwdriver_positions(process, beam_id, verbose=False):
         approach_vector_wcf = tool.current_frame.to_world_coordinates(tool.approach_vector)
         detachretract_vector_wcf = tool.current_frame.to_world_coordinates(tool.detachretract_vector)
 
+        # Begin assemble distance
+        assemblebegin_length = tool.approach_vector.length - process.screwdriver_begin_assemble_offset
+        assembled_retracted_length = tool.detachretract_vector.length - process.screwdriver_begin_assemble_offset
+
         # Calculation of Beam Positions
         # -----------------------------
 
@@ -68,12 +70,13 @@ def compute_screwdriver_positions(process, beam_id, verbose=False):
 
         # * assembly_wcf_assemblebegin
         # Moving beam frame backward along reversed tool.approach_vector.
-        f_assemblebegin = beam.frame.transformed(Translation.from_vector(approach_vector_wcf.scaled(-1)))
+        f_assemblebegin = beam.frame.transformed(Translation.from_vector(approach_vector_wcf.unitized().scaled(-assemblebegin_length)))
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_assemblebegin', f_assemblebegin)
 
         # * assembly_wcf_assembleapproach
         # Moving beam frame backward along reversed tool.approach_vector.
-        v_assembleapproach = approach_vector_wcf.unitized().scaled(SCREWDRIVER_APPROACH_AMOUNT + approach_vector_wcf.length)
+        screwdriver_approach_distance = process.screwdriver_approach_distance
+        v_assembleapproach = approach_vector_wcf.unitized().scaled(screwdriver_approach_distance + approach_vector_wcf.length)
         f_assembleapproach = beam.frame.transformed(Translation.from_vector(v_assembleapproach.scaled(-1)))
         assembly.set_beam_attribute(beam_id, 'assembly_wcf_assembleapproach', f_assembleapproach)
 
@@ -87,12 +90,12 @@ def compute_screwdriver_positions(process, beam_id, verbose=False):
 
         # * screwdriver_assembled_retracted
         # Moving tool backwards along tool.detachretract_vector.
-        f_assembled_detached = f_assembled_attached.transformed(Translation.from_vector(detachretract_vector_wcf))
+        f_assembled_detached = f_assembled_attached.transformed(Translation.from_vector(detachretract_vector_wcf.unitized().scaled(assembled_retracted_length)))
         assembly.set_joint_attribute(joint_id, 'screwdriver_assembled_retracted', f_assembled_detached)
 
         # * screwdriver_assembled_retractedfurther
         # Moving tool backwards along tool.detachretract_vector + a little more distance
-        detachretracted_vector_wcf = detachretract_vector_wcf.unitized().scaled(SCREWDRIVER_APPROACH_AMOUNT + detachretract_vector_wcf.length)
+        detachretracted_vector_wcf = detachretract_vector_wcf.unitized().scaled(screwdriver_approach_distance + detachretract_vector_wcf.length)
         f_assembled_retracted = f_assembled_attached.transformed(Translation.from_vector(detachretracted_vector_wcf))
         assembly.set_joint_attribute(joint_id, 'screwdriver_assembled_retractedfurther', f_assembled_retracted)
 
@@ -103,7 +106,7 @@ def compute_screwdriver_positions(process, beam_id, verbose=False):
 
         # * screwdriver_assembleapproach_attached
         # Moving tool backwards along a lengthened  tool.approach_vector + a little more distance
-        longer_approach_vector_wcf = approach_vector_wcf.unitized().scaled(SCREWDRIVER_APPROACH_AMOUNT + approach_vector_wcf.length)
+        longer_approach_vector_wcf = approach_vector_wcf.unitized().scaled(screwdriver_approach_distance + approach_vector_wcf.length)
         frame = f_assembled_attached.transformed(Translation.from_vector(longer_approach_vector_wcf.scaled(-1)))
         assembly.set_joint_attribute(joint_id, 'screwdriver_assembleapproach_attached', frame)
 
