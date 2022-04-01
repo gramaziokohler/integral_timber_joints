@@ -1758,7 +1758,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf, t_flange_from_beam] + t_flange_from_attached_screwdrivers,
             speed_type='speed.assembly.screw_approach',
             tag="Linear Advance to bring Screwdriver tips to touch the predrilled hole.",
-            operator_stop_after="Scrwe tip in Hole",
+            operator_stop_after="Screw tip in Hole",
             allowed_collision_matrix=acm))
 
         # Additional ACM when the screwdriver touches the target beams
