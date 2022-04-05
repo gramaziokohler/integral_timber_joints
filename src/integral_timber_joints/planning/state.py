@@ -144,9 +144,9 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 current_frame.point *= scale
                 # * set pose according to state
                 client.set_object_frame('^{}$'.format(tool_id), current_frame, options={'color': color_from_object_id(tool_id)})
-            else:
-                LOGGER.error("Object {} frame not set!".format(tool_id))
-                return False
+            # else:
+            #     LOGGER.error("Object {} frame not set!".format(tool_id))
+            #     return False
 
             if tool_id != 'tool_changer' and scene[tool_id, 'c']:
                 # * Setting Kinematics
@@ -188,11 +188,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # ! used only in pddlstream, grasp given
                     robot_flange_from_attached_obj = scene[(object_id, 'g')].copy()
                     for k in range(3):
-                        robot_flange_from_attached_obj[k,3] = robot_flange_from_attached_obj[k,3]*1e-3
-
-                    # mat1, mat2 = robot_flange_from_tool.to_data()["matrix"], scene[(object_id, 'g')].to_data()["matrix"]
-                    # for m1, m2 in zip(mat1, mat2):
-                    #     assert allclose(m1, m2, tol=1e-5)
+                        robot_flange_from_attached_obj[k,3] *= 1e-3
 
                 # touched_links is only for the adjacent Robot links
                 touched_robot_links = []

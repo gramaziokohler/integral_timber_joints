@@ -91,6 +91,14 @@ def colored_str_from_object(obj, show_details=False):
     else:
         return colored(str_rep, 'red')
 
+def print_fluents(fluents, show_details=False):
+    color_print_fn = partial(colored_str_from_object, show_details=show_details)
+    LOGGER.debug('Fluents:')
+    for i, fluent in enumerate(sorted(fluents, key=lambda x: x[0])):
+        fluent_name = fluent[0]
+        args = fluent[1:]
+        LOGGER.debug('{:2}) {} {}'.format(i, colored(fluent_name, 'green'), ' '.join(map(color_print_fn, args))))
+
 def print_itj_pddl_plan(plan, show_details=False):
     if not is_plan(plan):
         return

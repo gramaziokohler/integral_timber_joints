@@ -298,7 +298,7 @@ def main():
         'use_stored_seed' : args.use_stored_seed,
         'force_linear_to_free_movement' : args.force_linear_to_free_movement,
     }
-    # ! frame, conf compare, joint flip tolerances are set here
+    # ! frame, conf compare, joint flip and allowable collision tolerances are set here
     options.update(get_tolerances(robot, low_res=args.low_res))
     if len(args.reachable_range) == 2:
         options.update({

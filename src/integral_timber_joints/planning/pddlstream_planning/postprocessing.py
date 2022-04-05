@@ -133,7 +133,7 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
         itj_act = None
         if pddl_action.name == 'pick_beam_with_gripper':
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[2]
+            gripper_id = pddl_action.args[3]
             gripper = process.gripper(gripper_id)
             # * double-check tool type consistency
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
@@ -143,8 +143,9 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
 
         elif pddl_action.name == 'beam_placement_with_clamps' or \
             pddl_action.name == 'beam_placement_without_clamp':
+            # ! :parameters (?element ?e_grasp ?tool ?tool_grasp)
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[3]
+            gripper_id = pddl_action.args[2]
             gripper = process.gripper(gripper_id)
             # * double-check tool type consistency
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
@@ -166,8 +167,9 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
             itj_act = _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=verbose)
 
         elif pddl_action.name == 'retract_gripper_from_beam':
+            # ! :parameters (?element ?e_grasp ?e_pose ?tool ?tool_grasp)
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[2]
+            gripper_id = pddl_action.args[3]
             itj_act = RetractGripperFromBeamAction(beam_id=beam_id, gripper_id=gripper_id)
 
         elif pddl_action.name == 'operator_load_beam':
@@ -207,9 +209,10 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
                 raise ValueError('Weird tool id {}'.format(tool_id))
 
         elif pddl_action.name == 'place_clamp_to_structure':
+            # ! :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
             clamp_id = pddl_action.args[0]
             clamp = process.clamp(clamp_id)
-            joint_id = (pddl_action.args[-2], pddl_action.args[-1])
+            joint_id = (pddl_action.args[3], pddl_action.args[4])
             # ! convention: sequence id smaller first
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             # * double-check clamp type consistency
@@ -221,9 +224,10 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
             itj_act = PlaceClampToStructureAction(seq_n, 0, joint_id, clamp.type_name, clamp_id)
 
         elif pddl_action.name == 'pick_clamp_from_structure':
+            # ! :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
             clamp_id = pddl_action.args[0]
             clamp = process.clamp(clamp_id)
-            joint_id = (pddl_action.args[-2], pddl_action.args[-1])
+            joint_id = (pddl_action.args[3], pddl_action.args[4])
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             itj_act = PickClampFromStructureAction(joint_id=joint_id, tool_type=clamp.type_name, tool_id=clamp_id)
 
