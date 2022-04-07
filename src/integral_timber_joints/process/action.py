@@ -1757,9 +1757,8 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             target_frame=assembly_wcf_assemblebegin,
             attached_objects=[self.gripper_id, self.beam_id] + self.screwdriver_ids_without_gripper,
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf, t_flange_from_beam] + t_flange_from_attached_screwdrivers,
-            speed_type='speed.assembly.screw_approach',
+            speed_type='speed.assembly.inclamp',
             tag="Linear Advance to bring Screwdriver tips to touch the predrilled hole.",
-            operator_stop_after="Screw tip in Hole",
             allowed_collision_matrix=acm))
 
         # Additional ACM when the screwdriver touches the target beams
@@ -1932,7 +1931,7 @@ class RetractScrewdriverFromBeamAction(RobotAction, DetachBeamAction,):
             target_frame=screwdriver_assembled_retractedfurther,
             attached_objects=[self.gripper_id],
             t_flange_from_attached_objects=[process.robot_toolchanger.t_t0cf_from_tcf],
-            speed_type='speed.assembly.screw_pullout',
+            speed_type='speed.gripper.retract',
             tag="Linear retract after picking up Screwdriver ('%s')" % self.gripper_id,
             allowed_collision_matrix=[(self.gripper_id, self.joint_id[0]), (self.gripper_id, self.joint_id[1])]
         ))

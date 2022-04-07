@@ -82,10 +82,6 @@ class RobotClampAssemblyProcess(Data):
     clamp_inclamp_position = 210
     clamp_final_position = 100
 
-    # Constants for screwdriver positions
-    screwdriver_begin_assemble_offset = 70 # Positive value means the screwdriver will move linearly towards the target without sync rotation.
-    screwdriver_approach_distance = 20 # Positive value means the screwdriver will end of the free movement further away.
-
     robot_config_key = ('robot', 'c')
     ROBOT_GANTRY_ARM_GROUP = 'robot11_eaXYZ'
     ROBOT_END_LINK = 'robot11_tool0'
