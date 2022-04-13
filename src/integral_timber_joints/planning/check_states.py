@@ -86,6 +86,8 @@ def found_plan_summary(process, result_path):
         b_movements = process.get_movements_by_beam_id(beam_id)
         all_found = True
         for movement in b_movements:
+            if not isinstance(movement, RoboticMovement):
+                continue
             movement_path = os.path.join(ext_movement_path, movement.get_filepath())
             if not os.path.exists(movement_path):
                 LOGGER.warning('{}: no saved movement found | {}'.format(movement.movement_id, movement.short_summary))
@@ -93,7 +95,7 @@ def found_plan_summary(process, result_path):
         if all_found:
             if len(b_movements) > 0:
                 LOGGER.debug('({}) Beam #{} all found!'.format(i, beam_id))
-                movement_path = os.path.join(ext_movement_path, b_movements[-1].get_filepath())
+                # movement_path = os.path.join(ext_movement_path, b_movements[-1].get_filepath())
                 LOGGER.debug("\tcreated: \t%s" % time.ctime(os.path.getctime(movement_path)))
                 LOGGER.debug("\tlast modified: \t%s" % time.ctime(os.path.getmtime(movement_path)))
             else:

@@ -112,7 +112,6 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
 
 def action_compute_movements(process: RobotClampAssemblyProcess, action: RobotAction):
     action.create_movements(process)
-    action.assign_movement_ids()
     for movement in action.movements:
         movement.create_state_diff(process)
     return action
@@ -128,7 +127,9 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
 
     beam_id = last_beam_id = ''
     seq_n = 0
+    act_n = 0
     acts = []
+
     for pddl_action in plan:
         itj_act = None
         if pddl_action.name == 'pick_beam_with_gripper':
@@ -236,13 +237,17 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
             # pass
 
         assert itj_act is not None, 'Action creation failed for {}'.format(pddl_action.name)
-        if isinstance(itj_act, list):
-            for ac in itj_act:
-                ac = action_compute_movements(process, ac)
-                acts.append(ac)
-        else:
-            itj_act = action_compute_movements(process, itj_act)
-            acts.append(itj_act)
+        if not isinstance(itj_act, list):
+            itj_act = [itj_act]
+        # * Action seq_n, act_n assignment
+        for ac in itj_act:
+            ac = action_compute_movements(process, ac)
+            ac.act_n = act_n
+            ac.seq_n = seq_n
+            ac.assign_movement_ids()
+            acts.append(ac)
+            # ! bump act_n
+            act_n += 1
 
         if 'beam_placement' in pddl_action.name or 'assemble_beam' in pddl_action.name:
             assert len(acts) > 0
@@ -254,6 +259,7 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
                         print('|- ' + act.__str__())
                 process.assembly.set_beam_attribute(beam_id, 'actions', acts)
                 last_beam_id = beam_id
+                # ! bump seq_n
                 seq_n += 1
                 acts = []
 
