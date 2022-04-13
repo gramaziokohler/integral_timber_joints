@@ -1662,7 +1662,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
     (The gripper used can be Scrwederiver or Gripper.)
     """
 
-    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, screwdriver_ids=[], screw_tighten_uncertainty=10):
+    def __init__(self, seq_n=0, act_n=0, beam_id=None, joint_ids=[], gripper_id=None, screwdriver_ids=[], screw_tighten_uncertainty=15):
         """If a screrwdriver is used as the gripper.
         fill in the screwdriver's id into `gripper_id` and also include it in the list of `screwdriver_id`
 
@@ -1745,7 +1745,8 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             attached_objects=[self.gripper_id, self.beam_id] + self.screwdriver_ids_without_gripper,
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf, t_flange_from_beam] + t_flange_from_attached_screwdrivers,
             speed_type='speed.transfer.rapid',
-            tag="Free Move to bring Beam ('%s') to assemble_approach position on structure." % self.beam_id
+            tag="Free Move to bring Beam ('%s') to assemble_approach position on structure." % self.beam_id,
+            planning_priority=1,
         ))
 
         # Slow linear movement to the `assembly_wcf_assemblebegin`

@@ -18,7 +18,27 @@ class SceneState(Data):
     This is a dictionary like object that holds all the states of all objects in a given moment.
     This static moment is refered to as a scene.
 
-    A movement has a start scene and end scene.
+    When the SceneState object is created, the `beam_ids`, `tool ids` are retrived from the process file.
+    Together with `tool_changer` and `robot`, they form the dictionary keys of scene state.
+
+    The dictionary keys are tuples in the following format, 'f' is the current frame (compas.geometry.Frame),
+    'a' indicates (boolean) if the item is attached to the robot, 'c' is the kinematic configuration:
+    - `(beam_id, 'f')` (Multiple values depends on the number of beams)
+    - `(beam_id, 'a')` (Multiple values depends on the number of beams)
+    - `(tool_id, 'f')` (Multiple values depends on the number of tools)
+    - `(tool_id, 'a')` (Multiple values depends on the number of tools)
+    - `(tool_id, 'c')` (Multiple values depends on the number of tools)
+    - `('tool_changer', 'f')`
+    - `('tool_changer', 'a')`
+    - `('robot', 'f')`
+    - `('robot', 'c')`
+
+    After these keys are created, the dictionary is empty and `keys_with_unknown_state` will return the
+    list of keys to fill in.
+
+    After the Movements (a linear list) are generated in a Process object. The intermediate state can be parsed from
+    `process.get_movement_start_scene(movement)` and `process.get_movement_end_scene(movement)`
+
     """
 
     def __init__(self, process=None):
