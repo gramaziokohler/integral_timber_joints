@@ -23,7 +23,6 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
     assembly = process.assembly
     actions = []
     assembly_method = process.assembly.get_assembly_method(beam_id)
-    seq_n = assembly.sequence.index(beam_id)
 
     # * Lift Beam and Rotate , Operator Attach Screwdriver
     gripper = process.gripper(gripper_id)
@@ -38,7 +37,8 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
         if tool_id == gripper_id:
             continue  # Skipping the screwdriver that is acting as gripper
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
-        actions.append(OperatorAttachScrewdriverAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id, 'assembly_wcf_screwdriver_attachment_pose'))
+        actions.append(OperatorAttachScrewdriverAction(beam_id=beam_id, joint_id=joint_id, tool_type=tool_type, tool_id=tool_id,
+            beam_position='assembly_wcf_screwdriver_attachment_pose'))
 
     # * Actions to Assemble
     if assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
@@ -128,6 +128,7 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
     beam_id = last_beam_id = ''
     seq_n = 0
     act_n = 0
+    new_seq = []
     acts = []
 
     for pddl_action in plan:
@@ -249,8 +250,12 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
             # ! bump act_n
             act_n += 1
 
-        if 'beam_placement' in pddl_action.name or 'assemble_beam' in pddl_action.name:
+        # separate actions and assigned to beam (grouping for visualization purposes)
+        if 'beam_placement' in pddl_action.name or 'assemble_beam' in pddl_action.name or \
+            'manaul_assemble_scaffold' in pddl_action.name:
             assert len(acts) > 0
+            # if beam is not the same as last one, or is not the last beam
+            # assign actions to beam and move on to the next one
             if beam_id != last_beam_id and beam_id != process.assembly.sequence[-1]:
                 if verbose:
                     print('='*10)
@@ -258,13 +263,15 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
                     for act in acts:
                         print('|- ' + act.__str__())
                 process.assembly.set_beam_attribute(beam_id, 'actions', acts)
+                new_seq.append(beam_id)
                 last_beam_id = beam_id
                 # ! bump seq_n
                 seq_n += 1
                 acts = []
 
     # * last beam and tool collection
-    assert beam_id == process.assembly.sequence[-1] and len(acts) > 0
+    assert new_seq == process.assembly.sequence[:-1]
+    assert len(new_seq) == len(process.assembly.sequence)-1 and len(acts) > 0
     if verbose:
         print('='*10)
         print('Beam id: {}'.format(beam_id))

@@ -1,3 +1,4 @@
+import os
 import logging
 import argparse
 from termcolor import colored
@@ -11,6 +12,7 @@ from integral_timber_joints.planning.pddlstream_planning.utils import print_itj_
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.parsing import parse_process
 from integral_timber_joints.planning.state import set_state, set_initial_state
+from integral_timber_joints.planning.parsing import get_process_path
 from integral_timber_joints.planning.utils import LOGGER
 from compas_fab_pychoreo.utils import LOGGER as PYCHOREO_LOGGER
 
@@ -78,7 +80,7 @@ def main():
     process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
     # * initialize collision objects and tools in the scene
-    set_initial_state(client, robot, process, reinit_tool=args.reinit_tool, initialize=True)
+    assert set_initial_state(client, robot, process, reinit_tool=args.reinit_tool, initialize=True), 'Setting initial state failed.'
     # pp.wait_if_gui('Initial state')
 
     # ! frame, conf compare, joint flip and allowable collision tolerances are set here
@@ -131,7 +133,11 @@ def main():
     if plan_success:
         LOGGER.info(f'Plan length: {len(plan)}')
         if plan_success and args.write:
-            save_pddlstream_plan_to_itj_process(process, plan, args.design_dir, args.problem, verbose=0, save_subdir=args.save_dir)
+            save_pddlstream_plan_to_itj_process(process, plan, args.design_dir, args.problem, verbose=1, save_subdir=args.save_dir)
+
+            log_file_path = os.path.join(os.path.dirname(get_process_path(args.design_dir, args.problem, args.save_dir)), os.path.basename(args.problem).split('.')[0] + '.log')
+            process.debug_print_process_actions_movements(log_file_path)
+            LOGGER.info(f"Action Log saved to: {log_file_path}")
 
 if __name__ == '__main__':
     main()

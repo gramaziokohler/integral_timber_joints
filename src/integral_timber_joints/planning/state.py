@@ -257,13 +257,13 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
 def set_initial_state(client, robot, process, initialize=True, disable_env=False, reinit_tool=True, debug=False):
     process.set_initial_state_robot_config(process.robot_initial_config)
     try:
-        set_state(client, robot, process, process.initial_state, initialize=initialize,
+        return set_state(client, robot, process, process.initial_state, initialize=initialize,
             options={'debug' : debug, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
     except:
         LOGGER.info('Recomputing Actions and States')
         for beam_id in process.assembly.beam_ids():
             process.dependency.compute_all(beam_id)
-        set_state(client, robot, process, process.initial_state, initialize=initialize,
+        return set_state(client, robot, process, process.initial_state, initialize=initialize,
             options={'debug' : debug, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
     # # * collision sanity check
     # assert not client.check_collisions(robot, full_start_conf, options={'diagnosis':True})
