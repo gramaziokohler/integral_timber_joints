@@ -235,8 +235,8 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
     goal_literals.extend(('Assembled', e) for e in beam_seq)
     if reset_to_home:
         goal_literals.extend(('AtRack', t_name) for t_name in list(process_symdata['clamps']) + list(process_symdata['grippers']))
-        if 'screwdrivers' in process_symdata:
-            goal_literals.extend(('AtRack', t_name) for t_name in list(process_symdata['screwdrivers']))
+        # if 'screwdrivers' in process_symdata:
+        #     goal_literals.extend(('AtRack', t_name) for t_name in list(process_symdata['screwdrivers']))
     goal = And(*goal_literals)
 
     pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)

@@ -1746,7 +1746,7 @@ class AssembleBeamWithScrewdriversAction(RobotAction):
             t_flange_from_attached_objects=[toolchanger.t_t0cf_from_tcf, t_flange_from_beam] + t_flange_from_attached_screwdrivers,
             speed_type='speed.transfer.rapid',
             tag="Free Move to bring Beam ('%s') to assemble_approach position on structure." % self.beam_id,
-            # planning_priority=1,
+            planning_priority=1,
         ))
 
         # Slow linear movement to the `assembly_wcf_assemblebegin`

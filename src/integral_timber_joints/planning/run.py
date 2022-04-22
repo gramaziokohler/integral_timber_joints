@@ -111,14 +111,14 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 [MovementStatus.neither_done, MovementStatus.one_sided],
                 options=options, diagnosis=args.diagnosis)
             if not success:
-                LOGGER.info('A plan NOT found using nonlinear planning at stage 1 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                LOGGER.info('Trajectory NOT found (nonlinear) linear movement, priority 1, (seq_n={}) beam {}!'.format(seq_n, beam_id))
                 return False
 
             success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
                 [MovementStatus.one_sided],
                 options=options, diagnosis=args.diagnosis)
             if not success:
-                LOGGER.info('A plan NOT found using nonlinear planning at stage 2 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                LOGGER.info('Trajectory NOT found (nonlinear) linear movement, priority 0, one-side done, (seq_n={}) beam {}!'.format(seq_n, beam_id))
                 return False
 
             # First solve for "neither-done" linear movements, and then solve for "single-sided" linear movements
@@ -126,7 +126,14 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 [MovementStatus.neither_done, MovementStatus.one_sided],
                 options=options, diagnosis=args.diagnosis)
             if not success:
-                LOGGER.info('A plan NOT found using nonlinear planning at stage 3 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                LOGGER.info('Trajectory NOT found (nonlinear) linear movement, priority 0, neither-side done,(seq_n={}) beam {}!'.format(seq_n, beam_id))
+                return False
+
+            success, _ = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticFreeMovement],
+                [MovementStatus.one_sided],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('Trajectory NOT found (nonlinear) free movement, priority 1, one-side done, (seq_n={}) beam {}!'.format(seq_n, beam_id))
                 return False
 
             # Ideally, all the free motions should have both start and end conf specified.
@@ -135,7 +142,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 [MovementStatus.both_done, MovementStatus.one_sided],
                 options=options, diagnosis=args.diagnosis)
             if not success:
-                LOGGER.info('A plan NOT found using nonlinear planning at stage 4 for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                LOGGER.info('Trajectory NOT found (nonlinear) free movement, priority 0, both-side done, (seq_n={}) beam {}!'.format(seq_n, beam_id))
                 return False
             solved_movements = beam_movements
 

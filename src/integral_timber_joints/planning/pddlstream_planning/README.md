@@ -1,7 +1,9 @@
 ## Run
 
 ```
-p -m integral_timber_joints.planning.pddlstream_planning.run --write --design_dir 211010_CantiBox --problem CantiBoxLeft_process.json
+p -m integral_timber_joints.planning.pddlstream_planning.run --write --design_dir 220407_CantiBoxLeft --problem CantiBoxLeft_process.json
+
+p -m integral_timber_joints.planning.run --design_dir 220407_CantiBoxLeft --problem CantiBoxLeft_process.json --rrt_iterations 400 --solve_timeout 3600 --write
 ```
 
 ## Assumptions

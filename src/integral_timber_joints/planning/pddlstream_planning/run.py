@@ -8,6 +8,7 @@ import integral_timber_joints.planning.pddlstream_planning.load_pddlstream
 from integral_timber_joints.planning.pddlstream_planning.parse import get_pddlstream_problem
 from integral_timber_joints.planning.pddlstream_planning.postprocessing import save_pddlstream_plan_to_itj_process
 from integral_timber_joints.planning.pddlstream_planning.utils import print_itj_pddl_plan, print_pddl_task_object_names
+from integral_timber_joints.planning.pddlstream_planning.solve import solve_serialized_incremental
 
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.parsing import parse_process
@@ -18,6 +19,7 @@ from compas_fab_pychoreo.utils import LOGGER as PYCHOREO_LOGGER
 
 from pddlstream.algorithms.downward import set_cost_scale, parse_action, get_cost_scale
 from pddlstream.algorithms.meta import solve
+from pddlstream.algorithms.serialized import solve_serialized
 from pddlstream.utils import INF
 from pddlstream.language.constants import print_plan, is_plan
 from pddlstream.utils import flatten, Profiler, SEPARATOR, inf_generator, INF
@@ -37,10 +39,9 @@ def main():
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     # * PDDLStream configs
     parser.add_argument('--nofluents', action='store_true', help='Not use fluent facts in stream definitions.')
-    parser.add_argument('--algorithm', default='incremental', help='PDDLSteam planning algorithm.')
     parser.add_argument('--symbolics', action='store_true', help='Use the symbolic-only PDDL formulation.')
     parser.add_argument('--disable_stream', action='store_true', help='Disable stream sampling in planning. Enable this will essentially ignore all the geometric constraints and all sampled predicate will be assumed always available. Defaults to False')
-    parser.add_argument('--return_rack', action='store_true', help='Add all-tools-back-to-rack to the goal.')
+    parser.add_argument('--return_rack', action='store_false', help='Add all-tools-back-to-rack to the goal.')
     parser.add_argument('--costs', action='store_true', help='Use user-defined costs for actions.')
     # ! pyplanner config
     parser.add_argument('--pp_h', default='ff', help='pyplanner heuristic configuration.')
@@ -112,12 +113,19 @@ def main():
     # effort_weight = 1. / get_cost_scale()
     # with Profiler(num=25):
     if True:
-        solution = solve(pddlstream_problem, algorithm=args.algorithm,
+        # solution = solve(pddlstream_problem,
+        #                  max_time=INF,
+        #                  unit_costs=not args.costs,
+        #                  success_cost=INF,
+        #                 #  unit_efforts=True,
+        #                 #  effort_weight=effort_weight,
+        #                  max_planner_time=INF,
+        #                  debug=args.debug, verbose=1, **additional_config)
+        # if reset_to_home
+        solution = solve_serialized_incremental(pddlstream_problem,
                          max_time=INF,
                          unit_costs=not args.costs,
                          success_cost=INF,
-                        #  unit_efforts=True,
-                        #  effort_weight=effort_weight,
                          max_planner_time=INF,
                          debug=args.debug, verbose=1, **additional_config)
 
