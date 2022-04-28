@@ -185,15 +185,23 @@ def ui_goto_state_by_beam_seq(process):
     all_movements = process.movements
 
     # Ask use to chosse which beam (seq_id) to view
-    selected_seq_id = rs.GetInteger("Which Beam to view, by assembly sequence: sequence_id = [0 to %i]" % (
-        len(assembly.sequence) - 1), 0, 0, len(assembly.sequence) - 1)
-    if selected_seq_id is None:
+    beam_input = rs.GetString("Which Beam to view, by assembly sequence: sequence_id = [0 to %i], or by beam_id" % (
+        len(assembly.sequence) - 1), 0)
+
+
+    if beam_input is None:
         return
-    if selected_seq_id > len(assembly.sequence) - 1:
-        print("error: sequence_id must be between [0 to %i]" % (len(assembly.sequence) - 1))
+    elif beam_input in assembly.sequence:
+        beam_id = beam_input
+    elif beam_input.isdigit():
+        seq_n = int(beam_input)
+        if selected_seq_id > len(assembly.sequence) - 1:
+            print("error: sequence_id must be between [0 to %i]" % (len(assembly.sequence) - 1))
+            return
+        beam_id = assembly.sequence[seq_n]
 
     # get the first movement before a selected beam
-    selected_movement = process.get_movements_by_beam_id(assembly.sequence[selected_seq_id])[0]
+    selected_movement = process.get_movements_by_beam_id(beam_id)[0]
     if selected_movement is None:
         return
 
