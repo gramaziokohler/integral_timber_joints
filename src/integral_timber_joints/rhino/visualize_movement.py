@@ -195,7 +195,7 @@ def ui_goto_state_by_beam_seq(process):
         beam_id = beam_input
     elif beam_input.isdigit():
         seq_n = int(beam_input)
-        if selected_seq_id > len(assembly.sequence) - 1:
+        if seq_n > len(assembly.sequence) - 1:
             print("error: sequence_id must be between [0 to %i]" % (len(assembly.sequence) - 1))
             return
         beam_id = assembly.sequence[seq_n]
