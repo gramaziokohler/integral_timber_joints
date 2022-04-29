@@ -144,9 +144,9 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 current_frame.point *= scale
                 # * set pose according to state
                 client.set_object_frame('^{}$'.format(tool_id), current_frame, options={'color': color_from_object_id(tool_id)})
-            else:
-                LOGGER.error("Object {} frame not set!".format(tool_id))
-                return False
+            # else:
+            #     LOGGER.error("Object {} frame not set!".format(tool_id))
+            #     return False
 
             if tool_id != 'tool_changer' and scene[tool_id, 'c']:
                 # * Setting Kinematics
@@ -188,11 +188,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                     # ! used only in pddlstream, grasp given
                     robot_flange_from_attached_obj = scene[(object_id, 'g')].copy()
                     for k in range(3):
-                        robot_flange_from_attached_obj[k,3] = robot_flange_from_attached_obj[k,3]*1e-3
-
-                    # mat1, mat2 = robot_flange_from_tool.to_data()["matrix"], scene[(object_id, 'g')].to_data()["matrix"]
-                    # for m1, m2 in zip(mat1, mat2):
-                    #     assert allclose(m1, m2, tol=1e-5)
+                        robot_flange_from_attached_obj[k,3] *= 1e-3
 
                 # touched_links is only for the adjacent Robot links
                 touched_robot_links = []
@@ -261,13 +257,13 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
 def set_initial_state(client, robot, process, initialize=True, disable_env=False, reinit_tool=True, debug=False):
     process.set_initial_state_robot_config(process.robot_initial_config)
     try:
-        set_state(client, robot, process, process.initial_state, initialize=initialize,
+        return set_state(client, robot, process, process.initial_state, initialize=initialize,
             options={'debug' : debug, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
     except:
         LOGGER.info('Recomputing Actions and States')
         for beam_id in process.assembly.beam_ids():
             process.dependency.compute_all(beam_id)
-        set_state(client, robot, process, process.initial_state, initialize=initialize,
+        return set_state(client, robot, process, process.initial_state, initialize=initialize,
             options={'debug' : debug, 'include_env' : not disable_env, 'reinit_tool' : reinit_tool})
     # # * collision sanity check
     # assert not client.check_collisions(robot, full_start_conf, options={'diagnosis':True})

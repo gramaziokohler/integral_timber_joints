@@ -7,7 +7,7 @@ import integral_timber_joints.planning.pddlstream_planning.load_pddlstream
 from integral_timber_joints.planning.pddlstream_planning import ITJ_PDDLSTREAM_DEF_DIR
 from .action_stream import get_action_ik_fn
 
-from integral_timber_joints.planning.utils import beam_ids_from_argparse_seq_n
+from integral_timber_joints.planning.utils import beam_ids_from_argparse_seq_n, LOGGER
 
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement, RobotScrewdriverSyncLinearMovement
@@ -27,11 +27,8 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
         use_fluents=True, symbolic_only=False, options=None):
     """Convert a Process instance into a PDDLStream formulation
     """
-    # if symbolic_only:
-    #     raise DeprecationWarning()
-    #     domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'domain.pddl'))
-    #     stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'symbolic', 'stream.pddl'))
-    # else:
+    options = options or {}
+
     domain_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'domain.pddl'))
     if not use_fluents:
         stream_pddl = read(os.path.join(ITJ_PDDLSTREAM_DEF_DIR, 'tamp', 'stream.pddl'))
@@ -162,10 +159,10 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
                 if symbolic_only:
                     clamp_wcf_final = None
                 else:
-                    clamp_wcf_final = process.get_tool_t0cf_at(j, 'clamp_wcf_final')
+                    clamp_wcf_final = process.assembly.get_joint_attribute(j, 'clamp_wcf_final')
                 init.extend([
                     ('JointToolTypeMatch', j[0], j[1], c_name),
-                    #
+                    # goal pose of the clamp at the joint
                     ('ClampPose', c_name, j[0], j[1], clamp_wcf_final),
                 ])
                 clamp_from_joint[j[0]+','+j[1]].add(c_name)
@@ -173,7 +170,8 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
             for sd_name, sd in process_symdata['screwdrivers'].items():
                 if sd['type_name'] == joint_clamp_type:
                     # trigger gripper frame update
-                    process.get_gripper_t0cp_for_beam_at(j[1], 'assembly_wcf_final')
+                    # ! this is the world_from_flange frame
+                    # process.get_gripper_t0cp_for_beam_at(j[1], 'assembly_wcf_final')
                     f_world_screwdriver_base = process.get_tool_t0cf_at(j, 'screwdriver_assembled_attached')
                     f_world_gripper_base = process.get_gripper_of_beam(j[1], 'assembly_wcf_final').current_frame
                     t_gripper_base_from_world = Transformation.from_frame(f_world_gripper_base).inverse()
@@ -229,15 +227,16 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
         stream_map = DEBUG
     else:
         stream_map = {
-            'sample-place_clamp_to_structure':  from_fn(get_action_ik_fn(client, process, robot, 'place_clamp_to_structure', options=options)),
+            'sample-place_clamp_to_structure':  from_fn(get_action_ik_fn(client, robot, process, 'place_clamp_to_structure', options=options)),
+            'sample-pick_clamp_from_structure':  from_fn(get_action_ik_fn(client, robot, process, 'pick_clamp_from_structure', options=options)),
         }
 
     goal_literals = []
     goal_literals.extend(('Assembled', e) for e in beam_seq)
     if reset_to_home:
         goal_literals.extend(('AtRack', t_name) for t_name in list(process_symdata['clamps']) + list(process_symdata['grippers']))
-        if 'screwdrivers' in process_symdata:
-            goal_literals.extend(('AtRack', t_name) for t_name in list(process_symdata['screwdrivers']))
+        # if 'screwdrivers' in process_symdata:
+        #     goal_literals.extend(('AtRack', t_name) for t_name in list(process_symdata['screwdrivers']))
     goal = And(*goal_literals)
 
     pddlstream_problem = PDDLProblem(domain_pddl, constant_map, stream_pddl, stream_map, init, goal)

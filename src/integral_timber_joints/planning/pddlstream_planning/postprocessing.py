@@ -23,7 +23,6 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
     assembly = process.assembly
     actions = []
     assembly_method = process.assembly.get_assembly_method(beam_id)
-    seq_n = assembly.sequence.index(beam_id)
 
     # * Lift Beam and Rotate , Operator Attach Screwdriver
     gripper = process.gripper(gripper_id)
@@ -38,7 +37,8 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
         if tool_id == gripper_id:
             continue  # Skipping the screwdriver that is acting as gripper
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
-        actions.append(OperatorAttachScrewdriverAction(seq_n, 0, beam_id, joint_id, tool_type, tool_id, 'assembly_wcf_screwdriver_attachment_pose'))
+        actions.append(OperatorAttachScrewdriverAction(beam_id=beam_id, joint_id=joint_id, tool_type=tool_type, tool_id=tool_id,
+            beam_position='assembly_wcf_screwdriver_attachment_pose'))
 
     # * Actions to Assemble
     if assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
@@ -112,7 +112,6 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
 
 def action_compute_movements(process: RobotClampAssemblyProcess, action: RobotAction):
     action.create_movements(process)
-    action.assign_movement_ids()
     for movement in action.movements:
         movement.create_state_diff(process)
     return action
@@ -128,12 +127,15 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
 
     beam_id = last_beam_id = ''
     seq_n = 0
+    act_n = 0
+    new_seq = []
     acts = []
+
     for pddl_action in plan:
         itj_act = None
         if pddl_action.name == 'pick_beam_with_gripper':
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[2]
+            gripper_id = pddl_action.args[3]
             gripper = process.gripper(gripper_id)
             # * double-check tool type consistency
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
@@ -143,8 +145,9 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
 
         elif pddl_action.name == 'beam_placement_with_clamps' or \
             pddl_action.name == 'beam_placement_without_clamp':
+            # ! :parameters (?element ?e_grasp ?tool ?tool_grasp)
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[3]
+            gripper_id = pddl_action.args[2]
             gripper = process.gripper(gripper_id)
             # * double-check tool type consistency
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
@@ -166,8 +169,9 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
             itj_act = _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=verbose)
 
         elif pddl_action.name == 'retract_gripper_from_beam':
+            # ! :parameters (?element ?e_grasp ?e_pose ?tool ?tool_grasp)
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[2]
+            gripper_id = pddl_action.args[3]
             itj_act = RetractGripperFromBeamAction(beam_id=beam_id, gripper_id=gripper_id)
 
         elif pddl_action.name == 'operator_load_beam':
@@ -207,9 +211,10 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
                 raise ValueError('Weird tool id {}'.format(tool_id))
 
         elif pddl_action.name == 'place_clamp_to_structure':
+            # ! :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
             clamp_id = pddl_action.args[0]
             clamp = process.clamp(clamp_id)
-            joint_id = (pddl_action.args[-2], pddl_action.args[-1])
+            joint_id = (pddl_action.args[3], pddl_action.args[4])
             # ! convention: sequence id smaller first
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             # * double-check clamp type consistency
@@ -221,9 +226,10 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
             itj_act = PlaceClampToStructureAction(seq_n, 0, joint_id, clamp.type_name, clamp_id)
 
         elif pddl_action.name == 'pick_clamp_from_structure':
+            # ! :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
             clamp_id = pddl_action.args[0]
             clamp = process.clamp(clamp_id)
-            joint_id = (pddl_action.args[-2], pddl_action.args[-1])
+            joint_id = (pddl_action.args[3], pddl_action.args[4])
             assert process.assembly.sequence.index(joint_id[0]) < process.assembly.sequence.index(joint_id[1])
             itj_act = PickClampFromStructureAction(joint_id=joint_id, tool_type=clamp.type_name, tool_id=clamp_id)
 
@@ -232,16 +238,24 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
             # pass
 
         assert itj_act is not None, 'Action creation failed for {}'.format(pddl_action.name)
-        if isinstance(itj_act, list):
-            for ac in itj_act:
-                ac = action_compute_movements(process, ac)
-                acts.append(ac)
-        else:
-            itj_act = action_compute_movements(process, itj_act)
-            acts.append(itj_act)
+        if not isinstance(itj_act, list):
+            itj_act = [itj_act]
+        # * Action seq_n, act_n assignment
+        for ac in itj_act:
+            ac = action_compute_movements(process, ac)
+            ac.act_n = act_n
+            ac.seq_n = seq_n
+            ac.assign_movement_ids()
+            acts.append(ac)
+            # ! bump act_n
+            act_n += 1
 
-        if 'beam_placement' in pddl_action.name or 'assemble_beam' in pddl_action.name:
+        # separate actions and assigned to beam (grouping for visualization purposes)
+        if 'beam_placement' in pddl_action.name or 'assemble_beam' in pddl_action.name or \
+            'manaul_assemble_scaffold' in pddl_action.name:
             assert len(acts) > 0
+            # if beam is not the same as last one, or is not the last beam
+            # assign actions to beam and move on to the next one
             if beam_id != last_beam_id and beam_id != process.assembly.sequence[-1]:
                 if verbose:
                     print('='*10)
@@ -249,12 +263,15 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
                     for act in acts:
                         print('|- ' + act.__str__())
                 process.assembly.set_beam_attribute(beam_id, 'actions', acts)
+                new_seq.append(beam_id)
                 last_beam_id = beam_id
+                # ! bump seq_n
                 seq_n += 1
                 acts = []
 
     # * last beam and tool collection
-    assert beam_id == process.assembly.sequence[-1] and len(acts) > 0
+    assert new_seq == process.assembly.sequence[:-1]
+    assert len(new_seq) == len(process.assembly.sequence)-1 and len(acts) > 0
     if verbose:
         print('='*10)
         print('Beam id: {}'.format(beam_id))

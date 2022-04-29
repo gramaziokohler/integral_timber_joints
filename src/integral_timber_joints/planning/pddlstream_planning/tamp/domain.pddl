@@ -81,7 +81,7 @@
   )
 
   (:action pick_beam_with_gripper
-    :parameters (?element ?e_grasp ?tool ?tool_grasp ?action)
+    :parameters (?element ?e_grasp ?e_pose ?tool ?tool_grasp)
     :precondition (and
                     (ElementRackOccupied)
                     (Gripper ?tool)
@@ -90,6 +90,8 @@
                     (RobotGripperEmpty)
                     (Element ?element)
                     (AtRack ?element)
+                    (RackPose ?element ?e_pose)
+                    (AtPose ?element ?e_pose)
                     (Grasp ?element ?e_grasp)
                     ; ! e2 must be assembled before e encoded in the given partial ordering
                     (not (Assembled ?element))
@@ -100,6 +102,7 @@
                     ;; (PickBeamWithGripperAction ?element ?tool ?action)
                   )
     :effect (and (not (AtRack ?element))
+                 (not (AtPose ?element ?e_pose))
                  (Attached ?element ?e_grasp)
                  (not (RobotGripperEmpty))
                  (not (ElementRackOccupied))
@@ -110,13 +113,12 @@
   ; an element can only be placed if all the clamps are (attached) to the corresponding joints
   ; we can query a partial structure and a new element's connection joints using fluent
   (:action beam_placement_with_clamps
-    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp) ; ?action)
+    :parameters (?element ?e_grasp ?tool ?tool_grasp) ; ?action)
     :precondition (and
                     (Gripper ?tool)
                     (Attached ?tool ?tool_grasp)
                     (Attached ?element ?e_grasp)
                     (ClampedElement ?element)
-                    (ElementGoalPose ?element ?e_pose)
                     (PrevAssembled ?element)
                     ; ! tool state precondition
                     (not (ExistNoClampAtOneAssembledJoints ?element))
@@ -130,7 +132,7 @@
   )
 
   (:action beam_placement_without_clamp
-    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_grasp)
+    :parameters (?element ?e_grasp ?tool ?tool_grasp)
     :precondition (and
                     (Gripper ?tool)
                     ;; (Grasp ?tool ?tool_grasp)
@@ -138,7 +140,6 @@
                     (Attached ?tool ?tool_grasp)
                     (Attached ?element ?e_grasp)
                     (GroundContactElement ?element)
-                    (ElementGoalPose ?element ?e_pose)
                     (PrevAssembled ?element)
                     ; ! sampled
                     ;; (BeamPlacementWithoutClampsAction ?element ?gripper ?action)
@@ -166,6 +167,7 @@
                     )
     :effect (and
                 (Assembled ?element)
+                (AtPose ?element ?e_pose)
                 (RobotGripperEmpty)
                 (not (Attached ?element ?e_grasp))
                 ;
@@ -197,12 +199,13 @@
 ;;   )
 
   (:action retract_gripper_from_beam
-    :parameters (?element ?e_grasp ?tool ?tool_grasp)
+    :parameters (?element ?e_grasp ?e_pose ?tool ?tool_grasp)
     :precondition (and
                     (NeedGripperRetraction)
                     (Gripper ?tool)
                     (Attached ?tool ?tool_grasp)
                     (Element ?element)
+                    (ElementGoalPose ?element ?e_pose)
                     (not (ScrewedWithGripperElement ?element))
                     (Attached ?element ?e_grasp)
                     (not (ExistScaffoldNotAssembled ?element))
@@ -213,8 +216,9 @@
                 (not (NeedGripperRetraction))
                 (not (Attached ?element ?e_grasp))
                 (Assembled ?element)
+                (AtPose ?element ?e_pose)
                 (RobotGripperEmpty)
-                 (increase (total-cost) 1)
+                (increase (total-cost) 1)
             )
   )
 
@@ -303,6 +307,7 @@
                  (not (AtPose ?tool ?pose))
                  (when (Gripper ?tool) (RobotGripperEmpty))
                  (increase (total-cost) 1)
+                 ;; ! model gripper of clamp effect
             )
   )
 
@@ -328,7 +333,7 @@
   )
 
   (:action place_clamp_to_structure
-    :parameters (?tool ?pose ?grasp ?element1 ?element2)
+    :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
     :precondition (and
                     (Clamp ?tool)
                     (Attached ?tool ?grasp)
@@ -357,7 +362,7 @@
   )
 
   (:action pick_clamp_from_structure
-    :parameters (?tool ?pose ?grasp ?element1 ?element2)
+    :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
     :precondition (and
                     (RobotToolChangerEmpty)
                     (Clamp ?tool)
@@ -370,7 +375,7 @@
                     (Assembled ?element1)
                     (Assembled ?element2)
                     ; ! sampled
-                    ;; (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
+                    (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
                   )
     :effect (and (Attached ?tool ?grasp)
                  (not (AtPose ?tool ?pose))

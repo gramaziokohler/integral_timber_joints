@@ -7,7 +7,8 @@ from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMov
 
 ################################################
 
-BEAM_COLOR = GREY
+# BEAM_COLOR = GREY
+BEAM_COLOR = pp.RED
 GRIPPER_COLOR = BLUE
 CLAMP_COLOR = YELLOW
 TOOL_CHANGER_COLOR = GREEN
