@@ -95,7 +95,7 @@ def assign_fluent_state(client: PyChoreoClient, robot: Robot,
         # client.set_object_frame('^{}$'.format(object_name), object_frame)
 
     if not set_state(client, robot, process, state):
-        LOGGER.error('assign_fluent_state: set state error.')
+        LOGGER.debug('assign_fluent_state: set state error.')
         raise RuntimeError()
 
     # # ! update attachment pose since set_state woulnd't do that if
@@ -155,7 +155,7 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
             # * apply movement state_diff on the end_scene from the last movement
             # * set start state
             if not set_state(client, robot, process, end_scene, options=options):
-                LOGGER.error('sample_ik_for_action: set state error.')
+                LOGGER.debug('sample_ik_for_action: set state error.')
                 raise RuntimeError()
                 # return None
 
@@ -201,7 +201,7 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
             # attach_options = options.copy()
             # attach_options['diagnosis'] = False
             if client.check_attachment_collisions(options):
-               LOGGER.error('Stream sample fails: tool attachments collision')
+               LOGGER.debug('Stream sample fails: tool attachments collision')
             #    pp.wait_if_gui()
                return None
 
@@ -231,7 +231,7 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
 
             # ! return None if one of the movement cannot find an IK solution
             if not sample_found:
-                LOGGER.error('No robot IK conf can be found for {} after {} attempts.'.format(
+                LOGGER.debug('No robot IK conf can be found for {} after {} attempts.'.format(
                     movement.short_summary, gantry_attempts))
                 return None
 
