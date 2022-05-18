@@ -55,7 +55,7 @@ def plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, arg
         copy_st_time = time.time()
 
         # * set to initial state without initialization (importing tools etc. as collision objects from files)
-        set_initial_state(client, robot, wip_process, initialize=False)
+        set_initial_state(client, robot, wip_process, initialize=False, options=options)
         copy_time = elapsed_time(copy_st_time)
 
         LOGGER.debug('#'*10)
@@ -266,6 +266,7 @@ def main():
     parser.add_argument('--rrt_iterations', default=400, type=int, help='Number of iterations within one rrt session. Defaults to 400.')
     parser.add_argument('--buffers_for_free_motions', action='store_true', help='Turn on buffering linear motions for free movements, used for narrow passage scenarios. Defaults to False.')
     parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
+    parser.add_argument('--mesh_split_long_edge_max_length', default=0.0, type=float, help='the range of edges to be split if they are longer than given threshold used in CGAL\'s split mesh edges function. Unit in millimeter. By default 0.0 will turn this feature off.')
     args = parser.parse_args()
 
     log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir))
@@ -294,6 +295,7 @@ def main():
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
         'verbose' : not args.quiet,
+        'reinit_tool' : args.reinit_tool,
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
         # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
         # ! restart is disabled when use_stored_seed = True
@@ -305,6 +307,7 @@ def main():
         'check_sweeping_collision': True,
         'use_stored_seed' : args.use_stored_seed,
         'force_linear_to_free_movement' : args.force_linear_to_free_movement,
+        'mesh_split_long_edge_max_length' : args.mesh_split_long_edge_max_length,
     }
     # ! frame, conf compare, joint flip and allowable collision tolerances are set here
     options.update(get_tolerances(robot, low_res=args.low_res))
@@ -340,7 +343,7 @@ def main():
     unplanned_process.load_external_movements(ext_movement_path)
 
     # * Initialize (only needed once) collision objects and tools
-    set_initial_state(client, robot, unplanned_process, reinit_tool=args.reinit_tool, initialize=True)
+    set_initial_state(client, robot, unplanned_process, initialize=True, options=options)
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
         success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, args, options=options)
