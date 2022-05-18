@@ -7,6 +7,7 @@ from itertools import product, chain
 
 from compas.geometry import distance_point_point, Transformation, allclose
 from compas.geometry.primitives.frame import Frame
+from compas.datastructures import Mesh
 from compas.datastructures.mesh.triangulation import mesh_quads_to_triangles
 from compas_fab.robots import AttachedCollisionMesh, Configuration, CollisionMesh, Robot
 
@@ -25,6 +26,7 @@ from integral_timber_joints.planning.robot_setup import get_gantry_control_joint
 from integral_timber_joints.planning.visualization import color_from_object_id
 from integral_timber_joints.planning.parsing import PLANNING_DATA_DIR
 from integral_timber_joints.planning.utils import FRAME_TOL, LOGGER
+from integral_timber_joints.planning.cgal_utils import cgal_split_long_edges, HAS_CGAL
 from integral_timber_joints.process import SceneState
 from integral_timber_joints.process import  RobotClampAssemblyProcess
 
@@ -71,6 +73,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     verbose = options.get('verbose', True)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
+    mesh_split_long_edge_max_length = options.get('mesh_split_long_edge_max_length', 0.2)
 
     # robot needed for creating attachments
     robot_uid = client.get_robot_pybullet_uid(robot)
@@ -114,6 +117,12 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
                 # ! notice that the notch geometry will be convexified in pybullet
                 mesh = process.assembly.get_beam_mesh_in_ocf(beam_id).copy()
                 mesh_quads_to_triangles(mesh)
+
+                if HAS_CGAL:
+                    V, F = mesh.to_vertices_and_faces()
+                    new_mesh_V_F = cgal_split_long_edges(V, F, max_length=mesh_split_long_edge_max_length, verbose=verbose)
+                    mesh = Mesh.from_vertices_and_faces(*new_mesh_V_F)
+
                 cm = CollisionMesh(mesh, beam_id)
                 cm.scale(scale)
                 # add mesh to environment at origin
