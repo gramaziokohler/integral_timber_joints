@@ -140,6 +140,28 @@ class Clamp (Gripper):
     def approach2_vector(self, v):
         self.attributes['approach2_vector'] = v  # robot_model.jaw_clearance_vector = Vector(110, 0, 0)
 
+    @property
+    def storageapproach1_vector(self):
+        """ A directional vector (in T0CF) describing how to place screwdriver onto storage rack
+        Step 1 (Faster)
+        """
+        return self.attributes.get('storageapproach1_vector', Vector(0, 0, 0))
+
+    @storageapproach1_vector.setter
+    def storageapproach1_vector(self, v):
+        self.attributes['storageapproach1_vector'] = v
+
+    @property
+    def storageapproach2_vector(self):
+        """ A directional vector (in T0CF) describing how to place screwdriver onto storage rack
+        Step 2 (Slower)
+        """
+        return self.attributes.get('storageapproach2_vector', Vector(0, 0, 0))
+
+    @storageapproach2_vector.setter
+    def storageapproach2_vector(self, v):
+        self.attributes['storageapproach2_vector'] = v
+
     # ----------------------------------
     # Functions for computing the complexed approach and retract
     # ----------------------------------
@@ -150,8 +172,8 @@ class Clamp (Gripper):
         """Compute the approach frame in wcf.
         Part of PlaceClampToStorageAction
         """
-        approach2_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.approach2_vector)
-        return self.tool_storage_frame.transformed(Translation.from_vector(approach2_vector_wcf.scaled(-1)))
+        vector_wcf = self.tool_storage_frame.to_world_coordinates(self.storageapproach2_vector)
+        return self.tool_storage_frame.transformed(Translation.from_vector(vector_wcf.scaled(-1)))
 
     @ property
     def tool_storage_approach_frame1(self):
@@ -159,8 +181,8 @@ class Clamp (Gripper):
         """Compute the approach frame in wcf.
         Part of PlaceClampToStorageAction
         """
-        approach1_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.approach1_vector)
-        return self.tool_storage_approach_frame2.transformed(Translation.from_vector(approach1_vector_wcf.scaled(-1)))
+        vector_wcf = self.tool_storage_frame.to_world_coordinates(self.storageapproach1_vector)
+        return self.tool_storage_approach_frame2.transformed(Translation.from_vector(vector_wcf.scaled(-1)))
 
     @ property
     def tool_storage_retract_frame1(self):
@@ -168,8 +190,8 @@ class Clamp (Gripper):
         """ Compute the retract frame in wcf
         Part of PickClampFromStorageAction
         """
-        detachretract1_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.detachretract1_vector)
-        return self.tool_storage_frame.transformed(Translation.from_vector(detachretract1_vector_wcf))
+        vector_wcf = self.tool_storage_frame.to_world_coordinates(self.storageapproach1_vector)
+        return self.tool_storage_frame.transformed(Translation.from_vector(vector_wcf))
 
     @ property
     def tool_storage_retract_frame2(self):
@@ -177,8 +199,8 @@ class Clamp (Gripper):
         """ Compute the retract frame in wcf
         Part of PickClampFromStorageAction
         """
-        detachretract2_vector_wcf = self.tool_storage_frame.to_world_coordinates(self.detachretract2_vector)
-        return self.tool_storage_retract_frame1.transformed(Translation.from_vector(detachretract2_vector_wcf))
+        vector_wcf = self.tool_storage_frame.to_world_coordinates(self.storageapproach2_vector)
+        return self.tool_storage_retract_frame1.transformed(Translation.from_vector(vector_wcf))
 
     # ----------------------------------
     # Functions for kinematic state
@@ -321,6 +343,8 @@ def CL3Factory(
     approach2_vector,
     detachretract1_vector,
     detachretract2_vector,
+    storageapproach1_vector,
+    storageapproach2_vector,
     gripper_drill_lines,
     gripper_drill_diameter
 ):
@@ -343,6 +367,8 @@ def CL3Factory(
     robot_model.approach2_vector = approach2_vector               # This vector is ref to t0cf
     robot_model.detachretract1_vector = detachretract1_vector   # This vector is ref to t0cf
     robot_model.detachretract2_vector = detachretract2_vector   # This vector is ref to t0cf
+    robot_model.storageapproach1_vector = storageapproach1_vector   # This vector is ref to t0cf
+    robot_model.storageapproach2_vector = storageapproach2_vector   # This vector is ref to t0cf
     robot_model.gripper_drill_lines = gripper_drill_lines
     robot_model.gripper_drill_diameter = gripper_drill_diameter
 
