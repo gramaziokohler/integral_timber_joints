@@ -171,7 +171,7 @@ def replace_tool(process, cls):
     existing_tools_ids = [tool_id for tool_id in process.tool_ids
                           if process.tool(tool_id).__class__ is cls]
     if len(existing_tools_ids) == 0:
-        print("No %s exist for you to delete." % tool_type_name)
+        print("No %s exist for you to replace." % tool_type_name)
         return
 
     # List out current tools for users to choose
