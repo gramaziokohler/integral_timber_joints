@@ -266,6 +266,7 @@ def main():
     parser.add_argument('--rrt_iterations', default=400, type=int, help='Number of iterations within one rrt session. Defaults to 400.')
     parser.add_argument('--buffers_for_free_motions', action='store_true', help='Turn on buffering linear motions for free movements, used for narrow passage scenarios. Defaults to False.')
     parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
+    parser.add_argument('--mesh_split_long_edge_max_length', default=0.0, type=float, help='the range of edges to be split if they are longer than given threshold used in CGAL\'s split mesh edges function. Unit in millimeter. By default 0.0 will turn this feature off.')
     args = parser.parse_args()
 
     log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir))
@@ -305,6 +306,7 @@ def main():
         'check_sweeping_collision': True,
         'use_stored_seed' : args.use_stored_seed,
         'force_linear_to_free_movement' : args.force_linear_to_free_movement,
+        'mesh_split_long_edge_max_length' : args.mesh_split_long_edge_max_length,
     }
     # ! frame, conf compare, joint flip and allowable collision tolerances are set here
     options.update(get_tolerances(robot, low_res=args.low_res))

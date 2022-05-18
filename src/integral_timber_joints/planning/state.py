@@ -73,7 +73,8 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     verbose = options.get('verbose', True)
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
-    mesh_split_long_edge_max_length = options.get('mesh_split_long_edge_max_length', 0.2)
+    # if 0.0, split_long_edges is turned off
+    mesh_split_long_edge_max_length = options.get('mesh_split_long_edge_max_length', 0.0)
 
     # robot needed for creating attachments
     robot_uid = client.get_robot_pybullet_uid(robot)
@@ -116,9 +117,10 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
             if initialize:
                 # ! notice that the notch geometry will be convexified in pybullet
                 mesh = process.assembly.get_beam_mesh_in_ocf(beam_id).copy()
+                # millimeter
                 mesh_quads_to_triangles(mesh)
 
-                if HAS_CGAL:
+                if HAS_CGAL and mesh_split_long_edge_max_length > 1e-7:
                     V, F = mesh.to_vertices_and_faces()
                     new_mesh_V_F = cgal_split_long_edges(V, F, max_length=mesh_split_long_edge_max_length, verbose=verbose)
                     mesh = Mesh.from_vertices_and_faces(*new_mesh_V_F)

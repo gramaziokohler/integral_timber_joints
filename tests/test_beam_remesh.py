@@ -145,7 +145,7 @@ with PyChoreoClient(viewer=viewer) as client:
     # np_V, np_F = np.array(V), np.array(F)
     # new_mesh_V_F = igl.upsample(np_V, np_F, number_of_subdivs=3)
     # new_mesh_V_F = remesh((V,F), 0.5)
-    new_mesh_V_F = cgal_split_long_edges(V, F, max_length=0.2, verbose=True)
+    new_mesh_V_F = cgal_split_long_edges(V, F, max_length=0.1, verbose=True)
 
     # # https://libigl.github.io/libigl-python-bindings/igl_docs/#sharp_edges
     # sharp_edges = igl.sharp_edges(np_V, np_F, sharp_angle)[0]
