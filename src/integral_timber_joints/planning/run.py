@@ -55,7 +55,7 @@ def plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, arg
         copy_st_time = time.time()
 
         # * set to initial state without initialization (importing tools etc. as collision objects from files)
-        set_initial_state(client, robot, wip_process, initialize=False)
+        set_initial_state(client, robot, wip_process, initialize=False, options=options)
         copy_time = elapsed_time(copy_st_time)
 
         LOGGER.debug('#'*10)
@@ -295,6 +295,7 @@ def main():
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
         'verbose' : not args.quiet,
+        'reinit_tool' : args.reinit_tool,
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
         # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
         # ! restart is disabled when use_stored_seed = True
@@ -342,7 +343,7 @@ def main():
     unplanned_process.load_external_movements(ext_movement_path)
 
     # * Initialize (only needed once) collision objects and tools
-    set_initial_state(client, robot, unplanned_process, reinit_tool=args.reinit_tool, initialize=True)
+    set_initial_state(client, robot, unplanned_process, initialize=True, options=options)
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
         success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, args, options=options)

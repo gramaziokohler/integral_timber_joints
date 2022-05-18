@@ -123,8 +123,17 @@ mesh_quads_to_triangles(mesh)
 with PyChoreoClient(viewer=viewer) as client:
     pp.draw_pose(pp.unit_pose())
 
+    # * remeshed geometry
+    # https://compas.dev/compas_cgal/latest/api/generated/compas_cgal.subdivision.catmull_clark.html
+    V, F = mesh.to_vertices_and_faces()
+    np_V, np_F = np.array(V), np.array(F)
+    # new_mesh_V_F = igl.upsample(np_V, np_F, number_of_subdivs=3)
+    # new_mesh_V_F = remesh((V,F), 0.5)
+    new_mesh_V_F = cgal_split_long_edges(V, F, max_length=250, verbose=True)
+
     # * original geometry
     orig_cm = CollisionMesh(mesh, beam_id)
+    # ! this scale modifies the mesh attributes directly
     orig_cm.scale(1e-3)
     client.add_collision_mesh(orig_cm)
 
@@ -139,20 +148,13 @@ with PyChoreoClient(viewer=viewer) as client:
                 pp.draw_point(vert, size=0.01, color=pp.RED, width=3)
     draw_mesh_at_pose(mesh, sharp_angle=sharp_angle)
 
-    # * remeshed geometry
-    # https://compas.dev/compas_cgal/latest/api/generated/compas_cgal.subdivision.catmull_clark.html
-    V, F = mesh.to_vertices_and_faces()
-    # np_V, np_F = np.array(V), np.array(F)
-    # new_mesh_V_F = igl.upsample(np_V, np_F, number_of_subdivs=3)
-    # new_mesh_V_F = remesh((V,F), 0.5)
-    new_mesh_V_F = cgal_split_long_edges(V, F, max_length=0.1, verbose=True)
-
     # # https://libigl.github.io/libigl-python-bindings/igl_docs/#sharp_edges
     # sharp_edges = igl.sharp_edges(np_V, np_F, sharp_angle)[0]
     # new_mesh_V_F = remesh_constrained((V,F), 0.1, sharp_edges)
 
     remeshed_mesh = Mesh.from_vertices_and_faces(*new_mesh_V_F)
     remeshed_cm = CollisionMesh(remeshed_mesh, beam_id + '_remeshed')
+    remeshed_cm.scale(1e-3)
     client.add_collision_mesh(remeshed_cm)
     body = client._get_collision_object_bodies('^{}$'.format(beam_id + '_remeshed'))[0]
 
