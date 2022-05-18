@@ -44,7 +44,7 @@ def plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, arg
     """
     solve_timeout = options.get('solve_timeout', 600)
     # max solve iter kept rather high to prioritize timeout
-    solve_iters = options.get('solve_iters', 40)
+    solve_iters = options.get('solve_iters', 1000)
     runtime_data = {}
 
     wip_process = deepcopy(unplanned_process)
@@ -261,6 +261,7 @@ def main():
     #
     parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
     parser.add_argument('--solve_timeout', default=600.0, type=float, help='For automatic planning retry, number of seconds before giving up. Defaults to 600.')
+    parser.add_argument('--solve_iters', default=1000, type=int, help='For automatic planning retry, number of restart before giving up. Defaults to 1000.')
     parser.add_argument('--mp_algorithm', default='birrt', type=str, choices=MOTION_PLANNING_ALGORITHMS, help='Motion planning algorithms.')
     parser.add_argument('--rrt_iterations', default=400, type=int, help='Number of iterations within one rrt session. Defaults to 400.')
     parser.add_argument('--buffers_for_free_motions', action='store_true', help='Turn on buffering linear motions for free movements, used for narrow passage scenarios. Defaults to False.')
@@ -294,10 +295,10 @@ def main():
         'diagnosis' : args.diagnosis,
         'verbose' : not args.quiet,
         'gantry_attempts' : 100, # number of gantry sampling attempts when computing IK
-        'solve_iters': 40 if not args.use_stored_seed else 1,
         # restart solve iters for each beam, can set to a large number to prioritize solve_timeout
         # ! restart is disabled when use_stored_seed = True
         'solve_timeout': args.solve_timeout,
+        'solve_iters': args.solve_iters,
         'rrt_iterations': args.rrt_iterations,
         'draw_mp_exploration' : args.draw_mp_exploration and args.diagnosis,
         'mp_algorithm' : args.mp_algorithm,
