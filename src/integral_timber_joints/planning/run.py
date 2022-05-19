@@ -238,6 +238,7 @@ def main():
                         help='subdir for saving movements, default to `results`.')
     #
     parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
+    parser.add_argument('--beam_id', default=None, type=str, help='If specified, overrides the seq_n setting.')
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
     #
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
@@ -329,6 +330,8 @@ def main():
     #########
     # * Load process
     unplanned_process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
+    if args.beam_id is not None:
+        args.seq_n = [unplanned_process.assembly.sequence.index(args.beam_id)]
     beam_ids = beam_ids_from_argparse_seq_n(unplanned_process, args.seq_n, movement_id=args.movement_id)
 
     # * archive the target movements (if they already exist in the external movement folder)
