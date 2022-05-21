@@ -12,7 +12,7 @@ from compas_fab_pychoreo.utils import is_configurations_close
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process import RobotClampAssemblyProcess, Movement
-from integral_timber_joints.planning.stream import compute_free_movement, compute_linear_movement
+from integral_timber_joints.planning.stream import compute_free_movement, compute_linear_movement, compute_free_movement_with_waypoints
 from integral_timber_joints.planning.utils import notify, print_title, LOGGER
 from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
@@ -111,6 +111,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             for i in range(len(action.movements)):
                 if action.movements[i] == orig_movement:
                     action.movements[i] = movement
+    LOGGER.info("Number of intermediate_planning_waypoint: %s" % len(movement.intermediate_planning_waypoint))
+    LOGGER.info("intermediate_planning_waypoint: %s" % movement.intermediate_planning_waypoint)
 
     # * custom limits
     traj = None
@@ -145,6 +147,17 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
             # 'cartesian_move_group' : BARE_ARM_GROUP,
             })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
+
+    elif isinstance(movement, RoboticFreeMovement) and len(movement.intermediate_planning_waypoint) > 0:
+        fm_options = options.copy()
+        fm_options.update({
+            'rrt_restarts' : 2, #20,
+            'smooth_iterations': None, # ! smoothing will be done in postprocessing
+            # -------------------
+            'max_step' : 0.005, # interpolation step size, in meter, used in buffering motion
+            })
+        traj = compute_free_movement_with_waypoints(client, robot, process, movement, fm_options, diagnosis)
+
     elif isinstance(movement, RoboticFreeMovement):
         fm_options = options.copy()
         fm_options.update({
