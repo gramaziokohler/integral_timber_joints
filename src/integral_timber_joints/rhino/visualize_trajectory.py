@@ -37,18 +37,19 @@ def load_selected_external_movment_if_exist(process):
     if not isinstance(prev_movement, RoboticMovement):
         return
     result = None
-    use_smoothed_trajectory = True
 
-    if use_smoothed_trajectory:
+    if artist.visualize_smooth_trajectory:
         external_movement_path = os.path.join(get_activedoc_process_path(), '..\\results')
         result = process.load_external_movement(external_movement_path, prev_movement, subdir='smoothed_movements', verbose=False)
-
-    if result is not None:
-        print("Smoothed Trajectory Loaded")
+        if result is not None:
+            print("Smoothed Trajectory Loaded")
     else:
         external_movement_path = os.path.join(get_activedoc_process_path(), '..\\results')
-        process.load_external_movement(external_movement_path, prev_movement, subdir='movements', verbose=False)
-        print("Rough Trajectory Loaded")
+        result = process.load_external_movement(external_movement_path, prev_movement, subdir='movements', verbose=False)
+        if result is not None:
+            print("Rough Trajectory Loaded")
+        else:
+            print("No Trajectory Loaded")
 
 
 def redraw_state_and_trajectory(artist, process):
