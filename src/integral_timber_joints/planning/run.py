@@ -6,6 +6,7 @@ import argparse
 from tqdm import tqdm
 import pybullet_planning as pp
 from pybullet_planning.motion_planners.utils import elapsed_time
+from typing import Tuple, List, Type, Dict
 
 from termcolor import colored
 from copy import deepcopy
@@ -21,7 +22,7 @@ from integral_timber_joints.planning.visualization import visualize_movement_tra
 from integral_timber_joints.planning.solve import get_movement_status, MovementStatus, compute_selected_movements
 from integral_timber_joints.planning.smoothing import smooth_movement_trajectory
 
-from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
+from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement, Movement
 from integral_timber_joints.process.movement import RoboticMovement
 
 from compas_fab_pychoreo.backend_features.pychoreo_plan_motion import MOTION_PLANNING_ALGORITHMS
@@ -68,13 +69,15 @@ def plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, arg
         runtime_data[trial_i] = {}
         runtime_data[trial_i]['success'] = success
         runtime_data[trial_i]['profiles'] = deepcopy(options['profiles'])
-        LOGGER.info('Return success: {} | runtime of current attempt: {:.1f}'.format(success, elapsed_time(single_run_st_time)))
+
         if success:
-            # ! copy the freshly planned movement back to unplanned_process
+            LOGGER.info('Beam {} | {} | Trail #{} | Plan Success | Runtime of current attempt: {:.1f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(single_run_st_time)))
+            # * copy the freshly planned movement back to unplanned_process
             copy_robotic_movements(wip_process, unplanned_process, [beam_id], movement_id=args.movement_id, options=options)
             break
         else:
-            # ! reset target movements from the original, unplanned process file
+            LOGGER.info('Beam {} | {} | Trail #{} | Plan Failure | Runtime of current attempt: {:.1f}'.format(beam_id, args.solve_mode, trial_i, elapsed_time(single_run_st_time)))
+            # * reset target movements from the original, unplanned process file
             copy_robotic_movements(unplanned_process, wip_process, [beam_id], movement_id=args.movement_id, options=options)
 
             trial_i += 1
@@ -86,6 +89,34 @@ def plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, arg
         LOGGER.error('Planning (with restarts) for beam {} failed: {}'.format(beam_id, failure_reason))
 
     return success, runtime_data
+
+def compute_selected_movements_by_status_priority(client, robot, process,
+                               beam_id: str,
+                               planning_priority_filter: List[int] = None,
+                               movement_type_filter: List[Type] = None,
+                               has_no_trajectory : bool = True,
+                               options:  Dict = None,
+                               viz_upon_found: bool = False,
+                               diagnosis: bool = False,
+                               ) -> Tuple[bool, List[Movement]]:
+    """
+    Wrapper for `compute_selected_movements`
+    Solving first for MovementStatus.both_done, then one_sided, finally neither_done.
+    """
+
+    success, computed_movements_0 = compute_selected_movements(client, robot, process, beam_id, planning_priority_filter, movement_type_filter,
+                                movement_status_filter = [MovementStatus.both_done],
+                                has_no_trajectory = has_no_trajectory, options = options, viz_upon_found = viz_upon_found, diagnosis = diagnosis)
+    if not success: return False, []
+    success, computed_movements_1 = compute_selected_movements(client, robot, process, beam_id, planning_priority_filter, movement_type_filter,
+                                movement_status_filter = [MovementStatus.one_sided],
+                                has_no_trajectory = has_no_trajectory, options = options, viz_upon_found = viz_upon_found, diagnosis = diagnosis)
+    if not success: return False, []
+    success, computed_movements_2 = compute_selected_movements(client, robot, process, beam_id, planning_priority_filter, movement_type_filter,
+                                movement_status_filter = [MovementStatus.neither_done],
+                                has_no_trajectory = has_no_trajectory, options = options, viz_upon_found = viz_upon_found, diagnosis = diagnosis)
+    if not success: return False, []
+    return (True, computed_movements_0 + computed_movements_1 + computed_movements_2)
 
 def compute_movements_for_beam_id(client, robot, process, beam_id, args, options=None):
     """Two types of movement planning strategies are provided:
@@ -107,77 +138,95 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
         options['lockrenderer'] = lockrenderer
         if args.solve_mode == 'nonlinear':
-            success, _ = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
-                [MovementStatus.neither_done, MovementStatus.one_sided],
-                options=options, diagnosis=args.diagnosis)
+            LOGGER.info('Computing priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+                planning_priority_filter = [1],
+                movement_type_filter = [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
+                options=options, diagnosis=args.diagnosis
+                )
             if not success:
-                LOGGER.info('Trajectory NOT found (nonlinear) linear movement, priority 1, (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                LOGGER.info('Compute failed priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
                 return False
+            solved_movements += movements
 
-            success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-                [MovementStatus.one_sided],
+            LOGGER.info('Computing priority 0 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+                planning_priority_filter = [0],
+                movement_type_filter = [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
                 options=options, diagnosis=args.diagnosis)
             if not success:
-                LOGGER.info('Trajectory NOT found (nonlinear) linear movement, priority 0, one-side done, (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                LOGGER.info('Compute failed priority 0 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
                 return False
+            solved_movements += movements
 
-            # First solve for "neither-done" linear movements, and then solve for "single-sided" linear movements
-            success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticLinearMovement],
-                [MovementStatus.neither_done, MovementStatus.one_sided],
+            LOGGER.info('Computing priority 1 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+                planning_priority_filter = [1],
+                movement_type_filter = [RoboticFreeMovement],
                 options=options, diagnosis=args.diagnosis)
             if not success:
-                LOGGER.info('Trajectory NOT found (nonlinear) linear movement, priority 0, neither-side done,(seq_n={}) beam {}!'.format(seq_n, beam_id))
+                LOGGER.info('Computing failed priority 1 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
                 return False
-
-            success, _ = compute_selected_movements(client, robot, process, beam_id, 1, [RoboticFreeMovement],
-                [MovementStatus.one_sided],
-                options=options, diagnosis=args.diagnosis)
-            if not success:
-                LOGGER.info('Trajectory NOT found (nonlinear) free movement, priority 1, one-side done, (seq_n={}) beam {}!'.format(seq_n, beam_id))
-                return False
+            solved_movements += movements
 
             # Ideally, all the free motions should have both start and end conf specified.
             # one_sided is used to sample the start conf if none is given.
-            success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticFreeMovement],
-                [MovementStatus.both_done, MovementStatus.one_sided],
+            LOGGER.info('Computing priority 0 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+                planning_priority_filter = [0],
+                movement_type_filter = [RoboticFreeMovement],
                 options=options, diagnosis=args.diagnosis)
             if not success:
-                LOGGER.info('Trajectory NOT found (nonlinear) free movement, priority 0, both-side done, (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                LOGGER.info('Computing failed priority 0 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
                 return False
-            solved_movements = beam_movements
+            solved_movements += movements
 
         elif args.solve_mode == 'linear':
             movement_id_range = options.get('movement_id_range', range(0, len(beam_movements)))
             options['movement_id_filter'] = [beam_movements[m_i].movement_id for m_i in movement_id_range]
-            success, _ = compute_selected_movements(client, robot, process, beam_id, 0, [RoboticMovement],
-                [MovementStatus.correct_type], options=options, diagnosis=args.diagnosis, \
-                check_type_only=True)
+            success, movements = compute_selected_movements(client, robot, process, beam_id, options=options, diagnosis=args.diagnosis, )
             if not success:
                 LOGGER.info('A plan NOT found using linear (chained) planning for (seq_n={}) beam {}!'.format(seq_n, beam_id))
                 return False
-            solved_movements = beam_movements
+            solved_movements += movements
 
         elif args.solve_mode == 'free_motion_only':
-            success, solved_movements = compute_selected_movements(client, robot, process, beam_id, None, [RoboticFreeMovement],
-                [MovementStatus.both_done, MovementStatus.one_sided],
+            LOGGER.info('Computing priority 1 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+                planning_priority_filter = [1],
+                movement_type_filter = [RoboticFreeMovement],
                 options=options, diagnosis=args.diagnosis)
             if not success:
-                LOGGER.info('A plan NOT found for free motion for (seq_n={}) beam {}!'.format(seq_n, beam_id))
+                LOGGER.info('Computing failed priority 1 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
                 return False
+            solved_movements += movements
+
+            # Ideally, all the free motions should have both start and end conf specified.
+            # one_sided is used to sample the start conf if none is given.
+            LOGGER.info('Computing priority 0 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+                planning_priority_filter = [0],
+                movement_type_filter = [RoboticFreeMovement],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('Computing failed priority 0 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+                return False
+            solved_movements += movements
 
         elif args.solve_mode == 'movement_id':
             # * compute for movement_id movement
             LOGGER.info('Computing only for {}'.format(args.movement_id))
             options['movement_id_filter'] = [args.movement_id]
-            success, solved_movements = compute_selected_movements(client, robot, process, beam_id, 0, [],
-                None, options=options, diagnosis=args.diagnosis)
+            success, movements = compute_selected_movements(client, robot, process, beam_id, options=options, diagnosis=args.diagnosis)
             if not success:
                 LOGGER.info('A plan NOT found for movement_id {}!'.format(args.movement_id))
                 return False
+            solved_movements += movements
         else:
             raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
 
-    LOGGER.debug('Computing movements takes {:.2f} s'.format(elapsed_time(st_time)))
+    LOGGER.debug('Solved {} Movements: {} in {:.2f} s'.format(len(solved_movements), [m.movement_id for m in solved_movements], elapsed_time(st_time)))
+
     # * export computed movements (unsmoothed)
     if args.write:
         # movements without trajectories but end conf set will be saved into the WIP process file
