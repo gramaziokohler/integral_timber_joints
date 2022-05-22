@@ -258,10 +258,10 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
     # * export computed movements (unsmoothed)
     if args.write:
-        # movements without trajectories but end conf set will be saved into the WIP process file
-        save_process(args.design_dir, args.problem, process, save_dir=args.problem_subdir)
-        # ! only robotic movements with trajectory are saved
+        # * solved_movements are saved externally in the results folder
         save_movements(args.design_dir, solved_movements, save_dir=args.problem_subdir, movement_subdir='movements')
+        # movements without trajectories but end conf set will be saved into the WIP process file
+        # save_process(args.design_dir, args.problem, process, save_dir=args.problem_subdir)
 
     # * smoothing
     if not args.no_smooth:
