@@ -215,7 +215,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
         elif args.solve_mode == 'movement_id':
             # * compute for movement_id movement
-            LOGGER.info('Computing only for {}'.format(args.movement_id))
+            LOGGER.info('Computing only Movement {}'.format(args.movement_id))
             options['movement_id_filter'] = [args.movement_id]
             success, movements = compute_selected_movements(client, robot, process, beam_id, options=options, diagnosis=args.diagnosis)
             if not success:
@@ -225,7 +225,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
         else:
             raise NotImplementedError('Solver {} not implemented!'.format(args.solve_mode))
 
-    LOGGER.debug('Solved {} Movements: {} in {:.2f} s'.format(len(solved_movements), [m.movement_id for m in solved_movements], elapsed_time(st_time)))
+    LOGGER.info('Solved {} Movements in {:.2f} s: {} '.format(len(solved_movements), elapsed_time(st_time), [m.movement_id for m in solved_movements]))
 
     # * export computed movements (unsmoothed)
     if args.write:

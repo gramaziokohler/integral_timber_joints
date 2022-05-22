@@ -735,7 +735,7 @@ def compute_free_movement_with_waypoints(client: PyChoreoClient, robot: Robot, p
             traj_segment = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
                 options=options) # type: Trajectory
             if traj_segment is None:
-                LOGGER.warning(colored('No path for waypoint segment {} of {} of {}, free movement planning fail.'.format(i + 1, len(start_end_config_pairs), movement.movement_id), 'red'))
+                LOGGER.debug('No path for waypoint segment {} of {} of {}, free movement planning fail.'.format(i + 1, len(start_end_config_pairs), movement.movement_id))
                 return None
             traj_segments.append(traj_segment)
 
