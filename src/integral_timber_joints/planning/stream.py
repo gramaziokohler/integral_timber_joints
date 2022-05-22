@@ -157,7 +157,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
 
     # * special warning when both start and end config is set
     if start_conf is not None and end_conf is not None:
-        LOGGER.warn("Both start and end config is fixed for Linear Movement #{}. This is likely overconstrained.".format(movement.movement_id))
+        LOGGER.warning("Both start and end config is fixed for Linear Movement #{}. This is likely overconstrained.".format(movement.movement_id))
 
     # * set start state
     if not set_state(client, robot, process, start_scene, options=options):
