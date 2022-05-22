@@ -32,7 +32,8 @@ SOLVE_MODE = [
     'nonlinear',
     'linear',
     'movement_id', # 'Compute only for movement with a specific tag, e.g. `A54_M0`.'
-    'free_motion_only', # 'Only compute free motions.'
+    'free_motion_only', # 'Only compute free motions. Priority Applies'
+    'linear_motion_only' # 'Only compute linear motions. Priority Applies'
 ]
 
 ##############################################
@@ -137,6 +138,8 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
     st_time = time.time()
     with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
         options['lockrenderer'] = lockrenderer
+        # * Non-linearly solving the movements within a beam_id
+        # * First by priority number, then by [Linear > Free], then by [both_done > one_sided > neither_done]
         if args.solve_mode == 'nonlinear':
             LOGGER.info('Computing priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
             success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
@@ -181,6 +184,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 return False
             solved_movements += movements
 
+        # * Linearly (Sequentially) solving the movements within a beam_id
         elif args.solve_mode == 'linear':
             movement_id_range = options.get('movement_id_range', range(0, len(beam_movements)))
             options['movement_id_filter'] = [beam_movements[m_i].movement_id for m_i in movement_id_range]
@@ -190,6 +194,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 return False
             solved_movements += movements
 
+        # * Only compute free motions. Priority Applies
         elif args.solve_mode == 'free_motion_only':
             LOGGER.info('Computing priority 1 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
             success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
@@ -210,6 +215,30 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 options=options, diagnosis=args.diagnosis)
             if not success:
                 LOGGER.info('Computing failed priority 0 FreeMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+                return False
+            solved_movements += movements
+
+        # * Only compute linear motions. Priority Applies
+        elif args.solve_mode == 'linear_motion_only':
+            LOGGER.info('Computing priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+                planning_priority_filter = [1],
+                movement_type_filter = [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('Computing failed priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+                return False
+            solved_movements += movements
+
+            # Ideally, all the free motions should have both start and end conf specified.
+            # one_sided is used to sample the start conf if none is given.
+            LOGGER.info('Computing priority 0 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+                planning_priority_filter = [0],
+                movement_type_filter = [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('Computing failed priority 0 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
                 return False
             solved_movements += movements
 
