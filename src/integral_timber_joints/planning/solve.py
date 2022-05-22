@@ -279,4 +279,14 @@ def compute_selected_movements(client, robot, process,
                     visualize_movement_trajectory(client, robot, process, m, step_sim=True)
             computed_movements.append(m)
 
+    # Debug message
+    debug_message = ""
+    debug_message += "movement_id_filter = {}".format(movement_id_filter)
+    debug_message += "planning_priority_filter = {}".format(planning_priority_filter)
+    debug_message += "movement_type_filter = {}".format([t.__name__ for t in movement_type_filter])
+    debug_message += "movement_status_filter = {}".format(movement_status_filter)
+    debug_message += "has_no_trajectory = {}".format(has_no_trajectory)
+    computed_movements_id = [m.movement_id for m in computed_movements]
+    LOGGER.debug("compute_selected_movements({}) solved {} Movements: {}".format(debug_message, len(computed_movements), computed_movements_id))
+
     return True, computed_movements
