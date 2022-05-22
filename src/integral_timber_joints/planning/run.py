@@ -14,7 +14,7 @@ from copy import deepcopy
 from pybullet_planning import wait_if_gui, LockRenderer, HideOutput
 
 from integral_timber_joints.planning.parsing import parse_process, save_process, save_movements, get_process_path, \
-    copy_robotic_movements, archive_robotic_movements
+    copy_robotic_movements, archive_robotic_movements, move_saved_movement
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
 from integral_timber_joints.planning.utils import print_title, beam_ids_from_argparse_seq_n, color_from_success, LOGGER
 from integral_timber_joints.planning.state import set_state, set_initial_state
@@ -322,6 +322,7 @@ def main():
     parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
     parser.add_argument('--no_smooth', action='store_true', help='Not apply smoothing on free motions upon a plan is found. Defaults to False.')
     parser.add_argument('--keep_planned_movements', action='store_true', help='Defaults to False.')
+    parser.add_argument('-ro', '--remove_overconstraining_free_movement', action='store_true', help='Defaults to False.')
     parser.add_argument('--force_linear_to_free_movement', action='store_true', help='Defaults to False.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
@@ -407,10 +408,10 @@ def main():
 
     #########
     # * Load process
-    unplanned_process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
+    process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
     if args.beam_id is not None:
-        args.seq_n = [unplanned_process.assembly.sequence.index(args.beam_id)]
-    beam_ids = beam_ids_from_argparse_seq_n(unplanned_process, args.seq_n, movement_id=args.movement_id)
+        args.seq_n = [process.assembly.sequence.index(args.beam_id)]
+    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, movement_id=args.movement_id)
 
     # * archive the target movements (if they already exist in the external movement folder)
     # if movement_id is not None, only one movement json will be moved to the `archive` folder
@@ -418,16 +419,46 @@ def main():
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     ext_movement_path = os.path.dirname(result_path)
     if not args.keep_planned_movements:
-        archive_robotic_movements(unplanned_process, beam_ids, ext_movement_path, movement_id=args.movement_id)
+        archive_robotic_movements(process, beam_ids, ext_movement_path, movement_id=args.movement_id)
 
+    # * Archive neighbouring already planned Free Movements
+    if args.solve_mode is not 'movement_id' and args.remove_overconstraining_free_movement:
+        for beam_id in beam_ids:
+            movements = process.get_robotic_movements_by_beam_id(beam_id)
+            first_robotic_movement = movements[0]
+            last_robotic_movement = movements[-1]
+            if (isinstance(first_robotic_movement, RoboticLinearMovement)
+                # and process.movement_has_start_robot_config(first_robotic_movement)
+                # and process.movement_has_end_robot_config(first_robotic_movement)
+                ):
+                    neighbour_movement = process.get_prev_robotic_movement(first_robotic_movement)
+                    if isinstance(neighbour_movement, RoboticFreeMovement):
+                        moved = move_saved_movement(neighbour_movement, ext_movement_path)
+                        if moved: LOGGER.warning(colored("Neighbouring Free Movement {} removed due to overconstraint with first Linear Movement {} of {}".format(
+                            first_robotic_movement.movement_id, neighbour_movement.movement_id, beam_id
+                        ), "red"))
+
+            if (isinstance(last_robotic_movement, RoboticLinearMovement)
+                # and process.movement_has_start_robot_config(last_robotic_movement)
+                # and process.movement_has_end_robot_config(last_robotic_movement)
+                ):
+                    neighbour_movement = process.get_next_robotic_movement(last_robotic_movement)
+                    if isinstance(neighbour_movement, RoboticFreeMovement):
+                        moved = move_saved_movement(neighbour_movement, ext_movement_path)
+                        if moved: LOGGER.warning(colored("Neighbouring Free Movement {} removed due to overconstraint with first Linear Movement {} of {}".format(
+                            last_robotic_movement.movement_id, neighbour_movement.movement_id, beam_id
+                        ), "red"))
+
+
+    #
     # * load previously planned movements
-    unplanned_process.load_external_movements(ext_movement_path)
+    process.load_external_movements(ext_movement_path)
 
     # * Initialize (only needed once) collision objects and tools
-    set_initial_state(client, robot, unplanned_process, initialize=True, options=options)
+    set_initial_state(client, robot, process, initialize=True, options=options)
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
-        success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, unplanned_process, beam_id, args, options=options)
+        success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
 
     LOGGER.info('Planning done.')
     client.disconnect()
