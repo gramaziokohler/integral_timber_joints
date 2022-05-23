@@ -435,7 +435,7 @@ def main():
                     if isinstance(neighbour_movement, RoboticFreeMovement):
                         moved = move_saved_movement(neighbour_movement, ext_movement_path)
                         if moved: LOGGER.warning(colored("Neighbouring Free Movement {} removed due to overconstraint with first Linear Movement {} of {}".format(
-                            first_robotic_movement.movement_id, neighbour_movement.movement_id, beam_id
+                            neighbour_movement.movement_id, first_robotic_movement.movement_id, beam_id
                         ), "red"))
 
             if (isinstance(last_robotic_movement, RoboticLinearMovement)
@@ -445,8 +445,8 @@ def main():
                     neighbour_movement = process.get_next_robotic_movement(last_robotic_movement)
                     if isinstance(neighbour_movement, RoboticFreeMovement):
                         moved = move_saved_movement(neighbour_movement, ext_movement_path)
-                        if moved: LOGGER.warning(colored("Neighbouring Free Movement {} removed due to overconstraint with first Linear Movement {} of {}".format(
-                            last_robotic_movement.movement_id, neighbour_movement.movement_id, beam_id
+                        if moved: LOGGER.warning(colored("Neighbouring Free Movement {} removed due to overconstraint with last Linear Movement {} of {}".format(
+                            neighbour_movement.movement_id, last_robotic_movement.movement_id, beam_id
                         ), "red"))
 
 
