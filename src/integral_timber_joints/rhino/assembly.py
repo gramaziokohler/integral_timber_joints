@@ -26,7 +26,7 @@ except:
 
 
 def _create_joints_for_new_beam(process, new_beam):
-    # type: (RobotClampAssemblyProcess, Beam) -> tuple[list[Joint], list[str]]
+    # type: (RobotClampAssemblyProcess, Beam) -> tuple[list(Joint), list(str)]
     assembly = process.assembly
     new_joints = []  # type: list[Joint]
     affected_neighbours = []  # type: list[str]
@@ -109,7 +109,6 @@ def _add_beams_to_assembly(process, beams, auto_joints=True):
 
         # * Initial state changed since we add a new beam
         process.dependency.add_beam(beam_id)
-
 
     # *Recompute dependent solutions for new beams and affected neighbours
     recompute_initial_state(process)
@@ -266,14 +265,18 @@ def beam_frame_from_points_and_vectors(points, edge_vectors, face_normals):
     return frame
 
 
-def ui_add_beam_from_brep_box(process, auto_joints=True):
+def ui_create_beam_from_brep_box(process, multi_select=True):
     # type: (RobotClampAssemblyProcess, bool) -> None
-    ''' Ask user for line(s) to create new beams.
+    ''' Ask user for Brep(s) to create new beams.
+    Returns the newly created beams. Note that this is not added to Assembly.
     '''
     assembly = process.assembly  # type: Assembly
     # ask user to pick boxes
     print("Object names in Rhino can be used to srot beams.")
-    guids = rs.GetObjects("Select Brep (uncut 6 sided box only)", filter=rs.filter.polysurface)
+    if multi_select:
+        guids = rs.GetObjects("Select Brep (uncut 6 sided box only)", filter=rs.filter.polysurface)
+    else:
+        guids = rs.GetObjects("Select Brep (uncut 6 sided box only)", filter=rs.filter.polysurface, maximum_count=1)
 
     if guids is None:
         return
@@ -312,13 +315,55 @@ def ui_add_beam_from_brep_box(process, auto_joints=True):
 
     # Sorting by human sorting natural keys
     new_beams.sort(cmp=_beam_order_comparator)
+
+    return new_beams
+
+
+def ui_add_beam_from_brep_box(process, auto_joints=True,  multi_select=True):
+    ''' Ask user for Brep(s) to create new beams and add it to Assembly.
+    Returns the newly added beams which will contain the newly assigned `beam_id` in `beam.name`
+    '''
+    new_beams = ui_create_beam_from_brep_box(process, multi_select)
+
     # Add to assembly
     _add_beams_to_assembly(process, new_beams, auto_joints=auto_joints)
+    return new_beams
+
 
 def ui_add_scaffold(process):
     # type: (RobotClampAssemblyProcess) -> None
     """Currently this is implemented as a beam with no joints."""
     return ui_add_beam_from_brep_box(process, auto_joints=False)
+
+
+def ui_replace_scaffold_geometry(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    """Ask user to select an existing "Manual Placement" beam for replacement."""
+
+    while (True):
+        # Ask user to select which scaffolding to change
+        guid = rs.GetObject('Select scaffolding pieces to change geometry:', custom_filter=get_existing_beams_filter(process))
+        if guid is None:
+            print("No Beam Selected.")
+            return
+        beam_id = get_object_name(guid)
+        existing_scaffold_beam = process.assembly.beam(beam_id)
+
+        # Ask user for new geometry
+        print("Select new geometry for scaffolding: %s" % beam_id)
+        new_beams = ui_create_beam_from_brep_box(process, multi_select=False)
+        if new_beams is None:
+            print("No valid Brep Selected.")
+            return
+        new_beam = new_beams[0]
+        new_beam.name = beam_id
+
+        # Copy geometry over
+        existing_scaffold_beam.data = new_beam.data
+        recompute_initial_state(process)
+        get_process_artist().redraw_interactive_beam(beam_id)
+
+        print("New geometry updated for scaffolding: %s" % beam_id)
 
 
 def ui_delete_beams(process):
@@ -658,6 +703,7 @@ def show_menu(process):
                     {'name': 'FromBrepBox', 'action': ui_add_beam_from_brep_box},
                 ]},
                 {'name': 'AddScaffold', 'action': ui_add_scaffold},
+                {'name': 'ReplaceScaffoldGeo', 'action': ui_replace_scaffold_geometry},
                 {'name': 'DeleteBeam', 'action': ui_delete_beams},
                 {'name': 'MoveAssembly', 'action': ui_orient_assembly},
                 {'name': 'FlipBeamAssemblyDirection', 'action': ui_flip_beams},

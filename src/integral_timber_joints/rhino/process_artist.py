@@ -408,6 +408,7 @@ class ProcessArtist(object):
         self.selected_state_id = 0  # type: str # State Id = Start State of Movement with the same ID"""
         self.selected_key_position = ProcessKeyPosition(process, self.selected_beam_id, 0)
 
+        self.visualize_smooth_trajectory = True
         # Robot
         self._robot_artist = None
 

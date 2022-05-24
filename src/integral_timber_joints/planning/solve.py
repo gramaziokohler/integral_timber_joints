@@ -12,7 +12,7 @@ from compas_fab_pychoreo.utils import is_configurations_close
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process import RobotClampAssemblyProcess, Movement
-from integral_timber_joints.planning.stream import compute_free_movement, compute_linear_movement
+from integral_timber_joints.planning.stream import compute_free_movement, compute_linear_movement, compute_free_movement_with_waypoints
 from integral_timber_joints.planning.utils import notify, print_title, LOGGER
 from integral_timber_joints.planning.robot_setup import GANTRY_ARM_GROUP
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
@@ -26,46 +26,35 @@ except:
 
 ###########################################
 
+
 @unique
 class MovementStatus(Enum):
-    incorrect_type = 0
-    correct_type = 1
     has_traj = 2
     one_sided = 3
     both_done = 4
     neither_done = 5
 
-def get_movement_status(process, m, movement_types, check_type_only=False):
-    # type: (RobotClampAssemblyProcess, Movement, List[Type], bool) -> MovementStatus
+
+def get_movement_status(process, m):
+    # type: (RobotClampAssemblyProcess, Movement) -> MovementStatus
     """get the movement's current status, see the `MovementStatus` class
 
     Parameters
     ----------
     process : [type]
     m : Movement
-    movement_types : list(Movement)
-        A list of movement class types, so this function returns `MovementStatus.incorrect_type`
-        if the given `m` does not fall into any of the given types.
 
     Returns
     -------
     MovementStatus.xxx
     """
     # if not isinstance(m, RoboticMovement):
-    if all([not isinstance(m, mt) for mt in movement_types]):
-        return MovementStatus.incorrect_type
-    if check_type_only:
-        return MovementStatus.correct_type
     has_start_conf = process.movement_has_start_robot_config(m)
     has_end_conf = process.movement_has_end_robot_config(m)
     has_traj = m.trajectory is not None
-    # special warning
-    if not isinstance(m, RoboticFreeMovement) and \
-            has_start_conf and has_end_conf and not has_traj:
-        LOGGER.error(colored('{} has both start, end conf specified, but no traj computed. This is BAD!!'.format(m.short_summary), 'yellow'))
-        # notify('Warning! Go back to the command line now!')
-    # imply(has_traj, has_start_conf and has_end_conf)
+
     assert not has_traj or (has_start_conf and has_end_conf)
+
     if has_traj:
         return MovementStatus.has_traj
     else:
@@ -77,6 +66,7 @@ def get_movement_status(process, m, movement_types, check_type_only=False):
             return MovementStatus.neither_done
 
 ###########################################
+
 
 def compute_movement(client, robot, process, movement, options=None, diagnosis=False):
     # type: (PyBulletClient, Robot, RobotClampAssemblyProcess, Movement, Dict, Dict) -> bool
@@ -112,47 +102,61 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
                 if action.movements[i] == orig_movement:
                     action.movements[i] = movement
 
+    LOGGER.debug("Number of intermediate_planning_waypoint: %s" % len(movement.intermediate_planning_waypoint))
+    LOGGER.debug("intermediate_planning_waypoint: %s" % movement.intermediate_planning_waypoint)
+
     # * custom limits
     traj = None
     if isinstance(movement, RoboticLinearMovement):
         lm_options = options.copy()
         lm_options.update({
-            'max_step' : movement.planning_linear_step_distance_m or 0.01, # interpolation step size, in meter
-            'cartesian_attempts' : 1, # boosting up cartesian attempt here does not really help
+            'max_step': movement.planning_linear_step_distance_m or 0.01,  # interpolation step size, in meter
+            'cartesian_attempts': 1,  # boosting up cartesian attempt here does not really help
             # -------------------
-            'planner_id' : 'IterativeIK',
-            'cartesian_move_group' : GANTRY_ARM_GROUP,
+            'planner_id': 'IterativeIK',
+            'cartesian_move_group': GANTRY_ARM_GROUP,
             # -------------------
             # 'planner_id' : 'LadderGraph',
             # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
             # 'cartesian_move_group' : BARE_ARM_GROUP,
-            })
+        })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
     elif isinstance(movement, RoboticClampSyncLinearMovement) or \
-         isinstance(movement, RobotScrewdriverSyncLinearMovement):
+            isinstance(movement, RobotScrewdriverSyncLinearMovement):
         #  'reorient' in movement.short_summary:
         lm_options = options.copy()
         # * interpolation step size, in meter
         lm_options.update({
-            'max_step' : movement.planning_linear_step_distance_m or 0.02, # interpolation step size, in meter
-            'cartesian_attempts' : 1, # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
+            'max_step': movement.planning_linear_step_distance_m or 0.02,  # interpolation step size, in meter
+            'cartesian_attempts': 1,  # boosting up cartesian attempt here does not really help, ladder graph only needs one attemp
             # -------------------
-            'planner_id' : 'IterativeIK',
-            'cartesian_move_group' : GANTRY_ARM_GROUP,
+            'planner_id': 'IterativeIK',
+            'cartesian_move_group': GANTRY_ARM_GROUP,
             # -------------------
             # 'planner_id' : 'LadderGraph',
             # 'ik_function' : _get_sample_bare_arm_ik_fn(client, robot),
             # 'cartesian_move_group' : BARE_ARM_GROUP,
-            })
+        })
         traj = compute_linear_movement(client, robot, process, movement, lm_options, diagnosis)
+
+    elif isinstance(movement, RoboticFreeMovement) and len(movement.intermediate_planning_waypoint) > 0:
+        fm_options = options.copy()
+        fm_options.update({
+            'rrt_restarts': 2,  # 20,
+            'smooth_iterations': None,  # ! smoothing will be done in postprocessing
+            # -------------------
+            'max_step': 0.005,  # interpolation step size, in meter, used in buffering motion
+        })
+        traj = compute_free_movement_with_waypoints(client, robot, process, movement, fm_options, diagnosis)
+
     elif isinstance(movement, RoboticFreeMovement):
         fm_options = options.copy()
         fm_options.update({
-            'rrt_restarts' : 2, #20,
-            'smooth_iterations': None, # ! smoothing will be done in postprocessing
+            'rrt_restarts': 2,  # 20,
+            'smooth_iterations': None,  # ! smoothing will be done in postprocessing
             # -------------------
-            'max_step' : 0.005, # interpolation step size, in meter, used in buffering motion
-            })
+            'max_step': 0.005,  # interpolation step size, in meter, used in buffering motion
+        })
         traj = compute_free_movement(client, robot, process, movement, fm_options, diagnosis)
     else:
         LOGGER.critical("Unrecognized movement type {}".format(movement))
@@ -177,10 +181,17 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         notify('Planning fails! Go back to the command line now!')
         return False
 
-def compute_selected_movements(client, robot, process, beam_id, priority, movement_types=None, movement_statuses=None, options=None,
-        viz_upon_found=False, diagnosis=False, check_type_only=False):
-    # type: (PyBulletClient, Robot, RobotClampAssemblyProcess, int, int, List[Type], List[MovementStatus], Dict, bool, bool, bool) -> Tuple[bool, List]
 
+def compute_selected_movements(client, robot, process,
+                               beam_id: str,
+                               planning_priority_filter: List[int] = None,
+                               movement_type_filter: List[Type] = None,
+                               movement_status_filter: List[MovementStatus] = None,
+                               has_no_trajectory : bool = True,
+                               options:  Dict = None,
+                               viz_upon_found: bool = False,
+                               diagnosis: bool = False,
+                               ) -> Tuple[bool, List[Movement]]:
     """Compute trajectories for movements specified by a certain criteria.
 
     Parameters
@@ -205,36 +216,48 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
         step conf-by-conf if viz_upon_found == True, by default False
     """
     verbose = options.get('verbose', False)
-    movement_id_filter = options.get('movement_id_filter', [])
-    movement_types = movement_types or []
-    if len(movement_id_filter) > 0:
-        selected_movements = []
-        for mid in movement_id_filter:
-            if mid.startswith('A'):
-                chosen_m = process.get_movement_by_movement_id(mid)
-            else:
-                chosen_m = process.movements[int(mid)]
-            selected_movements.append(chosen_m)
-        if verbose:
-            LOGGER.debug('='*20)
-            print_title('* compute movement ids: {}'.format(movement_id_filter))
-    else:
-        selected_movements = process.get_movements_by_planning_priority(beam_id, priority)
-        if verbose:
-            LOGGER.debug('='*20)
-            print_title('* compute {} (priority {}, status {})'.format([mt.__name__ for mt in movement_types], priority,
-                movement_statuses))
-
-    # no filter applied if movement_statuses is None
-    filtered_movements = [m for m in selected_movements \
-        if movement_statuses is None or \
-           any([get_movement_status(process, m, movement_types, check_type_only=check_type_only).value == m_st.value
-                for m_st in movement_statuses])]
+    movement_id_filter = options.get('movement_id_filter', None)
+    if movement_id_filter == []:
+        movement_id_filter = None
 
     computed_movements = []
-    with tqdm(total=len(filtered_movements), desc=f'{beam_id}-priority {priority}') as pbar:
-        for m in filtered_movements:
-            pbar.set_postfix_str(f'{m.movement_id}:{m.__class__.__name__}, {m.tag}')
+
+    while (True):
+        selected_movements = process.get_movements_by_beam_id(beam_id)  # type: Movement
+        selected_movements = [m for m in selected_movements if isinstance(m, RoboticMovement)]
+
+        # * Filter by already computed movement
+        selected_movements = [m for m in selected_movements if m not in computed_movements]
+
+        # * Filter by no trajectory
+        if has_no_trajectory:
+            selected_movements = [m for m in selected_movements if m.trajectory is None]
+
+        # * Filter by movement_id
+        if movement_id_filter is not None:
+            # * Unify movement_id filter to be actual movement_id, not index.
+            for i in range(len(movement_id_filter)):
+                if movement_id_filter[i].isdigit():
+                    movement_id_filter[i] = process.movements[int(movement_id_filter[i])].movement_id
+            # * Filter
+            selected_movements = [m for m in selected_movements if m.movement_id in movement_id_filter]
+
+        # * Filter by planning priority
+        if planning_priority_filter is not None:
+            selected_movements = [m for m in selected_movements if m.planning_priority in planning_priority_filter]
+
+        # * Filter by movement type
+        if movement_type_filter is not None:
+            selected_movements = [m for m in selected_movements if type(m) in movement_type_filter]
+
+        # * Filter by movement_status
+        if movement_status_filter is not None:
+            selected_movements = [m for m in selected_movements if get_movement_status(process, m) in movement_status_filter]
+
+        if len(selected_movements) == 0 :
+            break
+        # * Plan all selected movements
+        for m in selected_movements:
             m_id = process.movements.index(m)
             start_time = time.time()
             plan_success = compute_movement(client, robot, process, m, options, diagnosis)
@@ -246,13 +269,28 @@ def compute_selected_movements(client, robot, process, beam_id, priority, moveme
                 options['profiles'][m_id]['movement_id'] = [m.movement_id]
                 options['profiles'][m_id]['plan_time'].append(plan_time)
                 options['profiles'][m_id]['plan_success'].append(plan_success)
-            if plan_success:
-                if viz_upon_found:
-                    with WorldSaver():
-                        visualize_movement_trajectory(client, robot, process, m, step_sim=True)
-                computed_movements.append(m)
-            else:
+
+            if not plan_success:
                 LOGGER.info('No plan found for {} | {}'.format(m.movement_id, m.short_summary))
                 return False, []
-            pbar.update(1)
+
+            if viz_upon_found:
+                with WorldSaver():
+                    visualize_movement_trajectory(client, robot, process, m, step_sim=True)
+            computed_movements.append(m)
+
+    # Debug message
+    debug_message = ""
+    if movement_id_filter is not None:
+        debug_message += "movement_id_filter = {}, ".format(movement_id_filter)
+    if planning_priority_filter is not None:
+        debug_message += "planning_priority_filter = {}, ".format(planning_priority_filter)
+    if movement_type_filter is not None:
+        debug_message += "movement_type_filter = {}, ".format([t.__name__ for t in movement_type_filter])
+    if movement_status_filter is not None:
+        debug_message += "movement_status_filter = {}, ".format(movement_status_filter)
+    debug_message += "has_no_trajectory = {}, ".format(has_no_trajectory)
+    computed_movements_id = [m.movement_id for m in computed_movements]
+    LOGGER.debug("compute_selected_movements({}) solved {} Movements: {}".format(debug_message, len(computed_movements), computed_movements_id))
+
     return True, computed_movements

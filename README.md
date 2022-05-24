@@ -106,6 +106,9 @@ The following libraries are installed "automatically" (via pip or conda, learn a
 - `jsonpickle` (Serialization library for Tools, Assembly, Process)
 - `trimesh` (Call Openscad in the background to perform Mesh Boolean)
 - `pycddlib` (Computation of blocking direction analysis)
+- `CGAL` (SWIG bindings for remeshing operations)
+
+The CGAL bindings are best installed from conda: `conda install -c conda-forge cgal`. Otherwise, you have to be brave enough to build from source following instructions [here](https://github.com/CGAL/cgal-swig-bindings/wiki/Installation).
 
 The following two libraries are installed manually from git submodules, to better keep track of our development cycles:
 - `pybullet_planning` (Library for planning utilities in pybullet)

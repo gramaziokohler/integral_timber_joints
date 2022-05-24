@@ -126,6 +126,7 @@ def main():
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     parser.add_argument('--debug', action='store_true', help='debug mode.')
+    parser.add_argument('--mesh_split_long_edge_max_length', default=250.0, type=float, help='the range of edges to be split if they are longer than given threshold used in CGAL\'s split mesh edges function. Unit in millimeter. 0.0 will turn this feature off. By default it is set to be 250.0 mm.')
     args = parser.parse_args()
 
     logging_level = logging.DEBUG if args.debug else logging.INFO
@@ -165,13 +166,6 @@ def main():
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer)
 
-    process.set_initial_state_robot_config(process.robot_initial_config)
-    set_state(client, robot, process, process.initial_state, initialize=True,
-        options={'debug' : False, 'reinit_tool' : args.reinit_tool})
-    # * collision sanity check for the initial conf
-    if process.robot_initial_config is not None:
-        assert not client.check_collisions(robot, process.robot_initial_config, options={'diagnosis':True})
-
     options = {
         'diagnosis' : True, # args.viewer,
         'debug' : args.debug,
@@ -179,7 +173,16 @@ def main():
         # joint compare details in DEBUG channel (in a separate logger)
         'verbose' : True,
         'fail_fast': False,
+        'reinit_tool' : args.reinit_tool,
+        'mesh_split_long_edge_max_length' : args.mesh_split_long_edge_max_length,
     }
+
+    process.set_initial_state_robot_config(process.robot_initial_config)
+    set_state(client, robot, process, process.initial_state, initialize=True, options=options)
+    # * collision sanity check for the initial conf
+    if process.robot_initial_config is not None:
+        assert not client.check_collisions(robot, process.robot_initial_config, options={'diagnosis':True})
+
     # ! frame, conf compare, joint flip and collision peneration tolerances are set here
     options.update(get_tolerances(robot))
 
