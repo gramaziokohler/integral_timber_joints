@@ -1088,6 +1088,11 @@ class RobotClampAssemblyProcess(Data):
         """ Get an ordered list of Movements related to a beam"""
         return [movement for action in self.get_actions_by_beam_id(beam_id) for movement in action.movements]
 
+    def get_robotic_movements_by_beam_id(self, beam_id):
+        # type: (str) -> list[Movement]
+        """ Get an ordered list of RoboticMovements related to a beam. Non Robotic Movements are skipped."""
+        return [movement for action in self.get_actions_by_beam_id(beam_id) for movement in action.movements if isinstance(movement, RoboticMovement)]
+
     def get_movement_summary_by_beam_id(self, beam_id):
         movements = self.get_movements_by_beam_id(beam_id)
         print('=====')

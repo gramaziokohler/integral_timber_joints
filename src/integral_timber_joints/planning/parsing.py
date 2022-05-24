@@ -87,10 +87,14 @@ def parse_process(design_dir, process_name, subdir='.') -> RobotClampAssemblyPro
     """
     # * Load process from file
     file_path = get_process_path(design_dir, process_name, subdir)
-    if not os.path.exists(file_path):
-        LOGGER.warning('No process file found, using the original one.')
+    if os.path.exists(file_path):
+        LOGGER.warning('Process file loaded from sub-directory: {}'.format(file_path))
+    else:
         file_path = get_process_path(design_dir, process_name, '.')
-    if not os.path.exists(file_path):
+    if os.path.exists(file_path):
+        LOGGER.info('Process file loaded from main problem folder: {}'.format(file_path))
+    else:
+        LOGGER.error('Process file cannot be found in folder: {}'.format(file_path))
         raise FileNotFoundError(file_path)
     with open(file_path, 'r') as f:
         process = json.load(f, cls=DataDecoder)

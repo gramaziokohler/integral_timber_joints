@@ -154,6 +154,7 @@ class RoboticMovement(Movement):
         speed_type="",  # type: str # A string linking to a setting
         target_configuration=None,  # type: Optional[Configuration]
         allowed_collision_matrix=[],  # type: list(tuple(str,str))
+        intermediate_planning_waypoint=[],  # type: list(Configuration)
         tag=None,  # type: str
         seed=None  # type: int
     ):
@@ -171,6 +172,7 @@ class RoboticMovement(Movement):
         self.trajectory = None  # type: JointTrajectory
         self.target_configuration = target_configuration  # type: Optional[Configuration]
         self.allowed_collision_matrix = allowed_collision_matrix  # type: list(tuple(str,str))
+        self.intermediate_planning_waypoint = intermediate_planning_waypoint  # type: list(Configuration)
         self.tag = tag or "Generic Robotic Movement"
         self.seed = seed  # or hash(time.time())
 
@@ -186,6 +188,7 @@ class RoboticMovement(Movement):
         data['speed_type'] = self.speed_type
         data['target_configuration'] = self.target_configuration
         data['allowed_collision_matrix'] = self.allowed_collision_matrix
+        data['intermediate_planning_waypoint'] = self.intermediate_planning_waypoint
         data['seed'] = self.seed
         return data
 
@@ -201,6 +204,7 @@ class RoboticMovement(Movement):
         self.speed_type = data.get('speed_type', "")
         self.target_configuration = data.get('target_configuration', None)
         self.allowed_collision_matrix = data.get('allowed_collision_matrix', [])
+        self.intermediate_planning_waypoint = data.get('intermediate_planning_waypoint', [])
         self.seed = data.get('seed', None)
 
     @property

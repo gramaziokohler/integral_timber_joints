@@ -10,9 +10,13 @@ from integral_timber_joints.process import RobotClampAssemblyProcess, RoboticMov
 from integral_timber_joints.rhino.load import get_activedoc_process_path, get_process, get_process_artist, process_is_none
 
 
-def save_process(process):
-    # type: (RobotClampAssemblyProcess) -> bool
-    """ Load json from the path next to the Rhino File
+def save_process(process, purge_trajectory = True):
+    # type: (RobotClampAssemblyProcess, bool) -> bool
+    """ Load json from the path next to the Rhino File.
+
+    Planned trajectory can be loaded from external movements when user use the Visualize Trajectory UI.
+    By default, these planned trajectory is not saved within this process file. Therefore we will purge them
+    before saving.
     """
     if process_is_none(process):
         return
@@ -20,16 +24,8 @@ def save_process(process):
     json_path = get_activedoc_process_path()
     exist = os.path.exists(json_path)
 
-    # * Check if any of the movements have trajectory. If so, do not allow saving
-    if any(m.trajectory is not None for m in process.movements if isinstance(m, RoboticMovement)):
-        print("-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -")
-        print("Error: Some Robotic Movements contain Trajectory. ")
-        print("File cannot be Saved")
-        print("-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -")
-        return
 
-
-    # Ask user what indent to use
+    # * Ask user what indent to use
     indent = rs.GetString("What json indent to Use?", "Four", ["None", "Two", "Four"])
     if indent == "None":
         indent = None
@@ -41,6 +37,12 @@ def save_process(process):
         print("Error: Please select between: None / Two / Four")
         print("File Not Saved")
         return
+
+    # * Check if any of the movements have trajectory. If so, remove it.
+    if purge_trajectory:
+        for movement in process.movements:
+            if isinstance(movement, RoboticMovement):
+                movement.trajectory = None
 
     with open(json_path, 'w') as f:
         json.dump(process, f, cls=DataEncoder, indent=indent, sort_keys=True)

@@ -2,9 +2,10 @@ import numpy as np
 from termcolor import colored
 from copy import copy
 from itertools import product
+from typing import Optional
 
 from compas.geometry import Frame, distance_point_point, Transformation
-from compas_fab.robots import Configuration, Robot
+from compas_fab.robots import Configuration, Robot, Trajectory
 
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotClampAssemblyProcess, Movement, RobotScrewdriverSyncLinearMovement
 from integral_timber_joints.process.state import SceneState
@@ -153,6 +154,10 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     end_scene = process.get_movement_end_scene(movement)
     start_conf = process.get_movement_start_robot_config(movement)
     end_conf = process.get_movement_end_robot_config(movement)
+
+    # * special warning when both start and end config is set
+    if start_conf is not None and end_conf is not None:
+        LOGGER.warning("Both start and end config is fixed for Linear Movement #{}. This is likely overconstrained.".format(movement.movement_id))
 
     # * set start state
     if not set_state(client, robot, process, start_scene, options=options):
@@ -594,6 +599,152 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
                         if verbose:
                             LOGGER.debug('No free motion found under current retraction: {}.'.format(retraction_msg))
                             LOGGER.debug('='*10)
+
+    if traj is None and diagnosis:
+        client._print_object_summary()
+        lockrenderer = options.get('lockrenderer', None)
+        if lockrenderer:
+            lockrenderer.restore()
+        LOGGER.debug('Start diagnosis.')
+        d_options = options.copy()
+        d_options['diagnosis'] = True
+        goal_constraints = robot.constraints_from_configuration(end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
+        traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
+                                  options=d_options)
+        if lockrenderer:
+            lockrenderer = LockRenderer()
+    # if verbose:
+    #     LOGGER.info('No free movement found for {}.'.format(movement.short_summary))
+    return None
+
+def sample_config(client: PyChoreoClient, robot: Robot, target_frame: Frame, options=None):
+    """Function used for sampling start and end configuration for robot movement"""
+    # * options
+    options = options or {}
+    debug = options.get('debug', False)
+    verbose = options.get('verbose', True)
+    gantry_attempts = options.get('gantry_attempts', 500)
+    reachable_range = options.get('reachable_range', (0.2, 2.8))
+
+    gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+    gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
+    sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
+
+    # * Check input
+    if target_frame is None:
+        LOGGER.error('No frame is specified, Underspecified problem, sample_config cannot continue.')
+        return None
+
+    # * Scale frame and sample
+    target_frame = target_frame.copy()
+    target_frame.point *= 1e-3
+
+    gantry_base_gen_fn = gantry_base_generator(client, robot, target_frame, reachable_range=reachable_range, scale=1.0)
+    for gantry_iter, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
+
+        # * bare-arm IK sampler
+        arm_conf_vals = sample_ik_fn(pose_from_frame(target_frame, scale=1))
+
+        # * iterate through all 6-axis IK solution
+        for arm_conf_val in arm_conf_vals:
+            if arm_conf_val is None:
+                continue
+            configuration = Configuration(list(base_conf.joint_values) + list(arm_conf_val),
+                gantry_arm_joint_types, gantry_arm_joint_names)
+
+            # * If no collision for this Gantry + IKFast combo, return configuration
+            if not client.check_collisions(robot, configuration, options=options):
+                sample_found = True
+                if verbose: LOGGER.debug('Config found after {} gantry iters by sample_config().'.format(gantry_iter))
+                # if debug:
+                #     client.set_robot_configuration(robot, orig_start_conf)
+                #     LOGGER.debug(orig_start_conf.joint_values)
+                #     wait_if_gui('Sampled start conf')
+                return configuration
+    else:
+        LOGGER.debug('Config not found after {} gantry iters by sample_config().'.format(gantry_iter))
+        return None
+
+def compute_free_movement_with_waypoints(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, movement: RoboticFreeMovement,
+        options=None, diagnosis=False):
+    # assert isinstance(movement, RoboticFreeMovement)
+    options = options or {}
+    # * options
+    debug = options.get('debug', False)
+    verbose = options.get('verbose', True)
+    # * sampling attempts, needed only if start/end conf not specified
+
+    start_scene = process.get_movement_start_scene(movement)
+    end_scene = process.get_movement_end_scene(movement)
+    orig_start_conf = process.get_movement_start_robot_config(movement)
+    orig_end_conf = process.get_movement_end_robot_config(movement)
+
+    # * set start state
+    if not set_state(client, robot, process, start_scene, options=options):
+        LOGGER.error('Compute linear movement: set start state error.')
+        return None
+
+    sample_ik_fn = _get_sample_bare_arm_ik_fn(client, robot)
+    gantry_arm_joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
+    gantry_arm_joint_types = robot.get_joint_types_by_names(gantry_arm_joint_names)
+
+    # * Sample Start and end configurations
+    if orig_start_conf is None:
+        LOGGER.info('FreeMovement: Start Conf not specified in {}, will sample IK conf based frame.'.format(movement.short_summary))
+        orig_start_conf = sample_config(client, robot, start_scene[('robot', 'f')], options)
+        if orig_start_conf is None:
+            LOGGER.warning(colored('Start Config IK cannot be found for {}, solve fails.'.format(movement.short_summary), 'red'))
+            return None
+
+    # * Sample Start and end configurations
+    if orig_end_conf is None:
+        LOGGER.info('FreeMovement: End Conf not specified in {}, will sample IK conf based frame.'.format(movement.short_summary))
+        orig_end_conf = sample_config(client, robot, end_scene[('robot', 'f')], options)
+        if orig_end_conf is None:
+            LOGGER.warning(colored('End Config IK cannot be found for {}, solve fails.'.format(movement.short_summary), 'red'))
+            return None
+
+
+
+    # * computer retraction buffer motion before/after the free motion to avoid narrow passages
+    robot_uid = client.get_robot_pybullet_uid(robot)
+    tool_link_name = robot.get_end_effector_link_name(group=BARE_ARM_GROUP)
+
+    # * Not sure what this is
+    if USE_TRACK_IK:
+        ik_base_link_name = robot.get_base_link_name(group=GANTRY_ARM_GROUP)
+        trac_ik_solver = IK(base_link=ik_base_link_name, tip_link=tool_link_name,
+                            timeout=TRAC_IK_TIMEOUT, epsilon=TRAC_IK_TOL, solve_type="Speed",
+                            urdf_string=pp.read(robot.attributes['pybullet']['cached_robot_filepath']))
+        options['customized_ikinfo'] = get_solve_trac_ik_info(trac_ik_solver, robot_uid)
+    else:
+        pass
+
+    # * Plan each portion
+    waypoints = movement.intermediate_planning_waypoint
+    traj_segments = []
+    start_end_config_pairs = list(zip([orig_start_conf] + waypoints, waypoints + [orig_end_conf]))
+    for i, (start_conf, end_conf) in enumerate(start_end_config_pairs):
+
+        # Extract only the relavent joint values
+        end_conf = Configuration([end_conf[joint_name] for joint_name in gantry_arm_joint_names], gantry_arm_joint_types, gantry_arm_joint_names)
+
+        with LockRenderer(not diagnosis):
+            LOGGER.info('Planning waypoint segment {} of {} of {}'.format(i + 1, len(start_end_config_pairs), movement.movement_id))
+            goal_constraints = robot.constraints_from_configuration(end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
+            traj_segment = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
+                options=options) # type: Trajectory
+            if traj_segment is None:
+                LOGGER.debug('No path for waypoint segment {} of {} of {}, free movement planning fail.'.format(i + 1, len(start_end_config_pairs), movement.movement_id))
+                return None
+            traj_segments.append(traj_segment)
+
+    # * trajectory found!
+    traj = merge_trajectories(traj_segments)
+    if verbose:
+        LOGGER.debug(colored('Free movement found for {} with {} segments!'.format(movement.short_summary, len(start_end_config_pairs)), 'green'))
+    return traj
+
 
     if traj is None and diagnosis:
         client._print_object_summary()

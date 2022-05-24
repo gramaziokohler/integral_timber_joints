@@ -171,36 +171,39 @@ def replace_tool(process, cls):
     existing_tools_ids = [tool_id for tool_id in process.tool_ids
                           if process.tool(tool_id).__class__ is cls]
     if len(existing_tools_ids) == 0:
-        print("No %s exist for you to delete." % tool_type_name)
+        print("No %s exist for you to replace." % tool_type_name)
         return
 
-    # List out current tools for users to choose
-    print("Current %s:" % tool_type_name)
-    for tool_id in existing_tools_ids:
-        tool = process.tool(tool_id)
-        print("- tool_id: %s, type: %s" % (tool.name, tool.type_name))
+    while(True):
+        # List out current tools for users to choose
+        print("Current %s:" % tool_type_name)
+        for tool_id in existing_tools_ids:
+            tool = process.tool(tool_id)
+            print("- tool_id: %s, type: %s" % (tool.name, tool.type_name))
 
-    # Ask user which tool to delete
-    tool_id = rs.GetString("Which %s to replace? (id and storage frame are kept)" % tool_type_name, "Cancel", ["Cancel"] + existing_tools_ids)
+        # Ask user which tool to delete
+        tool_id = rs.GetString("Which %s to replace? (id and storage frame are kept)" % tool_type_name, "Cancel", ["Cancel"] + existing_tools_ids)
 
-    if tool_id in existing_tools_ids:
-        old_tool = process.tool(tool_id)
-        path = rs.OpenFileName("Open", "%s File (*.json)|*.json|All Files (*.*)|*.*||" % tool_type_name)
-        with open(path, 'r') as f:
-            # Deserialize asert correctness and add to Process
-            new_tool = json.load(f, cls=DataDecoder)
-            assert tool.__class__ is cls
+        if tool_id in existing_tools_ids:
+            old_tool = process.tool(tool_id)
+            path = rs.OpenFileName("Open", "%s File (*.json)|*.json|All Files (*.*)|*.*||" % tool_type_name)
+            with open(path, 'r') as f:
+                # Deserialize asert correctness and add to Process
+                new_tool = json.load(f, cls=DataDecoder)
+                assert tool.__class__ is cls
 
-            # Copy over old attributes
-            new_tool.name = old_tool.name
-            new_tool.tool_storage_frame = old_tool.tool_storage_frame
-            new_tool.tool_storage_configuration = old_tool.tool_storage_configuration
-        artist = get_process_artist()
-        artist.delete_tool_in_storage(tool_id)
-        process.delete_tool(tool_id)
-        process.add_tool(new_tool)
-        artist.draw_tool_in_storage(tool_id)
-        print("%s is replaced by %s." % (old_tool, new_tool))
+                # Copy over old attributes
+                new_tool.name = old_tool.name
+                new_tool.tool_storage_frame = old_tool.tool_storage_frame
+                new_tool.tool_storage_configuration = old_tool.tool_storage_configuration
+            artist = get_process_artist()
+            artist.delete_tool_in_storage(tool_id)
+            process.delete_tool(tool_id)
+            process.add_tool(new_tool)
+            artist.draw_tool_in_storage(tool_id)
+            print("%s is replaced by %s." % (old_tool, new_tool))
+        else:
+            return
 
 
 def replace_clamp(process):

@@ -70,6 +70,7 @@ def main():
     options = {
         'debug' : args.debug,
         'diagnosis' : args.diagnosis,
+        'reinit_tool' : args.reinit_tool,
     }
 
     #########
@@ -81,7 +82,7 @@ def main():
     process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
 
     # * initialize collision objects and tools in the scene
-    assert set_initial_state(client, robot, process, reinit_tool=args.reinit_tool, initialize=True), 'Setting initial state failed.'
+    assert set_initial_state(client, robot, process, initialize=True, options=options), 'Setting initial state failed.'
     # pp.wait_if_gui('Initial state')
 
     # ! frame, conf compare, joint flip and allowable collision tolerances are set here
