@@ -1196,8 +1196,8 @@ class RobotClampAssemblyProcess(Data):
         """Changes the default value of the initial state robot config."""
         self.initial_state[self.robot_config_key] = robot_configuration
 
-    def get_prev_robotic_movement(self, movement):
-        # type: (Movement) -> RoboticMovement
+    def get_prev_robotic_movement(self, movement, movement_type = RoboticMovement):
+        # type: (Movement, type) -> RoboticMovement
         """Get the RoboticMovement before the given Movement.
         If the given movement is the first Robotic Movement, return None.
         """
@@ -1208,14 +1208,14 @@ class RobotClampAssemblyProcess(Data):
             return None
 
         prev_movement = movements[index - 1]
-        if isinstance(prev_movement, RoboticMovement):
+        if isinstance(prev_movement, movement_type):
             return prev_movement
         else:
             # Recurse until a RoboticMovement is found
-            return self.get_prev_robotic_movement(prev_movement)
+            return self.get_prev_robotic_movement(prev_movement, movement_type)
 
-    def get_next_robotic_movement(self, movement):
-        # type: (Movement) -> RoboticMovement
+    def get_next_robotic_movement(self, movement, movement_type = RoboticMovement):
+        # type: (Movement, type) -> RoboticMovement
         """Get the RoboticMovement after the given Movement.
         If the given movement is the last Robotic Movement, return None.
         """
@@ -1226,11 +1226,47 @@ class RobotClampAssemblyProcess(Data):
             return None
 
         next_movement = movements[index + 1]
-        if isinstance(next_movement, RoboticMovement):
+        if isinstance(next_movement, movement_type):
             return next_movement
         else:
             # Recurse until a RoboticMovement is found
-            return self.get_next_robotic_movement(next_movement)
+            return self.get_next_robotic_movement(next_movement, movement_type)
+
+    def get_linear_movement_group(self, movement):
+        # type: (str) -> List[RoboticMovement]
+        """ Given a movement RoboticLinearMovement
+        Returns a list of ordered RoboticLinearMovement"""
+        assert isinstance(movement, RoboticLinearMovement)
+
+        movements = []
+
+        # Searching backwards
+        this_movement = movement
+        while (True):
+            next_movement = self.get_prev_robotic_movement(this_movement)
+            if isinstance(next_movement, RoboticLinearMovement):
+                movements.append(next_movement)
+                this_movement = next_movement
+            else:
+                break
+        movements = movements[::-1]
+
+        # Add this movement
+        movements.append(movement)
+
+        # Searching forward
+        this_movement = movement
+        while (True):
+            next_movement = self.get_next_robotic_movement(this_movement)
+            if isinstance(next_movement, RoboticLinearMovement):
+                movements.append(next_movement)
+                this_movement = next_movement
+            else:
+                break
+
+        return movements
+
+    # def get_neighbouring_linear
 
     def get_movement_start_robot_config(self, movement):
         # type: (Movement) -> Optional[Configuration]

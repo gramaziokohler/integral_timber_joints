@@ -33,7 +33,8 @@ SOLVE_MODE = [
     'linear',
     'movement_id', # 'Compute only for movement with a specific tag, e.g. `A54_M0`.'
     'free_motion_only', # 'Only compute free motions. Priority Applies'
-    'linear_motion_only' # 'Only compute linear motions. Priority Applies'
+    'linear_motion_only', # 'Only compute linear motions. Priority Applies'
+    'linear_movement_group',
 ]
 
 ##############################################
@@ -242,6 +243,47 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
                 return False
             solved_movements += movements
 
+        # * Only compute one linear motion group. Priority Applies
+        elif args.solve_mode == 'linear_movement_group':
+            LOGGER.info('Computing priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+
+            # Get all movement_ids of a linear motion group
+            movement = process.get_movement_by_movement_id(args.movement_id)
+            movements = process.get_linear_movement_group(movement)
+
+            options['movement_id_filter'] = [m.movement_id for m in movements]
+
+            # * Priority 1
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, None,
+                planning_priority_filter = [1],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('Computing failed priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+                return False
+
+            # * Priority 1
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, None,
+                planning_priority_filter = [0],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('Computing failed priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+                return False
+
+
+            solved_movements += movements
+
+            # Ideally, all the free motions should have both start and end conf specified.
+            # one_sided is used to sample the start conf if none is given.
+            LOGGER.info('Computing priority 0 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+                planning_priority_filter = [0],
+                movement_type_filter = [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
+                options=options, diagnosis=args.diagnosis)
+            if not success:
+                LOGGER.info('Computing failed priority 0 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
+                return False
+            solved_movements += movements
+
         elif args.solve_mode == 'movement_id':
             # * compute for movement_id movement
             LOGGER.info('Computing only Movement {}'.format(args.movement_id))
@@ -368,7 +410,9 @@ def main():
 
     # * force load external if only planning for the free motions
     if args.movement_id is not None:
-        args.solve_mode = 'movement_id'
+        if args.solve_mode != 'movement_id' and args.solve_mode != 'linear_movement_group':
+            LOGGER.error("If movement_id is supplied. Solve mode must be movement_id or linear_movement_group")
+            exit()
 
     #########
     options = {
@@ -413,13 +457,22 @@ def main():
         args.seq_n = [process.assembly.sequence.index(args.beam_id)]
     beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, movement_id=args.movement_id)
 
-    # * archive the target movements (if they already exist in the external movement folder)
+    # * Archive the target movements (if they already exist in the external movement folder)
     # if movement_id is not None, only one movement json will be moved to the `archive` folder
     # otherwise, all the movement under beam_id will be moved
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     ext_movement_path = os.path.dirname(result_path)
     if not args.keep_planned_movements:
         archive_robotic_movements(process, beam_ids, ext_movement_path, movement_id=args.movement_id)
+
+    # * Archive linear motion group:
+    if args.solve_mode == 'linear_movement_group' and not args.keep_planned_movements:
+        movement = process.get_movement_by_movement_id(args.movement_id)
+        movements = process.get_linear_movement_group(movement)
+        for movement in movements:
+            moved = move_saved_movement(movement, ext_movement_path)
+            if moved: LOGGER.info("Linear Movement group member {} removed.".format(movement.movement_id))
+        # ! This is not finished because the neighbouring Free Move also need to be deleted.
 
     # * Archive neighbouring already planned Free Movements
     if args.solve_mode is not 'movement_id' and args.remove_overconstraining_free_movement:
