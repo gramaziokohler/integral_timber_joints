@@ -31,6 +31,7 @@ def solve_serialized_incremental(initial_problem, stream_info={}, unit_costs=Fal
     global_cost = 0
     state = list(init)
     goals = serialize_goal(goal)
+    # TODO: try group assembled and return clamp actions
     # TODO: instead just track how the true init updates
     for i in range(len(goals)):
         # TODO: option in algorithms to pass in existing facts
@@ -46,7 +47,7 @@ def solve_serialized_incremental(initial_problem, stream_info={}, unit_costs=Fal
             #                          unit_efforts=unit_efforts, verbose=True, **kwargs)
             solution = solve_incremental(
                 problem=local_problem, unit_costs=unit_costs,
-                    verbose=True, **kwargs)
+                    verbose=0, **kwargs)
                 
         print_solution(solution)
 

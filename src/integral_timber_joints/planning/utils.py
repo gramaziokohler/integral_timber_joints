@@ -125,6 +125,7 @@ def color_from_success(success : bool):
 ##########################################
 
 def robotic_movement_ids_from_beam_ids(process, beam_ids, movement_id=None):
+    """if movement_id is provided, the beam_ids will be ignored."""
     robotic_movement_ids = []
     if movement_id is not None:
         if not movement_id.startswith('A'):

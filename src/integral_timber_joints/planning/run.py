@@ -250,7 +250,6 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             # Get all movement_ids of a linear motion group
             movement = process.get_movement_by_movement_id(args.movement_id)
             movements = process.get_linear_movement_group(movement)
-
             options['movement_id_filter'] = [m.movement_id for m in movements]
 
             # * Priority 1
@@ -260,24 +259,11 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
             if not success:
                 LOGGER.info('Computing failed priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
                 return False
-
-            # * Priority 1
-            success, movements = compute_selected_movements_by_status_priority(client, robot, process, None,
-                planning_priority_filter = [0],
-                options=options, diagnosis=args.diagnosis)
-            if not success:
-                LOGGER.info('Computing failed priority 1 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
-                return False
-
-
             solved_movements += movements
 
-            # Ideally, all the free motions should have both start and end conf specified.
-            # one_sided is used to sample the start conf if none is given.
-            LOGGER.info('Computing priority 0 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
-            success, movements = compute_selected_movements_by_status_priority(client, robot, process, beam_id,
+            # * Priority 0
+            success, movements = compute_selected_movements_by_status_priority(client, robot, process, None,
                 planning_priority_filter = [0],
-                movement_type_filter = [RoboticLinearMovement, RoboticClampSyncLinearMovement, RobotScrewdriverSyncLinearMovement],
                 options=options, diagnosis=args.diagnosis)
             if not success:
                 LOGGER.info('Computing failed priority 0 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
