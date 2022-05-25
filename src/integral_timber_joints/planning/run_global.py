@@ -134,15 +134,12 @@ def compute_target_movements(client, robot, process, movements, args, options=No
         smoothed_movements = []
         st_time = time.time()
         with pp.LockRenderer(): # not args.debug):
-            if args.force_linear_to_free_movement:
-                solved_free_movements = [fm for fm in solved_movements if isinstance(fm, RoboticMovement)]
-            else:
-                solved_free_movements = [fm for fm in solved_movements if isinstance(fm, RoboticFreeMovement)]
+            solved_free_movements = [fm for fm in solved_movements if isinstance(fm, RoboticFreeMovement)]
 
             if len(solved_free_movements) > 0:
                 with tqdm(total=len(solved_free_movements), desc='smoothing') as pbar:
                     for free_m in solved_free_movements:
-                        pbar.set_postfix_str(f'{free_m.movement_id}:{free_m.__class__.__name__}, {free_m.tag}')
+                        pbar.set_postfix_str(f'{free_m.movement_id}:{free_m.__class__.__name__}')
                         success, smoothed_traj, msg = smooth_movement_trajectory(client, process, robot, free_m, options=options)
                         free_m.trajectory = smoothed_traj
                         smoothed_movements.append(free_m)
@@ -186,7 +183,7 @@ def main():
     #
     parser.add_argument('--solve_mode', default='all', choices=SOLVE_MODE, help='solve mode.')
     parser.add_argument('--no_smooth', action='store_true', help='Not apply smoothing on free motions upon a plan is found. Defaults to False.')
-    parser.add_argument('--keep_planned_movements', action='store_true', help='Defaults to False.')
+    parser.add_argument('--keep_planned_movements', action='store_true', help='Skip planning for movements with trajectories. Defaults to False.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     #
@@ -211,6 +208,9 @@ def main():
     parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
     parser.add_argument('--mesh_split_long_edge_max_length', default=0.0, type=float, help='the range of edges to be split if they are longer than given threshold used in CGAL\'s split mesh edges function. Unit in millimeter. By default 0.0 will turn this feature off.')
     args = parser.parse_args()
+
+    if args.movement_id is not None:
+        args.solve_mode = 'movement_id'
 
     log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir))
     log_path = os.path.join(log_folder, 'run.log')
@@ -245,7 +245,6 @@ def main():
         'mp_algorithm' : args.mp_algorithm,
         'check_sweeping_collision': True,
         'use_stored_seed' : args.use_stored_seed,
-        'force_linear_to_free_movement' : args.force_linear_to_free_movement,
         'mesh_split_long_edge_max_length' : args.mesh_split_long_edge_max_length,
     }
     # ! frame, conf compare, joint flip and allowable collision tolerances are set here
@@ -268,39 +267,79 @@ def main():
     #########
     # * Load process
     process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
-    # if args.beam_id is not None:
-    #     args.seq_n = [process.assembly.sequence.index(args.beam_id)]
-    # beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, movement_id=args.movement_id)
 
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     ext_movement_path = os.path.dirname(result_path)
 
-    # * locate all the target linear movement groups
-    movement = process.movements[0]
-    linear_movement_groups = []
-    while (True):
-        movement = process.get_next_robotic_movement(movement, movement_type=RoboticLinearMovement)
-        if movement is None:
-            break
-        lm_group = process.get_linear_movement_group(movement)
-        linear_movement_groups.append(lm_group)
+    # * locate all target movement groups, all high-level filtering happens here
+    target_movement_groups = []
+    if args.solve_mode == 'movement_id':
+        # * only plan for the residing group for the target movement, if movement_id is provided
+        movement = process.get_movement_by_movement_id(args.movement_id)
+        assert isinstance(movement, RoboticMovement)
 
-        # if keep_
-        # check if all members are planned, if so, do not add to the candidates
+        # Get neighbouring Free Movements if the target group is a linear movement group
+        if isinstance(movement, RoboticLinearMovement):
+            movement_group = process.get_linear_movement_group(movement)
+            target_movement_groups.append(process.get_prev_movement_group(movement_group[0]))
+            target_movement_groups.append(movement_group)
+            target_movement_groups.append(process.get_next_movement_group(movement_group[-1]))
+        elif isinstance(movement, RoboticFreeMovement):
+            movement_group = process.get_free_movement_group(movement)
+            target_movement_groups = [movement_group]
+        else:
+            raise TypeError(movement.tag)
+    else:
+        movement = process.movements[0]
+        if not isinstance(movement, RoboticMovement):
+            movement = process.get_next_robotic_movement(movement)
+        # * iterate through all the movements and apply certain filters for groups
+        while movement is not None:
+            # * movement type filter
+            if args.solve_mode == 'lmg':
+                correct_mv_type = isinstance(movement, RoboticLinearMovement)
+            elif args.solve_mode == 'fmg':
+                correct_mv_type = isinstance(movement, RoboticFreeMovement)
+            elif args.solve_mode == 'all':
+                correct_mv_type = True
+            if isinstance(movement, RoboticLinearMovement):
+                movement_group = process.get_linear_movement_group(movement)
+            elif isinstance(movement, RoboticFreeMovement):
+                movement_group = process.get_free_movement_group(movement)
+            else:
+                raise TypeError(movement.tag)
 
-        # Get neighbouring Free Movements of the linear group
-        prev_free_movement = process.get_prev_robotic_movement(lm_group[0], movement_type=RoboticFreeMovement)
-        next_free_movement = process.get_next_robotic_movement(lm_group[-1], movement_type=RoboticFreeMovement)
+            if correct_mv_type:
+                # * keep_planned_movements filter
+                if args.keep_planned_movements and len(movement_group) > 0:
+                    # if ALL of the movement within the group has planned trajectory, skip the current group
+                    all_members_has_traj = True
+                    for m_member in movement_group:
+                        smoothed_path = os.path.join(ext_movement_path, m_member.get_filepath(subdir='smoothed_movements'))
+                        nonsmoothed_path = os.path.join(ext_movement_path, m_member.get_filepath(subdir='movements'))
+                        if not (os.path.exists(smoothed_path) or os.path.exists(nonsmoothed_path)):
+                            all_members_has_traj = False
+                            break
+                    correct_mv_type = (not all_members_has_traj)
 
-        # * Archive the target movements (if they already exist in the external movement folder)
-        for movement in [prev_free_movement] + lm_group + [next_free_movement]:
-            if movement is None:
-                continue
-            # LOGGER.debug("Movement group member {}: {}.".format(movement.movement_id, movement.__class__.__name__))
+                if correct_mv_type and len(movement_group) > 0:
+                    if args.solve_mode == 'lmg':
+                        # remove neighbor free motion groups and add them to the target_groups
+                        target_movement_groups.append(process.get_prev_movement_group(movement_group[0]))
+                        target_movement_groups.append(movement_group)
+                        target_movement_groups.append(process.get_next_movement_group(movement_group[-1]))
+                    else:
+                        # otherwise simply add the target group
+                        # in the case of solve_mode == 'all', the free movement group will be processed sequentially in the while loop
+                        target_movement_groups.append(movement_group)
+
+            movement = process.get_next_robotic_movement(movement_group[-1])
+
+    # * Archive the target movements (if they already exist in the external movement folder)
+    for m_group in target_movement_groups:
+        for movement in m_group:
             moved = move_saved_movement(movement, ext_movement_path)
             if moved: LOGGER.info("Movement group member {} removed.".format(movement.movement_id))
-
-        movement = lm_group[-1]
 
     # * load previously planned movements
     process.load_external_movements(ext_movement_path)
@@ -309,35 +348,36 @@ def main():
     set_initial_state(client, robot, process, initialize=True, options=options)
 
     # * Plan all the linear groups first
-    with tqdm(total=len(linear_movement_groups), desc='Linear movement groups') as pbar:
-        for lm_group in linear_movement_groups:
-            LOGGER.debug('-'*20)
-            success, _ = plan_for_movement_group_with_restart(client, robot, process, lm_group, args, options=options)
-            if not success:
-                # TODO report error
-                continue
-            pbar.update(1)
+    linear_movement_groups = []
+    for mv_group in target_movement_groups:
+        if len(mv_group) > 0 and isinstance(mv_group[0], RoboticLinearMovement):
+            linear_movement_groups.append(mv_group)
+    if len(linear_movement_groups) > 0:
+        with tqdm(total=len(linear_movement_groups), desc='Linear movement groups') as pbar:
+            for i, lm_group in enumerate(linear_movement_groups):
+                success, _ = plan_for_movement_group_with_restart(client, robot, process, lm_group, args, options=options)
+                if not success:
+                    LOGGER.error('Linear movement group #{}/{} fails, which contains {}'.format(i, len(linear_movement_groups), 
+                        [m.movement_id for m in lm_group]))
+                    # continue
+                pbar.update(1)
 
     # * Plan the free movements connecting the planned linear groups
-    with tqdm(total=len(linear_movement_groups), desc='Neighbor free movements of lm_groups') as pbar:
-        for i, lm_group in enumerate(linear_movement_groups):
-            LOGGER.debug('-'*20)
-
-            # Get neighbouring Free Movements of the linear group
-            fm_group = []
-            fm_group.append(process.get_prev_robotic_movement(lm_group[0], movement_type=RoboticFreeMovement))
-            fm_group.append(process.get_next_robotic_movement(lm_group[-1], movement_type=RoboticFreeMovement))
-
-            success, _ = plan_for_movement_group_with_restart(client, robot, process, [m for m in fm_group if m is not None], 
-                args, options=options)
-
-            if not success:
-                LOGGER.error('Free movement fails for lm group #{}'.format(i))
-                # TODO restart if the free movement planning fails, need to remove adjacent linear groups
-                # but we should only remove the "hard" linear group and keep the "easy" linear group
-                continue
-
-            pbar.update(1)
+    free_movement_groups = []
+    for mv_group in target_movement_groups:
+        if len(mv_group) > 0 and isinstance(mv_group[0], RoboticFreeMovement):
+            free_movement_groups.append(mv_group)
+    if len(linear_movement_groups) > 0:
+        with tqdm(total=len(free_movement_groups), desc='Free movement groups') as pbar:
+            for i, fm_group in enumerate(free_movement_groups):
+                success, _ = plan_for_movement_group_with_restart(client, robot, process, fm_group, args, options=options)
+                if not success:
+                    LOGGER.error('Free movement group #{}/{} fails, which contains {}'.format(i, len(linear_movement_groups), 
+                        [m.movement_id for m in fm_group]))
+                    # TODO restart if the free movement planning fails, need to remove adjacent linear groups
+                    # but we should only remove the "hard" linear group and keep the "easy" linear group
+                    # continue
+                pbar.update(1)
 
     LOGGER.info('Planning done.')
     client.disconnect()

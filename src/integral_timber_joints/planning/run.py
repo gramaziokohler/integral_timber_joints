@@ -394,7 +394,6 @@ def main():
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
 
-    # * force load external if only planning for the free motions
     if args.movement_id is not None:
         if args.solve_mode != 'movement_id' and args.solve_mode != 'linear_movement_group':
             LOGGER.error("If movement_id is supplied. Solve mode must be movement_id or linear_movement_group")
@@ -488,8 +487,6 @@ def main():
                             neighbour_movement.movement_id, last_robotic_movement.movement_id, beam_id
                         ), "red"))
 
-
-    #
     # * load previously planned movements
     process.load_external_movements(ext_movement_path)
 
@@ -497,7 +494,7 @@ def main():
     set_initial_state(client, robot, process, initialize=True, options=options)
     for beam_id in beam_ids:
         LOGGER.debug('-'*20)
-        success, trial_runtime_data = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
+        success, _ = plan_for_beam_id_with_restart(client, robot, process, beam_id, args, options=options)
 
     LOGGER.info('Planning done.')
     client.disconnect()

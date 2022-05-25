@@ -1232,11 +1232,11 @@ class RobotClampAssemblyProcess(Data):
             # Recurse until a RoboticMovement is found
             return self.get_next_robotic_movement(next_movement, movement_type)
 
-    def get_linear_movement_group(self, movement):
-        # type: (RoboticLinearMovement) -> List[RoboticLinearMovement]
-        """ Given a movement RoboticLinearMovement
-        Returns a list of ordered RoboticLinearMovement"""
-        assert isinstance(movement, RoboticLinearMovement)
+    def get_movement_group(self, movement, movement_type):
+        # type: (RoboticMovement, type) -> List[RoboticMovement]
+        """ Given a movement RoboticMovement
+        Returns a list of ordered RoboticMovement that the given movement resides"""
+        assert isinstance(movement, movement_type)
 
         movements = []
 
@@ -1244,7 +1244,7 @@ class RobotClampAssemblyProcess(Data):
         this_movement = movement
         while (True):
             next_movement = self.get_prev_robotic_movement(this_movement)
-            if isinstance(next_movement, RoboticLinearMovement):
+            if isinstance(next_movement, movement_type):
                 movements.append(next_movement)
                 this_movement = next_movement
             else:
@@ -1258,7 +1258,7 @@ class RobotClampAssemblyProcess(Data):
         this_movement = movement
         while (True):
             next_movement = self.get_next_robotic_movement(this_movement)
-            if isinstance(next_movement, RoboticLinearMovement):
+            if isinstance(next_movement, movement_type):
                 movements.append(next_movement)
                 this_movement = next_movement
             else:
@@ -1266,8 +1266,39 @@ class RobotClampAssemblyProcess(Data):
 
         return movements
 
-    # def get_prev_movement_group(self, movement)
-    # def get_next_movement_group
+    def get_linear_movement_group(self, movement):
+        # type: (RoboticLinearMovement) -> List[RoboticLinearMovement]
+        return self.get_movement_group(movement, RoboticLinearMovement)
+
+    def get_free_movement_group(self, movement):
+        # type: (RoboticFreeMovement) -> List[RoboticFreeMovement]
+        return self.get_movement_group(movement, RoboticFreeMovement)
+
+    def get_prev_movement_group(self, movement):
+        # type: (RoboticMovement) -> List[RoboticMovement]
+        movement_type = type(movement)
+        if movement_type == RoboticLinearMovement:
+            prev_group_type = RoboticFreeMovement
+        else:
+            prev_group_type = RoboticLinearMovement
+        prev_movement = self.get_prev_robotic_movement(movement, prev_group_type)
+        if prev_movement is not None:
+            return self.get_movement_group(prev_movement, prev_group_type)
+        else:
+            return []
+
+    def get_next_movement_group(self, movement):
+        # type: (RoboticMovement) -> List[RoboticMovement]
+        movement_type = type(movement)
+        if movement_type == RoboticLinearMovement:
+            next_group_type = RoboticFreeMovement
+        else:
+            next_group_type = RoboticLinearMovement
+        next_movement = self.get_next_robotic_movement(movement, next_group_type)
+        if next_movement is not None:
+            return self.get_movement_group(next_movement, next_group_type)
+        else:
+            return []
 
     def get_movement_start_robot_config(self, movement):
         # type: (Movement) -> Optional[Configuration]
