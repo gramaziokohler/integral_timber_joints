@@ -28,6 +28,13 @@ from integral_timber_joints.process.movement import RoboticMovement
 from compas_fab_pychoreo.backend_features.pychoreo_plan_motion import MOTION_PLANNING_ALGORITHMS
 from compas_fab_pychoreo.utils import LOGGER as PYCHOREO_LOGGER
 
+SOLVE_MODE = [
+    'lmg', # linear movement group only
+    'fmg', # free movement group only
+    'all',
+    'movement_id', # 'Compute only for movement with a specific tag, e.g. `A54_M0`.'
+]
+
 ##############################################
 
 def plan_for_movement_group_with_restart(client, robot, unplanned_process, movements, args, options=None):
@@ -175,15 +182,11 @@ def main():
     parser.add_argument('--problem_subdir', default='results',
                         help='subdir for saving movements, default to `results`.')
     #
-    # parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
-    # parser.add_argument('--beam_id', default=None, type=str, help='If specified, overrides the seq_n setting.')
-    # parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`.')
+    parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`. This will force solve_mode to `movement_id` mode and plan for the residing group.')
     #
-    # parser.add_argument('--solve_mode', default='nonlinear', choices=SOLVE_MODE, help='solve mode.')
+    parser.add_argument('--solve_mode', default='all', choices=SOLVE_MODE, help='solve mode.')
     parser.add_argument('--no_smooth', action='store_true', help='Not apply smoothing on free motions upon a plan is found. Defaults to False.')
     parser.add_argument('--keep_planned_movements', action='store_true', help='Defaults to False.')
-    parser.add_argument('-ro', '--remove_overconstraining_free_movement', action='store_true', help='Defaults to False.')
-    parser.add_argument('--force_linear_to_free_movement', action='store_true', help='Defaults to False.')
     #
     parser.add_argument('--write', action='store_true', help='Write output json.')
     #
@@ -282,6 +285,9 @@ def main():
         lm_group = process.get_linear_movement_group(movement)
         linear_movement_groups.append(lm_group)
 
+        # if keep_
+        # check if all members are planned, if so, do not add to the candidates
+
         # Get neighbouring Free Movements of the linear group
         prev_free_movement = process.get_prev_robotic_movement(lm_group[0], movement_type=RoboticFreeMovement)
         next_free_movement = process.get_next_robotic_movement(lm_group[-1], movement_type=RoboticFreeMovement)
@@ -303,13 +309,13 @@ def main():
     set_initial_state(client, robot, process, initialize=True, options=options)
 
     # * Plan all the linear groups first
-
     with tqdm(total=len(linear_movement_groups), desc='Linear movement groups') as pbar:
         for lm_group in linear_movement_groups:
             LOGGER.debug('-'*20)
             success, _ = plan_for_movement_group_with_restart(client, robot, process, lm_group, args, options=options)
             if not success:
-                exit()
+                # TODO report error
+                continue
             pbar.update(1)
 
     # * Plan the free movements connecting the planned linear groups
@@ -319,17 +325,17 @@ def main():
 
             # Get neighbouring Free Movements of the linear group
             fm_group = []
-            fm_group.append(process.get_prev_robotic_movement(lm_group[0], type=RoboticFreeMovement))
-            fm_group.append(process.get_next_robotic_movement(lm_group[-1], type=RoboticFreeMovement))
+            fm_group.append(process.get_prev_robotic_movement(lm_group[0], movement_type=RoboticFreeMovement))
+            fm_group.append(process.get_next_robotic_movement(lm_group[-1], movement_type=RoboticFreeMovement))
 
             success, _ = plan_for_movement_group_with_restart(client, robot, process, [m for m in fm_group if m is not None], 
                 args, options=options)
 
             if not success:
                 LOGGER.error('Free movement fails for lm group #{}'.format(i))
-                exit()
                 # TODO restart if the free movement planning fails, need to remove adjacent linear groups
                 # but we should only remove the "hard" linear group and keep the "easy" linear group
+                continue
 
             pbar.update(1)
 
