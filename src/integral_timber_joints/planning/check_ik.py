@@ -26,7 +26,7 @@ if __name__ == "__main__":
     parser.add_argument('--seq_n', nargs='+', type=int, help='Zero-based index according to the Beam sequence in process.assembly.sequence. If only provide one number, `--seq_n 1`, we will only plan for one beam. If provide two numbers, `--seq_n start_id end_id`, we will plan from #start_id UNTIL #end_id. If more numbers are provided. By default, all the beams will be checked.')
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag or movement id, e.g. `A54_M0` or `53`. ! We support both str-like movement id or global list index.')
     #
-    parser.add_argument('--gantry_attempt', type=int, default=30, help='Number of gantry attempt. Default 20.')
+    parser.add_argument('--gantry_attempt', type=int, default=100, help='Number of gantry attempt. Default 100.')
     #
     parser.add_argument('-p', '--proxy', action='store_true', help='Use Proxy to call checker. Default False')
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning. Default False')

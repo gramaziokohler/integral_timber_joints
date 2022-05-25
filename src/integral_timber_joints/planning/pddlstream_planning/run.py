@@ -54,8 +54,8 @@ def main():
     # * Debugs, verbose and visuals
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--write', action='store_true', help='Write output json.')
-    parser.add_argument('--save_dir', type=str, default='results',
-        help='Subdir in the process design folder to save the process to, defaults to `results`.')
+    parser.add_argument('--save_dir', type=str, default='.',
+        help='Subdir in the process design folder to save the process to, defaults to `.`.')
     parser.add_argument('--debug', action='store_true', help='Debug mode.')
     parser.add_argument('--diagnosis', action='store_true', help='Diagnosis mode.')
     #
