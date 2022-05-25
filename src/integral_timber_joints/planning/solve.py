@@ -182,7 +182,8 @@ def compute_movement(client, robot, process, movement, options=None, diagnosis=F
         return False
 
 
-def compute_selected_movements(client, robot, process,
+def compute_selected_movements(client, robot,
+                               process: RobotClampAssemblyProcess,
                                beam_id: str,
                                planning_priority_filter: List[int] = None,
                                movement_type_filter: List[Type] = None,
@@ -223,7 +224,11 @@ def compute_selected_movements(client, robot, process,
     computed_movements = []
 
     while (True):
-        selected_movements = process.get_movements_by_beam_id(beam_id)  # type: Movement
+        if beam_id is None:
+            selected_movements = process.movements
+        else:
+            selected_movements = process.get_movements_by_beam_id(beam_id)  # type: Movement
+
         selected_movements = [m for m in selected_movements if isinstance(m, RoboticMovement)]
 
         # * Filter by already computed movement
