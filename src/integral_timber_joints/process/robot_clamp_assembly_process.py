@@ -1233,7 +1233,7 @@ class RobotClampAssemblyProcess(Data):
             return self.get_next_robotic_movement(next_movement, movement_type)
 
     def get_linear_movement_group(self, movement):
-        # type: (str) -> List[RoboticMovement]
+        # type: (Movement) -> List[RoboticMovement]
         """ Given a movement RoboticLinearMovement
         Returns a list of ordered RoboticLinearMovement"""
         assert isinstance(movement, RoboticLinearMovement)

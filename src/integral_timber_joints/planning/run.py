@@ -272,6 +272,7 @@ def compute_movements_for_beam_id(client, robot, process, beam_id, args, options
 
             solved_movements += movements
 
+            # ? can this chunk be removed?
             # Ideally, all the free motions should have both start and end conf specified.
             # one_sided is used to sample the start conf if none is given.
             LOGGER.info('Computing priority 0 LinearMovement(s) (seq_n={}, {})'.format(seq_n, beam_id))
