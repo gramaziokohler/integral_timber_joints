@@ -37,6 +37,11 @@ SOLVE_MODE = [
 
 ##############################################
 
+def check_group_has_trajs():
+    pass
+
+##############################################
+
 def plan_for_movement_group_with_restart(client, robot, unplanned_process, movements, args, options=None):
     """A wrapper function to plan for a movement group with restart until a plan is found.
     See `compute_movements_for_beam_id` for detailed planning strategies.
@@ -277,18 +282,7 @@ def main():
         # * only plan for the residing group for the target movement, if movement_id is provided
         movement = process.get_movement_by_movement_id(args.movement_id)
         assert isinstance(movement, RoboticMovement)
-
-        # Get neighbouring Free Movements if the target group is a linear movement group
-        if isinstance(movement, RoboticLinearMovement):
-            movement_group = process.get_linear_movement_group(movement)
-            target_movement_groups.append(process.get_prev_movement_group(movement_group[0]))
-            target_movement_groups.append(movement_group)
-            target_movement_groups.append(process.get_next_movement_group(movement_group[-1]))
-        elif isinstance(movement, RoboticFreeMovement):
-            movement_group = process.get_free_movement_group(movement)
-            target_movement_groups = [movement_group]
-        else:
-            raise TypeError(movement.tag)
+        target_movement_groups = [movement_group]
     else:
         movement = process.movements[0]
         if not isinstance(movement, RoboticMovement):
@@ -323,23 +317,25 @@ def main():
                     correct_mv_type = (not all_members_has_traj)
 
                 if correct_mv_type and len(movement_group) > 0:
-                    if args.solve_mode == 'lmg':
-                        # remove neighbor free motion groups and add them to the target_groups
-                        target_movement_groups.append(process.get_prev_movement_group(movement_group[0]))
-                        target_movement_groups.append(movement_group)
-                        target_movement_groups.append(process.get_next_movement_group(movement_group[-1]))
-                    else:
-                        # otherwise simply add the target group
-                        # in the case of solve_mode == 'all', the free movement group will be processed sequentially in the while loop
-                        target_movement_groups.append(movement_group)
+                    target_movement_groups.append(movement_group)
 
             movement = process.get_next_robotic_movement(movement_group[-1])
 
     # * Archive the target movements (if they already exist in the external movement folder)
-    for m_group in target_movement_groups:
-        for movement in m_group:
-            moved = move_saved_movement(movement, ext_movement_path)
-            if moved: LOGGER.info("Movement group member {} removed.".format(movement.movement_id))
+    for target_group in target_movement_groups:
+        m_groups = []
+        if isinstance(target_group[0], RoboticLinearMovement):
+            # ! Get neighbouring Free Movement groups if the target group is a linear movement group
+            m_groups.append(process.get_prev_movement_group(target_group[0]))
+            m_groups.append(target_group)
+            m_groups.append(process.get_next_movement_group(target_group[-1]))
+        else:
+            m_groups.append(target_group)
+
+        for m_group in m_groups:
+            for movement in m_group:
+                moved = move_saved_movement(movement, ext_movement_path)
+                if moved: LOGGER.info("Movement group member {} ({}) removed.".format(movement.movement_id, type(movement)))
 
     # * load previously planned movements
     process.load_external_movements(ext_movement_path)
