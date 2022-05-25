@@ -335,7 +335,7 @@ def main():
         for m_group in m_groups:
             for movement in m_group:
                 moved = move_saved_movement(movement, ext_movement_path)
-                if moved: LOGGER.info("Movement group member {} ({}) removed.".format(movement.movement_id, type(movement)))
+                if moved: LOGGER.info("Movement group member {} ({}) removed.".format(movement.movement_id, movement.__class__.__name__))
 
     # * load previously planned movements
     process.load_external_movements(ext_movement_path)
@@ -363,12 +363,12 @@ def main():
     for mv_group in target_movement_groups:
         if len(mv_group) > 0 and isinstance(mv_group[0], RoboticFreeMovement):
             free_movement_groups.append(mv_group)
-    if len(linear_movement_groups) > 0:
+    if len(free_movement_groups) > 0:
         with tqdm(total=len(free_movement_groups), desc='Free movement groups') as pbar:
             for i, fm_group in enumerate(free_movement_groups):
                 success, _ = plan_for_movement_group_with_restart(client, robot, process, fm_group, args, options=options)
                 if not success:
-                    LOGGER.error('Free movement group #{}/{} fails, which contains {}'.format(i, len(linear_movement_groups), 
+                    LOGGER.error('Free movement group #{}/{} fails, which contains {}'.format(i, len(free_movement_groups), 
                         [m.movement_id for m in fm_group]))
                     # TODO restart if the free movement planning fails, need to remove adjacent linear groups
                     # but we should only remove the "hard" linear group and keep the "easy" linear group
