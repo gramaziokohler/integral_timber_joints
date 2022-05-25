@@ -865,7 +865,11 @@ class PickClampFromStructureAction(RobotAction, AttachToolAction):
         tool = process.clamp(self.tool_id)  # type: Clamp
         toolchanger = process.robot_toolchanger
 
-        clamp_wcf_detachapproach = process.get_tool_t0cf_at(self.joint_id, 'clamp_wcf_detachapproach')
+        t_world_from_clamp_final = Transformation.from_frame(process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_final'))
+        t_toolbase_from_retractedtoolbase = Translation.from_vector(toolchanger.approach_vector.scaled(-1))
+        t_world_from_final_tc_retracted = t_world_from_clamp_final * t_toolbase_from_retractedtoolbase
+        clamp_wcf_detachapproach = Frame.from_transformation(t_world_from_final_tc_retracted * toolchanger.t_tcf_from_t0cf)
+
         clamp_wcf_final = process.get_tool_t0cf_at(self.joint_id, 'clamp_wcf_final')
         clamp_wcf_detachretract1 = process.get_tool_t0cf_at(self.joint_id, 'clamp_wcf_detachretract1')
         clamp_wcf_detachretract2 = process.get_tool_t0cf_at(self.joint_id, 'clamp_wcf_detachretract2')
@@ -977,7 +981,8 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         clamp_wcf_attachapproach1 = process.get_tool_t0cf_at(self.joint_id, 'clamp_wcf_attachapproach1')
         clamp_wcf_attachapproach2 = process.get_tool_t0cf_at(self.joint_id, 'clamp_wcf_attachapproach2')
         clamp_wcf_final = process.get_tool_t0cf_at(self.joint_id, 'clamp_wcf_final')
-        clamp_wcf_attachretract = process.get_tool_t0cf_at(self.joint_id, 'clamp_wcf_attachretract')
+
+        t_world_from_clamp_final = Transformation.from_frame(process.assembly.get_joint_attribute(self.joint_id, 'clamp_wcf_final'))
 
         # * Free move to approach the clamp at the structure
         self.movements.append(RoboticFreeMovement(
@@ -1033,6 +1038,10 @@ class PlaceClampToStructureAction(RobotAction, DetachToolAction):
         ))
 
         # * Tool changer retract
+        t_toolbase_from_retractedtoolbase = Translation.from_vector(toolchanger.approach_vector.scaled(-1))
+        t_world_from_final_tc_retracted = t_world_from_clamp_final * t_toolbase_from_retractedtoolbase
+        clamp_wcf_attachretract = Frame.from_transformation(t_world_from_final_tc_retracted * toolchanger.t_tcf_from_t0cf)
+
         self.movements.append(RoboticLinearMovement(
             target_frame=clamp_wcf_attachretract,
             speed_type='speed.toolchange.retract.notool',

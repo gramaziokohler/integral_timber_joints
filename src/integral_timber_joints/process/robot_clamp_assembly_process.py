@@ -947,6 +947,8 @@ class RobotClampAssemblyProcess(Data):
         joint_ids = self.assembly.get_joint_ids_with_tools_for_beam(beam_id)
         if verbose:
             print("Beam (%s)" % beam_id)
+        toolchanger = self.robot_toolchanger
+
         # Check to ensure prerequisite
         for joint_id in joint_ids:
             if self.assembly.get_joint_attribute(joint_id, 'clamp_wcf_final') is None:
@@ -955,6 +957,7 @@ class RobotClampAssemblyProcess(Data):
             if verbose:
                 print("|- Clamp at Joint (%s-%s)" % joint_id)
             clamp = self.get_tool_of_joint(joint_id, 'clamp_wcf_final')
+            t_world_from_clamp_final = Transformation.from_frame(self.assembly.get_joint_attribute(joint_id, 'clamp_wcf_final'))
 
             # clamp_wcf_attachapproach is based on moveing clamp_wcf_final backwards along clamp.approach_vector
             # ------------------------------------------------------------
@@ -971,12 +974,14 @@ class RobotClampAssemblyProcess(Data):
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachapproach1', clamp_wcf_attachapproach1)
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachapproach2', clamp_wcf_attachapproach2)
 
-            # clamp_wcf_attachretract is based on tool.tool_pick_up_frame transformed to wcf
+            # clamp_wcf_attachretract is based on toolchanger (no longer on tool.tool_pick_up_frame) transformed to wcf
             # ------------------------------------------------------------
-            clamp_wcf_attachretract = clamp.tool_pick_up_frame_in_wcf(clamp.current_frame)
+            t_toolbase_from_retractedtoolbase = Translation.from_vector(toolchanger.approach_vector.scaled(-1))
+            t_world_from_final_tc_retracted = t_world_from_clamp_final * t_toolbase_from_retractedtoolbase
+            clamp_wcf_attachretract = Frame.from_transformation(t_world_from_final_tc_retracted * toolchanger.t_tcf_from_t0cf)
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_attachretract', clamp_wcf_attachretract)
 
-            # clamp_wcf_detachapproach is based on tool.tool_pick_up_frame transformed to wcf
+            # clamp_wcf_detachapproach is based on toolchanger (no longer on tool.tool_pick_up_frame) transformed to wcf
             # ------------------------------------------------------------
             clamp_wcf_detachapproach = clamp_wcf_attachretract.copy()
             self.assembly.set_joint_attribute(joint_id, 'clamp_wcf_detachapproach', clamp_wcf_detachapproach)
