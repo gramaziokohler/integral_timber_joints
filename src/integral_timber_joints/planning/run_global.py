@@ -37,11 +37,6 @@ SOLVE_MODE = [
 
 ##############################################
 
-def check_group_has_trajs():
-    pass
-
-##############################################
-
 def plan_for_movement_group_with_restart(client, robot, unplanned_process, movements, args, options=None):
     """A wrapper function to plan for a movement group with restart until a plan is found.
     See `compute_movements_for_beam_id` for detailed planning strategies.
@@ -97,7 +92,7 @@ def plan_for_movement_group_with_restart(client, robot, unplanned_process, movem
 
     return success, runtime_data
 
-def compute_target_movements(client, robot, process, movements, args, options=None):
+def compute_target_movements(client, robot, process, target_movements, args, options=None):
     solved_movements = []
     st_time = time.time()
     with LockRenderer(not args.debug and not args.diagnosis) as lockrenderer:
@@ -105,7 +100,7 @@ def compute_target_movements(client, robot, process, movements, args, options=No
 
         # * Only compute one linear motion group. Priority Applies
         # LOGGER.info('Computing priority 1 LinearMovement(s)'.format())
-        options['movement_id_filter'] = [m.movement_id for m in movements]
+        options['movement_id_filter'] = [m.movement_id for m in target_movements]
 
         # * Priority 1
         success, movements = compute_selected_movements_by_status_priority(client, robot, process, None,
@@ -114,6 +109,7 @@ def compute_target_movements(client, robot, process, movements, args, options=No
         if not success:
             LOGGER.info('Computing failed priority 1 Movement(s)'.format())
             return False
+        solved_movements += movements
 
         # * Priority 0
         success, movements = compute_selected_movements_by_status_priority(client, robot, process, None,
@@ -122,9 +118,10 @@ def compute_target_movements(client, robot, process, movements, args, options=No
         if not success:
             LOGGER.info('Computing failed priority 0 Movement(s)'.format())
             return False
-
         solved_movements += movements
 
+    if len(solved_movements) != len(target_movements):
+        LOGGER.error('Solved moments does not cover all target moments!')
     LOGGER.info('Solved {} Movements in {:.2f} s: {} '.format(len(solved_movements), elapsed_time(st_time), [m.movement_id for m in solved_movements]))
 
     # * export computed movements (unsmoothed)
@@ -150,7 +147,6 @@ def compute_target_movements(client, robot, process, movements, args, options=No
                         smoothed_movements.append(free_m)
                         if not success:
                             LOGGER.error('Smooth success: {} | msg: {}'.format(success, msg))
-                            # TODO return False
                         pbar.update(1)
         LOGGER.debug('Smoothing takes {:.2f} s'.format(elapsed_time(st_time)))
         # * export smoothed movements
@@ -291,11 +287,12 @@ def main():
         while movement is not None:
             # * movement type filter
             if args.solve_mode == 'lmg':
-                correct_mv_type = isinstance(movement, RoboticLinearMovement)
+                is_correct_movement_type = isinstance(movement, RoboticLinearMovement)
             elif args.solve_mode == 'fmg':
-                correct_mv_type = isinstance(movement, RoboticFreeMovement)
+                is_correct_movement_type = isinstance(movement, RoboticFreeMovement)
             elif args.solve_mode == 'all':
-                correct_mv_type = True
+                is_correct_movement_type = True
+
             if isinstance(movement, RoboticLinearMovement):
                 movement_group = process.get_linear_movement_group(movement)
             elif isinstance(movement, RoboticFreeMovement):
@@ -303,7 +300,7 @@ def main():
             else:
                 raise TypeError(movement.tag)
 
-            if correct_mv_type:
+            if is_correct_movement_type:
                 # * keep_planned_movements filter
                 if args.keep_planned_movements and len(movement_group) > 0:
                     # if ALL of the movement within the group has planned trajectory, skip the current group
@@ -314,9 +311,9 @@ def main():
                         if not (os.path.exists(smoothed_path) or os.path.exists(nonsmoothed_path)):
                             all_members_has_traj = False
                             break
-                    correct_mv_type = (not all_members_has_traj)
+                    is_correct_movement_type = (not all_members_has_traj)
 
-                if correct_mv_type and len(movement_group) > 0:
+                if is_correct_movement_type and len(movement_group) > 0:
                     target_movement_groups.append(movement_group)
 
             movement = process.get_next_robotic_movement(movement_group[-1])
