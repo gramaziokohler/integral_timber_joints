@@ -449,10 +449,16 @@ def show_menu(process):
                 ui_goto_state_by_state_index(process, int(result))
                 redraw_state(process)
                 continue
+            elif result.startswith("A"):
+                movement_ids = process.movement_ids
+                if result in movement_ids:
+                    ui_goto_state_by_state_index(process, movement_ids.index(result) + 1)
+                    redraw_state(process)
+                    continue
             elif result.startswith("Cancel"):
                 return on_exit_ui()
             else:
-                continue  # CAtch other unknown input that are not numbers.
+                continue  # Catch other unknown input that are not numbers.
 
         # User click Exit Button
         if result['action'] == 'Exit':

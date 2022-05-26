@@ -182,6 +182,10 @@ def show_menu(process):
         if isinstance(result, str):
             if result.isnumeric():
                 ui_goto_state_by_state_index(process, int(result))
+            elif result.startswith("A"):
+                movement_ids = process.movement_ids
+                if result in movement_ids:
+                    ui_goto_state_by_state_index(process, movement_ids.index(result) + 1)
             elif result.startswith("Cancel"):
                 return on_exit_ui()
             else:

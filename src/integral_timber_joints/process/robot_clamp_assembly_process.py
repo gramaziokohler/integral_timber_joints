@@ -206,6 +206,11 @@ class RobotClampAssemblyProcess(Data):
         return all_movements
 
     @property
+    def movement_ids(self):
+        # type: () -> list[str]
+        return [m.movement_id for m in self.movements]
+
+    @property
     def pickup_station(self):
         # type: () -> PickupStation
         return self.attributes['pickup_station']
@@ -1201,7 +1206,7 @@ class RobotClampAssemblyProcess(Data):
         """Changes the default value of the initial state robot config."""
         self.initial_state[self.robot_config_key] = robot_configuration
 
-    def get_prev_robotic_movement(self, movement, movement_type = RoboticMovement):
+    def get_prev_robotic_movement(self, movement, movement_type=RoboticMovement):
         # type: (Movement, type) -> RoboticMovement
         """Get the RoboticMovement before the given Movement.
         If the given movement is the first Robotic Movement, return None.
@@ -1219,7 +1224,7 @@ class RobotClampAssemblyProcess(Data):
             # Recurse until a RoboticMovement is found
             return self.get_prev_robotic_movement(prev_movement, movement_type)
 
-    def get_next_robotic_movement(self, movement, movement_type = RoboticMovement):
+    def get_next_robotic_movement(self, movement, movement_type=RoboticMovement):
         # type: (Movement, type) -> RoboticMovement
         """Get the RoboticMovement after the given Movement.
         If the given movement is the last Robotic Movement, return None.
@@ -1541,11 +1546,11 @@ class RobotClampAssemblyProcess(Data):
         Used for easier data communication without installing ITJ.
         """
         metadata = metadata or {}
-        data = {'assembly' : {}}
+        data = {'assembly': {}}
         data['assembly']['sequence'] = []
         for seq_n, b in enumerate(self.assembly.sequence):
             beam_gripper_type = self.assembly.get_beam_attribute(b, "gripper_type")
-            b_data = {'beam_id' : b, 'beam_gripper_type' : beam_gripper_type}
+            b_data = {'beam_id': b, 'beam_gripper_type': beam_gripper_type}
             b_data['assembly_method'] = BeamAssemblyMethod.value_to_names_dict[self.assembly.get_assembly_method(b)]
             associated_scaffolds = []
             if self.assembly.get_assembly_method(b) != BeamAssemblyMethod.MANUAL_ASSEMBLY:
@@ -1565,17 +1570,17 @@ class RobotClampAssemblyProcess(Data):
 
         data['assembly']['joints'] = []
         for j in self.assembly.joint_ids():
-            data['assembly']['joints'].append({'joint_id' : j,
-                                               'tool_type' : self.assembly.get_joint_attribute(j, 'tool_type')})
+            data['assembly']['joints'].append({'joint_id': j,
+                                               'tool_type': self.assembly.get_joint_attribute(j, 'tool_type')})
         data['clamps'] = {}
         for c in self.clamps:
-            data['clamps'][c.name] = {'type_name' : c.type_name}
+            data['clamps'][c.name] = {'type_name': c.type_name}
         data['screwdrivers'] = {}
         for sd in self.screwdrivers:
-            data['screwdrivers'][sd.name] = {'type_name' : sd.type_name}
+            data['screwdrivers'][sd.name] = {'type_name': sd.type_name}
         data['grippers'] = {}
         for g in self.grippers:
-            data['grippers'][g.name] = {'type_name' : g.type_name}
+            data['grippers'][g.name] = {'type_name': g.type_name}
         data['metadata'] = metadata
         return data
 
