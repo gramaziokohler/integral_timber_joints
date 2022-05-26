@@ -268,113 +268,111 @@ def main():
     #########
     # * Load process
     process = parse_process(args.design_dir, args.problem, subdir=args.problem_subdir)
-
+    # * load previously planned movements
     result_path = get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir)
     ext_movement_path = os.path.dirname(result_path)
+    process.load_external_movements(ext_movement_path)
 
     # * locate all target movement groups, all high-level filtering happens here
     target_movement_groups = []
     if args.solve_mode == 'movement_id':
-        # * only plan for the residing group for the target movement, if movement_id is provided
-        movement = process.get_movement_by_movement_id(args.movement_id)
-        assert isinstance(movement, RoboticMovement)
-        movement_type = RoboticLinearMovement if isinstance(movement, RoboticLinearMovement) else RoboticFreeMovement
-        movement_group = process.get_movement_group(movement, movement_type)
-        target_movement_groups = [movement_group]
+        # Support for multiple movement_ids separated by a comma.
+        movement_ids = args.movement_id.split(',')
+        target_movement_groups = []
+
+        # * Plan for the residing group for the target movement
+        for movement_id in movement_ids:
+            movement = process.get_movement_by_movement_id(movement_id)
+            assert isinstance(movement, RoboticMovement)
+            # * Skip movements that already belongs to a group.
+            if any([movement in movement_group for movement_group in target_movement_groups]):
+                continue
+
+            target_movement_groups.append(process.get_movement_group(movement))
     else:
-        movement = process.movements[0]
-        if not isinstance(movement, RoboticMovement):
-            movement = process.get_next_robotic_movement(movement)
-        # * iterate through all the movements and apply certain filters for groups
-        while movement is not None:
-            # * movement type filter
-            if args.solve_mode == 'lmg':
-                is_correct_movement_type = isinstance(movement, RoboticLinearMovement)
-            elif args.solve_mode == 'fmg':
-                is_correct_movement_type = isinstance(movement, RoboticFreeMovement)
-            elif args.solve_mode == 'all':
-                is_correct_movement_type = True
+        target_movement_groups = []
+        last_movement = None
+        while (True):
+            # * Get a new movement group
+            movement = process.get_next_robotic_movement(last_movement)
+            if movement is None:
+                break
+            movement_group = process.get_movement_group(movement)
+            last_movement = movement_group[-1]
 
-            if isinstance(movement, RoboticLinearMovement):
-                movement_group = process.get_linear_movement_group(movement)
-            elif isinstance(movement, RoboticFreeMovement):
-                movement_group = process.get_free_movement_group(movement)
-            else:
-                raise TypeError(movement.tag)
+            # * Filter to skip the MG based on solve mode
+            if args.solve_mode == 'lmg' and not isinstance(last_movement, RoboticLinearMovement):
+                continue
+            if args.solve_mode == 'lmg' and not isinstance(last_movement, RoboticLinearMovement):
+                continue
 
-            if is_correct_movement_type:
-                # * keep_planned_movements filter
-                if args.keep_planned_movements and len(movement_group) > 0:
-                    # if ALL of the movement within the group has planned trajectory, skip the current group
-                    all_members_has_traj = True
-                    for m_member in movement_group:
-                        smoothed_path = os.path.join(ext_movement_path, m_member.get_filepath(subdir='smoothed_movements'))
-                        nonsmoothed_path = os.path.join(ext_movement_path, m_member.get_filepath(subdir='movements'))
-                        if not (os.path.exists(smoothed_path) or os.path.exists(nonsmoothed_path)):
-                            all_members_has_traj = False
-                            break
-                    is_correct_movement_type = (not all_members_has_traj)
+            # * Filter to skip entire group when `keep_planned_movements` flag
+            if args.keep_planned_movements:
+                if all([m.trajectory is not None for m in movement_group]):
+                    continue
 
-                if is_correct_movement_type and len(movement_group) > 0:
-                    target_movement_groups.append(movement_group)
+            # * Add group for planning
+            target_movement_groups.append(movement_group)
 
-            movement = process.get_next_robotic_movement(movement_group[-1])
+    def archive_and_remove_planned_movement(movement_group: List[RoboticMovement]):
+        for movement in movement_group:
+            movement.trajectory = None
+            moved = move_saved_movement(movement, ext_movement_path)
+            if moved: LOGGER.info("Movement {} ({}) archived.".format(movement.movement_id, movement.__class__.__name__))
 
-    # * Archive the target movements (if they already exist in the external movement folder)
-    for target_group in target_movement_groups:
+    # * Archive the external movements and remove the planned trajectories
+    for target_movement_group in target_movement_groups:
         m_groups = []
-        if isinstance(target_group[0], RoboticLinearMovement):
-            # ! Get neighbouring Free Movement groups if the target group is a linear movement group
-            m_groups.append(process.get_prev_movement_group(target_group[0]))
-            m_groups.append(target_group)
-            m_groups.append(process.get_next_movement_group(target_group[-1]))
+        # ! For Linear Movement Group, remove also neighbouring Free Movement groups
+        if isinstance(target_movement_group[0], RoboticLinearMovement):
+            archive_and_remove_planned_movement()
+            archive_and_remove_planned_movement(process.get_prev_movement_group(target_movement_group[0]))
+            archive_and_remove_planned_movement(target_movement_group)
+            archive_and_remove_planned_movement(process.get_next_movement_group(target_movement_group[-1]))
         else:
-            m_groups.append(target_group)
+            archive_and_remove_planned_movement(target_movement_group)
 
-        for m_group in m_groups:
-            for movement in m_group:
-                moved = move_saved_movement(movement, ext_movement_path)
-                if moved: LOGGER.info("Movement group member {} ({}) removed.".format(movement.movement_id, movement.__class__.__name__))
-
-    # * load previously planned movements
-    process.load_external_movements(ext_movement_path)
 
     # * Initialize (only needed once) collision objects and tools
     set_initial_state(client, robot, process, initialize=True, options=options)
 
+    success_movements = []
+    failed_movements = []
+
     # * Plan all the linear groups first
-    linear_movement_groups = []
-    for mv_group in target_movement_groups:
-        if len(mv_group) > 0 and isinstance(mv_group[0], RoboticLinearMovement):
-            linear_movement_groups.append(mv_group)
+    linear_movement_groups = [movement_group for movement_group in target_movement_groups if isinstance(movement_group[0], RoboticLinearMovement) ]
     if len(linear_movement_groups) > 0:
         with tqdm(total=len(linear_movement_groups), desc='Linear movement groups') as pbar:
-            for i, lm_group in enumerate(linear_movement_groups):
-                success, _ = plan_for_movement_group_with_restart(client, robot, process, lm_group, args, options=options)
-                if not success:
+            for i, movement_group in enumerate(linear_movement_groups):
+                success, _ = plan_for_movement_group_with_restart(client, robot, process, movement_group, args, options=options)
+                if success:
+                    success_movements += movement_group
+                else:
                     LOGGER.error('Linear movement group #{}/{} fails, which contains {}'.format(i, len(linear_movement_groups),
-                        [m.movement_id for m in lm_group]))
-                    # continue
+                        [m.movement_id for m in movement_group]))
+                    failed_movements += movement_group
                 pbar.update(1)
 
     # * Plan the free movements connecting the planned linear groups
-    free_movement_groups = []
-    for mv_group in target_movement_groups:
-        if len(mv_group) > 0 and isinstance(mv_group[0], RoboticFreeMovement):
-            free_movement_groups.append(mv_group)
+    free_movement_groups = [movement_group for movement_group in target_movement_groups if isinstance(movement_group[0], RoboticFreeMovement) ]
     if len(free_movement_groups) > 0:
         with tqdm(total=len(free_movement_groups), desc='Free movement groups') as pbar:
-            for i, fm_group in enumerate(free_movement_groups):
-                success, _ = plan_for_movement_group_with_restart(client, robot, process, fm_group, args, options=options)
-                if not success:
+            for i, movement_group in enumerate(free_movement_groups):
+                success, _ = plan_for_movement_group_with_restart(client, robot, process, movement_group, args, options=options)
+                if success:
+                    success_movements += movement_group
+                else:
                     LOGGER.error('Free movement group #{}/{} fails, which contains {}'.format(i, len(free_movement_groups),
-                        [m.movement_id for m in fm_group]))
+                        [m.movement_id for m in movement_group]))
                     # TODO restart if the free movement planning fails, need to remove adjacent linear groups
                     # but we should only remove the "hard" linear group and keep the "easy" linear group
-                    # continue
+                    failed_movements += movement_group
                 pbar.update(1)
 
+
     LOGGER.info('Planning done.')
+    LOGGER.info('%i of %i Movements planned successfully.' % (len(success_movements), len(success_movements) + len(failed_movements)))
+    LOGGER.info('Failed movements: %s' % ','.join([m.movement_id for m in failed_movements]))
     client.disconnect()
 
 if __name__ == '__main__':

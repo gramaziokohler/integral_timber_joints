@@ -1206,47 +1206,67 @@ class RobotClampAssemblyProcess(Data):
         """Changes the default value of the initial state robot config."""
         self.initial_state[self.robot_config_key] = robot_configuration
 
-    def get_prev_robotic_movement(self, movement, movement_type=RoboticMovement):
+    def get_prev_robotic_movement(self, movement=None, movement_type=RoboticMovement):
         # type: (Movement, type) -> RoboticMovement
         """Get the RoboticMovement before the given Movement.
-        If the given movement is the first Robotic Movement, return None.
+        - If the given movement is the first Robotic Movement, return None.
+        - If the given movement is None, it returns the last RoboticMovement (if exist)
         """
-
         movements = self.movements
-        index = movements.index(movement)
-        if index == 0:
-            return None
 
-        prev_movement = movements[index - 1]
+        # * Figure out which one is the prev movement
+        if movement is None:
+            prev_movement = movements[- 1]
+        else:
+            index = movements.index(movement)
+            # * Exit condition if we reached the begining of all possible movements
+            if index == 0:
+                return None
+            prev_movement = movements[index - 1]
+
+        # * Check if the prev movement is the right type
         if isinstance(prev_movement, movement_type):
             return prev_movement
         else:
             # Recurse until a RoboticMovement is found
             return self.get_prev_robotic_movement(prev_movement, movement_type)
 
-    def get_next_robotic_movement(self, movement, movement_type=RoboticMovement):
+    def get_next_robotic_movement(self, movement=None, movement_type=RoboticMovement):
         # type: (Movement, type) -> RoboticMovement
         """Get the RoboticMovement after the given Movement.
-        If the given movement is the last Robotic Movement, return None.
+        - If the given movement is the last Robotic Movement, return None.
+        - If the given movement is None, it returns the first RoboticMovement (if exist)
         """
-
         movements = self.movements
-        index = movements.index(movement)
-        if index == len(movements) - 1:
-            return None
 
-        next_movement = movements[index + 1]
+        # * Figure out which one is the next movement
+        if movement is None:
+            next_movement = movements[0]
+        else:
+            index = movements.index(movement)
+            # * Exit condition if we reached the end of all possible movements
+            if index == len(movements) - 1:
+                return None
+            next_movement = movements[index + 1]
+
+        # * Check if the next movement is the right type
         if isinstance(next_movement, movement_type):
             return next_movement
         else:
             # Recurse until a RoboticMovement is found
             return self.get_next_robotic_movement(next_movement, movement_type)
 
-    def get_movement_group(self, movement, movement_type):
+    def get_movement_group(self, movement, movement_type = None):
         # type: (RoboticMovement, type) -> List[RoboticMovement]
         """ Given a movement RoboticMovement
         Returns a list of ordered RoboticMovement that the given movement resides"""
-        assert isinstance(movement, movement_type)
+        if movement_type is None:
+            if isinstance(movement, RoboticLinearMovement):
+                movement_type =  RoboticLinearMovement
+            if isinstance(movement, RoboticFreeMovement):
+                movement_type =  RoboticFreeMovement
+        if movement_type is None:
+            return []
 
         movements = []
 
