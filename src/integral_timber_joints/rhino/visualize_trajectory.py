@@ -52,8 +52,8 @@ def load_selected_external_movment_if_exist(process):
             print("No Trajectory Loaded")
 
 
-def redraw_state_and_trajectory(artist, process):
-    # type: (ProcessArtist, RobotClampAssemblyProcess) -> None
+def redraw_state_and_trajectory(artist, process, redraw=False):
+    # type: (ProcessArtist, RobotClampAssemblyProcess, bool) -> None
     # artist.delete_state(redraw=False)
     artist.delete_sweep_trajectory(redraw=False)
     scene = artist.get_current_selected_scene_state()
@@ -61,6 +61,8 @@ def redraw_state_and_trajectory(artist, process):
     artist.draw_state(scene=scene, redraw=False)  # Visualize the state
     artist.draw_sweep_trajectory(scene=scene, redraw=False)
     print_current_state_info(process, print_next=False)
+    if redraw:
+        rs.EnableRedraw(True)
 
 # ##########################
 # Function on entry and exit
@@ -79,10 +81,25 @@ def hide_interactive_beams(process):
 def show_interactive_beams_delete_state_vis(process):
     artist = get_process_artist()
     artist.delete_state(redraw=False)
+    artist.hide_all_env_mesh()
+    artist.hide_robot(redraw=False)
+    artist.delete_sweep_trajectory(redraw=False)
+
     [artist.show_interactive_beam(beam_id) for beam_id in process.assembly.sequence]
     rs.EnableRedraw(True)
     sc.doc.Views.Redraw()
 
+def ui_trajectory_slider(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    pass
+    # assembly = process.assembly  # type: Assembly
+    # artist = get_process_artist()
+    # all_movements = process.movements
+    # while artist.selected_state_id < len(all_movements):
+    #     artist.selected_state_id += 1
+    #     movement = all_movements[artist.selected_state_id - 1]
+    #     if isinstance(movement, RoboticMovement):
+    #         return
 
 ##############
 # Show UI Menu
@@ -137,6 +154,8 @@ def show_menu(process):
                  },
                 {'name': 'HideEnv', 'action': ui_hide_env_meshes
                  },
+                {'name': 'Slider', 'action': ui_trajectory_slider
+                 },
 
             ]
         }
@@ -154,9 +173,6 @@ def show_menu(process):
 
         def on_exit_ui():
             print('Exit Function')
-            artist.hide_all_env_mesh()
-            artist.hide_robot(redraw=False)
-            artist.delete_sweep_trajectory(redraw=False)
             show_interactive_beams_delete_state_vis(process)
             return Rhino.Commands.Result.Cancel
 
