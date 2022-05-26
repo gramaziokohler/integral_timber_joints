@@ -64,7 +64,7 @@ python -m integral_timber_joints.planning.run --problem $problem --design_dir $d
 **Draw exploration** in viewer while planning a single Free Movement by `movement_id` in a detailed way (with long edge subdivision)
 
 ```
-p -m integral_timber_joints.planning.run --problem $problem --design_dir $design_dir --reinit_tool --write --solve_timeout 21600 --mesh_split_long_edge_max_length 150 -v --debug --draw_mp_exploration --step_sim --watch --diagnosis --buffers_for_free_motions --movement_id A235_M0
+p -m integral_timber_joints.planning.run --problem $problem --design_dir $design_dir --reinit_tool --write --solve_timeout 21600 -v --debug --draw_mp_exploration --step_sim --watch --diagnosis --buffers_for_free_motions --solve_mode movement_id --movement_id A235_M0 --mesh_split_long_edge_max_length 150 
 ```
 
 ### Post Planning 
@@ -75,9 +75,30 @@ Check planned trajectory of entire Process File
 python -m integral_timber_joints.planning.check_states --problem $problem --design_dir $design_dir --verify_plan --traj_collision --mesh_split_long_edge_max_length 100
 ```
 
-To **check and visualize** a problematic trajectory that was flagged with `traj_polyline_collision`
+Generate a **statistic** file of all planned result
 
 ```
-python -m integral_timber_joints.planning.check_states --problem CantiBoxRight_process.json --design_dir 220407_CantiBoxRight --reinit_tool --debug --viewer --mesh_split_long_edge_max_length 100 --verify_plan --traj_collision --movement_id A139_M0
+python -m integral_timber_joints.planning.statistics --problem CantiBoxRight_process.json --design_dir 220407_CantiBoxRight
 ```
 
+
+
+### **High accuracy collision check**
+
+Using **check_states** to check with higher mesh resolution
+
+```
+p -m integral_timber_joints.planning.check_states --problem $problem --design_dir $design_dir --verify_plan --traj_collision --movement_id A15_M0 --mesh_split_long_edge_max_length 100
+```
+
+Using **check_states  to visualize** a problematic trajectory that was flagged with `traj_polyline_collision`
+
+```
+python -m integral_timber_joints.planning.check_states --problem $problem --design_dir $design_dir --reinit_tool --debug --viewer --mesh_split_long_edge_max_length 100 --verify_plan --traj_collision --movement_id A139_M0
+```
+
+Re-planning one move with **higher mesh resolution** to avoid collision
+
+```
+p -m integral_timber_joints.planning.run --problem $problem --design_dir $design_dir --write --movement_id A15_M0 --mesh_split_long_edge_max_length 100 --solve_mode movement_id
+```
