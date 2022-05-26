@@ -214,7 +214,7 @@ def main():
         args.solve_mode = 'movement_id'
 
     log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir))
-    log_path = os.path.join(log_folder, 'run.log')
+    log_path = os.path.join(log_folder, 'run_global.log')
 
     logging_level = logging.DEBUG if args.debug else logging.INFO
     LOGGER.setLevel(logging_level)
@@ -225,7 +225,7 @@ def main():
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging_level)
     LOGGER.addHandler(file_handler)
-    LOGGER.info("planning.run.py started with args: %s" % args)
+    LOGGER.info("planning.run_global.py started with args: %s" % args)
 
     # * Connect to path planning backend and initialize robot parameters
     client, robot, _ = load_RFL_world(viewer=args.viewer or args.diagnosis or args.watch or args.step_sim)
@@ -278,6 +278,8 @@ def main():
         # * only plan for the residing group for the target movement, if movement_id is provided
         movement = process.get_movement_by_movement_id(args.movement_id)
         assert isinstance(movement, RoboticMovement)
+        movement_type = RoboticLinearMovement if isinstance(movement, RoboticLinearMovement) else RoboticFreeMovement
+        movement_group = process.get_movement_group(movement, movement_type)
         target_movement_groups = [movement_group]
     else:
         movement = process.movements[0]
@@ -350,7 +352,7 @@ def main():
             for i, lm_group in enumerate(linear_movement_groups):
                 success, _ = plan_for_movement_group_with_restart(client, robot, process, lm_group, args, options=options)
                 if not success:
-                    LOGGER.error('Linear movement group #{}/{} fails, which contains {}'.format(i, len(linear_movement_groups), 
+                    LOGGER.error('Linear movement group #{}/{} fails, which contains {}'.format(i, len(linear_movement_groups),
                         [m.movement_id for m in lm_group]))
                     # continue
                 pbar.update(1)
@@ -365,7 +367,7 @@ def main():
             for i, fm_group in enumerate(free_movement_groups):
                 success, _ = plan_for_movement_group_with_restart(client, robot, process, fm_group, args, options=options)
                 if not success:
-                    LOGGER.error('Free movement group #{}/{} fails, which contains {}'.format(i, len(free_movement_groups), 
+                    LOGGER.error('Free movement group #{}/{} fails, which contains {}'.format(i, len(free_movement_groups),
                         [m.movement_id for m in fm_group]))
                     # TODO restart if the free movement planning fails, need to remove adjacent linear groups
                     # but we should only remove the "hard" linear group and keep the "easy" linear group
