@@ -41,6 +41,8 @@ def main():
     parser.add_argument('--movement_id', default=None, type=str, help='Compute only for movement with a specific tag, e.g. `A54_M0`. This will force solve_mode to `movement_id` mode and plan for the residing group.')
     #
     parser.add_argument('--debug', action='store_true', help='Debug mode.')
+    parser.add_argument('--no_fk', action='store_true', help='Skip FK distance check'
+    )
     args = parser.parse_args()
 
 
@@ -82,7 +84,6 @@ def main():
 
     # * FK Statistics
     LOGGER.info("-"*50)
-    robot = process.robot_model
     for i, movement in enumerate(movements):
         if not isinstance(movement, RoboticMovement):
             continue
@@ -94,16 +95,19 @@ def main():
             LOGGER.info(" " * 19 + "NO TRAJECTORY PLANNED")
             continue
 
-        flange_frame = None
-        total_distance = 0
-        for config in trajectory.points:
-            configuration = process.robot_initial_config.merged(config)
-            trajectory_frame = process.robot_model.forward_kinematics(configuration.scaled(1000), process.ROBOT_END_LINK)
-            if flange_frame is not None:
-                total_distance += flange_frame.point.distance_to_point(trajectory_frame.point)
-            flange_frame = trajectory_frame
+        if args.no_fk:
+            LOGGER.info(" " * 19 + "%-3i TrajPts." % (len(trajectory.points)))
+        else:
+            flange_frame = None
+            total_distance = 0
+            for config in trajectory.points:
+                configuration = process.robot_initial_config.merged(config)
+                trajectory_frame = process.robot_model.forward_kinematics(configuration.scaled(1000), process.ROBOT_END_LINK)
+                if flange_frame is not None:
+                    total_distance += flange_frame.point.distance_to_point(trajectory_frame.point)
+                flange_frame = trajectory_frame
 
-        LOGGER.info(" " * 19 + "%-3i TrajPts, %.1f mm Flange Distance" % (len(trajectory.points), total_distance))
+            LOGGER.info(" " * 19 + "%-3i TrajPts, %.1f mm Flange Distance" % (len(trajectory.points), total_distance))
 
     # * Trajectory
     LOGGER.info("-"*50)
