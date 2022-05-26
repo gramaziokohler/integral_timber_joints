@@ -113,15 +113,15 @@ def main():
     LOGGER.info("-"*50)
     m_ids = [m.movement_id for m in robotic_linear_movements if m.trajectory is None]
     LOGGER.info("List of RoboticLinearMovement IDs without Trajectory (count = %s):" % (len(m_ids)))
-    LOGGER.info("%s" % m_ids)
+    LOGGER.info("%s" % ','.join(m_ids))
 
     m_ids = [m.movement_id for m in robotic_free_movements if m.trajectory is None]
     LOGGER.info("List of RoboticFreeMovement IDs without Trajectory (count = %s):" % (len(m_ids)))
-    LOGGER.info("%s" % m_ids)
+    LOGGER.info("%s" % ','.join(m_ids))
 
     m_ids = [m.movement_id for m in robotic_movements if m.trajectory is None]
     LOGGER.info("List of all Movements IDs without Trajectory (count = %s):" % (len(m_ids)))
-    LOGGER.info("%s" % m_ids)
+    LOGGER.info("%s" % ','.join(m_ids))
 
 
     LOGGER.info("-"*50)

@@ -292,6 +292,8 @@ def main():
         LOGGER.info('Congrats, check state done!')
     else:
         LOGGER.warning('Movements that requires care and love:')
+        movement_ids = [m.movement_id for m in movements_need_fix]
+        LOGGER.info(','.join(movement_ids))
         for fm, reason in zip(movements_need_fix, movements_failure_reasons):
             global_movement_id = all_movements.index(fm)
             LOGGER.info('(MovementIndex={}) {}: {}'.format(global_movement_id, fm.short_summary, reason))
