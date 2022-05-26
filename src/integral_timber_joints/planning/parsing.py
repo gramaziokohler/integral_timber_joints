@@ -8,7 +8,6 @@ from compas.robots import RobotModel
 from compas_fab.robots import RobotSemantics
 from compas.utilities import DataDecoder, DataEncoder
 
-from pybullet_planning import get_date
 from integral_timber_joints.process import RoboticFreeMovement, RoboticLinearMovement, RoboticMovement, RobotClampAssemblyProcess
 from .utils import LOGGER, robotic_movement_ids_from_beam_ids
 
