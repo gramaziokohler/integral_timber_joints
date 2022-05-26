@@ -89,17 +89,15 @@ def show_interactive_beams_delete_state_vis(process):
     rs.EnableRedraw(True)
     sc.doc.Views.Redraw()
 
+
 def ui_trajectory_slider(process):
     # type: (RobotClampAssemblyProcess) -> None
-    pass
-    # assembly = process.assembly  # type: Assembly
-    # artist = get_process_artist()
-    # all_movements = process.movements
-    # while artist.selected_state_id < len(all_movements):
-    #     artist.selected_state_id += 1
-    #     movement = all_movements[artist.selected_state_id - 1]
-    #     if isinstance(movement, RoboticMovement):
-    #         return
+    from integral_timber_joints.rhino.trajectory_slider import TrajectorySliderDialog
+
+    dialog = TrajectorySliderDialog()
+    if dialog.init_success:
+        Rhino.UI.EtoExtensions.ShowSemiModal(dialog, Rhino.RhinoDoc.ActiveDoc, Rhino.UI.RhinoEtoApp.MainWindow)
+
 
 ##############
 # Show UI Menu

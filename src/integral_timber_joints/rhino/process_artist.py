@@ -412,7 +412,6 @@ class ProcessArtist(object):
         # Robot
         self._robot_artist = None
 
-
     @property
     def robot_artist(self):
         # type: () -> RobotModelArtist
@@ -1224,8 +1223,8 @@ class ProcessArtist(object):
     # State
     ######################
 
-    def get_current_selected_scene_state(self, override_attached_objects_with_fk = True):
-        # type: (bool) -> SceneState
+    def get_current_selected_scene_state(self, override_attached_objects_with_fk=True, robot_config_override=None):
+        # type: (bool, Configuration) -> SceneState
         """
         Return the currently selected SceneState
 
@@ -1233,18 +1232,25 @@ class ProcessArtist(object):
         the frame of the attached objects will be overridden by the FK result of the robot.
 
         Note state_id = 1 is referring to end of the first (0) movement.
+
+        robot_config_override can be used to supply an alternative robot configuration
+        for visualizing a trajectory point. Otherwise the end config the movement is the
+        default configuration.
         """
         state_id = self.selected_state_id
         scene = None
         # Short circuit for returning the initial state.
         # No override_attached_objects_with_fk will be performed.
         if state_id == 0:
-            scene =  self.process.initial_state
+            scene = self.process.initial_state
             return scene
 
-
         movement = self.process.movements[state_id - 1]  # type: RoboticMovement
-        scene =  self.process.get_movement_end_scene(movement)
+        scene = self.process.get_movement_end_scene(movement)
+
+        # Override robot configuration
+        if robot_config_override is not None:
+            scene[('robot', 'c')] = robot_config_override
 
         process = self.process
         if override_attached_objects_with_fk:
