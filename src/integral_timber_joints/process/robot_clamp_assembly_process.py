@@ -1481,12 +1481,12 @@ class RobotClampAssemblyProcess(Data):
         if movement_id:
             target_movement = self.get_movement_by_movement_id(movement_id)
             target_movements = [target_movement]
-            m_id = self.movements.index(target_movement)
-            if m_id-1 >= 0:
-                target_movements.append(self.movements[m_id-1])
-            if m_id+1 < len(self.movements):
-                target_movements.append(self.movements[m_id+1])
-            # print(target_movements)
+            prev_robotic_movement = self.get_prev_robotic_movement(target_movement)
+            next_robotic_movement = self.get_next_robotic_movement(target_movement)
+            if prev_robotic_movement is not None:
+                target_movements.append(prev_robotic_movement)
+            if next_robotic_movement is not None:
+                target_movements.append(next_robotic_movement)
         else:
             target_movements = self.movements
 
