@@ -126,7 +126,8 @@ def main():
     parser.add_argument('-v', '--viewer', action='store_true', help='Enables the viewer during planning, default False')
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     parser.add_argument('--debug', action='store_true', help='debug mode.')
-    parser.add_argument('--mesh_split_long_edge_max_length', default=250.0, type=float, help='the range of edges to be split if they are longer than given threshold used in CGAL\'s split mesh edges function. Unit in millimeter. 0.0 will turn this feature off. By default it is set to be 250.0 mm.')
+    parser.add_argument('--mesh_split_long_edge_max_length', default=250.0, type=float, help='the range of edges to be split if they are longer than given threshold used in CGAL\'s split mesh edges function. The sampled points are used for performing the polyline (ray-casting) sweep collision check between each pair of configurations in trajectories. ONLY BEAM are checked and NO other tools and robot links is checked! Unit in millimeter. 0.0 will turn this feature off. By default it is set to be 250.0 mm.')
+    parser.add_argument('--dense_sample_sweeping_check_num_steps', default=5, type=int, help='number of points used for interpolating between the two configurations when doing densely sampled collision check (convex hull, involves all the bodies in scene, robot, attachments, env meshes, etc.) between each pair of subsequence configurations in trajectories. By default it is set to be 5.')
     args = parser.parse_args()
 
     logging_level = logging.DEBUG if args.debug else logging.INFO
@@ -175,6 +176,7 @@ def main():
         'fail_fast': False,
         'reinit_tool' : args.reinit_tool,
         'mesh_split_long_edge_max_length' : args.mesh_split_long_edge_max_length,
+        'dense_sample_sweeping_check_num_steps' : args.dense_sample_sweeping_check_num_steps,
     }
 
     process.set_initial_state_robot_config(process.robot_initial_config)
