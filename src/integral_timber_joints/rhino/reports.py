@@ -23,11 +23,34 @@ from integral_timber_joints.report.screw import screw_report
 
 def print_sequence(process):
     # type: (RobotClampAssemblyProcess) -> None
-    message = ""
-    for i, beam_id in enumerate(process.assembly.sequence):
-        print("S%i, %s" % (i, beam_id))
-        message += "%i, %s\n" % (i + 1, beam_id)
-    rs.EditBox(message, "Sequence (starts from 1), Beam ID", "Sequence")
+    from integral_timber_joints.assembly import BeamAssemblyMethod
+    messages = ""
+    assembly = process.assembly
+    for i, beam_id in enumerate(assembly.sequence):
+
+        assembly_method = assembly.get_assembly_method(beam_id)
+        if assembly_method == BeamAssemblyMethod.MANUAL_ASSEMBLY:
+            messages += "%i;%s;Manual\n" % (i + 1, beam_id)
+            continue
+
+        gripper = process.get_gripper_of_beam(beam_id)
+        gripper_string = "%s(%s)"%(gripper.name, gripper.type_name)
+
+        if assembly_method not in [BeamAssemblyMethod.CLAMPED] + BeamAssemblyMethod.screw_methods :
+            messages += "%i;%s;%s\n" % (i + 1, beam_id, gripper_string)
+            continue
+
+        tools_strings = [gripper_string]
+        for joint_id in assembly.get_joint_ids_with_tools_for_beam(beam_id):
+            tool_id = assembly.get_joint_attribute(joint_id, "tool_id")
+            tool_type = assembly.get_joint_attribute(joint_id, "tool_type")
+            tools_strings.append("%s(%s)"%(tool_id, tool_type))
+        messages += "%i;%s;%s\n" % (i + 1, beam_id, '+'.join(tools_strings))
+
+
+    print (messages)
+
+    rs.EditBox(messages, "Sequence (starts from 1), Beam ID", "Sequence")
 
 
 def ui_preproduction_report(process):
