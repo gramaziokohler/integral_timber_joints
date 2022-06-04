@@ -29,6 +29,14 @@ $problem = "CantiBoxRight_process.json"
 
 ### Pre Planning and Planning
 
+PDDL Planning (Will archive and overwrite original problem json file in the design folder.)
+
+```
+p -m integral_timber_joints.planning.pddlstream_planning.run --write --design_dir $design_dir --problem $problem
+```
+
+
+
 To plan everything of a process file:
 
 ```
@@ -58,7 +66,7 @@ python -m integral_timber_joints.planning.run --problem $problem --design_dir $d
 Re-plan a single `movement_id`:
 
 ```
-python -m integral_timber_joints.planning.run --problem $problem --design_dir $design_dir --reinit_tool --write --solve_timeout 21600 --rrt_iterations 1000  --movement_id A167_M0
+python -m integral_timber_joints.planning.run --problem $problem --design_dir $design_dir --reinit_tool --write --solve_timeout 21600 --rrt_iterations 1000  --solve_mode movement_id --movement_id A167_M0
 ```
 
 **Draw exploration** in viewer while planning a single Free Movement by `movement_id` in a detailed way (with long edge subdivision)
