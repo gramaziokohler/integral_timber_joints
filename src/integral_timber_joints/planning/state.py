@@ -74,6 +74,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     include_env = options.get('include_env', True)
     reinit_tool = options.get('reinit_tool', False)
     # if 0.0, split_long_edges is turned off
+    # ! this is ONLY applied to beams, NOT tools
     mesh_split_long_edge_max_length = options.get('mesh_split_long_edge_max_length', 0.0)
 
     # robot needed for creating attachments
@@ -82,7 +83,7 @@ def set_state(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyP
     flange_link_name = process.ROBOT_END_LINK
 
     with LockRenderer(not debug):
-        # * Robot and Tool Changer
+        # * Robot
         robot_config = scene[process.robot_config_key]
         if robot_config is not None:
             client.set_robot_configuration(robot, robot_config)
