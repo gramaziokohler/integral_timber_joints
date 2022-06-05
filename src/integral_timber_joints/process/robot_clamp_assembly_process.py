@@ -78,7 +78,7 @@ class RobotClampAssemblyProcess(Data):
     )
 
     # Constants for clamp jaw positions at different key positions.
-    clamp_appraoch_position = 220
+    clamp_appraoch_position = 230
     clamp_inclamp_position = 210
     clamp_final_position = 100
 
