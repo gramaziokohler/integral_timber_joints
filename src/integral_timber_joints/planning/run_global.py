@@ -324,7 +324,7 @@ def main():
     for target_movement_group in target_movement_groups:
         m_groups = []
         # ! For Linear Movement Group, remove also neighbouring Free Movement groups
-        if isinstance(target_movement_group[0], RoboticLinearMovement):
+        if isinstance(target_movement_group[0], RoboticLinearMovement) and not args.keep_planned_movements:
             archive_and_remove_planned_movement(process.get_prev_movement_group(target_movement_group[0]))
             archive_and_remove_planned_movement(target_movement_group)
             archive_and_remove_planned_movement(process.get_next_movement_group(target_movement_group[-1]))
