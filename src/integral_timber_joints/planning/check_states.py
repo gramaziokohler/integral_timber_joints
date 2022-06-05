@@ -177,6 +177,7 @@ def main():
         'reinit_tool' : args.reinit_tool,
         'mesh_split_long_edge_max_length' : args.mesh_split_long_edge_max_length,
         'dense_sample_sweeping_check_num_steps' : args.dense_sample_sweeping_check_num_steps,
+        "dense_sample_skip_start_end" : True,
     }
 
     process.set_initial_state_robot_config(process.robot_initial_config)
