@@ -62,7 +62,7 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
             f_world_from_beam_final = None
         else:
             f_world_from_beam_final = process.assembly.get_beam_attribute(e, 'assembly_wcf_final')
-
+        # LOGGER.debug('{} : {}'.format(e, e_data['assembly_method']))
         if e_data['assembly_method'] == 'ManualAssembly':
             init.extend([
                 ('Scaffold', e),

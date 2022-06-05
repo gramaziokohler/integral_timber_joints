@@ -48,8 +48,7 @@ def solve_serialized_incremental(initial_problem, stream_info={}, unit_costs=Fal
             solution = solve_incremental(
                 problem=local_problem, unit_costs=unit_costs,
                     verbose=0, **kwargs)
-                
-        print_solution(solution)
+        # print_solution(solution)
 
         local_plan, local_cost, local_certificate = solution
         if local_plan is None:
@@ -71,9 +70,9 @@ def solve_serialized_incremental(initial_problem, stream_info={}, unit_costs=Fal
         static_state, _ = partition_facts(domain, state)
         #global_all.extend(partition_facts(domain, local_certificate.all_facts)[0])
         #global_preimage.extend(static_state)
-        # LOGGER.debug(f'Static: {static_state}')
 
         state = apply_actions(domain, state, local_plan, unit_costs=unit_costs)
+        LOGGER.debug(f'Static: {state}')
         LOGGER.debug(SEPARATOR)
         #user_input('Continue?')
         # TODO: could also just test the goal here
