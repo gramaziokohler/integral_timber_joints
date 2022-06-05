@@ -27,6 +27,7 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
     # * Lift Beam and Rotate , Operator Attach Screwdriver
     gripper = process.gripper(gripper_id)
     gripper_type = gripper.type_name
+    # ! PDDL does NOT mess around with screwdriver assignments, so we can just parse from joint attributes
     joint_ids = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
     tool_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
 
@@ -42,7 +43,6 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
 
     # * Actions to Assemble
     if assembly_method == BeamAssemblyMethod.SCREWED_WITH_GRIPPER:
-
         # * Action to Place Beam and Screw it with Screwdriver, not including retract
         act = AssembleBeamWithScrewdriversAction(beam_id=beam_id, joint_ids=joint_ids, gripper_id=gripper_id, screwdriver_ids=tool_ids)
         actions.append(act)
@@ -55,7 +55,18 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
         act = PlaceGripperToStorageAction(tool_type=gripper_type, tool_id=gripper_id)
         actions.append(act)
     else:
-        raise NotImplementedError(assembly_method)
+        # ! SCREWED_WITHOUT_GRIPPER
+        flying_tools_id = [t_id for t_id in tool_ids if t_id != gripper_id]
+
+        # * Action to Place Beam and Screw it with Screwdriver, not including retract
+        act = AssembleBeamWithScrewdriversAction(beam_id=beam_id, joint_ids=joint_ids, gripper_id=gripper_id, screwdriver_ids=tool_ids)
+        actions.append(act)
+
+        # * Action to retract the Screwdriver that was acting as gripper and place it to storage
+        grasping_joint_id = process.assembly.get_grasping_joint_id(beam_id)
+        actions.append(RetractScrewdriverFromBeamAction(beam_id=beam_id, joint_id=grasping_joint_id, tool_id=gripper_id, additional_attached_objects=flying_tools_id))
+
+        actions.append(PlaceScrewdriverToStorageAction(tool_type=gripper_type, tool_id=gripper_id))
 
     # * Actions to Detach Remaining Screwdriver from the Structure.
     for joint_id, tool_id in reversed(list(zip(joint_ids, tool_ids))):
@@ -111,6 +122,7 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
 #     return action
 
 def action_compute_movements(process: RobotClampAssemblyProcess, action: RobotAction):
+    print('>- ' + action.__str__())
     action.create_movements(process)
     for movement in action.movements:
         movement.create_state_diff(process)
@@ -133,10 +145,16 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
 
     for pddl_action in plan:
         itj_act = None
-        if pddl_action.name == 'pick_beam_with_gripper':
+        if pddl_action.name == 'generic_pick_beam_with_gripper':
             beam_id = pddl_action.args[0]
             gripper_id = pddl_action.args[3]
-            gripper = process.gripper(gripper_id)
+            if gripper_id.startswith('g'):
+                gripper = process.gripper(gripper_id)
+            elif gripper_id.startswith('s'):
+                gripper = process.screwdriver(gripper_id)
+            else:
+                raise ValueError('Weird tool id {}'.format(gripper_id))
+
             # * double-check tool type consistency
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
             assert gt_gripper_type == gripper.type_name, '{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name)
@@ -162,7 +180,8 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
             elif pddl_action.name == 'beam_placement_with_clamps':
                 itj_act = BeamPlacementWithClampsAction(seq_n, 0, beam_id, involved_joint_ids, gripper_id, joint_tool_ids)
 
-        elif pddl_action.name == 'assemble_beam_with_screwdrivers_and_gripper_at_rack':
+        elif pddl_action.name == 'assemble_beam_with_screwdrivers_with_gripper_bundle' or \
+             pddl_action.name == 'assemble_beam_with_screwdrivers_without_gripper_bundle':
             beam_id = pddl_action.args[0]
             gripper_id = pddl_action.args[-3]
             # ! screwdriver actions bundled to enforce immediate returnning of screwdrivers to racks

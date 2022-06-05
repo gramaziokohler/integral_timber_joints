@@ -80,15 +80,17 @@
     (Cost)
   )
 
-  (:action pick_beam_with_gripper
+  (:action generic_pick_beam_with_gripper
     :parameters (?element ?e_grasp ?e_pose ?tool ?tool_grasp)
     :precondition (and
                     (ElementRackOccupied)
-                    (Gripper ?tool)
+                    ;; (Gripper ?tool)
+                    (Tool ?tool)
                     (GripperToolTypeMatch ?element ?tool)
                     (Attached ?tool ?tool_grasp)
                     (RobotGripperEmpty)
                     (Element ?element)
+                    ;; (not (ScrewedWithoutGripperElement ?element))
                     (AtRack ?element)
                     (RackPose ?element ?e_pose)
                     (AtPose ?element ?e_pose)
@@ -150,9 +152,8 @@
             )
   )
 
-  ; TODO haven't model screwdrivers that act like grippers yet!
   ; ! packing all the screwdriver loading, unloading and return to rack here
-  (:action assemble_beam_with_screwdrivers_and_gripper_at_rack
+  (:action assemble_beam_with_screwdrivers_with_gripper_bundle
     :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp)
     :precondition (and
                     (Gripper ?tool)
@@ -169,10 +170,38 @@
                 (Assembled ?element)
                 (AtPose ?element ?e_pose)
                 (RobotGripperEmpty)
+                (RobotToolChangerEmpty)
                 (not (Attached ?element ?e_grasp))
                 ;
                 (not (Attached ?tool ?tool_grasp))
+                (AtRack ?tool)
+                (AtPose ?tool ?tool_pose)
+                (increase (total-cost) 1)
+            )
+  )
+
+  ; ! packing all the screwdriver loading, unloading and return to rack here
+  (:action assemble_beam_with_screwdrivers_without_gripper_bundle
+    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp)
+    :precondition (and
+                    (ScrewDriver ?tool)
+                    (Attached ?tool ?tool_grasp)
+                    (Attached ?element ?e_grasp)
+                    (ScrewedWithoutGripperElement ?element)
+                    (ElementGoalPose ?element ?e_pose)
+                    (RackPose ?tool ?tool_pose)
+                    (PrevAssembled ?element)
+                    ; ! sampled
+                    ;; (BundledAssemblePlacementWithoutScrewDriversAction ?element ?gripper ?action)
+                    )
+    :effect (and
+                (Assembled ?element)
+                (AtPose ?element ?e_pose)
+                (RobotGripperEmpty)
                 (RobotToolChangerEmpty)
+                (not (Attached ?element ?e_grasp))
+                ;
+                (not (Attached ?tool ?tool_grasp))
                 (AtRack ?tool)
                 (AtPose ?tool ?tool_pose)
                 (increase (total-cost) 1)
@@ -306,6 +335,7 @@
                  (not (AtRack ?tool))
                  (not (AtPose ?tool ?pose))
                  (when (Gripper ?tool) (RobotGripperEmpty))
+                 (when (ScrewDriver ?tool) (RobotGripperEmpty))
                  (increase (total-cost) 1)
                  ;; ! model gripper of clamp effect
             )
@@ -318,6 +348,7 @@
                     (Attached ?tool ?grasp)
                     (Tool ?tool)
                     (imply (Gripper ?tool) (RobotGripperEmpty))
+                    (imply (ScrewDriver ?tool) (RobotGripperEmpty))
                     (RackPose ?tool ?pose)
                     ; ! sampled
                     ;; (imply (Gripper ?tool) (PlaceGripperToStorageAction ?tool ?action))

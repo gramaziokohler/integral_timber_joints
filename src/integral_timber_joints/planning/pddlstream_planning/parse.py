@@ -1,6 +1,7 @@
 import os
 import random
 from termcolor import cprint
+from itertools import chain
 from collections import defaultdict
 
 import integral_timber_joints.planning.pddlstream_planning.load_pddlstream
@@ -62,7 +63,7 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
             f_world_from_beam_final = None
         else:
             f_world_from_beam_final = process.assembly.get_beam_attribute(e, 'assembly_wcf_final')
-        # LOGGER.debug('{} : {}'.format(e, e_data['assembly_method']))
+        LOGGER.debug('{} : {}'.format(e, e_data['assembly_method']+'Element'))
         if e_data['assembly_method'] == 'ManualAssembly':
             init.extend([
                 ('Scaffold', e),
@@ -145,7 +146,7 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
                 #
                 ('RackPose', sd_name, tool_storage_frame),
                 ('AtPose', sd_name, tool_storage_frame),
-                # ('Grasp', sd_name, sd_grasp),
+                ('Grasp', sd_name, sd_grasp),
             ])
 
     # * joint to clamp/scewdriver tool type assignment
@@ -216,7 +217,11 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
         if not beam_data['beam_id'] in beam_seq:
             continue
         beam_gripper_type = beam_data["beam_gripper_type"]
-        for g_name, g_data in process_symdata['grippers'].items():
+        if 'screwdrivers' in process_symdata:
+            sd_sym_data = process_symdata['screwdrivers'].items()
+        else:
+            sd_sym_data = []
+        for g_name, g_data in chain(process_symdata['grippers'].items(), sd_sym_data):
             if g_data['type_name'] == beam_gripper_type:
                 beam_id = beam_data['beam_id']
                 init.append(('GripperToolTypeMatch', beam_id, g_name))

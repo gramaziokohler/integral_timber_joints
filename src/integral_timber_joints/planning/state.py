@@ -21,7 +21,7 @@ from pybullet_planning import LockRenderer, HideOutput, load_pybullet, wait_for_
 from pybullet_planning import get_sample_fn, link_from_name, joint_from_name, link_from_name, get_link_pose
 from pybullet_planning import uniform_pose_generator
 
-from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, GANTRY_ARM_GROUP, GANTRY_Z_LIMIT
+from integral_timber_joints.planning.robot_setup import MAIN_ROBOT_ID, GANTRY_Z_LIMIT
 from integral_timber_joints.planning.robot_setup import get_gantry_control_joint_names
 from integral_timber_joints.planning.visualization import color_from_object_id
 from integral_timber_joints.planning.parsing import PLANNING_DATA_DIR
@@ -34,9 +34,11 @@ from integral_timber_joints.process import  RobotClampAssemblyProcess
 
 
 def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Frame,
-        reachable_range=(0., 2.5), scale=1.0, spherical_sampling=True):
+        reachable_range=(0., 2.5), scale=1.0, spherical_sampling=True, options=None):
+    options = options or {}
     robot_uid = client.get_robot_pybullet_uid(robot)
     flange_pose = pose_from_frame(flange_frame, scale=scale)
+    joint_custom_limits = options.get('joint_custom_limits', {})
 
     sorted_gantry_joint_names = get_gantry_control_joint_names(MAIN_ROBOT_ID)
     gantry_arm_joint_types = robot.get_joint_types_by_names(sorted_gantry_joint_names)
@@ -50,14 +52,21 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
     gantry_base_from_flange = multiply(gantry_base_from_world, flange_pose)
     base_gen_fn = uniform_pose_generator(robot_uid, gantry_base_from_flange, reachable_range=reachable_range)
 
+    xyz_lower_limits = [joint_custom_limits[jn][0] for jn in sorted_gantry_joint_names]
+    xyz_upper_limits = [joint_custom_limits[jn][1] for jn in sorted_gantry_joint_names]
+
     while True:
         x, y, _ = next(base_gen_fn)
         # x joint: lower="0.0" upper="37.206"
         # the y joint goes -9.65 to 0.0 so we need to negate it
         y *= -1
         z, = gantry_z_sample_fn()
-
         gantry_xyz_vals = [x, y, z]
+
+        # * reject immediately if the x,y,z goes over the custom limits
+        if not pp.all_between(xyz_lower_limits, gantry_xyz_vals, xyz_upper_limits):
+            continue
+
         gantry_base_conf = Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names)
         client.set_robot_configuration(robot, gantry_base_conf)
 

@@ -19,7 +19,7 @@ from integral_timber_joints.planning.utils import LOGGER
 
 ITJ_ACTION_CLASS_FROM_PDDL_ACTION_NAME  = {
     # ! (beam_id, gripper_id)
-    'pick_beam_with_gripper' : PickBeamWithGripperAction,
+    'generic_pick_beam_with_gripper' : PickBeamWithGripperAction,
     'retract_gripper_from_beam' : RetractGripperFromBeamAction,
     'beam_placement_without_clamp' : BeamPlacementWithoutClampsAction,
     # ! (beam_id, joint_ids, gripper_id, clamp_ids | screwdriver_ids)

@@ -2,7 +2,7 @@
 
   ; ! do I have to put all preconditions from the action here?
   ; or it's computed "on-demand" from the action?
-;;   (:stream sample-pick_beam_with_gripper
+;;   (:stream sample-generic_pick_beam_with_gripper
 ;;     ; beam_id, gripper_id
 ;;     :inputs (?element ?gripper)
 ;;     :domain (and (Element ?element) (Gripper ?gripper))
@@ -35,7 +35,7 @@
 ;;                )
 ;;   )
 
-;;   (:stream sample-assemble_beam_with_screwdrivers_and_gripper_at_rack
+;;   (:stream sample-assemble_beam_with_screwdrivers_with_gripper_bundle
 ;;     ; beam_id, gripper_id
 ;;     :inputs (?element ?gripper)
 ;;     :domain (and (Element ?element) (Gripper ?gripper))
