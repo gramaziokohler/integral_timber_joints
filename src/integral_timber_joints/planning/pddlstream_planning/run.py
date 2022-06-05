@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--nofluents', action='store_true', help='Not use fluent facts in stream definitions.')
     parser.add_argument('--symbolics', action='store_true', help='Use the symbolic-only PDDL formulation.')
     parser.add_argument('--disable_stream', action='store_true', help='Disable stream sampling in planning. Enable this will essentially ignore all the geometric constraints and all sampled predicate will be assumed always available. Defaults to False')
-    parser.add_argument('--return_rack', action='store_false', help='Add all-tools-back-to-rack to the goal.')
+    parser.add_argument('--no_return_rack', action='store_true', help='Add all-tools-back-to-rack to the goal.')
     parser.add_argument('--costs', action='store_true', help='Use user-defined costs for actions.')
     # ! pyplanner config
     parser.add_argument('--pp_h', default='ff', help='pyplanner heuristic configuration.')
@@ -92,7 +92,7 @@ def main():
     # * PDDLStream problem conversion and planning
     LOGGER.info(colored('Using {} backend.'.format('pyplanner' if not args.nofluents else 'downward'), 'cyan'))
     pddlstream_problem = get_pddlstream_problem(client, process, robot,
-        enable_stream=not args.disable_stream, reset_to_home=args.return_rack, use_fluents=not args.nofluents, seq_n=args.seq_n, symbolic_only=args.symbolics, options=options)[0]
+        enable_stream=not args.disable_stream, reset_to_home=not args.no_return_rack, use_fluents=not args.nofluents, seq_n=args.seq_n, symbolic_only=args.symbolics, options=options)[0]
 
     if args.debug:
         print_pddl_task_object_names(pddlstream_problem)

@@ -20,6 +20,8 @@ from compas_fab_pychoreo.utils import is_configurations_close, is_frames_close, 
 from compas_fab_pychoreo.utils import LOGGER as PYCHOREO_LOGGER
 from compas_fab_pychoreo.conversions import pose_from_frame, frame_from_pose
 
+from pybullet_planning import LOGGER as PB_LOGGER
+
 from integral_timber_joints.planning.parsing import parse_process, get_process_path
 from integral_timber_joints.planning.robot_setup import load_RFL_world, GANTRY_ARM_GROUP, get_tolerances
 from integral_timber_joints.planning.state import set_state
@@ -132,20 +134,26 @@ def main():
 
     logging_level = logging.DEBUG if args.debug else logging.INFO
     LOGGER.setLevel(logging_level)
-    PYCHOREO_LOGGER.setLevel(logging.DEBUG)
+    PYCHOREO_LOGGER.setLevel(logging_level)
+    PB_LOGGER.setLevel(logging_level)
 
     log_folder = os.path.dirname(get_process_path(args.design_dir, args.problem, subdir=args.problem_subdir))
     log_path = os.path.join(log_folder, 'check_states.log')
     file_handler = logging.FileHandler(filename=log_path, mode='a')
     formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
     file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging_level)
     LOGGER.addHandler(file_handler)
 
     pc_file_handler = logging.FileHandler(filename=log_path, mode='a')
     pc_file_handler.setFormatter(formatter)
-    pc_file_handler.setLevel(logging.DEBUG)
+    pc_file_handler.setLevel(logging_level)
     PYCHOREO_LOGGER.addHandler(pc_file_handler)
+
+    pb_file_handler = logging.FileHandler(filename=log_path, mode='a')
+    pb_file_handler.setFormatter(formatter)
+    pc_file_handler.setLevel(logging_level)
+    PB_LOGGER.addHandler(pb_file_handler)
 
     LOGGER.info("planning.check_states.py started with args: %s" % args)
 
