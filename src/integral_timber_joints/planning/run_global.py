@@ -303,7 +303,7 @@ def main():
             # * Filter to skip the MG based on solve mode
             if args.solve_mode == 'lmg' and not isinstance(last_movement, RoboticLinearMovement):
                 continue
-            if args.solve_mode == 'lmg' and not isinstance(last_movement, RoboticLinearMovement):
+            if args.solve_mode == 'fmg' and not isinstance(last_movement, RoboticFreeMovement):
                 continue
 
             # * Filter to skip entire group when `keep_planned_movements` flag
