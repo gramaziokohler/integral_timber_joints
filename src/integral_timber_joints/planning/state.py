@@ -52,6 +52,7 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
     gantry_base_from_flange = multiply(gantry_base_from_world, flange_pose)
     base_gen_fn = uniform_pose_generator(robot_uid, gantry_base_from_flange, reachable_range=reachable_range)
 
+    # TODO fallback to URDF default joint limit if no joint_custom_limits is provided in options
     xyz_lower_limits = [joint_custom_limits[jn][0] for jn in sorted_gantry_joint_names]
     xyz_upper_limits = [joint_custom_limits[jn][1] for jn in sorted_gantry_joint_names]
 

@@ -76,6 +76,11 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
 
     # * Actions to Detach Remaining Screwdriver from the Structure.
     for joint_id, tool_id in reversed(list(zip(joint_ids, tool_ids))):
+        # Skip the screwdriver that acted as gripper
+        if assembly_method == BeamAssemblyMethod.SCREWED_WITHOUT_GRIPPER:
+            if tool_id == gripper_id:
+                continue
+
         tool_type = assembly.get_joint_attribute(joint_id, 'tool_type')
 
         # * Action to Dock with Screwdriver at Storage

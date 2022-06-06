@@ -339,7 +339,6 @@
             )
   )
 
-;;   ; TODO haven't model screwdrivers that act like grippers yet!
 ;;   (:action operator_attach_screwdriver
 ;;     :parameters (?tool ?tool_pose ?tool_grasp ?element1 ?element2 ?e2_grasp)
 ;;     :precondition (and
