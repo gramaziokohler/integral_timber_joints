@@ -86,7 +86,7 @@ def get_tolerances(robot, low_res=False):
         # 0.1 rad = 5.7 deg
         if jt_type == Joint.REVOLUTE:
             joint_jump_tolerances[jt_name] = 10.0 * np.pi / 180.0 # 0.174 rad
-            joint_resolutions[jt_name] = 10.0 * np.pi / 180.0 * res_ratio# 0.174 rad
+            joint_resolutions[jt_name] = 2.0 * np.pi / 180.0 * res_ratio# 0.174 rad
             joint_compare_tolerances[jt_name] = 0.0017 # rad, try tightened to 0.001 if possible
         elif jt_type == Joint.PRISMATIC:
             joint_jump_tolerances[jt_name] = 0.05 # meter
