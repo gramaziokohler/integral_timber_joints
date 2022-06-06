@@ -3,8 +3,8 @@
   (:predicates
     ; * Static predicates (predicates that do not change over time)
     (Element ?element)
-    (GroundContactElement ?element)
     (Scaffold ?element) ;; ManualAssembly
+    (GroundContactElement ?element)
     (ClampedElement ?element)
     (ScrewedWithGripperElement ?element)
     (ScrewedWithoutGripperElement ?element)
@@ -57,6 +57,7 @@
 
     (ElementRackOccupied)
     (NeedGripperRetraction)
+    (GripperReadyToPickUpBeam)
 
     (ToolNotOccupiedOnJoint ?tool)
     (ToolAtJoint ?tool ?element1 ?element2 ?adhered_element)
@@ -71,6 +72,7 @@
     ;; * derived
     (ExistScaffoldNotAssembled ?element)
     (PrevAssembled ?element)
+    (ScrewedElement ?element)
 
     (ExistNoClampAtOneAssembledJoints ?element)
     ;; (ExistNoScrewDriverAtOneAssembledJoints ?element)
@@ -80,17 +82,17 @@
     (Cost)
   )
 
-  (:action generic_pick_beam_with_gripper
+  (:action pick_beam_with_gripper
     :parameters (?element ?e_grasp ?e_pose ?tool ?tool_grasp)
     :precondition (and
                     (ElementRackOccupied)
-                    ;; (Gripper ?tool)
-                    (Tool ?tool)
+                    (Gripper ?tool)
                     (GripperToolTypeMatch ?element ?tool)
                     (Attached ?tool ?tool_grasp)
                     (RobotGripperEmpty)
+                    ; ! Clamped and GroundContact Element only
                     (Element ?element)
-                    ;; (not (ScrewedWithoutGripperElement ?element))
+                    (not (ScrewedElement ?element))
                     (AtRack ?element)
                     (RackPose ?element ?e_pose)
                     (AtPose ?element ?e_pose)
@@ -108,6 +110,54 @@
                  (Attached ?element ?e_grasp)
                  (not (RobotGripperEmpty))
                  (not (ElementRackOccupied))
+                 (increase (total-cost) 1)
+            )
+  )
+
+  (:action generic_gripper_approach_beam_pickup
+    :parameters (?element ?tool ?tool_grasp)
+    :precondition (and
+                    ; ! can be gripper or a screwdriver
+                    (Tool ?tool)
+                    (GripperToolTypeMatch ?element ?tool)
+                    (Attached ?tool ?tool_grasp)
+                    (RobotGripperEmpty)
+                    (ScrewedElement ?element)
+                    ; ! e2 must be assembled before e encoded in the given partial ordering
+                    (not (Assembled ?element))
+                    (PrevAssembled ?element)
+                  )
+    :effect (and 
+                 (GripperReadyToPickUpBeam)
+                 (increase (total-cost) 1)
+            )
+  )
+
+  (:action close_gripper_on_beam
+    :parameters (?element ?e_grasp ?e_pose ?tool ?tool_grasp)
+    :precondition (and
+                    (GripperReadyToPickUpBeam)
+                    (ElementRackOccupied)
+                    ; ! can be gripper or a screwdriver
+                    (Tool ?tool)
+                    (GripperToolTypeMatch ?element ?tool)
+                    (Attached ?tool ?tool_grasp)
+                    (RobotGripperEmpty)
+                    (ScrewedElement ?element)
+                    (AtRack ?element)
+                    (RackPose ?element ?e_pose)
+                    (AtPose ?element ?e_pose)
+                    (Grasp ?element ?e_grasp)
+                    ; ! e2 must be assembled before e encoded in the given partial ordering
+                    (not (Assembled ?element))
+                    (PrevAssembled ?element)
+                  )
+    :effect (and (not (AtRack ?element))
+                 (not (AtPose ?element ?e_pose))
+                 (Attached ?element ?e_grasp)
+                 (not (ElementRackOccupied))
+                 (not (RobotGripperEmpty))
+                 (not (GripperReadyToPickUpBeam))
                  (increase (total-cost) 1)
             )
   )
@@ -262,6 +312,7 @@
                     (not (ElementRackOccupied))
                     (RobotGripperEmpty)
                     (RackPose ?element ?e_pose)
+                    (imply (ScrewedElement ?element) (GripperReadyToPickUpBeam))
                   )
     :effect (and (ElementRackOccupied)
                  (AtRack ?element)
@@ -280,6 +331,7 @@
                     (ElementGoalPose ?scaffold ?s_pose)
                     (not (Assembled ?scaffold))
                     (AssociatedScaffold ?element ?scaffold)
+                    ;; TODO scaffolding element might be permuted among its immediate scaffolding neighbors!
                   )
     :effect (and (Assembled ?scaffold)
                  (AtPose ?scaffold ?s_pose)
@@ -460,6 +512,16 @@
         (Element ?element)
         (exists (?scaffold) (and (AssociatedScaffold ?element ?scaffold) (not (Assembled ?scaffold)))
         )
+    )
+  )
+
+  (:derived (ScrewedElement ?element)
+    (and
+      (Element ?element)
+      (or 
+          (ScrewedWithGripperElement ?element) 
+          (ScrewedWithoutGripperElement ?element) 
+      )
     )
   )
 

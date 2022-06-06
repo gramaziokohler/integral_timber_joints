@@ -69,7 +69,7 @@ def get_ik_solutions(process, movement_index, options=None):
     # print(flange_frame)
     # pp.draw_pose(pose_from_frame(flange_frame, scale=1))
 
-    gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0)
+    gantry_base_gen_fn = gantry_base_generator(client, robot, flange_frame, reachable_range=reachable_range, scale=1.0, options=options)
     with pp.LockRenderer(not debug):
         # * sample from a ball near the pose
         for attempt, base_conf in zip(range(ik_gantry_attempts), gantry_base_gen_fn):

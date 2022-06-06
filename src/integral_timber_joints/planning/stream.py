@@ -213,7 +213,7 @@ def compute_linear_movement(client: PyChoreoClient, robot: Robot, process: Robot
     if start_conf is None and end_conf is None:
         # * Both stand and end conf are not specified
         # * sample from a ball near the pose
-        gantry_base_gen_fn = gantry_base_generator(client, robot, interp_frames[0], reachable_range=reachable_range, scale=1.0)
+        gantry_base_gen_fn = gantry_base_generator(client, robot, interp_frames[0], reachable_range=reachable_range, scale=1.0, options=options)
         for gi, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
             # if verbose:
             #     cprint('-- gantry sampling iter {}'.format(gi), 'magenta')
@@ -381,7 +381,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         start_t0cf_frame.point *= 1e-3
         sample_found = False
         if start_t0cf_frame is not None:
-            gantry_base_gen_fn = gantry_base_generator(client, robot, start_t0cf_frame, reachable_range=reachable_range, scale=1.0)
+            gantry_base_gen_fn = gantry_base_generator(client, robot, start_t0cf_frame, reachable_range=reachable_range, scale=1.0, options=options)
             for gantry_iter, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
                 # orig_start_conf = client.inverse_kinematics(robot, start_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
                 # * bare-arm IK sampler
@@ -420,7 +420,7 @@ def compute_free_movement(client: PyChoreoClient, robot: Robot, process: RobotCl
         end_t0cf_frame.point *= 1e-3
         sample_found = False
         if end_t0cf_frame is not None:
-            gantry_base_gen_fn = gantry_base_generator(client, robot, end_t0cf_frame, reachable_range=reachable_range, scale=1.0)
+            gantry_base_gen_fn = gantry_base_generator(client, robot, end_t0cf_frame, reachable_range=reachable_range, scale=1.0, options=options)
             for gantry_iter, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
                 # orig_end_conf = client.inverse_kinematics(robot, end_t0cf_frame, group=GANTRY_ARM_GROUP, options=options)
                 # * bare-arm IK sampler
@@ -639,7 +639,7 @@ def sample_config(client: PyChoreoClient, robot: Robot, target_frame: Frame, opt
     target_frame = target_frame.copy()
     target_frame.point *= 1e-3
 
-    gantry_base_gen_fn = gantry_base_generator(client, robot, target_frame, reachable_range=reachable_range, scale=1.0)
+    gantry_base_gen_fn = gantry_base_generator(client, robot, target_frame, reachable_range=reachable_range, scale=1.0, options=options)
     for gantry_iter, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
 
         # * bare-arm IK sampler

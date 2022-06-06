@@ -9,7 +9,7 @@ from integral_timber_joints.process import RobotClampAssemblyProcess, RobotActio
 
 from integral_timber_joints.process.state import ObjectState, SceneState, copy_state_dict
 from integral_timber_joints.planning.parsing import parse_process, save_process, get_process_path
-from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, AssembleBeamWithScrewdriversAction,  RetractGripperFromBeamAction, PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, ManaulAssemblyAction, OperatorAttachScrewdriverAction, DockWithScrewdriverAction, RetractScrewdriverFromBeamAction, PickAndRotateBeamForAttachingScrewdriverAction
+from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, AssembleBeamWithScrewdriversAction,  RetractGripperFromBeamAction, PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, ManaulAssemblyAction, OperatorAttachScrewdriverAction, DockWithScrewdriverAction, RetractScrewdriverFromBeamAction, PickAndRotateBeamForAttachingScrewdriverAction, GenericGripperApproachBeamPickupAction, CloseGripperOnBeamAction
 
 from integral_timber_joints.assembly.beam_assembly_method import BeamAssemblyMethod
 
@@ -25,14 +25,20 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
     assembly_method = process.assembly.get_assembly_method(beam_id)
 
     # * Lift Beam and Rotate , Operator Attach Screwdriver
-    gripper = process.gripper(gripper_id)
+    if gripper_id.startswith('g'):
+        gripper = process.gripper(gripper_id)
+    elif gripper_id.startswith('s'):
+        gripper = process.screwdriver(gripper_id)
+    else:
+        raise ValueError('Weird tool id {}'.format(gripper_id))
     gripper_type = gripper.type_name
+
     # ! PDDL does NOT mess around with screwdriver assignments, so we can just parse from joint attributes
     joint_ids = list(assembly.get_joint_ids_with_tools_for_beam(beam_id))
     tool_ids = [assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
 
-    act = PickAndRotateBeamForAttachingScrewdriverAction(beam_id=beam_id, gripper_id=gripper_id)
-    actions.append(act)
+    # ! close_gripper_on_beam is separated out as an individual PDDL action
+    actions.append(PickAndRotateBeamForAttachingScrewdriverAction(beam_id=beam_id, gripper_id=gripper_id))
 
     for joint_id, tool_id in zip(joint_ids, tool_ids):
         if tool_id == gripper_id:
@@ -122,7 +128,7 @@ def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=Fa
 #     return action
 
 def action_compute_movements(process: RobotClampAssemblyProcess, action: RobotAction):
-    print('>- ' + action.__str__())
+    # print('>- ' + action.__str__())
     action.create_movements(process)
     for movement in action.movements:
         movement.create_state_diff(process)
@@ -145,9 +151,21 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
 
     for pddl_action in plan:
         itj_act = None
-        if pddl_action.name == 'generic_pick_beam_with_gripper':
+        if pddl_action.name == 'pick_beam_with_gripper':
             beam_id = pddl_action.args[0]
             gripper_id = pddl_action.args[3]
+            gripper = process.gripper(gripper_id)
+
+            # * double-check tool type consistency
+            gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
+            assert gt_gripper_type == gripper.type_name, '{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name)
+
+            itj_act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id)
+
+        elif pddl_action.name == 'generic_gripper_approach_beam_pickup':
+            beam_id = pddl_action.args[0]
+            gripper_id = pddl_action.args[1]
+
             if gripper_id.startswith('g'):
                 gripper = process.gripper(gripper_id)
             elif gripper_id.startswith('s'):
@@ -159,7 +177,24 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
             gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
             assert gt_gripper_type == gripper.type_name, '{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name)
 
-            itj_act = PickBeamWithGripperAction(seq_n, 0, beam_id, gripper_id)
+            itj_act = GenericGripperApproachBeamPickupAction(seq_n, 0, beam_id, gripper_id)
+
+        elif pddl_action.name == 'close_gripper_on_beam':
+            beam_id = pddl_action.args[0]
+            gripper_id = pddl_action.args[3]
+
+            if gripper_id.startswith('g'):
+                gripper = process.gripper(gripper_id)
+            elif gripper_id.startswith('s'):
+                gripper = process.screwdriver(gripper_id)
+            else:
+                raise ValueError('Weird tool id {}'.format(gripper_id))
+
+            # * double-check tool type consistency
+            gt_gripper_type = process.assembly.get_beam_attribute(beam_id, "gripper_type")
+            assert gt_gripper_type == gripper.type_name, '{} should use gripper with type {} but {} with type {} assigned.'.format(beam_id, gt_gripper_type, gripper.name, gripper.type_name)
+
+            itj_act = CloseGripperOnBeamAction(beam_id=beam_id, gripper_id=gripper_id)
 
         elif pddl_action.name == 'beam_placement_with_clamps' or \
             pddl_action.name == 'beam_placement_without_clamp':
@@ -289,7 +324,8 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
                 acts = []
 
     # * last beam and tool collection
-    assert new_seq == process.assembly.sequence[:-1]
+    # ! scaffolding element might be permuted among its immediate scaffolding neighbors!
+    # assert new_seq == process.assembly.sequence[:-1], '{} ~ {}'.format(new_seq, process.assembly.sequence[:-1])
     assert len(new_seq) == len(process.assembly.sequence)-1 and len(acts) > 0
     if verbose:
         print('='*10)

@@ -205,7 +205,7 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
             #    pp.wait_if_gui()
                return None
 
-            gantry_base_gen_fn = gantry_base_generator(client, robot, end_t0cf_frame, reachable_range=reachable_range, scale=1.0)
+            gantry_base_gen_fn = gantry_base_generator(client, robot, end_t0cf_frame, reachable_range=reachable_range, scale=1.0, options=options)
 
             for gantry_iter, base_conf in zip(range(gantry_attempts), gantry_base_gen_fn):
                 # * bare-arm IK sampler

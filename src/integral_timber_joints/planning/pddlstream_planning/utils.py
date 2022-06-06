@@ -12,14 +12,17 @@ from pddlstream.language.constants import is_plan, DurativeAction, Action, Strea
 from pddlstream.algorithms.algorithm import parse_problem
 from pddlstream.algorithms.downward import get_problem, task_from_domain_problem
 
-from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, AssembleBeamWithScrewdriversAction,  RetractGripperFromBeamAction, PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, ManaulAssemblyAction, OperatorAttachScrewdriverAction, DockWithScrewdriverAction, RetractScrewdriverFromBeamAction
+from integral_timber_joints.process.action import LoadBeamAction, PickGripperFromStorageAction, PickBeamWithGripperAction, PickClampFromStorageAction, PlaceClampToStructureAction, BeamPlacementWithClampsAction, PlaceGripperToStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, BeamPlacementWithoutClampsAction, AssembleBeamWithScrewdriversAction,  RetractGripperFromBeamAction, PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, ManaulAssemblyAction, OperatorAttachScrewdriverAction, DockWithScrewdriverAction, RetractScrewdriverFromBeamAction, GenericGripperApproachBeamPickupAction, CloseGripperOnBeamAction
 from integral_timber_joints.planning.utils import LOGGER
 
 ##########################################
 
 ITJ_ACTION_CLASS_FROM_PDDL_ACTION_NAME  = {
     # ! (beam_id, gripper_id)
-    'generic_pick_beam_with_gripper' : PickBeamWithGripperAction,
+    'pick_beam_with_gripper' : PickBeamWithGripperAction,
+    'generic_gripper_approach_beam_pickup' : GenericGripperApproachBeamPickupAction,
+    'close_gripper_on_beam' : CloseGripperOnBeamAction,
+
     'retract_gripper_from_beam' : RetractGripperFromBeamAction,
     'beam_placement_without_clamp' : BeamPlacementWithoutClampsAction,
     # ! (beam_id, joint_ids, gripper_id, clamp_ids | screwdriver_ids)
