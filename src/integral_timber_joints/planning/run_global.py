@@ -207,6 +207,7 @@ def main():
     parser.add_argument('--rrt_iterations', default=400, type=int, help='Number of iterations within one rrt session. Defaults to 400.')
     parser.add_argument('--buffers_for_free_motions', action='store_true', help='Turn on buffering linear motions for free movements, used for narrow passage scenarios. Defaults to False.')
     parser.add_argument('--reachable_range', nargs=2, default=[0.2, 2.40], type=float, help='Reachable range (m) of the robot tcp from the base. Two numbers Defaults to `--reachable_range 0.2, 2.4`. It is possible to relax it to 3.0')
+    # parser.add_argument('--gantry_y_range', nargs=2, default=[-9.5, 0.0], type=float, help='If specified, becomes the allowable range of gantry sampleing range.')
     parser.add_argument('--mesh_split_long_edge_max_length', default=0.0, type=float, help='the range of edges to be split if they are longer than given threshold used in CGAL\'s split mesh edges function. The sampled points are used for performing the polyline (ray-casting) sweep collision check between each pair of configurations in trajectories. ONLY BEAM are checked and NO other tools and robot links is checked! Unit in millimeter. 0.0 will turn this feature off. By default it is set to be 250.0 mm.')
     args = parser.parse_args()
 
@@ -250,6 +251,9 @@ def main():
     }
     # ! frame, conf compare, joint flip and allowable collision tolerances are set here
     options.update(get_tolerances(robot, low_res=args.low_res))
+
+    # options['joint_custom_limits']['robot_joint_EA_Y'] = (args.gantry_y_range[0], args.gantry_y_range[1])
+
     if len(args.reachable_range) == 2:
         options.update({
         'reachable_range': (args.reachable_range[0], args.reachable_range[1]),
@@ -303,7 +307,7 @@ def main():
             # * Filter to skip the MG based on solve mode
             if args.solve_mode == 'lmg' and not isinstance(last_movement, RoboticLinearMovement):
                 continue
-            if args.solve_mode == 'lmg' and not isinstance(last_movement, RoboticLinearMovement):
+            if args.solve_mode == 'fmg' and not isinstance(last_movement, RoboticFreeMovement):
                 continue
 
             # * Filter to skip entire group when `keep_planned_movements` flag
@@ -324,8 +328,7 @@ def main():
     for target_movement_group in target_movement_groups:
         m_groups = []
         # ! For Linear Movement Group, remove also neighbouring Free Movement groups
-        if isinstance(target_movement_group[0], RoboticLinearMovement):
-            archive_and_remove_planned_movement()
+        if isinstance(target_movement_group[0], RoboticLinearMovement) and not args.keep_planned_movements:
             archive_and_remove_planned_movement(process.get_prev_movement_group(target_movement_group[0]))
             archive_and_remove_planned_movement(target_movement_group)
             archive_and_remove_planned_movement(process.get_next_movement_group(target_movement_group[-1]))

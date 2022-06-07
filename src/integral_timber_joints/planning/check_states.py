@@ -270,6 +270,7 @@ def main():
                     options['check_sweeping_collision'] = isinstance(m, RoboticFreeMovement)
                     traj_valid, traj_msg = verify_trajectory(client, robot, m.trajectory, options=options)
                     if not traj_valid:
+                        LOGGER.warning('{} : Verify trajectory failed. {}'.format(m.movement_id, traj_msg))
                         failure_reasons[traj_msg] = True
                 else:
                     failure_reasons['no_traj_found'] = True
