@@ -27,7 +27,9 @@ ITJ_ACTION_CLASS_FROM_PDDL_ACTION_NAME  = {
     'beam_placement_without_clamp' : BeamPlacementWithoutClampsAction,
     # ! (beam_id, joint_ids, gripper_id, clamp_ids | screwdriver_ids)
     'beam_placement_with_clamps' : BeamPlacementWithClampsAction,
+    # with/without gripper share the same one
     'assemble_beam_with_screwdrivers' : AssembleBeamWithScrewdriversAction,
+
     # ! (tool_type, tool_id)
     'pick_tool_from_rack' : {
         'g' : PickGripperFromStorageAction,

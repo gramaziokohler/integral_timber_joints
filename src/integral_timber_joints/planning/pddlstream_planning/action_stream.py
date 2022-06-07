@@ -58,7 +58,6 @@ def assign_fluent_state(client: PyChoreoClient, robot: Robot,
     # state[('tool_changer', 'a')] = True
     # state[('tool_changer', 'g')] = Transformation.from_frame(Frame.worldXY())
 
-    handles = []
     # assigned_tool_from_joints = {}
     attached_object_grasps = {}
     for fluent in fluents:
@@ -74,38 +73,21 @@ def assign_fluent_state(client: PyChoreoClient, robot: Robot,
             state[(object_name, 'a')] = True
             state[(object_name, 'g')] = grasp_transform
             attached_object_grasps[object_name] = grasp_transform
-        elif name == 'toolassignedtojoint':
+        elif name == 'toolatjoint':
             pass
-        #     #  (ToolAssignedToJoint ?element1 ?element2 ?tool)
-        #     e1, e2, tool = args
-        #     assigned_tool_from_joints[JOINT_KEY((e1,e2))] = tool
         elif name == 'assembled':
-            pass
+            # ! force at goal pose, but this shouldn't be needed
+            # ? for some reasons the beam's AtPose is not in fluents once assembled
+            element = args[0]
+            f_world_from_beam_final = process.assembly.get_beam_attribute(element, 'assembly_wcf_final')
+            state[(element, 'f')] = f_world_from_beam_final
+            # pass
         else:
             raise ValueError(name)
-
-    # ! update attached object frame according to robot flange frame and grasp
-    # flange_frame = state[('robot', 'f')]
-    # for object_name, grasp_transform in attached_object_grasps.items():
-    #     robot_flange_from_attached_obj = grasp_transform
-    #     t_world_robot = Transformation.from_frame(flange_frame)
-    #     t_world_from_object = t_world_robot * robot_flange_from_attached_obj
-    #     object_frame = Frame.from_transformation(t_world_from_object)
-    #     state[(object_name, 'f')] = object_frame
-        # client.set_object_frame('^{}$'.format(object_name), object_frame)
 
     if not set_state(client, robot, process, state):
         LOGGER.debug('assign_fluent_state: set state error.')
         raise RuntimeError()
-
-    # # ! update attachment pose since set_state woulnd't do that if
-    # # the current object pose and robot flange pose are not close
-    # robot_flange_pose = pose_from_frame(state[('robot', 'f')], scale=1e-3)
-    # attachments = values_as_list(client.pychoreo_attachments)
-    # for attachment in attachments:
-    #     # attachment.assign()
-    #     child_pose = pp.body_from_end_effector(robot_flange_pose, attachment.grasp_pose)
-    #     pp.set_pose(attachment.child, child_pose)
 
     # LOGGER.debug('Set fluent state')
     # draw_state_frames(state)
@@ -166,6 +148,10 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
             # * skip if there exists a taught conf
             if movement.target_configuration is not None:
                 continue
+
+            from integral_timber_joints.process.action import BeamPlacementWithClampsAction, AssembleBeamWithScrewdriversAction
+            if i == 0 and isinstance(action, AssembleBeamWithScrewdriversAction):
+                pp.wait_if_gui()
 
             # * compute IK
             if movement.target_frame is None:
@@ -243,10 +229,10 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
 def get_action_ik_fn(client: PyChoreoClient, robot: Robot, process: RobotClampAssemblyProcess, action_name: str, options=None):
     debug = options.get('debug', False)
     action_class = ITJ_ACTION_CLASS_FROM_PDDL_ACTION_NAME[action_name]
+    beam_seq = process.assembly.sequence
 
     if action_name == 'place_clamp_to_structure':
-        def ik_fn(tool_id: str, element1: str, element2: str,
-            fluents=[]):
+        def ik_fn(tool_id: str, element1: str, element2: str, fluents=[]):
             if debug:
                 print_fluents(fluents)
             if ('assembled', element1) not in fluents:
@@ -254,9 +240,9 @@ def get_action_ik_fn(client: PyChoreoClient, robot: Robot, process: RobotClampAs
             tool = process.clamp(tool_id)
             action = action_class(joint_id=(element1, element2), tool_type=tool.type_name, tool_id=tool_id)
             return sample_ik_for_action(client, robot, process, action, fluents, options=options)
-    if action_name == 'pick_clamp_from_structure':
-        def ik_fn(tool_id: str, element1: str, element2: str,
-            fluents=[]):
+
+    elif action_name == 'pick_clamp_from_structure':
+        def ik_fn(tool_id: str, element1: str, element2: str, fluents=[]):
             if debug:
                 print_fluents(fluents)
             if ('assembled', element1) not in fluents or ('assembled', element2) not in fluents:
@@ -264,6 +250,53 @@ def get_action_ik_fn(client: PyChoreoClient, robot: Robot, process: RobotClampAs
             tool = process.clamp(tool_id)
             action = action_class(joint_id=(element1, element2), tool_type=tool.type_name, tool_id=tool_id)
             return sample_ik_for_action(client, robot, process, action, fluents, options=options)
+
+    elif action_name == 'beam_placement_with_clamps':
+        def ik_fn(tool_id: str, element: str, fluents=[]):
+            if debug:
+                print_fluents(fluents)
+
+            prev_element = beam_seq[beam_seq.index(element) - 1]
+            if ('assembled', prev_element) not in fluents:
+                return None
+
+            joint_ids = process.assembly.get_joint_ids_with_tools_for_beam(element)
+            clamp_ids = []
+            for joint in joint_ids:
+                assert joint[1] == element
+                if ('assembled', joint[0]) in fluents:
+                    for fluent in fluents:
+                        if fluent[0] == 'toolatjoint' and fluent[2] == joint[0] and fluent[3] == joint[1] and \
+                            ('assembled', fluent[4]) in fluents:
+                            clamp_ids.append(fluent[1])
+                            break
+                    else:
+                        # A joint is not occupied by a clamp
+                        return None
+            if len(clamp_ids) == 0:
+                return None
+
+            action = action_class(beam_id=element, joint_ids=joint_ids, gripper_id=tool_id, clamp_ids=clamp_ids)
+            return sample_ik_for_action(client, robot, process, action, fluents, options=options)
+
+    elif action_name == 'assemble_beam_with_screwdrivers':
+        def ik_fn(tool_id: str, element: str, fluents=[]):
+            if debug:
+                print_fluents(fluents)
+
+            prev_element = beam_seq[beam_seq.index(element) - 1]
+            if ('assembled', prev_element) not in fluents:
+                return None
+
+            joint_ids = process.assembly.get_joint_ids_with_tools_for_beam(element)
+            # PDDL doesn't mess with screwdriver assignment
+            tool_ids = [process.assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
+
+            action = action_class(beam_id=element, joint_ids=joint_ids, gripper_id=tool_id, screwdriver_ids=tool_ids)
+            return sample_ik_for_action(client, robot, process, action, fluents, options=options)
+
+    else:
+        raise NotImplementedError('stream sample function {} not implemented!'.format(action_name))
 
     return ik_fn
 

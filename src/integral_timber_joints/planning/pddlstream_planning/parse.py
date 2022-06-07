@@ -136,7 +136,7 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
                 tool_storage_frame = None
                 sd_grasp = None
             else:
-                tool_storage_frame = c.tool_storage_frame
+                tool_storage_frame = sd.tool_storage_frame
                 sd_grasp = toolchanger.t_t0cf_from_tcf
             init.extend([
                 ('ScrewDriver', sd_name),
@@ -234,6 +234,9 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
         stream_map = {
             'sample-place_clamp_to_structure':  from_fn(get_action_ik_fn(client, robot, process, 'place_clamp_to_structure', options=options)),
             'sample-pick_clamp_from_structure':  from_fn(get_action_ik_fn(client, robot, process, 'pick_clamp_from_structure', options=options)),
+            'sample-beam_placement_with_clamps':  from_fn(get_action_ik_fn(client, robot, process, 'beam_placement_with_clamps', options=options)),
+            'sample-assemble_beam_with_screwdrivers_with_gripper':  from_fn(get_action_ik_fn(client, robot, process, 'assemble_beam_with_screwdrivers', options=options)),
+            'sample-assemble_beam_with_screwdrivers_without_gripper':  from_fn(get_action_ik_fn(client, robot, process, 'assemble_beam_with_screwdrivers', options=options)),
         }
 
     goal_literals = []

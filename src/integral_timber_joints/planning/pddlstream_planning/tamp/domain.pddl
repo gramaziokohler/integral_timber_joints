@@ -30,18 +30,24 @@
     (ElementGoalPose ?element ?pose)
 
     ; ? static predicates but will be sampled by stream functions
-    (PickBeamWithGripperAction ?element ?gripper ?action)
     (BeamPlacementWithClampsAction ?element ?gripper ?action)
-    (BeamPlacementWithoutClampsAction ?element ?gripper ?action)
-    (BundledAssemblePlacementWithScrewDriversAction ?element ?gripper ?action)
-    (RetractGripperFromBeamAction ?element ?gripper ?action)
-    ;
-    (PickGripperFromStorageAction ?tool ?action)
-    (PickClampFromStorageAction ?tool ?action)
-    (PickScrewdriverFromStorageAction ?tool ?action)
-    (PlaceGripperToStorageAction ?tool ?action)
-    (PlaceClampToStorageAction ?tool ?action)
-    (PlaceScrewdriverToStorageAction ?tool ?action)
+    (AssembleBeamWithScrewdriversWithGripperAction ?element ?gripper ?action)
+    (AssembleBeamWithScrewdriversWithoutGripperAction ?element ?gripper ?action)
+
+    ;; (BeamPlacementWithoutClampsAction ?element ?gripper ?action)
+
+    ;; (PickBeamWithGripperAction ?element ?gripper ?action)
+    ;; (RetractGripperFromBeamAction ?element ?gripper ?action)
+
+    ; Storage actions
+    ;; (PickGripperFromStorageAction ?tool ?action)
+    ;; (PickClampFromStorageAction ?tool ?action)
+    ;; (PickScrewdriverFromStorageAction ?tool ?action)
+    ;; (PlaceGripperToStorageAction ?tool ?action)
+    ;; (PlaceClampToStorageAction ?tool ?action)
+    ;; (PlaceScrewdriverToStorageAction ?tool ?action)
+
+    ; Clamp on/off structure actions
     (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
     (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
 
@@ -165,7 +171,7 @@
   ; an element can only be placed if all the clamps are (attached) to the corresponding joints
   ; we can query a partial structure and a new element's connection joints using fluent
   (:action beam_placement_with_clamps
-    :parameters (?element ?e_grasp ?tool ?tool_grasp) ; ?action)
+    :parameters (?element ?e_grasp ?tool ?tool_grasp) ;?action)
     :precondition (and
                     (Gripper ?tool)
                     (Attached ?tool ?tool_grasp)
@@ -175,7 +181,7 @@
                     ; ! tool state precondition
                     (not (ExistNoClampAtOneAssembledJoints ?element))
                     ; ! sampled
-                    ;; (BeamPlacementWithClampsAction ?element ?gripper ?action)
+                    ;; (BeamPlacementWithClampsAction ?element ?tool ?action)
                   )
     :effect (and
                  (NeedGripperRetraction)
@@ -204,7 +210,7 @@
 
   ; ! packing all the screwdriver loading, unloading and return to rack here
   (:action assemble_beam_with_screwdrivers_with_gripper_bundle
-    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp)
+    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp ?action)
     :precondition (and
                     (Gripper ?tool)
                     (Attached ?tool ?tool_grasp)
@@ -214,7 +220,7 @@
                     (RackPose ?tool ?tool_pose)
                     (PrevAssembled ?element)
                     ; ! sampled
-                    ;; (BundledAssemblePlacementWithScrewDriversAction ?element ?gripper ?action)
+                    (AssembleBeamWithScrewdriversWithGripperAction ?element ?tool ?action)
                     )
     :effect (and
                 (Assembled ?element)
@@ -232,7 +238,7 @@
 
   ; ! packing all the screwdriver loading, unloading and return to rack here
   (:action assemble_beam_with_screwdrivers_without_gripper_bundle
-    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp)
+    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp ?action)
     :precondition (and
                     (ScrewDriver ?tool)
                     (Attached ?tool ?tool_grasp)
@@ -242,7 +248,7 @@
                     (RackPose ?tool ?tool_pose)
                     (PrevAssembled ?element)
                     ; ! sampled
-                    ;; (BundledAssemblePlacementWithoutScrewDriversAction ?element ?gripper ?action)
+                    (AssembleBeamWithScrewdriversWithoutGripperAction ?element ?tool ?action)
                     )
     :effect (and
                 (Assembled ?element)
@@ -367,7 +373,7 @@
   )
 
   (:action place_clamp_to_structure
-    :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
+    :parameters (?tool ?pose ?grasp ?element1 ?element2) ;?action)
     :precondition (and
                     (Clamp ?tool)
                     (Attached ?tool ?grasp)
@@ -381,7 +387,7 @@
                     ; ! switch for cutting down meaningless clamp placements
                     (not (Assembled ?element2))
                     ; ! sampled
-                    (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
+                    ;; (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
                     )
     :effect (and (not (Attached ?tool ?grasp))
                  (AtPose ?tool ?pose)
@@ -396,7 +402,7 @@
   )
 
   (:action pick_clamp_from_structure
-    :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
+    :parameters (?tool ?pose ?grasp ?element1 ?element2) ; ?action)
     :precondition (and
                     (RobotToolChangerEmpty)
                     (Clamp ?tool)
@@ -409,7 +415,7 @@
                     (Assembled ?element1)
                     (Assembled ?element2)
                     ; ! sampled
-                    (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
+                    ;; (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
                   )
     :effect (and (Attached ?tool ?grasp)
                  (not (AtPose ?tool ?pose))
