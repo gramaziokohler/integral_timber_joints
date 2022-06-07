@@ -25,6 +25,8 @@ from integral_timber_joints.process import RobotClampAssemblyProcess, RoboticMov
 from integral_timber_joints.process.movement import Movement
 from .utils import ITJ_ACTION_CLASS_FROM_PDDL_ACTION_NAME, print_fluents
 
+from integral_timber_joints.process.action import OperatorAttachScrewdriverAction
+
 ######################################
 
 JOINT_KEY = lambda j: j[0]+','+j[1]
@@ -108,7 +110,7 @@ def apply_movement_state_diff(scene: SceneState, movements: List[Movement], debu
 
 def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
         process: RobotClampAssemblyProcess,
-        action: Action, fluents=[], options=None):
+        action: Action, fluents=[], prev_actions=[], options=None):
 
     debug = options.get('debug', False)
     verbose = options.get('verbose', False)
@@ -118,11 +120,18 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
     # * compute movements from action
     action.create_movements(process)
 
-    with pp.WorldSaver():
-        # * create start state scene for the action based on fluents
-        action_initial_scene = assign_fluent_state(client, robot, process, fluents)
-        end_scene = action_initial_scene.copy()
+    # * create start state scene for the action based on fluents
+    action_initial_scene = assign_fluent_state(client, robot, process, fluents)
+    end_scene = action_initial_scene.copy()
 
+    # * extra previous action state propagation for some bundled actions
+    for prev_action in prev_actions:
+        prev_action.create_movements(process)
+        for m in prev_action.movements:
+            m.create_state_diff(process)
+        end_scene = apply_movement_state_diff(end_scene, prev_action.movements, debug=debug)
+
+    with pp.WorldSaver():
         for i, movement in enumerate(action.movements):
             if debug:
                 LOGGER.debug('='*5)
@@ -132,14 +141,21 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
             movement.create_state_diff(process)
 
             # * updating end_scene for the next movement
-            end_scene = apply_movement_state_diff(end_scene, [action.movements[i]], debug=debug)
+            # this happens before set scene because we want to perform check_attachment_collisions
+            # on the end scene
+            end_scene = apply_movement_state_diff(end_scene, [movement], debug=debug)
 
-            # * apply movement state_diff on the end_scene from the last movement
+            # * apply movement state_diff on the end_scene from the current movement
             # * set start state
             if not set_state(client, robot, process, end_scene, options=options):
                 LOGGER.debug('sample_ik_for_action: set state error.')
                 raise RuntimeError()
                 # return None
+
+            if debug:
+                LOGGER.debug(f'start state of {movement.short_summary}')
+                client._print_object_summary()
+                draw_state_frames(end_scene)
 
             # * skip non-robotic movements for IK computation
             if not isinstance(movement, RoboticMovement):
@@ -150,7 +166,7 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
                 continue
 
             from integral_timber_joints.process.action import BeamPlacementWithClampsAction, AssembleBeamWithScrewdriversAction
-            if i == 0 and isinstance(action, AssembleBeamWithScrewdriversAction):
+            if i == 0: # and isinstance(action, AssembleBeamWithScrewdriversAction):
                 pp.wait_if_gui()
 
             # * compute IK
@@ -174,11 +190,6 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
             end_t0cf_frame = movement.target_frame.copy()
             end_t0cf_frame.point *= 1e-3
             sample_found = False
-
-            # if debug:
-                # LOGGER.debug(f'start state of {movement.short_summary}')
-                # client._print_object_summary()
-                # draw_state_frames(end_scene)
 
             # * check collisions among the list of attached objects and obstacles in the scene.
             # This includes collisions between:
@@ -221,7 +232,6 @@ def sample_ik_for_action(client: PyChoreoClient, robot: Robot,
                     movement.short_summary, gantry_attempts))
                 return None
 
-    # cprint('sample pick element succeeds for {}|{}.'.format(obj_name, tool_name), 'green')
     return (action,)
 
 ##########################################
@@ -249,6 +259,20 @@ def get_action_ik_fn(client: PyChoreoClient, robot: Robot, process: RobotClampAs
                 return None
             tool = process.clamp(tool_id)
             action = action_class(joint_id=(element1, element2), tool_type=tool.type_name, tool_id=tool_id)
+            return sample_ik_for_action(client, robot, process, action, fluents, options=options)
+
+    elif action_name == 'beam_placement_without_clamp':
+        def ik_fn(tool_id: str, element: str, fluents=[]):
+            if debug:
+                print_fluents(fluents)
+
+            seq_id = beam_seq.index(element)
+            if seq_id > 0:
+                prev_element = beam_seq[seq_id - 1]
+                if ('assembled', prev_element) not in fluents:
+                    return None
+
+            action = action_class(beam_id=element, gripper_id=tool_id)
             return sample_ik_for_action(client, robot, process, action, fluents, options=options)
 
     elif action_name == 'beam_placement_with_clamps':
@@ -280,7 +304,8 @@ def get_action_ik_fn(client: PyChoreoClient, robot: Robot, process: RobotClampAs
             return sample_ik_for_action(client, robot, process, action, fluents, options=options)
 
     elif action_name == 'assemble_beam_with_screwdrivers':
-        def ik_fn(tool_id: str, element: str, fluents=[]):
+        # * with_gripper and without_gripper share the same IK fn
+        def ik_fn(gripper_id: str, element: str, fluents=[]):
             if debug:
                 print_fluents(fluents)
 
@@ -292,8 +317,16 @@ def get_action_ik_fn(client: PyChoreoClient, robot: Robot, process: RobotClampAs
             # PDDL doesn't mess with screwdriver assignment
             tool_ids = [process.assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
 
-            action = action_class(beam_id=element, joint_ids=joint_ids, gripper_id=tool_id, screwdriver_ids=tool_ids)
-            return sample_ik_for_action(client, robot, process, action, fluents, options=options)
+            # extra previous action to set the screwdriver (not-gripper ones) attached state
+            prev_actions = []
+            for joint_id, tool_id in zip(joint_ids, tool_ids):
+                if tool_id == gripper_id:
+                    continue  # Skipping the screwdriver that is acting as gripper
+                tool_type = process.assembly.get_joint_attribute(joint_id, 'tool_type')
+                prev_actions.append(OperatorAttachScrewdriverAction(beam_id=element, joint_id=joint_id, tool_type=tool_type, tool_id=tool_id, beam_position='assembly_wcf_screwdriver_attachment_pose'))
+
+            action = action_class(beam_id=element, joint_ids=joint_ids, gripper_id=gripper_id, screwdriver_ids=tool_ids)
+            return sample_ik_for_action(client, robot, process, action, fluents, prev_actions=prev_actions, options=options)
 
     else:
         raise NotImplementedError('stream sample function {} not implemented!'.format(action_name))

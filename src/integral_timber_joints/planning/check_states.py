@@ -44,13 +44,16 @@ def check_state_collisions(client: PyChoreoClient, robot : Robot, process: Robot
     #     - each pair of (attached object, obstacle)
     #     - each pair of (attached object 1, attached object 2)
     in_collision = client.check_attachment_collisions(options)
+
     # * check collision with the robot if a robot configuration is stored in the scene state
     if scene_state[process.robot_config_key]:
         pychore_collision_fn = PyChoreoConfigurationCollisionChecker(client)
         in_collision |= pychore_collision_fn.check_collisions(robot, scene_state[process.robot_config_key], options=options)
+
     if debug and in_collision:
         client._print_object_summary()
         wait_for_user('Collision checked: {}'.format(in_collision))
+
     return in_collision
 
 def check_FK_consistency(client, robot, process, scene_state, options=None):

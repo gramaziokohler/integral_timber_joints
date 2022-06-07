@@ -170,26 +170,6 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
         if 'screwdrivers' in process_symdata:
             for sd_name, sd in process_symdata['screwdrivers'].items():
                 if sd['type_name'] == joint_clamp_type:
-                    # trigger gripper frame update
-                    # ! this is the world_from_flange frame
-                    # process.get_gripper_t0cp_for_beam_at(j[1], 'assembly_wcf_final')
-                    f_world_screwdriver_base = process.get_tool_t0cf_at(j, 'screwdriver_assembled_attached')
-                    f_world_gripper_base = process.get_gripper_of_beam(j[1], 'assembly_wcf_final').current_frame
-                    t_gripper_base_from_world = Transformation.from_frame(f_world_gripper_base).inverse()
-
-                    if symbolic_only:
-                        f_world_screwdriver_base = None
-                        t_t0cf_from_sd_base = None
-                    else:
-                        f_world_screwdriver_base = process.assembly.get_joint_attribute(j, 'screwdriver_assembled_attached')
-                        t_t0cf_from_sd_base = toolchanger.t_t0cf_from_tcf * t_gripper_base_from_world * Transformation.from_frame(f_world_screwdriver_base)
-
-                    # init.extend([
-                        # ('JointToolTypeMatch', j[0], j[1], sd_name),
-                        #
-                        # ('ScrewDriverPose', sd_name, j[0], j[1], f_world_screwdriver_base),
-                        # ('GraspViaBeam', sd_name, j[1], t_t0cf_from_sd_base),
-                    # ])
                     screwdriver_from_joint[j[0]+','+j[1]].add(sd_name)
 
     # * Grippers
@@ -207,7 +187,6 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
             ('AtRack', g_name),
             #
             ('RackPose', g_name, tool_storage_frame),
-            # ('Pose', g_name, tool_storage_frame),
             ('AtPose', g_name, tool_storage_frame),
             ('Grasp', g_name, gripper_grasp),
         ])
@@ -234,6 +213,7 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
         stream_map = {
             'sample-place_clamp_to_structure':  from_fn(get_action_ik_fn(client, robot, process, 'place_clamp_to_structure', options=options)),
             'sample-pick_clamp_from_structure':  from_fn(get_action_ik_fn(client, robot, process, 'pick_clamp_from_structure', options=options)),
+            'sample-beam_placement_without_clamp':  from_fn(get_action_ik_fn(client, robot, process, 'beam_placement_without_clamp', options=options)),
             'sample-beam_placement_with_clamps':  from_fn(get_action_ik_fn(client, robot, process, 'beam_placement_with_clamps', options=options)),
             'sample-assemble_beam_with_screwdrivers_with_gripper':  from_fn(get_action_ik_fn(client, robot, process, 'assemble_beam_with_screwdrivers', options=options)),
             'sample-assemble_beam_with_screwdrivers_without_gripper':  from_fn(get_action_ik_fn(client, robot, process, 'assemble_beam_with_screwdrivers', options=options)),
@@ -243,6 +223,7 @@ def get_pddlstream_problem(client: PyChoreoClient, process: RobotClampAssemblyPr
     goal_literals.extend(('Assembled', e) for e in beam_seq)
     if reset_to_home:
         goal_literals.extend(('AtRack', t_name) for t_name in list(process_symdata['clamps']) + list(process_symdata['grippers']))
+        # * screwdriver returning is included in the assemble_beam_with_screwdrivers_* bundled actions
         # if 'screwdrivers' in process_symdata:
         #     goal_literals.extend(('AtRack', t_name) for t_name in list(process_symdata['screwdrivers']))
     goal = And(*goal_literals)

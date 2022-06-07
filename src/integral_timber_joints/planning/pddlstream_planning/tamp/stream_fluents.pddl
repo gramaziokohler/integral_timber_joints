@@ -1,5 +1,19 @@
 (define (stream itj_clamp_only)
 
+  (:stream sample-beam_placement_without_clamp
+    :inputs (?gripper ?element)
+    :domain (and 
+                (Gripper ?gripper)
+                (GroundContactElement ?element)
+                (GripperToolTypeMatch ?element ?gripper)
+            )
+    :fluents (AtPose Attached Assembled)
+    :outputs (?action)
+    :certified (and
+                 (BeamPlacementWithoutClampsAction ?element ?gripper ?action)
+               )
+  )
+
   (:stream sample-beam_placement_with_clamps
     :inputs (?gripper ?element)
     :domain (and 

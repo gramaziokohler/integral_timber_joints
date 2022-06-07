@@ -30,16 +30,16 @@
     (ElementGoalPose ?element ?pose)
 
     ; ? static predicates but will be sampled by stream functions
-    (BeamPlacementWithClampsAction ?element ?gripper ?action)
-    (AssembleBeamWithScrewdriversWithGripperAction ?element ?gripper ?action)
-    (AssembleBeamWithScrewdriversWithoutGripperAction ?element ?gripper ?action)
+    ; * beam placement actions
+    (BeamPlacementWithoutClampsAction ?element ?tool ?action)
+    (BeamPlacementWithClampsAction ?element ?tool ?action)
+    (AssembleBeamWithScrewdriversWithGripperAction ?element ?tool ?action)
+    (AssembleBeamWithScrewdriversWithoutGripperAction ?element ?tool ?action)
 
-    ;; (BeamPlacementWithoutClampsAction ?element ?gripper ?action)
-
-    ;; (PickBeamWithGripperAction ?element ?gripper ?action)
     ;; (RetractGripperFromBeamAction ?element ?gripper ?action)
 
-    ; Storage actions
+    ; * Storage actions
+    ;; (PickBeamWithGripperAction ?element ?gripper ?action)
     ;; (PickGripperFromStorageAction ?tool ?action)
     ;; (PickClampFromStorageAction ?tool ?action)
     ;; (PickScrewdriverFromStorageAction ?tool ?action)
@@ -47,7 +47,7 @@
     ;; (PlaceClampToStorageAction ?tool ?action)
     ;; (PlaceScrewdriverToStorageAction ?tool ?action)
 
-    ; Clamp on/off structure actions
+    ; * Clamp on/off structure actions
     (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
     (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
 
@@ -190,7 +190,7 @@
   )
 
   (:action beam_placement_without_clamp
-    :parameters (?element ?e_grasp ?tool ?tool_grasp)
+    :parameters (?element ?e_grasp ?tool ?tool_grasp ?action)
     :precondition (and
                     (Gripper ?tool)
                     ;; (Grasp ?tool ?tool_grasp)
@@ -200,7 +200,7 @@
                     (GroundContactElement ?element)
                     (PrevAssembled ?element)
                     ; ! sampled
-                    ;; (BeamPlacementWithoutClampsAction ?element ?gripper ?action)
+                    (BeamPlacementWithoutClampsAction ?element ?tool ?action)
                     )
     :effect (and
                  (NeedGripperRetraction)
@@ -373,7 +373,7 @@
   )
 
   (:action place_clamp_to_structure
-    :parameters (?tool ?pose ?grasp ?element1 ?element2) ;?action)
+    :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
     :precondition (and
                     (Clamp ?tool)
                     (Attached ?tool ?grasp)
@@ -387,7 +387,7 @@
                     ; ! switch for cutting down meaningless clamp placements
                     (not (Assembled ?element2))
                     ; ! sampled
-                    ;; (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
+                    (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
                     )
     :effect (and (not (Attached ?tool ?grasp))
                  (AtPose ?tool ?pose)
@@ -402,7 +402,7 @@
   )
 
   (:action pick_clamp_from_structure
-    :parameters (?tool ?pose ?grasp ?element1 ?element2) ; ?action)
+    :parameters (?tool ?pose ?grasp ?element1 ?element2 ?action)
     :precondition (and
                     (RobotToolChangerEmpty)
                     (Clamp ?tool)
@@ -415,7 +415,7 @@
                     (Assembled ?element1)
                     (Assembled ?element2)
                     ; ! sampled
-                    ;; (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
+                    (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
                   )
     :effect (and (Attached ?tool ?grasp)
                  (not (AtPose ?tool ?pose))
