@@ -69,6 +69,12 @@ Re-plan a single `movement_id`:
 python -m integral_timber_joints.planning.run --problem $problem --design_dir $design_dir --reinit_tool --write --solve_timeout 21600 --rrt_iterations 1000  --solve_mode movement_id --movement_id A167_M0
 ```
 
+Intense re-plan for a set of `movement_id`:
+
+```
+python -m integral_timber_joints.planning.run_global --design_dir 220407_CantiBoxMid --problem CantiBoxMid_process --write --solve_timeout 21600 --rrt_iterations 1000 --mesh_split_long_edge_max_length 50 --movement_id A69_M0,A123_M0,A149_M0,A205_M1
+```
+
 **Draw exploration** in viewer while planning a single Free Movement by `movement_id` in a detailed way (with long edge subdivision)
 
 ```

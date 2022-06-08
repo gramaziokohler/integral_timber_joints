@@ -53,8 +53,11 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
     base_gen_fn = uniform_pose_generator(robot_uid, gantry_base_from_flange, reachable_range=reachable_range)
 
     # TODO fallback to URDF default joint limit if no joint_custom_limits is provided in options
-    xyz_lower_limits = [joint_custom_limits[jn][0] for jn in sorted_gantry_joint_names]
-    xyz_upper_limits = [joint_custom_limits[jn][1] for jn in sorted_gantry_joint_names]
+    limit_pruning = False
+    if set(sorted_gantry_joint_names) in set(joint_custom_limits.keys()):
+        xyz_lower_limits = [joint_custom_limits[jn][0] for jn in sorted_gantry_joint_names]
+        xyz_upper_limits = [joint_custom_limits[jn][1] for jn in sorted_gantry_joint_names]
+        limit_pruning = True
 
     while True:
         x, y, _ = next(base_gen_fn)
@@ -65,8 +68,9 @@ def gantry_base_generator(client: PyChoreoClient, robot: Robot, flange_frame: Fr
         gantry_xyz_vals = [x, y, z]
 
         # * reject immediately if the x,y,z goes over the custom limits
-        if not pp.all_between(xyz_lower_limits, gantry_xyz_vals, xyz_upper_limits):
-            continue
+        if limit_pruning:
+            if not pp.all_between(xyz_lower_limits, gantry_xyz_vals, xyz_upper_limits):
+                continue
 
         gantry_base_conf = Configuration(gantry_xyz_vals, gantry_arm_joint_types, sorted_gantry_joint_names)
         client.set_robot_configuration(robot, gantry_base_conf)

@@ -171,7 +171,7 @@
   ; an element can only be placed if all the clamps are (attached) to the corresponding joints
   ; we can query a partial structure and a new element's connection joints using fluent
   (:action beam_placement_with_clamps
-    :parameters (?element ?e_grasp ?tool ?tool_grasp) ;?action)
+    :parameters (?element ?e_grasp ?tool ?tool_grasp ?action)
     :precondition (and
                     (Gripper ?tool)
                     (Attached ?tool ?tool_grasp)
@@ -181,7 +181,7 @@
                     ; ! tool state precondition
                     (not (ExistNoClampAtOneAssembledJoints ?element))
                     ; ! sampled
-                    ;; (BeamPlacementWithClampsAction ?element ?tool ?action)
+                    (BeamPlacementWithClampsAction ?element ?tool ?action)
                   )
     :effect (and
                  (NeedGripperRetraction)
@@ -210,7 +210,7 @@
 
   ; ! packing all the screwdriver loading, unloading and return to rack here
   (:action assemble_beam_with_screwdrivers_with_gripper_bundle
-    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp ?action)
+    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp) ; ?action)
     :precondition (and
                     (Gripper ?tool)
                     (Attached ?tool ?tool_grasp)
@@ -220,7 +220,7 @@
                     (RackPose ?tool ?tool_pose)
                     (PrevAssembled ?element)
                     ; ! sampled
-                    (AssembleBeamWithScrewdriversWithGripperAction ?element ?tool ?action)
+                    ;; (AssembleBeamWithScrewdriversWithGripperAction ?element ?tool ?action)
                     )
     :effect (and
                 (Assembled ?element)

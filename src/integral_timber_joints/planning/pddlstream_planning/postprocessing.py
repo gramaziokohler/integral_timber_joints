@@ -19,7 +19,7 @@ from integral_timber_joints.process.dependency import ComputationalResult
 
 ##############################################
 
-def _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=False):
+def _create_bundled_actions_for_screwed(process: RobotClampAssemblyProcess, beam_id: str, gripper_id: str, verbose=False):
     assembly = process.assembly
     actions = []
     assembly_method = process.assembly.get_assembly_method(beam_id)
@@ -223,7 +223,7 @@ def save_pddlstream_plan_to_itj_process(process: RobotClampAssemblyProcess, plan
         elif pddl_action.name == 'assemble_beam_with_screwdrivers_with_gripper_bundle' or \
              pddl_action.name == 'assemble_beam_with_screwdrivers_without_gripper_bundle':
             beam_id = pddl_action.args[0]
-            gripper_id = pddl_action.args[-3]
+            gripper_id = pddl_action.args[3]
             # ! screwdriver actions bundled to enforce immediate returnning of screwdrivers to racks
             itj_act = _create_bundled_actions_for_screwed(process, beam_id, gripper_id, verbose=verbose)
 
