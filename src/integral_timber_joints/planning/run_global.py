@@ -15,7 +15,7 @@ from pybullet_planning import wait_if_gui, LockRenderer
 from integral_timber_joints.planning.parsing import parse_process, save_process, save_movements, get_process_path, \
     copy_robotic_movements, archive_robotic_movements, move_saved_movement
 from integral_timber_joints.planning.robot_setup import load_RFL_world, get_tolerances
-from integral_timber_joints.planning.utils import print_title, beam_ids_from_argparse_seq_n, color_from_success, LOGGER
+from integral_timber_joints.planning.utils import print_title, LOGGER
 from integral_timber_joints.planning.state import set_state, set_initial_state
 from integral_timber_joints.planning.visualization import visualize_movement_trajectory
 from integral_timber_joints.planning.solve import get_movement_status, MovementStatus, compute_selected_movements

@@ -202,21 +202,31 @@ def main():
 
     # * gather all the movements to be checked
     all_movements = process.movements
-    beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, args.movement_id, msg_prefix='Checking')
+
     chosen_movements = []
-    for beam_id in beam_ids:
-        actions = process.assembly.get_beam_attribute(beam_id, 'actions')
-        for action in actions:
-            for i, m in enumerate(action.movements):
-                global_movement_id = all_movements.index(m)
-                # * filter by movement id, support both integer-based index and string id
-                if args.movement_id is not None and \
-                    (m.movement_id != args.movement_id and args.movement_id != str(global_movement_id)):
-                    continue
-                # * skip non-robotic movement
-                if not isinstance(m, RoboticMovement):
-                    continue
-                chosen_movements.append(m)
+    if args.movement_id is None:
+        # * fetch movements based on seq_n
+        beam_ids = beam_ids_from_argparse_seq_n(process, args.seq_n, msg_prefix='Checking')
+        for beam_id in beam_ids:
+            actions = process.assembly.get_beam_attribute(beam_id, 'actions')
+            for action in actions:
+                for i, m in enumerate(action.movements):
+                    global_movement_id = all_movements.index(m)
+                    # * skip non-robotic movement
+                    if not isinstance(m, RoboticMovement):
+                        continue
+                    chosen_movements.append(m)
+    else:
+        # * Support for multiple movement_ids separated by a comma.
+        movement_ids = args.movement_id.split(',')
+        # * Plan for the residing group for the target movement
+        for movement_id in movement_ids:
+            movement = process.get_movement_by_movement_id(movement_id)
+            assert isinstance(movement, RoboticMovement)
+            # * Skip movements that already belongs to a group.
+            if movement in chosen_movements:
+                continue
+            chosen_movements.append(movement)
 
     movements_need_fix = []
     movements_failure_reasons = []
