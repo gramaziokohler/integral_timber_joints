@@ -722,6 +722,9 @@ def compute_free_movement_with_waypoints(client: PyChoreoClient, robot: Robot, p
 
     # * Plan each portion
     waypoints = movement.intermediate_planning_waypoint
+    # cull null waypoints
+    waypoints = [wp for wp in waypoints if wp is not None]
+
     traj_segments = []
     start_end_config_pairs = list(zip([orig_start_conf] + waypoints, waypoints + [orig_end_conf]))
     for i, (start_conf, end_conf) in enumerate(start_end_config_pairs):
@@ -745,20 +748,19 @@ def compute_free_movement_with_waypoints(client: PyChoreoClient, robot: Robot, p
         LOGGER.debug(colored('Free movement found for {} with {} segments!'.format(movement.short_summary, len(start_end_config_pairs)), 'green'))
     return traj
 
-
-    if traj is None and diagnosis:
-        client._print_object_summary()
-        lockrenderer = options.get('lockrenderer', None)
-        if lockrenderer:
-            lockrenderer.restore()
-        LOGGER.debug('Start diagnosis.')
-        d_options = options.copy()
-        d_options['diagnosis'] = True
-        goal_constraints = robot.constraints_from_configuration(end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
-        traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
-                                  options=d_options)
-        if lockrenderer:
-            lockrenderer = LockRenderer()
-    # if verbose:
-    #     LOGGER.info('No free movement found for {}.'.format(movement.short_summary))
-    return None
+    # if traj is None and diagnosis:
+    #     client._print_object_summary()
+    #     lockrenderer = options.get('lockrenderer', None)
+    #     if lockrenderer:
+    #         lockrenderer.restore()
+    #     LOGGER.debug('Start diagnosis.')
+    #     d_options = options.copy()
+    #     d_options['diagnosis'] = True
+    #     goal_constraints = robot.constraints_from_configuration(end_conf, [0.01], [0.01], group=GANTRY_ARM_GROUP)
+    #     traj = client.plan_motion(robot, goal_constraints, start_configuration=start_conf, group=GANTRY_ARM_GROUP,
+    #                               options=d_options)
+    #     if lockrenderer:
+    #         lockrenderer = LockRenderer()
+    # # if verbose:
+    # #     LOGGER.info('No free movement found for {}.'.format(movement.short_summary))
+    # return None

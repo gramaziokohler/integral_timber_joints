@@ -317,13 +317,14 @@ def get_action_ik_fn(client: PyChoreoClient, robot: Robot, process: RobotClampAs
             # PDDL doesn't mess with screwdriver assignment
             tool_ids = [process.assembly.get_joint_attribute(joint_id, 'tool_id') for joint_id in joint_ids]
 
-            # extra previous action to set the screwdriver (not-gripper ones) attached state
+            # * extra previous action to set the screwdriver (not-gripper ones) attached state
             prev_actions = []
             for joint_id, tool_id in zip(joint_ids, tool_ids):
                 if tool_id == gripper_id:
                     continue  # Skipping the screwdriver that is acting as gripper
                 tool_type = process.assembly.get_joint_attribute(joint_id, 'tool_type')
-                prev_actions.append(OperatorAttachScrewdriverAction(beam_id=element, joint_id=joint_id, tool_type=tool_type, tool_id=tool_id, beam_position='assembly_wcf_screwdriver_attachment_pose'))
+                prev_actions.append(OperatorAttachScrewdriverAction(beam_id=element, joint_id=joint_id, 
+                    tool_type=tool_type, tool_id=tool_id, beam_position='assembly_wcf_screwdriver_attachment_pose'))
 
             action = action_class(beam_id=element, joint_ids=joint_ids, gripper_id=gripper_id, screwdriver_ids=tool_ids)
             return sample_ik_for_action(client, robot, process, action, fluents, prev_actions=prev_actions, options=options)

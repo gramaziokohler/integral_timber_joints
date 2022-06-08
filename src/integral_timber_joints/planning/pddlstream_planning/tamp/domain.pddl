@@ -36,6 +36,10 @@
     (AssembleBeamWithScrewdriversWithGripperAction ?element ?tool ?action)
     (AssembleBeamWithScrewdriversWithoutGripperAction ?element ?tool ?action)
 
+    ; * Clamp on/off structure actions
+    (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
+    (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
+
     ;; (RetractGripperFromBeamAction ?element ?gripper ?action)
 
     ; * Storage actions
@@ -46,10 +50,6 @@
     ;; (PlaceGripperToStorageAction ?tool ?action)
     ;; (PlaceClampToStorageAction ?tool ?action)
     ;; (PlaceScrewdriverToStorageAction ?tool ?action)
-
-    ; * Clamp on/off structure actions
-    (PlaceClampToStructureAction ?tool ?element1 ?element2 ?action)
-    (PickClampFromStructureAction ?tool ?element1 ?element2 ?action)
 
     ; * for construction sequence
     (FirstElement ?element)
@@ -210,7 +210,7 @@
 
   ; ! packing all the screwdriver loading, unloading and return to rack here
   (:action assemble_beam_with_screwdrivers_with_gripper_bundle
-    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp) ; ?action)
+    :parameters (?element ?e_pose ?e_grasp ?tool ?tool_pose ?tool_grasp ?action)
     :precondition (and
                     (Gripper ?tool)
                     (Attached ?tool ?tool_grasp)
@@ -220,7 +220,7 @@
                     (RackPose ?tool ?tool_pose)
                     (PrevAssembled ?element)
                     ; ! sampled
-                    ;; (AssembleBeamWithScrewdriversWithGripperAction ?element ?tool ?action)
+                    (AssembleBeamWithScrewdriversWithGripperAction ?element ?tool ?action)
                     )
     :effect (and
                 (Assembled ?element)
