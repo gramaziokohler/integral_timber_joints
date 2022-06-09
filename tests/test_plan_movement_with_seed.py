@@ -93,7 +93,7 @@ def main():
         'use_stored_seed' : args.use_stored_seed,
     }
     # ! frame, conf compare, joint flip tolerances are set here
-    options.update(get_tolerances(robot, low_res=False))
+    options.update(get_tolerances(robot, super_res=False))
     if not args.no_smooth:
         options.update({
             'smooth_iterations' : 150,

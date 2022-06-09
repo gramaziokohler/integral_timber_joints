@@ -367,7 +367,7 @@ def main():
     #
     parser.add_argument('--reinit_tool', action='store_true', help='Regenerate tool URDFs.')
     #
-    parser.add_argument('--low_res', action='store_true', help='Run the planning with low resolutions. Defaults to True.')
+    parser.add_argument('--super_res', action='store_true', help='Run the planning with fine resolutions. Defaults to False.')
     parser.add_argument('--solve_timeout', default=600.0, type=float, help='For automatic planning retry, number of seconds before giving up. Defaults to 600.')
     parser.add_argument('--solve_iters', default=1000, type=int, help='For automatic planning retry, number of restart before giving up. Defaults to 1000.')
     parser.add_argument('--mp_algorithm', default='birrt', type=str, choices=MOTION_PLANNING_ALGORITHMS, help='Motion planning algorithms.')
@@ -419,7 +419,7 @@ def main():
         'mesh_split_long_edge_max_length' : args.mesh_split_long_edge_max_length,
     }
     # ! frame, conf compare, joint flip and allowable collision tolerances are set here
-    options.update(get_tolerances(robot, low_res=args.low_res))
+    options.update(get_tolerances(robot, super_res=args.super_res))
     if len(args.reachable_range) == 2:
         options.update({
         'reachable_range': (args.reachable_range[0], args.reachable_range[1]),

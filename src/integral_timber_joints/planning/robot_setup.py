@@ -72,11 +72,11 @@ def get_gantry_robot_custom_limits(robot_id='robot11'):
         joint_names[8] : (-3.159045, 3.15904),
     }
 
-def get_tolerances(robot, low_res=False):
+def get_tolerances(robot, super_res=False):
     # for discussions on tolerance, see: https://github.com/gramaziokohler/integral_timber_joints/issues/145
     joint_names = robot.get_configurable_joint_names(group=GANTRY_ARM_GROUP)
     joint_types = robot.get_joint_types_by_names(joint_names)
-    res_ratio = 10 if low_res else 1.0
+    res_ratio = 0.5 if super_res else 1.0
     # TODO joint resolution and weight from joint name
     # * threshold to check joint flipping
     joint_jump_tolerances = {}
@@ -86,7 +86,7 @@ def get_tolerances(robot, low_res=False):
         # 0.1 rad = 5.7 deg
         if jt_type == Joint.REVOLUTE:
             joint_jump_tolerances[jt_name] = 10.0 * np.pi / 180.0 # 0.174 rad
-            joint_resolutions[jt_name] = 2.0 * np.pi / 180.0 * res_ratio# 0.174 rad
+            joint_resolutions[jt_name] = 2 * np.pi / 180.0 * res_ratio# 0.174 rad
             joint_compare_tolerances[jt_name] = 0.0017 # rad, try tightened to 0.001 if possible
         elif jt_type == Joint.PRISMATIC:
             joint_jump_tolerances[jt_name] = 0.05 # meter
