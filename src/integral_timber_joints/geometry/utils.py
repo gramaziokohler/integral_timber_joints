@@ -1,6 +1,6 @@
 import uuid, math
 
-from compas.datastructures.mesh import Mesh, mesh_weld, meshes_join
+from compas.datastructures import Mesh, mesh_weld, meshes_join
 from compas.geometry import Frame, Point, Vector
 from compas.geometry import Box, Polyhedron, Line, Transformation, Translation
 from compas.geometry import is_polygon_convex, transform_points, dot_vectors, angle_vectors

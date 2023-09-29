@@ -14,7 +14,7 @@ except:
     from compas.robots import RobotModel, ToolModel
 
 from compas.robots import MeshDescriptor
-from compas.robots.base_artist import BaseRobotModelArtist
+from compas.artists import BaseRobotModelArtist
 from compas_fab.robots import Configuration
 
 try:

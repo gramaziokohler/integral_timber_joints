@@ -1,4 +1,4 @@
-from compas.datastructures.network.core.graph import Graph
+from compas.datastructures import Graph
 
 import integral_timber_joints
 from integral_timber_joints.assembly import Assembly

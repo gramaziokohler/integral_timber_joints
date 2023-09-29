@@ -11,7 +11,7 @@ import math
 import compas
 from compas.datastructures import Mesh
 from compas.geometry import Box, Frame, Plane, Transformation, Shape
-from compas.geometry.intersections import intersection_line_plane
+from compas.geometry import intersection_line_plane
 from compas.geometry.primitives.line import Line
 from compas.geometry.primitives.point import Point
 from compas.geometry.primitives.vector import Vector
