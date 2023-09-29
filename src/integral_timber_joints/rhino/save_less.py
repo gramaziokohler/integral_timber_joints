@@ -3,7 +3,7 @@ import os
 from copy import deepcopy
 
 import rhinoscriptsyntax as rs
-from compas.utilities import DataDecoder, DataEncoder
+from compas.data import DataDecoder, DataEncoder
 
 from integral_timber_joints.assembly import Assembly
 # import integral_timber_joints.process as Process

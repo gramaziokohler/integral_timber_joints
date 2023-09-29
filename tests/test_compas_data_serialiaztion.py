@@ -1,7 +1,7 @@
 from compas.data import Data
 from compas.datastructures import Network
 from integral_timber_joints.process import *
-from compas.utilities import DataDecoder, DataEncoder
+from compas.data import DataDecoder, DataEncoder
 import json
 
 # This test file make sure the Movement class can be serialized. Because it has some dict keys that are tuples.

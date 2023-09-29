@@ -2,7 +2,7 @@ import json
 import os
 
 from compas.datastructures.mesh.triangulation import mesh_quads_to_triangles
-from compas.utilities import DataDecoder, DataEncoder
+from compas.data import DataDecoder, DataEncoder
 
 from integral_timber_joints.process import RobotClampAssemblyProcess
 

@@ -5,7 +5,7 @@ import time
 import json
 import datetime
 import timeit
-from compas.utilities import DataDecoder, DataEncoder
+from compas.data import DataDecoder, DataEncoder
 from integral_timber_joints.process import RobotClampAssemblyProcess
 
 
