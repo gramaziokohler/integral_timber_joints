@@ -93,6 +93,49 @@ def remove_actions(process):
 
     print("Actions and states Removed")
 
+def load_tamp_results(process):
+    # type: (RobotClampAssemblyProcess) -> None
+    artist = get_process_artist()
+    from integral_timber_joints.process.action import PickGripperFromStorageAction, PlaceGripperToStorageAction
+    from integral_timber_joints.process.action import PickBeamWithGripperAction, BeamPlacementWithoutClampsAction
+
+    # Ask user for a json file
+
+    path = rs.OpenFileName("Open Result File (*.json)|*.json|All Files (*.*)|*.*||")
+    if path:
+        with open(path, 'r') as f:
+            # Deserialize asert correctness and add to Process
+            sequences = json.load(f, cls=DataDecoder) #type: list
+            print(sequences)
+
+    # Change assembly sequence
+    assembly_sequence = []
+    for sequence in sequences:
+        beam_id = sequence['beam_id']
+        assembly_sequence.append(beam_id)
+    process.assembly.sequence = assembly_sequence
+
+    # Add actions to beams attributes
+    for sequence in sequences:
+        seq_n = sequence['seq_n']
+        beam_id = sequence['beam_id']
+        pddl_actions = sequence['actions']
+        actions = []
+        for pddl_action in pddl_actions:
+            act_n = pddl_action['act_n']
+            action_name = pddl_action['action_name']
+            args = pddl_action['args']
+            if action_name == 'pick_gripper_from_storage':
+                actions.append(PickGripperFromStorageAction(seq_n, act_n, args[1], args[0]))
+            elif action_name == 'place_gripper_to_storage':
+                actions.append(PlaceGripperToStorageAction(seq_n, act_n, args[1], args[0]))
+            elif action_name == 'assemble_beam_with_gripper':
+                actions.append(PickBeamWithGripperAction(seq_n, act_n, args[0], args[1]))
+                actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n, args[0], args[1]))
+
+            process.assembly.set_beam_attribute(beam_id, 'actions', actions)
+            process.create_movements_from_action(beam_id)
+
 
 def not_implemented(process):
     #
@@ -121,6 +164,8 @@ def show_menu(process):
                 {'name': 'ComputeStatesVerbose', 'action': compute_states_verbose
                  },
                 {'name': 'RemoveActionsAndStates', 'action': remove_actions
+                 },
+                {'name': 'LoadTAMPResults', 'action': load_tamp_results
                  },
             ]
 

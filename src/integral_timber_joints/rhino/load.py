@@ -7,7 +7,7 @@ import rhinoscriptsyntax as rs
 import scriptcontext as sc  # type: ignore
 import compas
 import compas_fab
-from compas.utilities import DataDecoder, DataEncoder
+from compas.data import DataDecoder, DataEncoder
 
 from integral_timber_joints.assembly import Assembly
 from integral_timber_joints.process import RobotClampAssemblyProcess
