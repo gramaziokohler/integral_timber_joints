@@ -1182,6 +1182,8 @@ class PickBeamWithGripperAction(RobotAction, AttachBeamAction):
         t_flange_from_attached_screwdrivers = []
         for joint_id in process.assembly.get_joint_ids_with_tools_for_beam(self.beam_id):
             screwdriver = process.get_tool_of_joint(joint_id)
+            if screwdriver is None:
+                continue
             if screwdriver.name in self.additional_attached_objects:
                 attached_screwdrivers_id.append(screwdriver.name)
 
