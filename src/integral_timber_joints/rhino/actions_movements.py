@@ -122,6 +122,7 @@ def load_tamp_results(process):
         pddl_actions = sequence['actions']
         actions = []
         for pddl_action in pddl_actions:
+            print("seq_n: %i, act_n: %i, action_name: %s" % (seq_n, pddl_action['act_n'], pddl_action['action_name']))
             act_n = pddl_action['act_n']
             action_name = pddl_action['action_name']
             args = pddl_action['args']
@@ -133,8 +134,8 @@ def load_tamp_results(process):
                 actions.append(PickBeamWithGripperAction(seq_n, act_n, args[0], args[1]))
                 actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n, args[0], args[1]))
 
-            process.assembly.set_beam_attribute(beam_id, 'actions', actions)
-            process.create_movements_from_action(beam_id)
+        process.assembly.set_beam_attribute(beam_id, 'actions', actions)
+        process.create_movements_from_action(beam_id, verbose=True)
 
 
 def not_implemented(process):
