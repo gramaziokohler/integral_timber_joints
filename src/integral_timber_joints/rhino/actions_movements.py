@@ -97,7 +97,7 @@ def load_tamp_results(process):
     # type: (RobotClampAssemblyProcess) -> None
     artist = get_process_artist()
     from integral_timber_joints.process.action import PickGripperFromStorageAction, PlaceGripperToStorageAction
-    from integral_timber_joints.process.action import PickBeamWithGripperAction, BeamPlacementWithoutClampsAction
+    from integral_timber_joints.process.action import PickBeamWithGripperAction, BeamPlacementWithoutClampsAction, LoadBeamAction
 
     # Ask user for a json file
 
@@ -121,11 +121,15 @@ def load_tamp_results(process):
     process.assembly.sequence = assembly_sequence
 
     # Add actions to beams attributes
+    from compas_fab.robots import JointTrajectory
+    from integral_timber_joints.process import RoboticMovement
     for sequence in sequences:
         seq_n = sequence['seq_n']
         beam_id = sequence['beam_id']
         pddl_actions = sequence['actions']
         actions = []
+        trajectory = None
+        trajectory_action_type = None
         for pddl_action in pddl_actions:
             print("seq_n: %i, act_n: %i, action_name: %s" % (seq_n, pddl_action['act_n'], pddl_action['action_name']))
             act_n = pddl_action['act_n']
@@ -136,12 +140,44 @@ def load_tamp_results(process):
             elif action_name == 'place_gripper_to_storage':
                 actions.append(PlaceGripperToStorageAction(seq_n, act_n, args[1], args[0]))
             elif action_name == 'assemble_beam_with_gripper':
+                actions.append(LoadBeamAction(seq_n, act_n, beam_id))
                 actions.append(PickBeamWithGripperAction(seq_n, act_n, args[0], args[1]))
                 actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n, args[0], args[1]))
+                if type(args[3]) is JointTrajectory:
+                    trajectory = args[3]
+                    trajectory_action_type = BeamPlacementWithoutClampsAction
+
+        # Reorder action number
+        for i, action in enumerate(actions):
+            action.act_n = i
 
         process.assembly.set_beam_attribute(beam_id, 'actions', actions)
         process.create_movements_from_action(beam_id, verbose=True)
 
+        def find_action_needing_trajectory():
+            for action in process.get_actions_by_beam_id(beam_id):
+                if type(action) is trajectory_action_type:
+                    return action
+            return None
+        
+        # Set trajectory if exist
+        if trajectory is not None:
+            print ("trajectory: %s (%i points)" % (trajectory, len(trajectory.points)))
+            action = find_action_needing_trajectory()
+            print ("action_with_traj: %s (%i movements)" % (action, len(action.movements)))
+            j = 0
+            for movement in action.movements:
+                # skip non-robotic movements
+                if not isinstance(movement, RoboticMovement):
+                    continue
+                if movement.target_configuration is not None:
+                    continue
+                print ("movement to be filled with trajectory: %s" % movement)
+                configuration = trajectory.points[j]
+                print ("configuration %s" % configuration) 
+                # movement.trajectory = trajectory                       
+                movement.state_diff[('robot', 'c')] = configuration
+                j = j+1
 
 def not_implemented(process):
     #

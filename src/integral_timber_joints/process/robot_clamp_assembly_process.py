@@ -1387,7 +1387,9 @@ class RobotClampAssemblyProcess(Data):
         # * Examine Self
         if movement.target_configuration is not None:
             return movement.target_configuration
-        elif movement.trajectory is not None and len(movement.trajectory.points) > 0:
+        if movement.state_diff.get(('robot', 'c')) is not None:
+            return movement.state_diff[('robot', 'c')]
+        if movement.trajectory is not None and len(movement.trajectory.points) > 0:
             return movement.trajectory.points[-1]
 
         # * Examine Neighbour
