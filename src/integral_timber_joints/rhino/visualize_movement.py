@@ -368,7 +368,7 @@ def show_menu(process):
     print_current_state_info(process)
 
     # Hide interactive beams and beams in positions
-    for seq, beam_id in enumerate(assembly.sequence):
+    for beam_id in assembly.beam_ids():
         artist.hide_interactive_beam(beam_id)
         artist.hide_beam_all_positions(beam_id)
         artist.hide_gripper_all_positions(beam_id)
@@ -380,7 +380,7 @@ def show_menu(process):
 
     def show_interactive_beams_delete_state_vis():
         artist.delete_state(redraw=False)
-        [artist.show_interactive_beam(beam_id) for beam_id in assembly.sequence]
+        [artist.show_interactive_beam(beam_id) for beam_id in assembly.beam_ids()]
         rs.EnableRedraw(True)
         sc.doc.Views.Redraw()
 
