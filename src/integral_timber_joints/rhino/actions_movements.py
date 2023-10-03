@@ -107,7 +107,12 @@ def load_tamp_results(process):
             # Deserialize asert correctness and add to Process
             sequences = json.load(f, cls=DataDecoder) #type: list
             print(sequences)
-
+    
+    # remove old actions from beams
+    for beam_id in process.assembly.beam_ids():
+        print ("Removing actions from beam %s" % beam_id)
+        process.assembly.set_beam_attribute(beam_id, 'actions', [])
+    
     # Change assembly sequence
     assembly_sequence = []
     for sequence in sequences:
