@@ -97,6 +97,7 @@ def load_tamp_results(process):
     # type: (RobotClampAssemblyProcess) -> None
     artist = get_process_artist()
     from integral_timber_joints.process.action import PickGripperFromStorageAction, PlaceGripperToStorageAction
+    from integral_timber_joints.process.action import PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, PickAndRotateBeamForAttachingScrewdriverAction, AssembleBeamWithScrewdriversAction
     from integral_timber_joints.process.action import PickBeamWithGripperAction, BeamPlacementWithoutClampsAction, LoadBeamAction
 
     # Ask user for a json file
@@ -107,12 +108,12 @@ def load_tamp_results(process):
             # Deserialize asert correctness and add to Process
             sequences = json.load(f, cls=DataDecoder) #type: list
             print(sequences)
-    
+
     # remove old actions from beams
     for beam_id in process.assembly.beam_ids():
         print ("Removing actions from beam %s" % beam_id)
         process.assembly.set_beam_attribute(beam_id, 'actions', [])
-    
+
     # Change assembly sequence
     assembly_sequence = []
     for sequence in sequences:
@@ -136,16 +137,36 @@ def load_tamp_results(process):
             action_name = pddl_action['action_name']
             args = pddl_action['args']
             if action_name == 'pick_gripper_from_storage':
-                actions.append(PickGripperFromStorageAction(seq_n, act_n, args[1], args[0]))
+                if args[0].startswith('g'):
+                    actions.append(PickGripperFromStorageAction(seq_n, act_n, tool_type=args[1], tool_id=args[0]))
+                elif args[0].startswith('s'):
+                    actions.append(PickScrewdriverFromStorageAction(seq_n, act_n, tool_type=args[1], tool_id=args[0]))
+                else:
+                    raise ValueError("Tool name %s does not start with g or s" % args[1])
             elif action_name == 'place_gripper_to_storage':
-                actions.append(PlaceGripperToStorageAction(seq_n, act_n, args[1], args[0]))
+                if args[0].startswith('g'):
+                    actions.append(PlaceGripperToStorageAction(seq_n, act_n, tool_type=args[1], tool_id=args[0]))
+                elif args[0].startswith('s'):
+                    actions.append(PlaceScrewdriverToStorageAction(seq_n, act_n, tool_type=args[1], tool_id=args[0]))
+                else:
+                    raise ValueError("Tool name %s does not start with g or s" % args[1])
             elif action_name == 'assemble_beam_with_gripper':
-                actions.append(LoadBeamAction(seq_n, act_n, beam_id))
-                actions.append(PickBeamWithGripperAction(seq_n, act_n, args[0], args[1]))
-                actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n, args[0], args[1]))
-                if type(args[3]) is JointTrajectory:
-                    trajectory = args[3]
-                    trajectory_action_type = BeamPlacementWithoutClampsAction
+                if args[1].startswith('g'):
+                    actions.append(LoadBeamAction(seq_n, act_n, beam_id))
+                    actions.append(PickBeamWithGripperAction(seq_n, act_n, args[0], args[1]))
+                    actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n, args[0], args[1]))
+                    if type(args[3]) is JointTrajectory:
+                        trajectory = args[3]
+                        trajectory_action_type = BeamPlacementWithoutClampsAction
+                elif args[1].startswith('s'):
+                    actions.append(LoadBeamAction(seq_n, act_n, beam_id))
+                    actions.append(PickAndRotateBeamForAttachingScrewdriverAction(beam_id=args[0], gripper_id=args[1]))
+                    actions.append(AssembleBeamWithScrewdriversAction(beam_id=beam_id, joint_ids=[], gripper_id=args[1], screwdriver_ids=[]))
+                    if type(args[3]) is JointTrajectory:
+                        trajectory = args[3]
+                        trajectory_action_type = AssembleBeamWithScrewdriversAction
+                else:
+                    raise ValueError("Tool name %s does not start with g or s" % args[1])
 
         # Reorder action number
         for i, action in enumerate(actions):
@@ -159,7 +180,7 @@ def load_tamp_results(process):
                 if type(action) is trajectory_action_type:
                     return action
             return None
-        
+
         # Set trajectory if exist
         if trajectory is not None:
             print ("trajectory: %s (%i points)" % (trajectory, len(trajectory.points)))
@@ -174,8 +195,8 @@ def load_tamp_results(process):
                     continue
                 print ("movement to be filled with trajectory: %s" % movement)
                 configuration = trajectory.points[j]
-                print ("configuration %s" % configuration) 
-                # movement.trajectory = trajectory                       
+                print ("configuration %s" % configuration)
+                # movement.trajectory = trajectory
                 movement.state_diff[('robot', 'c')] = configuration
                 j = j+1
 
