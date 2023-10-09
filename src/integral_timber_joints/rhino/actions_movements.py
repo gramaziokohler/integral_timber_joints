@@ -98,7 +98,8 @@ def load_tamp_results(process):
     artist = get_process_artist()
     from integral_timber_joints.process.action import PickGripperFromStorageAction, PlaceGripperToStorageAction
     from integral_timber_joints.process.action import PickScrewdriverFromStorageAction, PlaceScrewdriverToStorageAction, PickAndRotateBeamForAttachingScrewdriverAction, AssembleBeamWithScrewdriversAction
-    from integral_timber_joints.process.action import PickBeamWithGripperAction, BeamPlacementWithoutClampsAction, LoadBeamAction
+    from integral_timber_joints.process.action import PickBeamWithGripperAction, BeamPlacementWithoutClampsAction, LoadBeamAction, BeamPlacementWithClampsAction
+    from integral_timber_joints.process.action import PickClampFromStorageAction, PlaceClampToStorageAction, PickClampFromStructureAction, PlaceClampToStructureAction
 
     # Ask user for a json file
 
@@ -150,23 +151,66 @@ def load_tamp_results(process):
                     actions.append(PlaceScrewdriverToStorageAction(seq_n, act_n, tool_type=args[1], tool_id=args[0]))
                 else:
                     raise ValueError("Tool name %s does not start with g or s" % args[1])
+            # * beam placement action for case 1 - 4
             elif action_name == 'assemble_beam_with_gripper':
+                # args = (?beam ?gripper ?grippertype) or (?beam ?gripper ?grippertype ?traj)
                 if args[1].startswith('g'):
                     actions.append(LoadBeamAction(seq_n, act_n, beam_id))
                     actions.append(PickBeamWithGripperAction(seq_n, act_n, args[0], args[1]))
                     actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n, args[0], args[1]))
-                    if type(args[3]) is JointTrajectory:
+                    if len(args) > 3 and type(args[3]) is JointTrajectory:
                         trajectory = args[3]
                         trajectory_action_type = BeamPlacementWithoutClampsAction
                 elif args[1].startswith('s'):
                     actions.append(LoadBeamAction(seq_n, act_n, beam_id))
-                    actions.append(PickAndRotateBeamForAttachingScrewdriverAction(beam_id=args[0], gripper_id=args[1]))
-                    actions.append(AssembleBeamWithScrewdriversAction(beam_id=beam_id, joint_ids=[], gripper_id=args[1], screwdriver_ids=[]))
-                    if type(args[3]) is JointTrajectory:
+                    actions.append(PickAndRotateBeamForAttachingScrewdriverAction(seq_n, act_n, beam_id=beam_id, gripper_id=args[1]))
+                    actions.append(AssembleBeamWithScrewdriversAction(seq_n, act_n, beam_id=beam_id, joint_ids=[], gripper_id=args[1], screwdriver_ids=[]))
+                    if len(args) > 3 and type(args[3]) is JointTrajectory:
                         trajectory = args[3]
                         trajectory_action_type = AssembleBeamWithScrewdriversAction
                 else:
                     raise ValueError("Tool name %s does not start with g or s" % args[1])
+            # * beam placement action for case 5 - 7
+            elif action_name == 'assemble_beam_by_clamping_method':
+                # args = (?beam ?gripper ?grippertype) or (?beam ?gripper ?grippertype ?traj)
+                actions.append(LoadBeamAction(seq_n, act_n, args[0]))
+                actions.append(PickBeamWithGripperAction(seq_n, act_n, args[0], args[1]))
+                actions.append(BeamPlacementWithClampsAction(seq_n, act_n, args[0], joint_ids=[], gripper_id=args[1], clamp_ids=[]))
+                if len(args) > 3 and type(args[3]) is JointTrajectory:
+                    trajectory = args[3]
+                    trajectory_action_type = BeamPlacementWithClampsAction
+            elif action_name == 'assemble_beam_by_screwing_method':
+                # args = (?beam ?gripper ?grippertype) or (?beam ?gripper ?grippertype ?traj)
+                actions.append(LoadBeamAction(seq_n, act_n, args[0]))
+                actions.append(PickAndRotateBeamForAttachingScrewdriverAction(beam_id=args[0], gripper_id=args[1]))
+                # TODO add retrieve screwdrivers from storage action
+                actions.append(AssembleBeamWithScrewdriversAction(beam_id=args[0], joint_ids=[], gripper_id=args[1], screwdriver_ids=[]))
+                # TODO add store screwdrivers to storage action
+                if len(args) > 3 and type(args[3]) is JointTrajectory:
+                    trajectory = args[3]
+                    trajectory_action_type = AssembleBeamWithScrewdriversAction
+            elif action_name == 'assemble_beam_by_ground_connection':
+                # args = (?beam ?gripper ?grippertype) or (?beam ?gripper ?grippertype ?traj)
+                actions.append(LoadBeamAction(seq_n, act_n, beam_id))
+                actions.append(PickBeamWithGripperAction(seq_n, act_n, args[0], args[1]))
+                actions.append(BeamPlacementWithoutClampsAction(seq_n, act_n, args[0], args[1]))
+                if len(args) > 3 and type(args[3]) is JointTrajectory:
+                    trajectory = args[3]
+                    trajectory_action_type = BeamPlacementWithoutClampsAction
+            elif action_name == 'retrieve_clamp_from_storage':
+                # args = (?clamp ?clamptype)
+                actions.append(PickClampFromStorageAction(seq_n, act_n, tool_type=args[1], tool_id=args[0]))
+            elif action_name == 'store_clamp_to_storage':
+                # args = (?clamp ?clamptype)
+                actions.append(PlaceClampToStorageAction(seq_n, act_n, tool_type=args[1], tool_id=args[0]))
+            elif action_name == 'detach_clamp_from_structure':
+                # args = (?clamp ?clamptype ?beam1 ?beam2)
+                joint_id = (args[2], args[3])
+                actions.append(PickClampFromStructureAction(seq_n, act_n, joint_id=joint_id, tool_type=args[1], tool_id=args[0]))
+            elif action_name == 'attach_clamp_to_structure':
+                # args = (?clamp ?clamptype ?beam1 ?beam2)
+                joint_id = (args[2], args[3])
+                actions.append(PlaceClampToStructureAction(seq_n, act_n, joint_id, tool_type=args[1], tool_id=args[0]))
 
         # Reorder action number
         for i, action in enumerate(actions):
