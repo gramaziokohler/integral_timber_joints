@@ -123,15 +123,18 @@ def load_tamp_results(process):
     process.assembly.sequence = assembly_sequence
 
     # Add actions to beams attributes
+    # One beam will have multiple PDDL Actions and ITJ Actions
+    # Beware that some PDDL Actions have more than one ITJ Action
     from compas_fab.robots import JointTrajectory
     from integral_timber_joints.process import RoboticMovement
     for sequence in sequences:
         seq_n = sequence['seq_n']
         beam_id = sequence['beam_id']
         pddl_actions = sequence['actions']
-        actions = []
-        # trajectory_action_type = None
+        actions_for_whole_beam = []
         for pddl_action in pddl_actions:
+            actions = []
+            # Each PDDL Action will have at most one action that has planned trajectory
             action_with_trajectory = None
             trajectory = None
             print("seq_n: %i, act_n: %i, action_name: %s" % (seq_n, pddl_action['act_n'], pddl_action['action_name']))
@@ -165,7 +168,6 @@ def load_tamp_results(process):
                     actions.append(action_with_trajectory)
                     if len(args) > 3 and type(args[3]) is JointTrajectory:
                         trajectory = args[3]
-                        # trajectory_action_type = BeamPlacementWithoutClampsAction
                 elif args[1].startswith('s'):
                     actions.append(LoadBeamAction(seq_n, act_n, beam_id))
                     actions.append(PickAndRotateBeamForAttachingScrewdriverAction(seq_n, act_n, beam_id=beam_id, gripper_id=args[1]))
@@ -173,7 +175,6 @@ def load_tamp_results(process):
                     actions.append(action_with_trajectory)
                     if len(args) > 3 and type(args[3]) is JointTrajectory:
                         trajectory = args[3]
-                        # trajectory_action_type = AssembleBeamWithScrewdriversAction
                 else:
                     raise ValueError("Tool name %s does not start with g or s" % args[1])
            
@@ -186,7 +187,6 @@ def load_tamp_results(process):
                 actions.append(action_with_trajectory)
                 if len(args) > 3 and type(args[3]) is JointTrajectory:
                     trajectory = args[3]
-                    # trajectory_action_type = BeamPlacementWithClampsAction
             
             elif action_name == 'assemble_beam_by_screwing_method':
                 # args = (?beam ?gripper ?grippertype) or (?beam ?gripper ?grippertype ?traj)
@@ -198,7 +198,6 @@ def load_tamp_results(process):
                 # TODO add store screwdrivers to storage action
                 if len(args) > 3 and type(args[3]) is JointTrajectory:
                     trajectory = args[3]
-                    # trajectory_action_type = AssembleBeamWithScrewdriversAction
             
             elif action_name == 'assemble_beam_by_ground_connection':
                 # args = (?beam ?gripper ?grippertype) or (?beam ?gripper ?grippertype ?traj)
@@ -208,7 +207,6 @@ def load_tamp_results(process):
                 actions.append(action_with_trajectory)
                 if len(args) > 3 and type(args[3]) is JointTrajectory:
                     trajectory = args[3]
-                    # trajectory_action_type = BeamPlacementWithoutClampsAction
 
             elif action_name == 'retrieve_clamp_from_storage':
                 # args = (?clamp ?clamptype)
@@ -224,7 +222,6 @@ def load_tamp_results(process):
                 actions.append(action_with_trajectory)
                 if len(args) > 4 and type(args[4]) is JointTrajectory:
                     trajectory = args[4]
-                    # trajectory_action_type = PickClampFromStructureAction
             elif action_name == 'attach_clamp_to_structure':
                 # args = (?clamp ?clamptype ?beam1 ?beam2) or (?clamp ?clamptype ?beam1 ?beam2 ?traj)
                 joint_id = (args[2], args[3])
@@ -232,7 +229,7 @@ def load_tamp_results(process):
                 actions.append(action_with_trajectory)
                 if len(args) > 4 and type(args[4]) is JointTrajectory:
                     trajectory = args[4]
-                    # trajectory_action_type = PlaceClampToStructureAction
+
             else:
                 raise ValueError("Action name %s is not recognized" % action_name)
 
@@ -257,17 +254,26 @@ def load_tamp_results(process):
                     print ("movement to be filled with trajectory: %s" % movement)
                     configuration = trajectory.points[traj_counter]
                     print ("configuration %s" % configuration)
-                    # movement.trajectory = trajectory
                     movement.state_diff[('robot', 'c')] = configuration
                     traj_counter = traj_counter+1
 
-        # Reorder action number
-        for i, action in enumerate(actions):
-            action.act_n = i
+            [actions_for_whole_beam.append(action) for action in actions]
+        # # Reorder action number
+        # for i, action in enumerate(actions):
+        #     action.act_n = i
 
         # Add all the actions to beam attributes
-        process.assembly.set_beam_attribute(beam_id, 'actions', actions)
+        process.assembly.set_beam_attribute(beam_id, 'actions', actions_for_whole_beam)
         # process.create_movements_from_action(beam_id, verbose=True)
+        
+    process.assign_unique_action_numbers()
+
+    # print ("Movements that has end robot config: ")
+    # for action in process.actions:
+    #     print ("%s: %s" % (action.act_n, action))
+    #     for movement in action.movements:
+    #         if process.movement_has_end_robot_config(movement):
+    #             print ("%s - %s has config." % (movement.movement_id, movement.tag))
 
         # def find_action_needing_trajectory():
         #     for action in process.get_actions_by_beam_id(beam_id):
