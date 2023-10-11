@@ -204,13 +204,21 @@ def load_tamp_results(process):
                 # args = (?clamp ?clamptype)
                 actions.append(PlaceClampToStorageAction(seq_n, act_n, tool_type=args[1], tool_id=args[0]))
             elif action_name == 'detach_clamp_from_structure':
-                # args = (?clamp ?clamptype ?beam1 ?beam2)
+                # args = (?clamp ?clamptype ?beam1 ?beam2) or (?clamp ?clamptype ?beam1 ?beam2 ?traj)
                 joint_id = (args[2], args[3])
                 actions.append(PickClampFromStructureAction(seq_n, act_n, joint_id=joint_id, tool_type=args[1], tool_id=args[0]))
+                if len(args) > 4 and type(args[4]) is JointTrajectory:
+                    trajectory = args[4]
+                    trajectory_action_type = PickClampFromStructureAction
             elif action_name == 'attach_clamp_to_structure':
-                # args = (?clamp ?clamptype ?beam1 ?beam2)
+                # args = (?clamp ?clamptype ?beam1 ?beam2) or (?clamp ?clamptype ?beam1 ?beam2 ?traj)
                 joint_id = (args[2], args[3])
-                actions.append(PlaceClampToStructureAction(seq_n, act_n, joint_id, tool_type=args[1], tool_id=args[0]))
+                actions.append(PlaceClampToStructureAction(seq_n, act_n, joint_id=joint_id, tool_type=args[1], tool_id=args[0]))
+                if len(args) > 4 and type(args[4]) is JointTrajectory:
+                    trajectory = args[4]
+                    trajectory_action_type = PlaceClampToStructureAction
+            else:
+                raise ValueError("Action name %s is not recognized" % action_name)
 
         # Reorder action number
         for i, action in enumerate(actions):
